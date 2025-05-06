@@ -176,8 +176,9 @@ if zip_file:
         if fair_fp.exists():
             after = pd.read_excel(fair_fp)
             if "night_ratio" in after.columns:
+                from shift_suite.tasks.utils import calculate_jain_index
                 s = after["night_ratio"]
-                jain = round((s.sum() ** 2) / (len(s) * (s ** 2).sum()), 3)
+                jain = calculate_jain_index(s)
                 col1.metric("夜勤 Jain", jain)
         st.caption("解析結果は一時フォルダに保存されています")
 
@@ -252,7 +253,7 @@ if zip_file:
             if "night_ratio" in after.columns:
                 max_ratio = st.slider("許容夜勤比率", 0.0, 0.5, 0.2, 0.05)
                 adj = after["night_ratio"].clip(upper=max_ratio)
-                jain2 = round((adj.sum() ** 2) / (len(adj) * (adj ** 2).sum()), 3)
+                jain2 = calculate_jain_index(adj)
                 st.metric("調整後 Jain", jain2)
                 st.dataframe(after, use_container_width=True)
         else:

@@ -105,12 +105,10 @@ def build_demand_series(
     if summary_cols[0] not in heat.columns:
         raise ValueError(f"heat_ALL.xlsx に {summary_cols[0]} 列がありません")
 
-    # ---- ★ 修正点 ★ ----
     rows = [
-        {"ds": d, "y": heat[col].sum()}  # ← Series ではなく DataFrame 列を直接集計
+        {"ds": d, "y": heat[col].sum()}
         for d, col in sorted(date_map.items())
     ]
-    # ---------------------
 
     df = pd.DataFrame(rows).sort_values("ds")
     csv_out.parent.mkdir(parents=True, exist_ok=True)

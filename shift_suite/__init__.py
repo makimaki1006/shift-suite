@@ -24,9 +24,8 @@ to_hhmm             = utils.to_hhmm
 ingest_excel        = sys.modules["shift_suite.io_excel"].ingest_excel
 build_heatmap       = sys.modules["shift_suite.heatmap"].build_heatmap
 shortage_and_brief  = sys.modules["shift_suite.shortage"].shortage_and_brief
-# ▼▼ 修正ポイント ▼▼
+# build_stats関数のインポート
 build_stats         = sys.modules["shift_suite.tasks.build_stats"].build_stats
-# ▲▲ ここだけ変更 ▲▲
 detect_anomaly      = sys.modules["shift_suite.anomaly"].detect_anomaly
 train_fatigue       = sys.modules["shift_suite.fatigue"].train_fatigue
 cluster_staff       = sys.modules["shift_suite.cluster"].cluster_staff

@@ -101,8 +101,9 @@ def overview(out:Path):
     kpi = load_excel(out/"shortage_role.xlsx")
     lack = int(kpi["lack_h"].sum()) if not kpi.empty else 0
 
-    fair = load_excel(out/"fairness_report.xlsx", sheet_name="after")
-    jain = round((s:=fair["night_ratio"]).sum()**2/(len(s)*(s**2).sum()),3) if not fair.empty else "–"
+    from shift_suite.tasks.utils import calculate_jain_index
+    fair = load_excel(out/"fairness_after.xlsx", sheet_name="after")
+    jain = calculate_jain_index(fair["night_ratio"]) if not fair.empty else "–"
 
     return dbc.Row([
         dbc.Col(dbc.Card([dbc.CardHeader("Total Lack (h)"),
@@ -201,8 +202,8 @@ def forecast_tab(out:Path):
 
 # ───────────────────────── Fairness tuning
 def fairness_tab(out:Path):
-    base = load_excel(out/"fairness_report.xlsx", sheet_name="before")
-    if base.empty: return html.Div("fairness_report.xlsx missing")
+    base = load_excel(out/"fairness_after.xlsx", sheet_name="before")
+    if base.empty: return html.Div("fairness_after.xlsx missing")
     return html.Div([
         dcc.Slider(0,0.5,0.05,value=0.2,id="fair-max"),
         html.Div(id="fair-jain")
@@ -212,10 +213,11 @@ def fairness_tab(out:Path):
               Input("fair-max","value"),
               State("facility-dd","value"))
 def tune_fair(max_ratio, fac):
-    df = load_excel(get_out(fac)/"fairness_report.xlsx", sheet_name="after")
+    from shift_suite.tasks.utils import calculate_jain_index
+    df = load_excel(get_out(fac)/"fairness_after.xlsx", sheet_name="after")
     if df.empty: return "データ無し"
     adj = df["night_ratio"].clip(upper=max_ratio)
-    jain = round((adj.sum()**2)/(len(adj)*(adj**2).sum()),3)
+    jain = calculate_jain_index(adj)
     return f"許容夜勤比率 {max_ratio:.2f} → Jain = {jain:.3f}"
 
 # ───────────────────────── Multi-facility KPI
@@ -224,8 +226,9 @@ def multi_tab():
     for fac,out in OUT_DIRS.items():
         lack = load_excel(out/"shortage_role.xlsx")
         lack_h = lack["lack_h"].sum() if not lack.empty else 0
-        fair = load_excel(out/"fairness_report.xlsx", sheet_name="after")
-        jain = round((s:=fair["night_ratio"]).sum()**2/(len(s)*(s**2).sum()),3) if not fair.empty else None
+        from shift_suite.tasks.utils import calculate_jain_index
+        fair = load_excel(out/"fairness_after.xlsx", sheet_name="after")
+        jain = calculate_jain_index(fair["night_ratio"]) if not fair.empty else None
         records.append({"facility":fac,"lack_h":lack_h,"jain":jain})
     return dash_table.DataTable(records,[{"name":c,"id":c} for c in records[0]],
                                 sort_action="native")
@@ -255,4 +258,4 @@ def gen_ppt(n, fac):
 
 # ───────────────────────── メイン
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8502)
+    app.run(debug=True, port=8502)

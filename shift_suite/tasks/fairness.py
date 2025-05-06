@@ -130,9 +130,9 @@ def run_fairness(
     summary["night_ratio"] = summary["night_slots"] / summary["total_slots"]
 
     # Jain 指数
+    from .utils import calculate_jain_index
     s = summary["night_ratio"]
-    jain = (s.sum() ** 2) / (len(s) * (s ** 2).sum()) if not s.empty else 1.0
-    jain = round(jain, 3)
+    jain = calculate_jain_index(s)
     summary.attrs["jain"] = jain
 
     # ── 出力 ──────────────────────────────────
