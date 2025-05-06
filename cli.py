@@ -16,7 +16,11 @@ def main():
     out   = Path(args.out).expanduser()
     shutil.rmtree(out, ignore_errors=True)
 
-    long, wt, _ = ingest_excel(excel, out, args.slot)
+    long, wt = ingest_excel(
+        excel,
+        shift_sheets=None,  # Use all non-master sheets
+        master_sheet="勤務区分"  # Default master sheet name
+    )
     build_heatmap(long, wt, out, args.slot)
     shortage_and_brief(out, args.slot)
     summary_df = summary.daily_summary(out)

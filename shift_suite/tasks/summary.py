@@ -12,7 +12,7 @@ from pathlib import Path
 from .utils import log
 
 
-__all__ = ["make_summary", "build_stats"]
+__all__ = ["make_summary", "build_staff_stats"]
 
 
 # ══════════════════════════════════════════════════════════
@@ -65,12 +65,19 @@ def make_summary(heat_df: pd.DataFrame, by_role: bool = False) -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════
-def build_stats(long_df: pd.DataFrame, out_dir: Path) -> Path:
+def build_staff_stats(long_df: pd.DataFrame, out_dir: Path) -> Path:
     """
     長形式シフト (= ingest_excel が返すもの) から
     * by_staff  : 個人単位の稼働統計
     * summary   : 列方向 5 数要約
     を 2 シート構成の **staff_stats.xlsx** に出力する。
+
+    Parameters
+    ----------
+    long_df : pd.DataFrame
+        長形式シフトデータ
+    out_dir : Path
+        出力ディレクトリ
 
     Returns
     -------
@@ -114,5 +121,5 @@ def build_stats(long_df: pd.DataFrame, out_dir: Path) -> Path:
         staff_df.to_excel(ew, sheet_name="by_staff")
         summary_df.to_excel(ew, sheet_name="summary")
 
-    log.info("[build_stats] staff_stats.xlsx → %s", fp)
+    log.info("[build_staff_stats] staff_stats.xlsx → %s", fp)
     return fp

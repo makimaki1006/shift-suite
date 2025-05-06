@@ -109,7 +109,7 @@ def build_heatmap(
     need_series = derive_min_staff(base, method=min_method)
     base['need'] = need_series
     
-    save_df_xlsx(base, out_dir / 'heat_ALL.xlsx', sheet='ALL')
+    save_df_xlsx(base, out_dir / 'heat_ALL.xlsx', sheet_name='ALL')
 
     date_cols = list(base.columns)
 
@@ -123,7 +123,7 @@ def build_heatmap(
             .fillna(0)
         )
         fname = out_dir / f"heat_{safe_sheet(role)}.xlsx"
-        save_df_xlsx(heat, fname, sheet=role)
+        save_df_xlsx(heat, fname, sheet_name=role)
 
     # 7) min/max staff
     for role in ['ALL'] + sorted([r for r in df['role'].unique() if pd.notna(r)]):

@@ -42,6 +42,6 @@ def detect_anomaly(out_dir: Path, contamination: float = 0.05):
     df = pd.DataFrame(
         {"date": heat.columns, "score": score, "is_anomaly": flag}
     )
-    save_df_xlsx(df, out_dir / "anomaly_days.xlsx", sheet="anomaly")
+    save_df_xlsx(df, out_dir / "anomaly_days.xlsx", sheet_name="anomaly")
     log.info(f"anomaly: {flag.sum()} / {len(flag)} days flagged")
     return df
