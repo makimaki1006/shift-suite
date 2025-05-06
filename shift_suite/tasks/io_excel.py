@@ -12,6 +12,19 @@ from .utils import excel_date, to_hhmm
 
 logger = logging.getLogger("[INGEST]")
 
+default_slots = {
+    '日': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
+           '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'],
+    '夜': ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', 
+           '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '00:00', '00:30', '01:00'],
+    '休': ['00:00'],  # 休日は実質的に勤務なしだが、レコード生成のために1つのスロットを設定
+    '週休': ['00:00'],  # 週休も同様
+    '介': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
+           '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'],
+    '遅10': ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
+            '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00']
+}
+
 def ingest_excel(
     path_or_buffer: str | Path,
     *,
@@ -43,15 +56,6 @@ def ingest_excel(
 
     # 2) コード→時刻スロット辞書
     code2rng: dict[str, list[str]] = {}
-    
-    default_slots = {
-        '日': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
-               '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'],
-        '夜': ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', 
-               '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '00:00', '00:30', '01:00'],
-        '休': ['00:00'],  # 休日は実質的に勤務なしだが、レコード生成のために1つのスロットを設定
-        '週休': ['00:00']  # 週休も同様
-    }
     
     for r in wt_df.itertuples(index=False):
         code = str(r.code)
@@ -219,4 +223,43 @@ def ingest_excel(
         raise ValueError("長形式レコードが生成されませんでした")
 
     long_df = pd.DataFrame(all_rows)
+    
+    used_codes = set(long_df['code'].unique())
+    existing_codes = set(wt_df['code'].astype(str))
+    missing_from_master = used_codes - existing_codes
+    
+    if missing_from_master:
+        logger.info(f"マスターに追加するコード: {sorted(missing_from_master)}")
+        new_rows = []
+        for code in missing_from_master:
+            if code in default_slots:
+                slots = default_slots[code]
+                if len(slots) > 1:
+                    start_time = pd.to_datetime(slots[0], format='%H:%M')
+                    end_time = pd.to_datetime(slots[-1], format='%H:%M')
+                    if end_time <= start_time:  # 日をまたぐ場合
+                        end_time += pd.Timedelta(days=1)
+                    end_time += pd.Timedelta(minutes=30)  # 最後のスロットの終了時刻
+                    new_rows.append({
+                        'code': code,
+                        'start': start_time.strftime('%H:%M'),
+                        'end': end_time.strftime('%H:%M')
+                    })
+                else:
+                    new_rows.append({
+                        'code': code,
+                        'start': None,
+                        'end': None
+                    })
+            else:
+                new_rows.append({
+                    'code': code,
+                    'start': None,
+                    'end': None
+                })
+        
+        new_df = pd.DataFrame(new_rows)
+        wt_df = pd.concat([wt_df, new_df], ignore_index=True)
+        logger.info(f"更新後のマスターDF サイズ: {wt_df.shape}")
+    
     return long_df, wt_df

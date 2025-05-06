@@ -9,6 +9,7 @@ from .utils import (
     excel_date, to_hhmm, gen_labels,
     safe_sheet, save_df_xlsx, write_meta, log
 )
+from .io_excel import default_slots
 
 def _time_rng(start: str, end: str, slot: int) -> list[str]:
     """
@@ -51,12 +52,28 @@ def build_heatmap(
     # 1) code→time slots mapping
     c2rng: dict[str, list[str]] = {}
     for r in wt_df.itertuples(index=False):
+        code = str(r.code)
         st = to_hhmm(r.start)
         ed = to_hhmm(r.end)
-        if not st or not ed:
-            log.warning(f"Time parse failed for code={r.code}")
-            continue
-        c2rng[r.code] = _time_rng(st, ed, slot_minutes)
+        
+        if st and ed:
+            c2rng[code] = _time_rng(st, ed, slot_minutes)
+        elif code in default_slots:
+            log.info(f"Using default slots for code={code}")
+            c2rng[code] = default_slots[code]
+        elif code.startswith('日') and '日' in default_slots:
+            log.info(f"Using default day slots for code={code}")
+            c2rng[code] = default_slots['日']
+        elif code.startswith('夜') and '夜' in default_slots:
+            log.info(f"Using default night slots for code={code}")
+            c2rng[code] = default_slots['夜']
+        elif (code == '公休' or code == '有休' or code == '午前休' or 
+              code == '午後休' or code == '欠勤' or code == '週休') and '休' in default_slots:
+            log.info(f"Using default rest slots for code={code}")
+            c2rng[code] = default_slots['休']
+        else:
+            log.warning(f"Time parse failed for code={code}, using default slot")
+            c2rng[code] = ['00:00']
 
     # 2) validate codes
     df_codes = set(long_df['code'].dropna().unique())
@@ -88,12 +105,12 @@ def build_heatmap(
         .reindex(time_labels)
         .fillna(0)
     )
-    save_df_xlsx(base, out_dir / 'heat_ALL.xlsx', sheet_name='ALL')
+    save_df_xlsx(base, out_dir / 'heat_ALL.xlsx', sheet='ALL')
 
     date_cols = list(base.columns)
 
     # 6) Role pivot
-    for role in sorted(df['role'].unique()):
+    for role in sorted([r for r in df['role'].unique() if pd.notna(r)]):
         sub = df[df['role'] == role]
         heat = (
             sub.pivot_table(index='time', columns='date_w', values='role', aggfunc='count')
@@ -102,10 +119,10 @@ def build_heatmap(
             .fillna(0)
         )
         fname = out_dir / f"heat_{safe_sheet(role)}.xlsx"
-        save_df_xlsx(heat, fname, sheet_name=role)
+        save_df_xlsx(heat, fname, sheet=role)
 
     # 7) min/max staff
-    for role in ['ALL'] + sorted(df['role'].unique()):
+    for role in ['ALL'] + sorted([r for r in df['role'].unique() if pd.notna(r)]):
         if role == 'ALL':
             data = base
         else:
@@ -117,5 +134,5 @@ def build_heatmap(
         pd.DataFrame({'max_staff': maxs}).to_csv(out_dir / f"max_{safe_sheet(role)}.csv")
 
     # 8) write meta
-    meta = {'slot': slot_minutes, 'dates': date_cols, 'roles': sorted(df['role'].unique())}
-    write_meta(out_dir, meta)
+    meta = {'slot': slot_minutes, 'dates': date_cols, 'roles': sorted([r for r in df['role'].unique() if pd.notna(r)])}
+    write_meta(out_dir, **meta)
