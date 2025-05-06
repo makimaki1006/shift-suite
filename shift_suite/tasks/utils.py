@@ -146,26 +146,42 @@ def safe_make_archive(src_dir: Path, dst_zip: Path) -> Path:
 
 
 # ────────────────── 7. スタッフ数閾値計算 ──────────────────
-def derive_min_staff(heat: DataFrame, method: str = "p25") -> Series:
-    values = heat.select_dtypes("number")
-    if method == "p25":
-        return values.quantile(0.25, axis=1).round()
-    if method == "mean-1s":
-        return (values.mean(axis=1) - values.std(axis=1)).clip(lower=0).round()
-    if method == "mode":
-        return values.mode(axis=1).iloc[:, 0].round()
-    raise ValueError(f"Unknown min_method: {method}")
+def derive_min_staff(heat: DataFrame | Series, method: str = "p25") -> Series:
+    if isinstance(heat, Series):
+        if method == "p25":
+            return pd.Series([heat.quantile(0.25)]).round()
+        if method == "mean-1s":
+            return pd.Series([max(0, heat.mean() - heat.std())]).round()
+        if method == "mode":
+            return pd.Series([heat.mode()[0]]).round()
+        raise ValueError(f"Unknown min_method: {method}")
+    else:
+        values = heat.select_dtypes("number")
+        if method == "p25":
+            return values.quantile(0.25, axis=1).round()
+        if method == "mean-1s":
+            return (values.mean(axis=1) - values.std(axis=1)).clip(lower=0).round()
+        if method == "mode":
+            return values.mode(axis=1).iloc[:, 0].round()
+        raise ValueError(f"Unknown max_method: {method}")
 
 
-def derive_max_staff(heat: DataFrame, method: str = "mean+1s") -> Series:
-    values = heat.select_dtypes("number")
-    if method == "mean+1s":
-        mu = values.mean(axis=1)
-        sig = values.std(axis=1).fillna(0)  # ← NaN→0
-        return (mu + sig).round()
-    if method == "p75":
-        return values.quantile(0.75, axis=1).round()
-    raise ValueError(f"Unknown max_method: {method}")
+def derive_max_staff(heat: DataFrame | Series, method: str = "mean+1s") -> Series:
+    if isinstance(heat, Series):
+        if method == "mean+1s":
+            return pd.Series([heat.mean() + heat.std().fillna(0)]).round()
+        if method == "p75":
+            return pd.Series([heat.quantile(0.75)]).round()
+        raise ValueError(f"Unknown max_method: {method}")
+    else:
+        values = heat.select_dtypes("number")
+        if method == "mean+1s":
+            mu = values.mean(axis=1)
+            sig = values.std(axis=1).fillna(0)  # ← NaN→0
+            return (mu + sig).round()
+        if method == "p75":
+            return values.quantile(0.75, axis=1).round()
+        raise ValueError(f"Unknown max_method: {method}")
 
 
 # ────────────────── 8. Jain指数計算 ──────────────────
