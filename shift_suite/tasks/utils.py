@@ -168,7 +168,28 @@ def derive_max_staff(heat: DataFrame, method: str = "mean+1s") -> Series:
     raise ValueError(f"Unknown max_method: {method}")
 
 
-# ────────────────── 8. Public Re-export ──────────────────
+# ────────────────── 8. Jain指数計算 ──────────────────
+def calculate_jain_index(values: pd.Series) -> float:
+    """
+    夜勤比率などの分布の公平性を評価するJain指数を計算します。
+    値が1に近いほど公平、0に近いほど不公平を示します。
+    
+    Parameters
+    ----------
+    values : pd.Series
+        評価する値の分布（例：夜勤比率）
+        
+    Returns
+    -------
+    float
+        Jain指数（0～1の範囲、1が完全に公平）
+    """
+    if values.empty:
+        return 1.0
+    return round((values.sum() ** 2) / (len(values) * (values ** 2).sum()), 3)
+
+
+# ────────────────── 9. Public Re-export ──────────────────
 __all__: Sequence[str] = [
     "log",
     "excel_date",
@@ -180,4 +201,5 @@ __all__: Sequence[str] = [
     "safe_make_archive",
     "derive_min_staff",
     "derive_max_staff",
+    "calculate_jain_index",
 ]
