@@ -37,3 +37,5 @@ learn_roster        = sys.modules["shift_suite.rl"].learn_roster
 
 # 旧 import 経路への互換 (任意)
 sys.modules["shift_suite.build_stats"] = importlib.import_module("shift_suite.tasks.build_stats")
+
+build_staff_stats   = sys.modules["shift_suite.tasks.summary"].build_staff_stats

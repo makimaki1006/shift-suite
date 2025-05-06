@@ -73,7 +73,7 @@ def shortage_and_brief(
     else:
         role_df = pd.DataFrame(columns=["role", "need_h", "staff_h", "lack_h"])
 
-    role_fp = save_df_xlsx(role_df, out_dir / "shortage_role.xlsx", sheet="role")
+    role_fp = save_df_xlsx(role_df, out_dir / "shortage_role.xlsx", sheet_name="role")
 
     log.info(f"[shortage] shortage_time → {time_fp.name}, shortage_role → {role_fp.name}")
     return time_fp, role_fp

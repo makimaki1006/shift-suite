@@ -54,7 +54,7 @@ def learn_roster(
     roster = np.round(need).astype(int)
 
     out_df = pd.DataFrame({"ds": df["ds"], "roster": roster})
-    save_df_xlsx(out_df, excel_out, sheet="rl_roster")
+    save_df_xlsx(out_df, excel_out, sheet_name="rl_roster")
 
     # meta
     write_meta(

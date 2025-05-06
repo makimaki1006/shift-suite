@@ -88,7 +88,7 @@ def safe_sheet(name: str, *, for_path: bool = False) -> str:
 def save_df_xlsx(
     df: DataFrame,
     fp: Path | str,
-    sheet: str | None = None,
+    sheet_name: str | None = None,
     *,
     index: bool = True,
     engine: str = "openpyxl",
@@ -96,10 +96,28 @@ def save_df_xlsx(
     """
     汎用 Excel 保存ラッパー
     - 長いパスも一時ファイル経由で安全に保存
-    - sheet=None → ファイル名を安全化
+    - sheet_name=None → ファイル名を安全化
+    
+    Parameters
+    ----------
+    df : DataFrame
+        保存するDataFrame
+    fp : Path | str
+        保存先ファイルパス
+    sheet_name : str | None
+        シート名（Noneの場合はファイル名から自動生成）
+    index : bool
+        インデックスを保存するかどうか
+    engine : str
+        Excelエンジン名
+        
+    Returns
+    -------
+    Path
+        保存したファイルパス
     """
     fp = Path(fp)
-    sheet_name = sheet or safe_sheet(fp.stem)
+    sheet_name = sheet_name or safe_sheet(fp.stem)
     to_excel_kwargs = dict(index=index, sheet_name=sheet_name, engine=engine)
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
