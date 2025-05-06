@@ -105,6 +105,10 @@ def build_heatmap(
         .reindex(time_labels)
         .fillna(0)
     )
+    
+    need_series = derive_min_staff(base, method=min_method)
+    base['need'] = need_series
+    
     save_df_xlsx(base, out_dir / 'heat_ALL.xlsx', sheet='ALL')
 
     date_cols = list(base.columns)
