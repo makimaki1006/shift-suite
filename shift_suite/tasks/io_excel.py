@@ -1,6 +1,7 @@
 # io_excel.py — Excel シフト表の読み込みと長形式変換
 
 import re
+import datetime
 from pathlib import Path
 import logging
 
@@ -42,10 +43,21 @@ def ingest_excel(
 
     # 2) コード→時刻スロット辞書
     code2rng: dict[str, list[str]] = {}
+    
+    default_slots = {
+        '日': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
+               '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'],
+        '夜': ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', 
+               '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '00:00', '00:30', '01:00'],
+        '休': ['00:00'],  # 休日は実質的に勤務なしだが、レコード生成のために1つのスロットを設定
+        '週休': ['00:00']  # 週休も同様
+    }
+    
     for r in wt_df.itertuples(index=False):
         code = str(r.code)
         st_str = to_hhmm(r.start); ed_str = to_hhmm(r.end)
         slots: list[str] = []
+        
         if st_str and ed_str:
             s = pd.to_datetime(st_str, "%H:%M")
             e = pd.to_datetime(ed_str, "%H:%M")
@@ -54,8 +66,21 @@ def ingest_excel(
             while s < e:
                 slots.append(s.strftime("%H:%M"))
                 s += pd.Timedelta(minutes=30)
+        elif code in default_slots:
+            slots = default_slots[code]
+        elif code.startswith('日') and '日' in default_slots:
+            slots = default_slots['日']
+        elif code.startswith('夜') and '夜' in default_slots:
+            slots = default_slots['夜']
+        elif (code == '公休' or code == '有休' or code == '午前休' or 
+              code == '午後休' or code == '欠勤') and '休' in default_slots:
+            slots = default_slots['休']
+        else:
+            slots = ['00:00']  # 最低1つのスロットを設定してレコードが生成されるようにする
+            
         code2rng[code] = slots
     logger.info(f"コード→スロット マッピング数: {len(code2rng)}")
+    logger.info(f"マスターコード一覧: {list(code2rng.keys())}")
 
     all_rows = []
     missing_codes = set()
@@ -71,43 +96,121 @@ def ingest_excel(
         )
         logger.info(f"[{sheet}] 読込DF サイズ: {df.shape}")
 
-        # 固定列チェック
-        for req in ("氏名", "職種"):
-            if req not in df.columns:
-                raise ValueError(f"シート '{sheet}' に必須列 '{req}' が見つかりません")
+        if len(df.columns) < 2:
+            raise ValueError(f"シート '{sheet}' に必要な列数がありません（最低2列必要）")
+            
+        name_col = df.columns[0]
+        role_col = df.columns[1]
+        logger.info(f"[{sheet}] 氏名列として使用: '{name_col}'")
+        logger.info(f"[{sheet}] 職種列として使用: '{role_col}'")
+        
+        col_map = {
+            "氏名": name_col,
+            "職種": role_col
+        }
 
-        # 日付列は '氏名','職種' 以外すべて
-        date_cols = [c for c in df.columns if c not in ("氏名", "職種")]
+        date_cols = [c for c in df.columns if c not in (name_col, role_col)]
 
         if not date_cols:
             raise ValueError(f"シート'{sheet}'に日付列が見つかりません")
 
         # レコード展開
         for _, row in df.iterrows():
-            role = row["職種"]
+            role = row[role_col]  # 職種列を使用
+            name = row[name_col]  # 氏名列を使用
             for c in date_cols:
                 code = row[c]
                 if pd.isna(code):
                     continue
                 code = str(code).strip()
+                logger.info(f"[{sheet}] 処理中のコード: '{code}' (列: '{c}', 行: '{row[name_col]}')")
+                
+                original_code = code
+                
+                if code == '日' or code.startswith('日') or code == '日勤':
+                    if '日' in code2rng:
+                        code = '日'
+                    elif '日勤' in code2rng:
+                        code = '日勤'
+                
+                elif code == '夜' or code.startswith('夜') or code == '夜勤':
+                    if '夜' in code2rng:
+                        code = '夜'
+                    elif '夜勤' in code2rng:
+                        code = '夜勤'
+                
+                elif code == '休' or code == '週休' or code.startswith('休') or code == '公休':
+                    if '休' in code2rng:
+                        code = '休'
+                    elif '公休' in code2rng:
+                        code = '公休'
+                
+                if code != original_code:
+                    logger.info(f"[{sheet}] コードマッピング: '{original_code}' → '{code}'")
+                
                 if code not in code2rng:
                     missing_codes.add(code)
+                    logger.warning(f"[{sheet}] 未登録コード: '{code}' (列: '{c}', 行: '{row[name_col]}')")
                     continue
                 # ヘッダ c を日付に変換
-                if isinstance(c, (int, float)):
-                    dt_val = excel_date(c)
-                else:
-                    text = re.sub(r"\s*\(.*\)$", "", str(c))
-                    dt_val = pd.to_datetime(text, errors="coerce")
-                if pd.isna(dt_val):
-                    logger.warning(f"[{sheet}] 日付パース失敗 '{c}'")
+                try:
+                    if sheet.startswith("R"):
+                        month_match = re.search(r'R(\d+)\.(\d+)', sheet)
+                        if month_match:
+                            year_num = int(month_match.group(1))
+                            month_num = int(month_match.group(2))
+                            year = 2018 + year_num  # R7.x → 2025年
+                            month = month_num       # R7.3 → 3月
+                            
+                            date_cols_list = list(date_cols)
+                            col_idx = date_cols_list.index(c)
+                            
+                            day = col_idx + 1
+                            
+                            if 1 <= day <= 31:
+                                dt_val = datetime.datetime(year, month, day)
+                                logger.info(f"[{sheet}] 日付推測成功: {dt_val.strftime('%Y-%m-%d')} (列: '{c}')")
+                            else:
+                                day_match = re.search(r'(\d+)', str(c))
+                                if day_match:
+                                    day = int(day_match.group(1))
+                                    if 1 <= day <= 31:
+                                        dt_val = datetime.datetime(year, month, day)
+                                        logger.info(f"[{sheet}] 日付名から推測: {dt_val.strftime('%Y-%m-%d')} (列: '{c}')")
+                                    else:
+                                        logger.warning(f"[{sheet}] 日付推測失敗: 無効な日 {day}")
+                                        continue
+                                else:
+                                    logger.warning(f"[{sheet}] 日付推測失敗: 日付情報なし '{c}'")
+                                    continue
+                        else:
+                            logger.warning(f"[{sheet}] シート名から年月を推測できません: {sheet}")
+                            continue
+                    else:
+                        if isinstance(c, (int, float)):
+                            dt_val = excel_date(c)
+                        else:
+                            text = re.sub(r"\s*\(.*\)$", "", str(c))
+                            dt_val = pd.to_datetime(text, errors="coerce")
+                        
+                        if pd.isna(dt_val):
+                            logger.warning(f"[{sheet}] 日付パース失敗: '{c}'")
+                            continue
+                except Exception as e:
+                    logger.warning(f"[{sheet}] 日付取得エラー: {e}")
                     continue
-                for t in code2rng[code]:
-                    all_rows.append({
+                slots = code2rng[code]
+                logger.info(f"[{sheet}] レコード追加: コード '{code}', 日付 {dt_val.strftime('%Y-%m-%d')}, スロット数 {len(slots)}")
+                
+                for t in slots:
+                    record = {
                         "date": dt_val,
                         "time": t,
                         "role": role,
-                    })
+                        "name": name,
+                        "code": code,  # 元のコードも保存
+                    }
+                    all_rows.append(record)
 
     if missing_codes:
         logger.warning(f"未登録コード: {sorted(missing_codes)}")
