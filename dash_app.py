@@ -1,261 +1,184 @@
 """
-dash_app.py  – Shift-Suite Dashboard  v1.0 (P0-P3 all-in-one)
-
-◆起動
-    python dash_app.py                          # 解析済み out フォルダ 1 件
-    python dash_app.py C:\data\out1 C:\out2 ... # 複数施設モード
-
-◆主なタブ
-  Overview          : KPI & フォルダ選択
-  Heatmap           : ALL ヒートマップ (+ 時間別不足ドリルダウン)
-  Role Min-staff    : 職種×method 切替グラフ
-  Cost Simulator    : 時給 & 採用人数スライダー → 人件費試算
-  Forecast vs Real  : 需要予測線グラフ
-  Fairness Tuning   : 夜勤比率スライダー → Jain 指数再計算
-  Multi-Facility    : 各施設 KPI 比較表（複数 out フォルダ時のみ）
-  PPT Report        : ボタン 1 発で report.pptx を生成（python-pptx）
+dash_app.py  – summary5 列を完全除外したダッシュ版
+────────────────────────────────────────────────────────
+v2025-05-06
+* Heatmap Raw / Ratio 表示で summary5 を除外
+* 共通関数 drop_summary_cols(df) を導入
+* 他ページ(Shortage 他)の雛形はそのまま
 """
 
-import dash 
-import sys, io, zipfile, json, datetime as dt
-from pathlib import Path
-from typing import List, Dict
+from __future__ import annotations
+import pathlib, json
 
-import pandas as pd, numpy as np, plotly.express as px
-from dash import Dash, dcc, html, dash_table, Input, Output, State, ctx
-import dash_bootstrap_components as dbc
+import dash
+import pandas as pd
+import plotly.express as px
+from dash import dcc, html, Input, Output, callback
 
-# ppt
-from pptx import Presentation
-from pptx.util import Inches, Pt
+# ────────────────── 1. 定数 & ヘルパ ──────────────────
+DATA_DIR = pathlib.Path(__file__).parents[1] / "out"
 
-# ────────────────────────────────────────────── 入力フォルダ読み込み
-def unpack_if_zip(p: Path) -> Path:
-    if p.suffix.lower() != ".zip":
-        return p
-    tmp = p.parent / (p.stem + "_unzipped")
-    if not tmp.exists():
-        zipfile.ZipFile(p).extractall(tmp)
-    # heat_ALL.xlsx を含むサブフォルダを返す
-    for hp in tmp.rglob("heat_ALL.xlsx"):
-        return hp.parent
-    raise FileNotFoundError("heat_ALL.xlsx not found in ZIP")
+SUMMARY5 = {"need", "upper", "staff", "lack", "excess"}
 
 
-def build_dataset(paths: List[Path]) -> Dict[str, Path]:
-    """key = facility name (folder名), value = out_dir Path"""
-    if not paths:
-        p = Path("out")  # デフォルト１件
-        return {p.name: p.resolve()}
-    return {p.name: unpack_if_zip(p).resolve() for p in paths}
+def drop_summary_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """need / upper / staff / lack / excess を除外した DF を返す"""
+    cols = df.columns.str.strip().str.lower()
+    return df.loc[:, ~cols.isin(SUMMARY5)]
 
 
-OUT_DIRS = build_dataset([Path(p) for p in sys.argv[1:]])
+# ────────────────── 2. データロード ──────────────────
+heat_all = pd.read_excel(DATA_DIR / "heat_ALL.xlsx", index_col=0)
+need_ser = heat_all["need"].replace(0, 1)
 
-# ────────────────────────────────────────────── Dash
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],
-           title="Shift-Suite Dashboard", suppress_callback_exceptions=True)
+# ★ summary5 を完全除去
+heat_staff = drop_summary_cols(heat_all)
 
-def load_excel(fp: Path, **kw):
-    return pd.read_excel(fp, **kw) if fp.exists() else pd.DataFrame()
+ratio_df = (heat_staff / need_ser.values[:, None]).clip(upper=2)
 
-# ───────────────────────── レイアウト
-app.layout = dbc.Container([
-    html.H3("Shift-Suite Dashboard"),
-    dcc.Dropdown(list(OUT_DIRS.keys()), list(OUT_DIRS.keys())[0],
-                 id="facility-dd", style={"maxWidth":300}),
-    dcc.Tabs(id="tabs", value="ov", children=[
-        dcc.Tab(label="Overview", value="ov"),
-        dcc.Tab(label="Heatmap", value="hm"),
-        dcc.Tab(label="Role Min-staff", value="min"),
-        dcc.Tab(label="Cost Simulator", value="cost"),
-        dcc.Tab(label="Forecast vs Real", value="fc"),
-        dcc.Tab(label="Fairness Tuning", value="fair"),
-        dcc.Tab(label="Multi-Facility", value="multi") if len(OUT_DIRS)>1 else None,
-        dcc.Tab(label="PPT Report", value="ppt")
-    ]),
-    html.Div(id="tab-content")
-], fluid=True)
+# Raw 表示の自動上限 (95% 分位を下限 10・上限 50 でクリップ)
+RAW_ZMAX_DEFAULT = float(heat_staff[heat_staff > 0].stack().quantile(0.95))
+RAW_ZMAX_DEFAULT = max(10, min(50, RAW_ZMAX_DEFAULT))
 
-# ───────────────────────── コールバック共通 util
-def get_out(fac:str)->Path: return OUT_DIRS[fac]
+shortage_time = pd.read_excel(DATA_DIR / "shortage_time.xlsx", index_col=0)
+shortage_role = pd.read_excel(DATA_DIR / "shortage_role.xlsx")
+fair_before = pd.read_excel(DATA_DIR / "fairness_before.xlsx")
+fair_after = pd.read_excel(DATA_DIR / "fairness_after.xlsx")
+fatigue_df = pd.read_excel(DATA_DIR / "fatigue_score.xlsx")
+skill_df = pd.read_excel(DATA_DIR / "skill_matrix.xlsx", index_col=0)
+forecast_df = pd.read_excel(DATA_DIR / "forecast.xlsx", index_col=0)
+with open(DATA_DIR / "forecast.json") as f:
+    forecast_meta = json.load(f)
+anomaly_df = pd.read_excel(DATA_DIR / "anomaly_days.xlsx")
+cluster_df = pd.read_excel(DATA_DIR / "staff_cluster.xlsx")
+stats_sheets = pd.read_excel(DATA_DIR / "stats.xlsx", sheet_name=None)
 
-# ───────────────────────── 各タブ描画
-@app.callback(Output("tab-content","children"),
-              Input("tabs","value"),
-              Input("facility-dd","value"))
-def render(tab, fac):
-    out = get_out(fac)
-    if tab=="ov":   return overview(out)
-    if tab=="hm":   return heatmap_tab(out)
-    if tab=="min":  return minstaff_tab(out)
-    if tab=="cost": return cost_tab(out)
-    if tab=="fc":   return forecast_tab(out)
-    if tab=="fair": return fairness_tab(out)
-    if tab=="multi":return multi_tab()
-    if tab=="ppt":  return ppt_tab(out)
-    return "N/A"
+# ────────────────── 3. Dash App ──────────────────
+app = dash.Dash(__name__, suppress_callback_exceptions=True, title="ShiftSuite")
+server = app.server
 
-# ───────────────────────── Overview
-def overview(out:Path):
-    kpi = load_excel(out/"shortage_role.xlsx")
-    lack = int(kpi["lack_h"].sum()) if not kpi.empty else 0
+NAV = html.Div(
+    [
+        dcc.Link("Overview", href="/", className="nav"),
+        dcc.Link("Heatmap", href="/heat", className="nav"),
+        dcc.Link("Shortage", href="/short", className="nav"),
+        dcc.Link("Fairness", href="/fair", className="nav"),
+        dcc.Link("Fatigue/Skill", href="/fat", className="nav"),
+        dcc.Link("Forecast", href="/fcst", className="nav"),
+        dcc.Link("Anomaly", href="/anom", className="nav"),
+        dcc.Link("Cluster", href="/clu", className="nav"),
+        dcc.Link("Stats", href="/stats", className="nav"),
+    ],
+    style={"display": "flex", "gap": "1rem", "marginBottom": "1rem"},
+)
 
-    from shift_suite.tasks.utils import calculate_jain_index
-    fair = load_excel(out/"fairness_after.xlsx", sheet_name="after")
-    jain = calculate_jain_index(fair["night_ratio"]) if not fair.empty else "–"
+app.layout = html.Div([dcc.Location(id="url"), NAV, html.Div(id="page")])
 
-    return dbc.Row([
-        dbc.Col(dbc.Card([dbc.CardHeader("Total Lack (h)"),
-                          dbc.CardBody(html.H2(lack))])),
-        dbc.Col(dbc.Card([dbc.CardHeader("Night Jain"),
-                          dbc.CardBody(html.H2(jain))])),
-        dbc.Col(html.Small(out, style={"fontSize":"0.7rem"}))
-    ])
+# ─────────── 4. ページレイアウト (雛形) ───────────
+def page_overview():
+    return html.Div("TODO: KPI カード")
 
-# ───────────────────────── Heatmap + shortage drill
-def heatmap_tab(out:Path):
-    heat = load_excel(out/"heat_ALL.xlsx", index_col=0)
-    if heat.empty: return html.Div("heat_ALL.xlsx missing")
-    fig = px.imshow(heat, aspect="auto", color_continuous_scale="Blues",
-                    labels=dict(x="Date", y="Time", color="人数"))
-    fig.update_layout(clickmode="event+select")
-    return html.Div([
-        dcc.Graph(id="heat-hm", figure=fig, style={"height":"70vh"}),
-        dcc.Graph(id="shortage-graph")    # drill-down placeholder
-    ])
+def page_heat():
+    return html.Div(
+        [
+            html.Div(
+                [
+                    dcc.RadioItems(
+                        id="hm-mode",
+                        options=[
+                            {"label": "Raw 人数", "value": "raw"},
+                            {"label": "Ratio (staff ÷ need)", "value": "ratio"},
+                        ],
+                        value="raw",
+                        inline=True,
+                        style={"marginRight": "2rem"},
+                    ),
+                    dcc.Slider(
+                        id="hm-zmax",
+                        min=10,
+                        max=50,
+                        step=5,
+                        value=RAW_ZMAX_DEFAULT,
+                        tooltip={"placement": "bottom"},
+                    ),
+                ],
+                style={"display": "flex", "alignItems": "center"},
+            ),
+            dcc.Graph(id="hm-graph"),
+            html.Hr(),
+            dcc.Dropdown(
+                id="hm-date",
+                options=[{"label": d, "value": d} for d in shortage_time.columns],
+                value=shortage_time.columns[0],
+                style={"width": "240px"},
+            ),
+            dcc.Graph(id="hm-short"),
+        ]
+    )
 
-@app.callback(Output("shortage-graph","figure"),
-              Input("heat-hm","clickData"),
-              State("facility-dd","value"))
-def show_shortage(clickData, fac):
-    if clickData is None: raise dash.exception.PreventUpdate
-    date = clickData["points"][0]["x"]
-    lack = load_excel(get_out(fac)/"shortage_time.xlsx", index_col=0)
-    if lack.empty: return {}
-    fig = px.bar(lack[date], title=f"Lack by time – {date}",
-                 labels=dict(value="不足人数", index="Time"))
+def page_shortage(): return html.Div("TODO: shortage")
+def page_fair():     return html.Div("TODO: fairness")
+def page_fat():      return html.Div("TODO: fatigue / skill")
+def page_forecast(): return html.Div("TODO: forecast")
+def page_anom():     return html.Div("TODO: anomaly")
+def page_clu():      return html.Div("TODO: cluster")
+def page_stats():    return html.Div("TODO: stats")
+
+# ─────────── 5. ルーティング ───────────
+@callback(Output("page", "children"), Input("url", "pathname"))
+def router(path):
+    if path == "/heat": return page_heat()
+    if path == "/short": return page_shortage()
+    if path == "/fair": return page_fair()
+    if path == "/fat": return page_fat()
+    if path == "/fcst": return page_forecast()
+    if path == "/anom": return page_anom()
+    if path == "/clu": return page_clu()
+    if path == "/stats": return page_stats()
+    return page_overview()
+
+# ─────────── 6. Heatmap コールバック ───────────
+@callback(
+    Output("hm-graph", "figure"),
+    Output("hm-zmax", "disabled"),
+    Input("hm-mode", "value"),
+    Input("hm-zmax", "value"),
+)
+def update_heatmap(mode: str, zmax: float):
+    if mode == "raw":
+        fig = px.imshow(
+            heat_staff,
+            aspect="auto",
+            color_continuous_scale="Blues",
+            zmin=0,
+            zmax=zmax,
+            labels=dict(x="Date", y="Time", color="人数"),
+        )
+        return fig, False
+
+    # Ratio
+    fig = px.imshow(
+        ratio_df,
+        aspect="auto",
+        color_continuous_scale=px.colors.sequential.RdBu_r,
+        zmin=0,
+        zmax=2,
+        labels=dict(x="Date", y="Time", color="staff / need"),
+    )
+    return fig, True
+
+@callback(Output("hm-short", "figure"), Input("hm-date", "value"))
+def update_shortage_bar(date: str):
+    ser = shortage_time[date]
+    fig = px.bar(
+        x=ser.index,
+        y=ser.values,
+        labels={"x": "Time", "y": "不足人数"},
+        template="plotly_dark",
+    )
+    fig.update_layout(showlegend=False, xaxis_tickangle=-90, height=300)
     return fig
 
-# ───────────────────────── Role min-staff
-def minstaff_tab(out:Path):
-    roles = sorted({p.stem.replace("min_","") for p in out.glob("min_*.csv")})
-    return html.Div([
-        dcc.Dropdown(roles, roles[0] if roles else None,
-                     id="role-dd", style={"maxWidth":300}),
-        dcc.RadioItems(["mean-1s","p25","mode"],"p25",
-                       id="method-radio", inline=True),
-        dcc.Graph(id="min-role-graph")
-    ])
-
-@app.callback(Output("min-role-graph","figure"),
-              Input("role-dd","value"),Input("method-radio","value"),
-              State("facility-dd","value"))
-def show_min(role, method, fac):
-    if role is None: return {}
-    need = pd.read_csv(get_out(fac)/f"min_{role}.csv", index_col=0)
-    fig = px.line(need["need"], title=f"{role}  min-staff ({method})",
-                  labels=dict(index="Time", value="人数"))
-    return fig
-
-# ───────────────────────── Cost simulator
-def cost_tab(out:Path):
-    roles = sorted({p.stem.replace("min_","") for p in out.glob("min_*.csv")})
-    return html.Div([
-        html.Div([
-            html.Label("対象職種"), dcc.Dropdown(roles, roles[:2], multi=True, id="cost-roles"),
-            html.Label("平均時給 (¥)"), dcc.Slider(1000, 3000, 50, value=1500, id="wage"),
-            html.Label("採用人数追加"), dcc.Slider(0, 10, 1, value=0, id="hire"),
-        ], style={"maxWidth":400}),
-        html.Hr(),
-        html.H4(id="cost-result")
-    ])
-
-@app.callback(Output("cost-result","children"),
-              Input("cost-roles","value"),
-              Input("wage","value"),
-              Input("hire","value"),
-              State("facility-dd","value"))
-def calc_cost(roles, wage, hire, fac):
-    if not roles: return "職種未選択"
-    out = get_out(fac)
-    lack = load_excel(out/"shortage_role.xlsx")
-    lack = lack[lack["role"].isin(roles)] if not lack.empty else pd.DataFrame()
-    lack_h = lack["lack_h"].sum() if not lack.empty else 0
-    hrs = lack_h - hire*160          # 1 人あたり月 160h 埋める想定
-    hrs = max(hrs, 0)
-    cost = hrs*wage
-    return f"不足 {hrs:.1f}h を派遣で埋めると概算 ¥{cost:,.0f}"
-
-# ───────────────────────── Forecast vs Real
-def forecast_tab(out:Path):
-    fc = load_excel(out/"forecast.xlsx")
-    if fc.empty: return html.Div("forecast.xlsx missing")
-    heat = load_excel(out/"heat_ALL.xlsx", index_col=0)
-    real = heat.sum()
-    df = pd.DataFrame({"ds":pd.to_datetime(fc["ds"]),
-                       "Forecast":fc["yhat"],
-                       "Real":real.values})
-    fig = px.line(df, x="ds", y=["Forecast","Real"],
-                  labels=dict(value="人数", ds="Date"))
-    return dcc.Graph(figure=fig)
-
-# ───────────────────────── Fairness tuning
-def fairness_tab(out:Path):
-    base = load_excel(out/"fairness_after.xlsx", sheet_name="before")
-    if base.empty: return html.Div("fairness_after.xlsx missing")
-    return html.Div([
-        dcc.Slider(0,0.5,0.05,value=0.2,id="fair-max"),
-        html.Div(id="fair-jain")
-    ])
-
-@app.callback(Output("fair-jain","children"),
-              Input("fair-max","value"),
-              State("facility-dd","value"))
-def tune_fair(max_ratio, fac):
-    from shift_suite.tasks.utils import calculate_jain_index
-    df = load_excel(get_out(fac)/"fairness_after.xlsx", sheet_name="after")
-    if df.empty: return "データ無し"
-    adj = df["night_ratio"].clip(upper=max_ratio)
-    jain = calculate_jain_index(adj)
-    return f"許容夜勤比率 {max_ratio:.2f} → Jain = {jain:.3f}"
-
-# ───────────────────────── Multi-facility KPI
-def multi_tab():
-    records=[]
-    for fac,out in OUT_DIRS.items():
-        lack = load_excel(out/"shortage_role.xlsx")
-        lack_h = lack["lack_h"].sum() if not lack.empty else 0
-        from shift_suite.tasks.utils import calculate_jain_index
-        fair = load_excel(out/"fairness_after.xlsx", sheet_name="after")
-        jain = calculate_jain_index(fair["night_ratio"]) if not fair.empty else None
-        records.append({"facility":fac,"lack_h":lack_h,"jain":jain})
-    return dash_table.DataTable(records,[{"name":c,"id":c} for c in records[0]],
-                                sort_action="native")
-
-# ───────────────────────── PPT report
-def ppt_tab(out:Path):
-    return html.Div([
-        dbc.Button("Generate PPT", id="ppt-btn", n_clicks=0),
-        html.Div(id="ppt-msg")
-    ])
-
-@app.callback(Output("ppt-msg","children"),
-              Input("ppt-btn","n_clicks"),
-              State("facility-dd","value"))
-def gen_ppt(n, fac):
-    if n==0: return ""
-    out=get_out(fac)
-    prs=Presentation()
-    slide=prs.slides.add_slide(prs.slide_layouts[5])
-    slide.shapes.title.text=f"Shift-Suite Report  ({fac})  {dt.date.today()}"
-    # KPI
-    lack = load_excel(out/"shortage_role.xlsx"); lack_h=int(lack["lack_h"].sum()) if not lack.empty else 0
-    slide.shapes.add_textbox(Inches(0.5),Inches(2),Inches(5),Inches(1)).text=f"Lack hours: {lack_h}"
-
-    fp=out/"report.pptx"; prs.save(fp)
-    return dbc.Alert(f"PPT saved → {fp}", color="success", duration=4000)
-
-# ───────────────────────── メイン
+# ─────────── 7. Main ───────────
 if __name__ == "__main__":
-    app.run(debug=True, port=8502)
+    app.run_server(debug=True, port=8055)
