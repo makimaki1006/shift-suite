@@ -1,142 +1,87 @@
-# heatmap.py — ヒートマップ＋summary5生成版
-
+# shift_suite / tasks / heatmap.py  v1.5.0
 from __future__ import annotations
-import json
 from pathlib import Path
-import pandas as pd
-from .utils import (
-    derive_min_staff, derive_max_staff,
-    excel_date, to_hhmm, gen_labels,
-    safe_sheet, save_df_xlsx, write_meta, log
-)
-from .io_excel import default_slots
+import pandas as pd, openpyxl
+from openpyxl.formatting.rule import ColorScaleRule
+from openpyxl.utils import get_column_letter
+from .utils import (gen_labels, derive_min_staff, derive_max_staff,
+                    save_df_xlsx, write_meta, safe_sheet, log)
 
-def _time_rng(start: str, end: str, slot: int) -> list[str]:
-    """
-    Generate list of time labels between start and end at slot-minute intervals.
-    Handles overnight spans.
-    """
-    fmt = "%H:%M"
-    s = pd.to_datetime(start, fmt)
-    e = pd.to_datetime(end, fmt)
-    if e <= s:
-        e += pd.Timedelta(days=1)
-    times = []
-    while s < e:
-        times.append(s.strftime(fmt))
-        s += pd.Timedelta(minutes=slot)
-    return times
+STAFF_ALIASES = ["staff", "氏名", "名前", "従業員"]
+ROLE_ALIASES  = ["role",  "職種", "役職", "部署"]
+SUMMARY5      = ["need", "upper", "staff", "lack", "excess"]
 
-def build_heatmap(
-    long_df: pd.DataFrame,
-    wt_df: pd.DataFrame,
-    out_dir: str | Path,
-    slot_minutes: int = 30,
-    min_method: str = 'p25',
-    max_method: str = 'p75',
-) -> None:
-    """
-    Generate heatmap Excel and CSV outputs.
+def _resolve(df: pd.DataFrame, prefer: str, aliases: list[str], new: str) -> str:
+    if prefer in df.columns:
+        df.rename(columns={prefer: new}, inplace=True); return new
+    for c in aliases:
+        if c in df.columns:
+            df.rename(columns={c: new}, inplace=True); return new
+    raise KeyError(f"{prefer}/{aliases} 列がありません")
 
-    Parameters:
-    - long_df: DataFrame with ['date','code','role'] in long format.
-    - wt_df: Master DataFrame ['code','start','end'].
-    - out_dir: Directory path to save outputs.
-    - slot_minutes: Slot interval in minutes.
-    - min_method: derive_min_staff method.
-    - max_method: derive_max_staff method.
-    """
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    # 1) code→time slots mapping
-    c2rng: dict[str, list[str]] = {}
-    for r in wt_df.itertuples(index=False):
-        code = str(r.code)
-        st = to_hhmm(r.start)
-        ed = to_hhmm(r.end)
-        
-        if st and ed:
-            c2rng[code] = _time_rng(st, ed, slot_minutes)
-        elif code in default_slots:
-            log.info(f"Using default slots for code={code}")
-            c2rng[code] = default_slots[code]
-        elif code.startswith('日') and '日' in default_slots:
-            log.info(f"Using default day slots for code={code}")
-            c2rng[code] = default_slots['日']
-        elif code.startswith('夜') and '夜' in default_slots:
-            log.info(f"Using default night slots for code={code}")
-            c2rng[code] = default_slots['夜']
-        elif (code == '公休' or code == '有休' or code == '午前休' or 
-              code == '午後休' or code == '欠勤' or code == '週休') and '休' in default_slots:
-            log.info(f"Using default rest slots for code={code}")
-            c2rng[code] = default_slots['休']
-        else:
-            log.warning(f"Time parse failed for code={code}, using default slot")
-            c2rng[code] = ['00:00']
-
-    # 2) validate codes
-    df_codes = set(long_df['code'].dropna().unique())
-    common = df_codes & set(c2rng.keys())
-    if not common:
-        raise ValueError(f"No matching codes: long_df {sorted(df_codes)[:5]} wt_df {sorted(c2rng.keys())[:5]}")
-
-    # 3) expand records
-    rows: list[dict] = []
-    for r in long_df.itertuples(index=False):
-        rng = c2rng.get(r.code, [])
-        if not rng:
-            log.warning(f"No slots for code={r.code}")
-            continue
-        for t in rng:
-            rows.append({'time': t, 'date': r.date, 'role': r.role or 'Unknown'})
-
-    df = pd.DataFrame(rows)
-    if df.empty:
-        raise ValueError("No heatmap data generated; check inputs")
-
-    # 4) format date labels
-    df['date_w'] = df['date'].dt.strftime("%-m/%-d")
-    time_labels = gen_labels(slot_minutes)
-
-    # 5) ALL pivot
-    base = (
-        df.pivot_table(index='time', columns='date_w', values='role', aggfunc='count')
-        .reindex(time_labels)
-        .fillna(0)
+def _apply_colors(fp: Path):
+    wb = openpyxl.load_workbook(fp)
+    ws = wb.active
+    rng = f"B2:{get_column_letter(ws.max_column)}{ws.max_row}"
+    ws.conditional_formatting.add(
+        rng,
+        ColorScaleRule(start_type="min",  start_color="FFFFFF",
+                       mid_type="percentile", mid_value=50, mid_color="FFB974",
+                       end_type="max",  end_color="FF0000")
     )
-    
-    need_series = derive_min_staff(base, method=min_method)
-    base['need'] = need_series
-    
-    save_df_xlsx(base, out_dir / 'heat_ALL.xlsx', sheet_name='ALL')
+    wb.save(fp)
 
-    date_cols = list(base.columns)
+def build_heatmap(long_df: pd.DataFrame, wt_df: pd.DataFrame | None,
+                  out_dir: str | Path, slot_minutes: int = 30,
+                  *, min_method: str = "p25", max_method: str = "p75") -> None:
 
-    # 6) Role pivot
-    for role in sorted([r for r in df['role'].unique() if pd.notna(r)]):
-        sub = df[df['role'] == role]
-        heat = (
-            sub.pivot_table(index='time', columns='date_w', values='role', aggfunc='count')
-            .reindex(time_labels)
-            .reindex(columns=date_cols)
-            .fillna(0)
-        )
-        fname = out_dir / f"heat_{safe_sheet(role)}.xlsx"
-        save_df_xlsx(heat, fname, sheet_name=role)
+    df = long_df.copy()
+    staff_col = _resolve(df, "staff", STAFF_ALIASES, "staff")
+    role_col  = _resolve(df, "role",  ROLE_ALIASES,  "role")
 
-    # 7) min/max staff
-    for role in ['ALL'] + sorted([r for r in df['role'].unique() if pd.notna(r)]):
-        if role == 'ALL':
-            data = base
-        else:
-            data = pd.read_excel(out_dir / f"heat_{safe_sheet(role)}.xlsx", index_col=0)
-        series = data.sum(axis=1)
-        mins = derive_min_staff(series, method=min_method)
-        maxs = derive_max_staff(series, method=max_method)
-        pd.DataFrame({'min_staff': mins}).to_csv(out_dir / f"min_{safe_sheet(role)}.csv")
-        pd.DataFrame({'max_staff': maxs}).to_csv(out_dir / f"max_{safe_sheet(role)}.csv")
+    df["time"]     = df["ds"].dt.strftime("%H:%M")
+    df["date_lbl"] = df["ds"].dt.strftime("%Y-%m-%d")
+    idx = gen_labels(slot_minutes)
 
-    # 8) write meta
-    meta = {'slot': slot_minutes, 'dates': date_cols, 'roles': sorted([r for r in df['role'].unique() if pd.notna(r)])}
-    write_meta(out_dir, **meta)
+    pivot_all = (df.drop_duplicates(subset=["date_lbl", "time", staff_col])
+                   .pivot_table(index="time", columns="date_lbl",
+                                values=staff_col, aggfunc="nunique",
+                                fill_value=0)
+                   .reindex(idx, fill_value=0))
+
+    need   = derive_min_staff(pivot_all, min_method)
+    upper  = derive_max_staff(pivot_all, max_method)
+    staff  = pivot_all.sum(axis=1).round()
+    lack   = (need  - staff).clip(lower=0)
+    excess = (staff - upper).clip(lower=0)
+
+    for c, s in zip(SUMMARY5, [need, upper, staff, lack, excess]):
+        pivot_all[c] = s
+
+    out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+    fp_all = out_dir / "heat_ALL.xlsx"
+    save_df_xlsx(pivot_all, fp_all, sheet_name="ALL"); _apply_colors(fp_all)
+
+    for role in sorted(set(df[role_col])):
+        sub = df[df[role_col] == role]
+        p = (sub.drop_duplicates(subset=["date_lbl", "time", staff_col])
+                .pivot_table(index="time", columns="date_lbl",
+                             values=staff_col, aggfunc="nunique",
+                             fill_value=0)
+                .reindex(idx, fill_value=0)
+                .reindex(columns=pivot_all.columns, fill_value=0))
+        need_r   = derive_min_staff(p, min_method)
+        upper_r  = derive_max_staff(p, max_method)
+        staff_r  = p.sum(axis=1).round()
+        lack_r   = (need_r  - staff_r).clip(lower=0)
+        excess_r = (staff_r - upper_r).clip(lower=0)
+        for c, s in zip(SUMMARY5, [need_r, upper_r, staff_r, lack_r, excess_r]):
+            p[c] = s
+        fp = out_dir / f"heat_{safe_sheet(str(role))}.xlsx"
+        save_df_xlsx(p, fp, sheet_name=str(role)); _apply_colors(fp)
+
+    write_meta(out_dir / "heatmap.meta.json",
+               slot=slot_minutes,
+               roles=sorted(set(df[role_col])),
+               dates=sorted(pivot_all.columns.tolist()))
+    log.info("[heatmap] completed")

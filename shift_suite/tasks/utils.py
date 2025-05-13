@@ -1,10 +1,11 @@
 """
-shift_suite.tasks.utils  v1.1.1
+shift_suite.tasks.utils  v1.2.0 – UTF-8 write_meta 版
 ────────────────────────────────────────────────────────
 * 共通ユーティリティ
-* 2025-04-30
-    - write_meta(): ディレクトリ渡しを許容
-    - derive_max_staff(): 1列ヒートマップで NaN→0
+* 2025-05-06
+    - write_meta(): Windows でも文字化けしないよう `encoding="utf-8"` を明示
+      （既定 CP932 だと “–” などの Unicode 文字列で UnicodeEncodeError）
+    - 旧 API・関数名は一切変更なし
 """
 
 from __future__ import annotations
@@ -97,24 +98,6 @@ def save_df_xlsx(
     汎用 Excel 保存ラッパー
     - 長いパスも一時ファイル経由で安全に保存
     - sheet_name=None → ファイル名を安全化
-    
-    Parameters
-    ----------
-    df : DataFrame
-        保存するDataFrame
-    fp : Path | str
-        保存先ファイルパス
-    sheet_name : str | None
-        シート名（Noneの場合はファイル名から自動生成）
-    index : bool
-        インデックスを保存するかどうか
-    engine : str
-        Excelエンジン名
-        
-    Returns
-    -------
-    Path
-        保存したファイルパス
     """
     fp = Path(fp)
     sheet_name = sheet_name or safe_sheet(fp.stem)
@@ -133,7 +116,7 @@ def save_df_xlsx(
 # ────────────────── 5. メタファイル ──────────────────
 def write_meta(target: Path | str, /, **meta) -> Path:
     """
-    JSON メタ情報を書き出し。
+    JSON メタ情報を書き出し。UTF-8 固定で UnicodeEncodeError を防止。
 
     Parameters
     ----------
@@ -146,7 +129,10 @@ def write_meta(target: Path | str, /, **meta) -> Path:
     target = Path(target)
     meta_fp = target / "meta.json" if target.is_dir() else target
     meta_fp.parent.mkdir(parents=True, exist_ok=True)
-    meta_fp.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
+    meta_fp.write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2),
+        encoding="utf-8",                # ← ここを明示
+    )
     return meta_fp
 
 
@@ -195,29 +181,16 @@ def derive_max_staff(heat: DataFrame | Series, method: str = "mean+1s") -> Serie
         values = heat.select_dtypes("number")
         if method == "mean+1s":
             mu = values.mean(axis=1)
-            sig = values.std(axis=1).fillna(0)  # ← NaN→0
+            sig = values.std(axis=1).fillna(0)  # NaN→0
             return (mu + sig).round()
         if method == "p75":
             return values.quantile(0.75, axis=1).round()
         raise ValueError(f"Unknown max_method: {method}")
 
 
-# ────────────────── 8. Jain指数計算 ──────────────────
+# ────────────────── 8. Jain 指数計算 ──────────────────
 def calculate_jain_index(values: pd.Series) -> float:
-    """
-    夜勤比率などの分布の公平性を評価するJain指数を計算します。
-    値が1に近いほど公平、0に近いほど不公平を示します。
-    
-    Parameters
-    ----------
-    values : pd.Series
-        評価する値の分布（例：夜勤比率）
-        
-    Returns
-    -------
-    float
-        Jain指数（0～1の範囲、1が完全に公平）
-    """
+    """分布の公平性を評価する Jain 指数 (0-1)。1 が完全公平"""
     if values.empty:
         return 1.0
     return round((values.sum() ** 2) / (len(values) * (values ** 2).sum()), 3)

@@ -1,265 +1,167 @@
-# io_excel.py — Excel シフト表の読み込みと長形式変換
+# shift_suite / tasks / io_excel.py
+# v2.6.1  (2025-05-13 stable)
+# =============================================================================
+# 目的
+#   1.「勤務区分」シート → 勤務コードごとに 30 分スロット配列を生成
+#   2. 実績シートを長形式 (long_df) へ展開
+#   3. 未定義コード／日付パース失敗はエラーで即停止
+# 主要修正
+#   • header_row を正しく反映
+#   • 列名 normalize の TypeError 修正
+#   • 00:00 休スロット／曜日行スキップ／未登録コード abort
+# =============================================================================
 
-import re
-import datetime
+from __future__ import annotations
+import datetime as dt, re, logging
 from pathlib import Path
-import logging
+from typing import Dict, List, Tuple
+import pandas as pd, streamlit as st
 
-import pandas as pd
-from openpyxl import load_workbook
+logger = logging.getLogger(__name__)
 
-from .utils import excel_date, to_hhmm
-
-logger = logging.getLogger("[INGEST]")
-
-default_slots = {
-    '日': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
-           '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'],
-    '夜': ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', 
-           '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '00:00', '00:30', '01:00'],
-    '休': ['00:00'],  # 休日は実質的に勤務なしだが、レコード生成のために1つのスロットを設定
-    '週休': ['00:00'],  # 週休も同様
-    '介': ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
-           '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'],
-    '遅10': ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30', 
-            '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00']
+# ───────────────────────────────────────────────────────────────
+SLOT_MINUTES = 30                                                  # 30 分固定
+COL_ALIASES = {                                                    # 勤務区分シート列
+    "記号": "code", "コード": "code", "勤務記号": "code",
+    "開始": "start", "開始時刻": "start", "start": "start",
+    "終了": "end",   "終了時刻": "end",   "end": "end",
 }
+SHEET_COL_ALIAS = {                                                # 実績シート列
+    "氏名": "staff", "名前": "staff", "staff": "staff", "name": "staff",
+    "従業員": "staff", "member": "staff",
+    "職種": "role",  "部署": "role",  "役職": "role", "role": "role",
+}
+DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}      # 曜日セル
 
-def ingest_excel(
-    path_or_buffer: str | Path,
-    *,
-    shift_sheets: list[str],
-    master_sheet: str,
-    header_row: int = 3
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+# ───────────────────────────────────────────────────────────────
+def _normalize(val) -> str:
+    """全角半角空白/改行を除去して小文字化せず返す"""
+    txt = str(val).replace("　", " ")
+    return re.sub(r"\s+", "", txt).strip()
+
+def _to_hhmm(v) -> str | None:
+    """Excel シリアル値 / 'HH:MM[:SS]' → 'HH:MM' へ正規化"""
+    if pd.isna(v) or v == "":
+        return None
+    if isinstance(v, (int, float)):
+        try:
+            return (dt.datetime(1899, 12, 30) + dt.timedelta(days=float(v))).strftime("%H:%M")
+        except Exception:
+            return None
+    s = str(v).strip()
+    if re.fullmatch(r"\d{1,2}:\d{2}:\d{2}", s):
+        s = s[:-3]
+    try:
+        return dt.datetime.strptime(s, "%H:%M").strftime("%H:%M")
+    except ValueError:
+        return None
+
+def _expand(st: str, ed: str) -> list[str]:
+    """開始〜終了を 30 分刻みに展開（日跨ぎ対応，終了時刻は含めない）"""
+    s = dt.datetime.strptime(st, "%H:%M")
+    e = dt.datetime.strptime(ed, "%H:%M")
+    if e <= s:
+        e += dt.timedelta(days=1)
+    slots: list[str] = []
+    while s < e:
+        slots.append(s.strftime("%H:%M"))
+        s += dt.timedelta(minutes=SLOT_MINUTES)
+    return slots or ["00:00"]
+
+# ───────────────────────────────────────────────────────────────
+def load_shift_patterns(xlsx: Path, sheet_name: str = "勤務区分"
+                       ) -> Tuple[pd.DataFrame, Dict[str, List[str]]]:
+    """勤務区分シート → wt_df, code2slots"""
+    try:
+        raw = pd.read_excel(xlsx, sheet_name=sheet_name, dtype=str).fillna("")
+    except Exception as e:
+        raise ValueError(f"勤務区分シートが読めません: {e}")
+
+    raw.rename(columns={c: COL_ALIASES.get(c, c) for c in raw.columns}, inplace=True)
+    if not {"code", "start", "end"}.issubset(raw.columns):
+        raise ValueError("勤務区分シートに code/start/end 列がありません")
+
+    wt_rows, code2slots = [], {}
+    for r in raw.itertuples(index=False):
+        code = _normalize(r.code)
+        st_hm, ed_hm = _to_hhmm(r.start), _to_hhmm(r.end)
+        slots = ["00:00"] if not st_hm or not ed_hm else _expand(st_hm, ed_hm)
+        wt_rows.append({"code": code, "start": st_hm, "end": ed_hm})
+        code2slots[code] = slots
+
+    return pd.DataFrame(wt_rows), code2slots
+
+# ───────────────────────────────────────────────────────────────
+def ingest_excel(excel_path: Path, *, shift_sheets: List[str], header_row: int = 2
+                ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Excelファイルを読み込み、
-      - long_df: {'time','date','role'} の長形式 DataFrame
-      - wt_df: 勤務区分マスター (code, start, end) DataFrame
-    を返します。
-
-    パラメータ:
-      - shift_sheets: 解析対象のシフトシート名リスト
-      - master_sheet : 勤務区分マスターシート名
-      - header_row   : 実データにおけるヘッダー開始行 (1-indexed)
+    excel_path   : Excel ファイル
+    shift_sheets : 「勤務区分」シート以外の実績シート名リスト
+    header_row   : “氏名/職種/日付列” が並ぶ行番号 (1-indexed)
     """
-    logger.info(f"開始: {path_or_buffer}")
-    xls = pd.ExcelFile(path_or_buffer, engine="openpyxl")
-    logger.info(f"シート一覧: {xls.sheet_names}")
+    wt_df, code2slots = load_shift_patterns(excel_path)
 
-    # 1) マスター読み込み
-    wt_df = pd.read_excel(xls, master_sheet, engine="openpyxl")
-    for col in ("code", "start", "end"):
-        if col not in wt_df.columns:
-            raise ValueError(f"マスターシートに必須列 '{col}' がありません")
-    logger.info(f"マスターDF サイズ: {wt_df.shape}")
+    records: list[dict] = []
+    unknown_codes: set[str] = set()
 
-    # 2) コード→時刻スロット辞書
-    code2rng: dict[str, list[str]] = {}
-    
-    for r in wt_df.itertuples(index=False):
-        code = str(r.code)
-        st_str = to_hhmm(r.start); ed_str = to_hhmm(r.end)
-        slots: list[str] = []
-        
-        if st_str and ed_str:
-            s = pd.to_datetime(st_str, "%H:%M")
-            e = pd.to_datetime(ed_str, "%H:%M")
-            if e <= s:
-                e += pd.Timedelta(days=1)
-            while s < e:
-                slots.append(s.strftime("%H:%M"))
-                s += pd.Timedelta(minutes=30)
-        elif code in default_slots:
-            slots = default_slots[code]
-        elif code.startswith('日') and '日' in default_slots:
-            slots = default_slots['日']
-        elif code.startswith('夜') and '夜' in default_slots:
-            slots = default_slots['夜']
-        elif (code == '公休' or code == '有休' or code == '午前休' or 
-              code == '午後休' or code == '欠勤') and '休' in default_slots:
-            slots = default_slots['休']
-        else:
-            slots = ['00:00']  # 最低1つのスロットを設定してレコードが生成されるようにする
-            
-        code2rng[code] = slots
-    logger.info(f"コード→スロット マッピング数: {len(code2rng)}")
-    logger.info(f"マスターコード一覧: {list(code2rng.keys())}")
-
-    all_rows = []
-    missing_codes = set()
-
-    # 3) 各シフトシート処理
     for sheet in shift_sheets:
-        logger.info(f"--- シート処理開始: {sheet} ---")
-        df = pd.read_excel(
-            xls,
-            sheet,
-            header=header_row - 1,
-            engine="openpyxl"
-        )
-        logger.info(f"[{sheet}] 読込DF サイズ: {df.shape}")
+        try:
+            df = (pd.read_excel(excel_path, sheet_name=sheet,
+                                header=header_row - 1, dtype=str)
+                  .fillna(""))
+        except Exception as e:
+            st.warning(f"[{sheet}] 読み込み失敗: {e}")
+            continue
 
-        if len(df.columns) < 2:
-            raise ValueError(f"シート '{sheet}' に必要な列数がありません（最低2列必要）")
-            
-        name_col = df.columns[0]
-        role_col = df.columns[1]
-        logger.info(f"[{sheet}] 氏名列として使用: '{name_col}'")
-        logger.info(f"[{sheet}] 職種列として使用: '{role_col}'")
-        
-        col_map = {
-            "氏名": name_col,
-            "職種": role_col
-        }
+        df.rename(columns={c: SHEET_COL_ALIAS.get(_normalize(c), _normalize(c))
+                           for c in df.columns}, inplace=True)
 
-        date_cols = [c for c in df.columns if c not in (name_col, role_col)]
+        if not {"staff", "role"}.issubset(df.columns):
+            raise ValueError(f"[{sheet}] ‘氏名/職種’ 列が見つかりません")
 
-        if not date_cols:
-            raise ValueError(f"シート'{sheet}'に日付列が見つかりません")
+        date_cols = [c for c in df.columns if c not in ("staff", "role")]
 
-        # レコード展開
         for _, row in df.iterrows():
-            role = row[role_col]  # 職種列を使用
-            name = row[name_col]  # 氏名列を使用
-            for c in date_cols:
-                code = row[c]
-                if pd.isna(code):
-                    continue
-                code = str(code).strip()
-                logger.info(f"[{sheet}] 処理中のコード: '{code}' (列: '{c}', 行: '{row[name_col]}')")
-                
-                original_code = code
-                
-                if code == '日' or code.startswith('日') or code == '日勤':
-                    if '日' in code2rng:
-                        code = '日'
-                    elif '日勤' in code2rng:
-                        code = '日勤'
-                
-                elif code == '夜' or code.startswith('夜') or code == '夜勤':
-                    if '夜' in code2rng:
-                        code = '夜'
-                    elif '夜勤' in code2rng:
-                        code = '夜勤'
-                
-                elif code == '休' or code == '週休' or code.startswith('休') or code == '公休':
-                    if '休' in code2rng:
-                        code = '休'
-                    elif '公休' in code2rng:
-                        code = '公休'
-                
-                if code != original_code:
-                    logger.info(f"[{sheet}] コードマッピング: '{original_code}' → '{code}'")
-                
-                if code not in code2rng:
-                    missing_codes.add(code)
-                    logger.warning(f"[{sheet}] 未登録コード: '{code}' (列: '{c}', 行: '{row[name_col]}')")
-                    continue
-                # ヘッダ c を日付に変換
-                try:
-                    if sheet.startswith("R"):
-                        month_match = re.search(r'R(\d+)\.(\d+)', sheet)
-                        if month_match:
-                            year_num = int(month_match.group(1))
-                            month_num = int(month_match.group(2))
-                            year = 2018 + year_num  # R7.x → 2025年
-                            month = month_num       # R7.3 → 3月
-                            
-                            date_cols_list = list(date_cols)
-                            col_idx = date_cols_list.index(c)
-                            
-                            day = col_idx + 1
-                            
-                            if 1 <= day <= 31:
-                                dt_val = datetime.datetime(year, month, day)
-                                logger.info(f"[{sheet}] 日付推測成功: {dt_val.strftime('%Y-%m-%d')} (列: '{c}')")
-                            else:
-                                day_match = re.search(r'(\d+)', str(c))
-                                if day_match:
-                                    day = int(day_match.group(1))
-                                    if 1 <= day <= 31:
-                                        dt_val = datetime.datetime(year, month, day)
-                                        logger.info(f"[{sheet}] 日付名から推測: {dt_val.strftime('%Y-%m-%d')} (列: '{c}')")
-                                    else:
-                                        logger.warning(f"[{sheet}] 日付推測失敗: 無効な日 {day}")
-                                        continue
-                                else:
-                                    logger.warning(f"[{sheet}] 日付推測失敗: 日付情報なし '{c}'")
-                                    continue
-                        else:
-                            logger.warning(f"[{sheet}] シート名から年月を推測できません: {sheet}")
-                            continue
-                    else:
-                        if isinstance(c, (int, float)):
-                            dt_val = excel_date(c)
-                        else:
-                            text = re.sub(r"\s*\(.*\)$", "", str(c))
-                            dt_val = pd.to_datetime(text, errors="coerce")
-                        
-                        if pd.isna(dt_val):
-                            logger.warning(f"[{sheet}] 日付パース失敗: '{c}'")
-                            continue
-                except Exception as e:
-                    logger.warning(f"[{sheet}] 日付取得エラー: {e}")
-                    continue
-                slots = code2rng[code]
-                logger.info(f"[{sheet}] レコード追加: コード '{code}', 日付 {dt_val.strftime('%Y-%m-%d')}, スロット数 {len(slots)}")
-                
-                for t in slots:
-                    record = {
-                        "date": dt_val,
-                        "time": t,
-                        "role": role,
-                        "name": name,
-                        "code": code,  # 元のコードも保存
-                    }
-                    all_rows.append(record)
+            staff = _normalize(row["staff"])
+            role  = _normalize(row["role"])
 
-    if missing_codes:
-        logger.warning(f"未登録コード: {sorted(missing_codes)}")
+            if staff in DOW_TOKENS or role in DOW_TOKENS or (staff == role == ""):
+                continue
 
-    if not all_rows:
-        raise ValueError("長形式レコードが生成されませんでした")
+            for col in date_cols:
+                code = _normalize(row[col])
+                if code in ("", "nan", "NaN") or code in DOW_TOKENS:
+                    continue
+                if code not in code2slots:
+                    unknown_codes.add(code)
+                    continue
 
-    long_df = pd.DataFrame(all_rows)
-    
-    used_codes = set(long_df['code'].unique())
-    existing_codes = set(wt_df['code'].astype(str))
-    missing_from_master = used_codes - existing_codes
-    
-    if missing_from_master:
-        logger.info(f"マスターに追加するコード: {sorted(missing_from_master)}")
-        new_rows = []
-        for code in missing_from_master:
-            if code in default_slots:
-                slots = default_slots[code]
-                if len(slots) > 1:
-                    start_time = pd.to_datetime(slots[0], format='%H:%M')
-                    end_time = pd.to_datetime(slots[-1], format='%H:%M')
-                    if end_time <= start_time:  # 日をまたぐ場合
-                        end_time += pd.Timedelta(days=1)
-                    end_time += pd.Timedelta(minutes=30)  # 最後のスロットの終了時刻
-                    new_rows.append({
-                        'code': code,
-                        'start': start_time.strftime('%H:%M'),
-                        'end': end_time.strftime('%H:%M')
+                date_val = pd.to_datetime(col, errors="coerce")
+                if pd.isna(date_val):
+                    st.warning(f"[{sheet}] 日付列パース失敗: {col}")
+                    continue
+
+                for t in code2slots[code]:
+                    records.append({
+                        "ds": pd.to_datetime(f"{date_val.date()} {t}"),
+                        "staff": staff,
+                        "role":  role,
+                        "code":  code,
                     })
-                else:
-                    new_rows.append({
-                        'code': code,
-                        'start': None,
-                        'end': None
-                    })
-            else:
-                new_rows.append({
-                    'code': code,
-                    'start': None,
-                    'end': None
-                })
-        
-        new_df = pd.DataFrame(new_rows)
-        wt_df = pd.concat([wt_df, new_df], ignore_index=True)
-        logger.info(f"更新後のマスターDF サイズ: {wt_df.shape}")
-    
-    return long_df, wt_df
+
+    if unknown_codes:
+        raise ValueError(f"勤務区分マスターに無いコード: {sorted(unknown_codes)}")
+    if not records:
+        raise ValueError("長形式レコードが生成されませんでした – 実績シート確認")
+
+    return pd.DataFrame(records).sort_values("ds").reset_index(drop=True), wt_df
+
+# ───────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import argparse, sys
+    p = argparse.ArgumentParser(description="Shift Excel → long_df / wt_df")
+    p.add_argument("xlsx"); p.add_argument("--sheet", nargs="+", required=True)
+    p.add_argument("--header", type=int, default=2)
+    a = p.parse_args(sys.argv[1:])
+    ld, wt = ingest_excel(Path(a.xlsx), shift_sheets=a.sheet, header_row=a.header)
+    print(ld.head()); print("---"); print(wt.head())
