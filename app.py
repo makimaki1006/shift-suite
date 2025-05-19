@@ -1,30 +1,44 @@
 # ─────────────────────────────  app.py  (Part 1 / 3)  ──────────────────────────
-# Shift-Suite Streamlit GUI + 内蔵ダッシュボード  v1.27-hf
+# Shift-Suite Streamlit GUI + 内蔵ダッシュボード  v1.29.13 (rerun fix)
 # ==============================================================================
 # 変更履歴
-#   • 2025-05-12  ingestion header_row hot-fix に追従
-#   • 2025-05-11  master_sheet 概念を廃止し ingest_excel 新 API に準拠
-#   • 末尾に CLI デバッグブロックを追加（Streamlit 実行時は無視）
+#   • v1.29.13: st.experimental_rerun() を st.rerun() に修正。
+#   • v1.29.12: need_ref_start/end_date_widget の StreamlitAPIException 対策。
+#               ファイルアップロード時の日付範囲推定結果を、フラグを用いて
+#               次回のスクリプト実行時にウィジェットのデフォルト値として安全に反映するよう修正。
+#   • v1.29.11: ログで指摘されたエラー箇所を修正。
+#               - shift_sheets_multiselect_widget の StreamlitAPIException 対策。
+#               - param_penalty_per_lack の NameError 修正。
+#               - progress_bar_exec_main_run 等の NameError 修正。
+#               - ログメッセージ内のタイポ修正。
+#   • v1.29.10: selectboxのdefault引数エラーをindexに統一し、オプションリストをセッションから正しく参照。
+#               全てのウィジェットの値をセッションステートで管理し、初期化を徹底。
+#               ヘッダー開始行UIの表示と値の利用を確実化。
+#               Excel日付範囲推定の安定化。
+#               on_changeコールバックを削除し、よりシンプルなセッションステート管理を目指す。
 # ==============================================================================
 
 from __future__ import annotations
 
-import datetime as dt
+import datetime
 import io
 import json
-import re
+import logging
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import List, Tuple, Optional, Any
 
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import numpy as np
 import streamlit as st
+from streamlit.runtime import exists as st_runtime_exists
+import openpyxl
 
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
 from shift_suite.tasks.io_excel import ingest_excel
+from shift_suite.tasks.utils import _parse_as_date
 from shift_suite.tasks.heatmap import build_heatmap
 from shift_suite.tasks.shortage import shortage_and_brief
 from shift_suite.tasks.build_stats import build_stats
@@ -37,321 +51,592 @@ from shift_suite.tasks.forecast import build_demand_series, forecast_need
 from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.hire_plan import build_hire_plan
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
-from shift_suite.tasks.utils import calculate_jain_index, safe_make_archive
+from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── ロガー設定 ─────────────────────────────────────
+log = logging.getLogger("shift_suite_app")
+if not log.handlers:
+    log.setLevel(logging.INFO)
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s')
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+
+    from shift_suite.tasks.utils import log as tasks_log
+    if not tasks_log.handlers:
+        tasks_log.addHandler(handler)
+        tasks_log.setLevel(logging.DEBUG)
 
 # ── 日本語ラベル辞書 & _() ───────────────────────────────────────────────────
 JP = {
-    # タブ
-    "Overview": "概要",
-    "Heatmap": "ヒートマップ",
-    "Shortage": "不足分析",
-    "Fatigue": "疲労",
-    "Forecast": "需要予測",
-    "Fairness": "公平性",
-    "Cost Sim": "コスト試算",
-    "Hire Plan": "採用計画",
-    "PPT Report": "レポート",
-    # サイドバー
+    "Overview": "概要", "Heatmap": "ヒートマップ", "Shortage": "不足分析",
+    "Fatigue": "疲労", "Forecast": "需要予測", "Fairness": "公平性",
+    "Cost Sim": "コスト試算", "Hire Plan": "採用計画", "PPT Report": "PPTレポート",
     "Slot (min)": "スロット (分)",
-    "Min-staff method": "最少人数の算出方法",
-    "Extra modules": "追加モジュール",
-    "保存方法": "保存方法",
-    "ZIP ダウンロード": "ZIP ダウンロード",
-    "フォルダに保存": "フォルダに保存",
-    # Plotly labels
-    "Date": "日付",
-    "Time": "時間",
-    "人数": "人数",
-    "staff/need": "スタッフ÷必要数",
-    "不足人数": "不足人数",
-    "不足時間(h)": "不足時間 (h)",
-    "職種": "職種",
-    "Fatigue Score": "疲労スコア",
-    "シフト回数": "シフト回数",
-    "夜勤比率": "夜勤比率",
+    "Need Calculation Settings (Day of Week Pattern)": "📊 Need算出設定 (曜日パターン別)",
+    "Reference Period for Need Calculation": "参照期間 (Need算出用)",
+    "Start Date": "開始日", "End Date": "終了日",
+    "Statistical Metric for Need": "統計的指標 (Need算出用)",
+    "Remove Outliers for Need Calculation": "外れ値を除去してNeedを算出",
+    "(Optional) Upper Limit Calculation Method": "(オプション) 上限値算出方法",
+    "Min-staff method (for Upper)": "最少人数算出法 (上限値用)",
+    "Max-staff method (for Upper)": "最大人数算出法 (上限値用)",
+    "Extra modules": "追加モジュール", "Save method": "保存方法",
+    "ZIP Download": "ZIP形式でダウンロード", "Save to folder": "フォルダに保存",
+    "Run Analysis": "▶ 解析実行", "Cost & Hire Parameters": "💰 コスト・採用計画パラメータ",
+    "Standard work hours (h/month)": "所定労働時間 (h/月)",
+    "Safety factor (shortage h multiplier)": "安全係数 (不足h上乗せ)",
+    "Target coverage rate": "目標充足率",
+    "Direct employee labor cost (¥/h)": "正職員 人件費 (¥/h)",
+    "Temporary staff labor cost (¥/h)": "派遣 人件費 (¥/h)",
+    "One-time hiring cost (¥/person)": "採用一時コスト (¥/人)",
+    "Penalty for shortage (¥/h)": "不足ペナルティ (¥/h)",
+    "Upload Excel shift file (*.xlsx)": "Excel シフト表 (*.xlsx) をアップロード",
+    "Select shift sheets to analyze (multiple)": "解析するシフトシート（複数可）",
+    "Header start row (1-indexed)": "ヘッダー開始行 (1-indexed)",
+    "File Preview (first 8 rows)": "ファイルプレビュー (先頭8行)",
+    "Error during preview display": "プレビューの表示中にエラーが発生しました",
+    "Error saving Excel file": "Excelファイルの保存中にエラーが発生しました",
+    "Error getting sheet names from Excel": "Excelファイルからシート名の取得中にエラーが発生しました",
+    "No analysis target sheets found": "勤務区分シート以外の解析対象シートが見つからないか、全てのシート名に「勤務区分」が含まれています。",
+    "Analysis in progress...": "解析準備中...",
+    "Ingest: Reading Excel data...": "Excelデータ読み込み中…",
+    "Heatmap: Generating heatmap...": "Heatmap生成中…",
+    "Shortage: Analyzing shortage...": "Shortage (不足分析) 中…",
+    "Stats: Processing...": "Stats (統計情報) 生成中…",
+    "Anomaly: Processing...": "Anomaly (異常検知) 中…",
+    "Fatigue: Processing...": "Fatigue (疲労分析) 中…",
+    "Cluster: Processing...": "Cluster (クラスタリング) 中…",
+    "Skill: Processing...": "Skill (スキルNMF) 中…",
+    "Fairness: Processing...": "Fairness (公平性分析) 中…",
+    "Need forecast: Processing...": "Need forecast (需要予測) 中…",
+    "RL roster (PPO): Processing...": "RL roster (強化学習シフト) 中…",
+    "Hire plan: Processing...": "Hire plan (採用計画) 中…",
+    "Cost / Benefit: Processing...": "Cost / Benefit (コスト便益分析) 中…",
+    "Ingest: Excel data read complete.": "✅ Excelデータ読み込み完了",
+    "All processes complete!": "🎉 全ての解析が完了しました！",
+    "Error during analysis (ValueError)": "解析中にエラーが発生しました (ValueError)",
+    "Required file not found": "必要なファイルが見つかりませんでした",
+    "Unexpected error occurred": "予期せぬエラーが発生しました",
+    "Save Analysis Results": "📁 解析結果の保存",
+    "Output folder": "出力先フォルダ",
+    "Open the above path in Explorer.": "エクスプローラーで上記のパスを開いてご確認ください。",
+    "Download analysis results as ZIP": "📥 解析結果をZIPでダウンロード",
+    "Error creating ZIP file": "ZIPファイルの作成中にエラーが発生しました",
+    "Dashboard (Upload ZIP)": "📊 ダッシュボード (ZIP アップロード)",
+    "Upload ZIP file of 'out' folder": "out フォルダを ZIP 圧縮してアップロード",
+    "heat_ALL.xlsx not found in ZIP": "アップロードされたZIPファイル内に heat_ALL.xlsx が見つかりません。ZIPの構造を確認してください。",
+    "Failed to extract ZIP file.": "ZIPファイルの展開に失敗しました。",
+    "Uploaded file is not a valid ZIP file.": "アップロードされたファイルは有効なZIPファイルではありません。",
+    "Error during ZIP file extraction": "ZIPファイルの展開中にエラーが発生しました",
+    "Display Mode": "表示モード", "Raw Count": "人数", "Ratio (staff ÷ need)": "Ratio (staff ÷ need)",
+    "Color Scale Max (zmax)": "カラースケール上限 (zmax)",
+    "Shortage by Role (hours)": "職種別不足時間 (h)",
+    "Shortage by Time (count per day)": "時間帯別不足人数 (日別)",
+    "Select date to display": "表示する日付を選択",
+    "No date columns in shortage data.": "不足時間データに日付列がありません。",
+    "Display all time-slot shortage data": "全時間帯別不足データ表示",
+    "Fatigue Score per Staff": "スタッフ別疲労スコア",
+    "Demand Forecast (yhat)": "需要予測結果 (yhat)", "Actual (y)": "実績 (y)",
+    "Display forecast data": "予測データ表示",
+    "Fairness (Night Shift Ratio)": "公平性 (夜勤比率)",
+    "Cost Simulation (Million ¥)": "コスト試算 (百万円)",
+    "Hiring Plan (Needed FTE)": "採用計画 (必要採用人数)",
+    "Hiring Plan Parameters": "採用計画パラメータ",
+    "Generate PowerPoint Report (β)": "📊 PowerPointレポート生成 (β版)",
+    "Generating PowerPoint report...": "PowerPointレポートを生成中です... 少々お待ちください。",
+    "PowerPoint report ready.": "PowerPointレポートの準備ができました。",
+    "Download Report (PPTX)": "📥 レポート(PPTX)をダウンロード",
+    "python-pptx library required for PPT": "PowerPointレポートの生成には `python-pptx` ライブラリが必要です。\nインストールしてください: `pip install python-pptx`",
+    "Error generating PowerPoint report": "PowerPointレポートの生成中にエラーが発生しました",
+    "Click button to generate report.": "ボタンをクリックすると、主要な分析結果を含むPowerPointレポートが生成されます（現在はβ版です）。",
 }
-def _(text: str) -> str:
-    """英語→日本語; 未登録なら原文を返す"""
-    return JP.get(text, text)
+def _(text_key: str) -> str:
+    return JP.get(text_key, text_key)
 
-# ───────────── Streamlit 全体設定 ────────────────────────────────────────────
-st.set_page_config(page_title="Shift-Suite", layout="wide")
-st.header("🗂  Shift-Suite 解析")
+st.set_page_config(page_title="Shift-Suite", layout="wide", initial_sidebar_state="expanded")
+st.title("🗂️ Shift-Suite : 勤務シフト分析ツール")
 
-# ─────────── 左サイドバー（共通）─────────────────────────────────────────
-slot = st.sidebar.number_input("Slot (min)", 5, 60, 30, 5)
-min_method = st.sidebar.selectbox(
-    "Min-staff method", ["mean-1s", "p25", "mode"], index=1
-)
-ext_opts = st.sidebar.multiselect(
-    "Extra modules",
-    [
-        "Stats", "Anomaly", "Fatigue", "Cluster",
-        "Skill", "Fairness", "Need forecast", "RL roster (PPO)",
-        "Hire plan", "Cost / Benefit",
-    ],
-)
-save_mode = st.sidebar.selectbox("保存方法", ["ZIP ダウンロード", "フォルダに保存"])
+master_sheet_keyword = "勤務区分"
 
-# ★ 新モジュール用パラメータ
-with st.sidebar.expander("💰 Cost & Hire Parameters"):
-    std_work_hours   = st.number_input("所定労働時間 (h/月)",   120, 200, 160, 4)
-    safety_factor    = st.slider      ("安全係数（不足 h 上乗せ）", 1.00, 1.30, 1.10, 0.01)
-    target_coverage  = st.slider      ("目標充足率", 0.80, 1.00, 0.95, 0.01)
-    wage_direct      = st.number_input("正職員 人件費 (¥/h)",   800, 4000, 1500, 50)
-    wage_temp        = st.number_input("派遣 人件費 (¥/h)",   1000, 6000, 2200, 50)
-    hiring_cost_once = st.number_input("採用一時コスト (¥/人)", 0, 500000, 180_000, 10000)
-    penalty_per_lack = st.number_input("不足ペナルティ (¥/h)", 0, 10000, 4000, 500)
+# --- セッションステートの初期化 (一度だけ実行) ---
+if "app_initialized" not in st.session_state:
+    st.session_state.app_initialized = True
+    st.session_state.analysis_done = False
+    st.session_state.work_root_path_str = None
+    st.session_state.out_dir_path_str = None
+    st.session_state.current_step_for_progress = 0
 
-# ─────────────── Excel 入力 ───────────────────────────────────────────────
-uf = st.file_uploader("Excel シフト表 (*.xlsx)", type=["xlsx"])
-if uf:
-    work_root  = Path(tempfile.mkdtemp())
-    excel_path = work_root / uf.name
-    excel_path.write_bytes(uf.read())
+    today_val = datetime.date.today()
+    # st.session_state.uploaded_excel_date_range = (today_val - datetime.timedelta(days=59), today_val - datetime.timedelta(days=1)) # 初期値はウィジェット側で持つ
 
-    all_sheets = pd.ExcelFile(excel_path, engine="openpyxl").sheet_names
-    shift_candidates = [s for s in all_sheets if "勤務区分" not in s]
+    # サイドバーのウィジェットのキーとデフォルト値をセッションステートに初期設定
+    st.session_state.slot_input_widget = 30
+    st.session_state.header_row_input_widget = 3
+    st.session_state.candidate_sheet_list_for_ui = []
+    st.session_state.shift_sheets_multiselect_widget = []
+    st.session_state._force_update_multiselect_flag = False
 
-    shift_sheets = st.sidebar.multiselect(
-        "解析するシフトシート（複数可）",
-        shift_candidates,
-        default=shift_candidates,
+    st.session_state.need_ref_start_date_widget = today_val - datetime.timedelta(days=59) # 初期デフォルト
+    st.session_state.need_ref_end_date_widget = today_val - datetime.timedelta(days=1)   # 初期デフォルト
+    st.session_state._force_update_need_ref_dates_flag = False
+    st.session_state._intended_need_ref_start_date = None
+    st.session_state._intended_need_ref_end_date = None
+
+    st.session_state.need_stat_method_options_widget = ["10パーセンタイル", "25パーセンタイル", "中央値", "平均値"]
+    st.session_state.need_stat_method_widget = "中央値"
+    st.session_state.need_remove_outliers_widget = True
+
+    st.session_state.min_method_for_upper_options_widget = ["mean-1s", "p25", "mode"]
+    st.session_state.min_method_for_upper_widget = "p25"
+    st.session_state.max_method_for_upper_options_widget = ["mean+1s", "p75"]
+    st.session_state.max_method_for_upper_widget = "p75"
+
+    st.session_state.available_ext_opts_widget = [
+        "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness",
+        "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
+    ]
+    st.session_state.ext_opts_multiselect_widget = st.session_state.available_ext_opts_widget[:]
+
+    st.session_state.save_mode_selectbox_options_widget = [_("ZIP Download"), _("Save to folder")]
+    st.session_state.save_mode_selectbox_widget = _("ZIP Download")
+
+    st.session_state.std_work_hours_widget = 160
+    st.session_state.safety_factor_widget = 1.10
+    st.session_state.target_coverage_widget = 0.95
+    st.session_state.wage_direct_widget = 1500
+    st.session_state.wage_temp_widget = 2200
+    st.session_state.hiring_cost_once_widget = 180000
+    st.session_state.penalty_per_lack_widget = 4000
+
+    st.session_state.excel_path_for_run_script_str = None
+    st.session_state.last_uploaded_file_name = None
+    st.session_state.last_uploaded_file_size = None
+    log.info("セッションステートを初期化しました。")
+
+# --- サイドバーのUI要素 ---
+with st.sidebar:
+    st.header("🛠️ 解析設定")
+
+    st.number_input(_("Slot (min)"), 5, 120,
+                    key="slot_input_widget", help="分析の時間間隔（分）")
+
+    st.subheader("📄 シート選択とヘッダー")
+
+    if st.session_state.get("_force_update_multiselect_flag", False):
+        new_options = st.session_state.candidate_sheet_list_for_ui
+        current_selection = st.session_state.get("shift_sheets_multiselect_widget", [])
+        valid_selection = [s for s in current_selection if s in new_options]
+        if not valid_selection and new_options:
+             st.session_state.shift_sheets_multiselect_widget = new_options[:]
+        elif valid_selection:
+             st.session_state.shift_sheets_multiselect_widget = valid_selection
+        else:
+             st.session_state.shift_sheets_multiselect_widget = []
+        st.session_state._force_update_multiselect_flag = False
+
+    st.multiselect(
+        _("Select shift sheets to analyze (multiple)"),
+        options=st.session_state.candidate_sheet_list_for_ui,
+        default=st.session_state.shift_sheets_multiselect_widget,
+        key="shift_sheets_multiselect_widget"
     )
-    header_row = st.sidebar.number_input(
-        "ヘッダー開始行 (1-indexed)", 1, 10, 3, 1
+    st.number_input(
+        _("Header start row (1-indexed)"), 1, 20,
+        # value=st.session_state.header_row_input_widget, # valueはkeyから自動的に設定される
+        key="header_row_input_widget"
     )
 
-run = st.button("▶ 解析実行")
+    st.subheader(_("Need Calculation Settings (Day of Week Pattern)"))
+
+    if st.session_state.get("_force_update_need_ref_dates_flag", False):
+        if st.session_state.get("_intended_need_ref_start_date"):
+            st.session_state.need_ref_start_date_widget = st.session_state._intended_need_ref_start_date
+        if st.session_state.get("_intended_need_ref_end_date"):
+            st.session_state.need_ref_end_date_widget = st.session_state._intended_need_ref_end_date
+        st.session_state._force_update_need_ref_dates_flag = False
+        if "_intended_need_ref_start_date" in st.session_state: del st.session_state["_intended_need_ref_start_date"]
+        if "_intended_need_ref_end_date" in st.session_state: del st.session_state["_intended_need_ref_end_date"]
+
+    c1_need_ui, c2_need_ui = st.columns(2)
+    with c1_need_ui:
+        st.date_input(
+            _("Start Date"), # valueはkeyから自動的に設定される
+            key="need_ref_start_date_widget", help="Need算出の参照期間の開始日"
+        )
+    with c2_need_ui:
+        st.date_input(
+            _("End Date"), # valueはkeyから自動的に設定される
+            key="need_ref_end_date_widget", help="Need算出の参照期間の終了日"
+        )
+    st.caption(_("Reference Period for Need Calculation"))
+
+    current_need_stat_method_idx_val = 0
+    try:
+        current_need_stat_method_idx_val = st.session_state.need_stat_method_options_widget.index(st.session_state.need_stat_method_widget)
+    except (ValueError, AttributeError):
+        current_need_stat_method_idx_val = 2
+    st.selectbox(
+        _("Statistical Metric for Need"), options=st.session_state.need_stat_method_options_widget,
+        index=current_need_stat_method_idx_val,
+        key="need_stat_method_widget", help="曜日別・時間帯別のNeedを算出する際の統計指標"
+    )
+    st.checkbox(
+        _("Remove Outliers for Need Calculation"), # valueはkeyから自動的に設定される
+        key="need_remove_outliers_widget", help="IQR法で外れ値を除去してから統計量を計算します"
+    )
+
+    with st.expander(_("(Optional) Upper Limit Calculation Method"), expanded=False):
+        current_min_method_upper_idx_val = 0
+        try: current_min_method_upper_idx_val = st.session_state.min_method_for_upper_options_widget.index(st.session_state.min_method_for_upper_widget)
+        except (ValueError, AttributeError): current_min_method_upper_idx_val = 1
+        st.selectbox(
+            _("Min-staff method (for Upper)"), options=st.session_state.min_method_for_upper_options_widget,
+            index=current_min_method_upper_idx_val, key="min_method_for_upper_widget",
+            help="（オプション）ヒートマップの『代表的な上限スタッフ数』の算出方法の一部"
+        )
+        current_max_method_upper_idx_val = 0
+        try: current_max_method_upper_idx_val = st.session_state.max_method_for_upper_options_widget.index(st.session_state.max_method_for_upper_widget)
+        except (ValueError, AttributeError): current_max_method_upper_idx_val = 0
+        st.selectbox(
+            _("Max-staff method (for Upper)"), options=st.session_state.max_method_for_upper_options_widget,
+            index=current_max_method_upper_idx_val, key="max_method_for_upper_widget",
+            help="（オプション）ヒートマップの『代表的な上限スタッフ数』の算出方法"
+        )
+
+    st.divider()
+
+    st.multiselect(
+        _("Extra modules"), st.session_state.available_ext_opts_widget,
+        default=st.session_state.ext_opts_multiselect_widget,
+        key="ext_opts_multiselect_widget", help="実行する追加の分析モジュールを選択します。"
+    )
+
+    current_save_mode_idx_val = 0
+    try: current_save_mode_idx_val = st.session_state.save_mode_selectbox_options_widget.index(st.session_state.save_mode_selectbox_widget)
+    except (ValueError, AttributeError): current_save_mode_idx_val = 0
+    st.selectbox(
+        _("Save method"), options=st.session_state.save_mode_selectbox_options_widget,
+        index=current_save_mode_idx_val,
+        key="save_mode_selectbox_widget", help="解析結果の保存方法を選択します。"
+    )
+
+    with st.expander(_("Cost & Hire Parameters")):
+        st.number_input(_("Standard work hours (h/month)"),   100, 300, key="std_work_hours_widget")
+        st.slider      (_("Safety factor (shortage h multiplier)"), 1.00, 2.00, key="safety_factor_widget")
+        st.slider      (_("Target coverage rate"), 0.50, 1.00, key="target_coverage_widget")
+        st.number_input(_("Direct employee labor cost (¥/h)"),   500, 10000, key="wage_direct_widget")
+        st.number_input(_("Temporary staff labor cost (¥/h)"),   800, 12000, key="wage_temp_widget")
+        st.number_input(_("One-time hiring cost (¥/person)"), 0, 1000000, key="hiring_cost_once_widget")
+        st.number_input(_("Penalty for shortage (¥/h)"), 0, 20000, key="penalty_per_lack_widget")
+
+# --- メインコンテンツエリア ---
+st.header("1. ファイルアップロードと設定")
+uploaded_file = st.file_uploader(
+    _("Upload Excel shift file (*.xlsx)"),
+    type=["xlsx"],
+    key="excel_uploader_main_content_area_key",
+    help="勤務実績と勤務区分が記載されたExcelファイルをアップロードしてください。"
+)
+
+if uploaded_file:
+    if st.session_state.get("last_uploaded_file_name") != uploaded_file.name or \
+       st.session_state.get("last_uploaded_file_size") != uploaded_file.size:
+
+        st.session_state.last_uploaded_file_name = uploaded_file.name
+        st.session_state.last_uploaded_file_size = uploaded_file.size
+
+        if st.session_state.work_root_path_str is None or not Path(st.session_state.work_root_path_str).exists():
+            st.session_state.work_root_path_str = tempfile.mkdtemp(prefix="ShiftSuite_")
+            log.info(f"新しい一時ディレクトリを作成しました: {st.session_state.work_root_path_str}")
+
+        st.session_state.analysis_done = False
+        work_root_on_upload = Path(st.session_state.work_root_path_str)
+        st.session_state.excel_path_for_run_script_str = str(work_root_on_upload / uploaded_file.name)
+
+        excel_path_for_processing = Path(st.session_state.excel_path_for_run_script_str)
+
+        try:
+            with open(excel_path_for_processing, "wb") as f_wb:
+                f_wb.write(uploaded_file.getbuffer())
+            log.info(f"アップロードされたExcelファイルを保存しました: {excel_path_for_processing}")
+
+            current_header_for_est = st.session_state.header_row_input_widget - 1
+            try:
+                temp_sheets_data = pd.read_excel(excel_path_for_processing, sheet_name=None, header=current_header_for_est, nrows=1)
+                all_sheet_names_from_file = list(temp_sheets_data.keys())
+
+                candidate_sheets_from_file = [s_name for s_name in all_sheet_names_from_file if master_sheet_keyword.lower() not in s_name.lower()]
+                st.session_state.candidate_sheet_list_for_ui = candidate_sheets_from_file
+                st.session_state._force_update_multiselect_flag = True
+
+                first_content_sheet_name = next((s for s in candidate_sheets_from_file if s in temp_sheets_data), None)
+                if first_content_sheet_name:
+                    df_sample = temp_sheets_data[first_content_sheet_name]
+                    parsed_dates_in_sample: List[datetime.date] = []
+                    for col_header in df_sample.columns:
+                        parsed_date = _parse_as_date(str(col_header))
+                        if parsed_date: parsed_dates_in_sample.append(parsed_date)
+
+                    valid_dates_final = sorted([d for d in parsed_dates_in_sample if d is not pd.NaT and d is not None])
+                    if valid_dates_final:
+                        st.session_state._intended_need_ref_start_date = valid_dates_final[0]
+                        st.session_state._intended_need_ref_end_date = valid_dates_final[-1]
+                        st.session_state._force_update_need_ref_dates_flag = True
+                        log.info(f"Excel日付範囲推定(Need参照期間デフォルト用): {valid_dates_final[0]} - {valid_dates_final[-1]}")
+                    else: log.warning("Excelから有効な日付列が見つからず、日付範囲を推定できませんでした。") # この警告が新しいエラーの前に出ていた
+                else: log.warning("勤務区分シート以外の解析対象シートが見つからず、日付範囲を推定できませんでした。")
+
+                st.rerun() # ★ st.experimental_rerun() から修正
+
+            except Exception as e_date_range_process:
+                log.warning(f"Excelの日付範囲・シート名取得中に予期せぬエラー: {e_date_range_process}", exc_info=True)
+        except Exception as e_save_file_process:
+            st.error(_("Error saving Excel file") + f": {e_save_file_process}");
+
+# 「解析実行」ボタン
+run_button_disabled_status = not st.session_state.get("excel_path_for_run_script_str") or \
+                               not st.session_state.get("shift_sheets_multiselect_widget", [])
+run_button_clicked = st.button(
+    _("Run Analysis"), key="run_analysis_button_final_trigger", use_container_width=True, type="primary",
+    disabled=run_button_disabled_status
+)
 # ─────────────────────────────  app.py  (Part 2 / 3)  ──────────────────────────
-# 1st フロー : Excel → out フォルダ
-# ------------------------------------------------------------------------------
-if run and uf:
-    out_dir = work_root / "out"
-    out_dir.mkdir(parents=True, exist_ok=True)
+if run_button_clicked:
+    st.session_state.analysis_done = False
+    st.session_state.current_step_for_progress = 0
 
-    # デバッグ表示（先頭 8 行）
-    tmp_prev = pd.read_excel(excel_path, sheet_name=shift_sheets[0],
-                             header=None, nrows=8)
-    st.write("▼ 先頭 8 行プレビュー", tmp_prev)
+    excel_path_to_use = Path(st.session_state.excel_path_for_run_script_str) if st.session_state.excel_path_for_run_script_str else None
+    if st.session_state.work_root_path_str is None or excel_path_to_use is None :
+        st.error("Excelファイルが正しくアップロードされていません。ファイルを再アップロードしてください。"); st.stop()
 
-    # 1/8  Ingest --------------------------------------------------------------
-    st.info("1/8  Ingest …")
-    long_df, wt_df = ingest_excel(
-        excel_path,
-        shift_sheets=shift_sheets,
-        header_row=header_row,     # ← v2.4.4 で有効に
-    )
+    work_root_exec = Path(st.session_state.work_root_path_str)
+    st.session_state.out_dir_path_str = str(work_root_exec / "out")
+    out_dir_exec = Path(st.session_state.out_dir_path_str)
+    out_dir_exec.mkdir(parents=True, exist_ok=True)
+    log.info(f"解析出力ディレクトリ: {out_dir_exec}")
 
-    # 2/8  Heatmap -------------------------------------------------------------
-    st.info("2/8  Heatmap …")
-    build_heatmap(long_df, wt_df, out_dir, slot, min_method=min_method)
+    # --- 実行時のUIの値をセッションステートから取得 ---
+    param_selected_sheets = st.session_state.shift_sheets_multiselect_widget
+    param_header_row = st.session_state.header_row_input_widget
+    param_slot = st.session_state.slot_input_widget
+    param_ref_start = st.session_state.need_ref_start_date_widget
+    param_ref_end = st.session_state.need_ref_end_date_widget
+    param_need_stat = st.session_state.need_stat_method_widget
+    param_need_outlier = st.session_state.need_remove_outliers_widget
+    param_min_method_upper = st.session_state.min_method_for_upper_widget
+    param_max_method_upper = st.session_state.max_method_for_upper_widget
+    param_ext_opts = st.session_state.ext_opts_multiselect_widget
+    param_save_mode = st.session_state.save_mode_selectbox_widget
+    param_std_work_hours = st.session_state.std_work_hours_widget
+    param_safety_factor = st.session_state.safety_factor_widget
+    param_target_coverage = st.session_state.target_coverage_widget
+    param_wage_direct = st.session_state.wage_direct_widget
+    param_wage_temp = st.session_state.wage_temp_widget
+    param_hiring_cost = st.session_state.hiring_cost_once_widget
+    param_penalty_lack = st.session_state.penalty_per_lack_widget
+    # --- UI値取得ここまで ---
 
-    # 3/8  Shortage ------------------------------------------------------------
-    st.info("3/8  Shortage …")
-    shortage_and_brief(out_dir, slot, min_method=min_method)
+    progress_text_area = st.empty(); progress_bar_val = st.progress(0)
+    total_steps_exec_run = 3 + len(param_ext_opts)
 
-    # optional modules ---------------------------------------------------------
-    if "Stats" in ext_opts:
-        st.info("Stats …");          build_stats(out_dir)
-    if "Anomaly" in ext_opts:
-        st.info("Anomaly …");        detect_anomaly(out_dir)
-    if "Fatigue" in ext_opts:
-        st.info("Fatigue …");        train_fatigue(long_df, out_dir)
-    if "Cluster" in ext_opts:
-        st.info("Cluster …");        cluster_staff(long_df, out_dir)
-    if "Skill" in ext_opts:
-        st.info("Skill …");          build_skill_matrix(long_df, out_dir)
-    if "Fairness" in ext_opts:
-        st.info("Fairness …");       run_fairness(long_df, out_dir)
-    if "Need forecast" in ext_opts:
-        st.info("Forecast …")
-        csv = build_demand_series(out_dir / "heat_ALL.xlsx",
-                                  out_dir / "demand_series.csv")
-        forecast_need(csv, out_dir / "forecast.xlsx", choose="auto")
-    if "RL roster (PPO)" in ext_opts:
-        st.info("RL roster …")
-        learn_roster(out_dir / "demand_series.csv", out_dir / "rl_roster.xlsx")
+    def update_progress_exec_run(step_name_key_exec: str):
+        st.session_state.current_step_for_progress += 1
+        progress_percentage_exec_run = int((st.session_state.current_step_for_progress / total_steps_exec_run) * 100)
+        progress_percentage_exec_run = min(progress_percentage_exec_run, 100)
+        try:
+            progress_bar_val.progress(progress_percentage_exec_run)
+            progress_text_area.info(f"⚙️ {st.session_state.current_step_for_progress}/{total_steps_exec_run} - {_ (step_name_key_exec)}")
+        except Exception as e_prog_exec_run: log.warning(f"進捗表示の更新中にエラー: {e_prog_exec_run}")
 
-    # Hire / Cost --------------------------------------------------------------
-    if "Hire plan" in ext_opts:
-        st.info("Hire plan …")
-        build_hire_plan(
-            out_dir / "demand_series.csv",
-            out_dir / "hire_plan.xlsx",
-            std_work_hours=std_work_hours,
-            safety_factor=safety_factor,
-            target_coverage=target_coverage,
+    st.markdown("---"); st.header("2. 解析処理")
+    try:
+        if param_selected_sheets and excel_path_to_use:
+            update_progress_exec_run("File Preview (first 8 rows)")
+            st.subheader(_("File Preview (first 8 rows)"))
+            try:
+                preview_df_exec_run = pd.read_excel(excel_path_to_use, sheet_name=param_selected_sheets[0], header=None, nrows=8)
+                st.dataframe(preview_df_exec_run.astype(str), use_container_width=True)
+            except Exception as e_prev_exec_run: st.warning(_("Error during preview display") + f": {e_prev_exec_run}"); log.warning(f"プレビュー表示エラー: {e_prev_exec_run}", exc_info=True)
+        else: st.warning("プレビューを表示するシートが選択されていないか、ファイルパスが無効です。")
+
+        update_progress_exec_run("Ingest: Reading Excel data...")
+        long_df, wt_df = ingest_excel(excel_path_to_use, shift_sheets=param_selected_sheets, header_row=param_header_row)
+        log.info(f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}")
+        st.success(_("Ingest: Excel data read complete."))
+
+        update_progress_exec_run("Heatmap: Generating heatmap...")
+        build_heatmap(
+            long_df, out_dir_exec, param_slot,
+            ref_start_date_for_need=param_ref_start,
+            ref_end_date_for_need=param_ref_end,
+            need_statistic_method=param_need_stat,
+            need_remove_outliers=param_need_outlier,
+            need_iqr_multiplier=1.5,
+            min_method=param_min_method_upper,
+            max_method=param_max_method_upper
         )
-    if "Cost / Benefit" in ext_opts:
-        st.info("Cost / Benefit …")
-        analyze_cost_benefit(
-            out_dir,
-            wage_direct=wage_direct,
-            wage_temp=wage_temp,
-            hiring_cost_once=hiring_cost_once,
-            penalty_per_lack_h=penalty_per_lack,
-        )
+        st.success("✅ Heatmap生成完了")
 
-    st.success("解析完了 🎉")
+        update_progress_exec_run("Shortage: Analyzing shortage...")
+        shortage_result_exec_run = shortage_and_brief(out_dir_exec, param_slot)
+        if shortage_result_exec_run is None: st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
+        else: st.success("✅ Shortage (不足分析) 完了")
 
-    # 出力方法 ---------------------------------------------------------------
-    if save_mode == "フォルダに保存":
-        st.write(f"出力先: `{out_dir}`")
-    else:
-        zip_p = work_root / "out.zip"
-        safe_make_archive(out_dir, zip_p)
-        st.download_button(
-            "Download OUT.zip",
-            data=zip_p.read_bytes(),
-            file_name="out.zip",
-            mime="application/zip",
-        )
+        for opt_module_name_exec_run in st.session_state.available_ext_opts_widget:
+            if opt_module_name_exec_run in param_ext_opts:
+                progress_key_exec_run = f"{opt_module_name_exec_run}: Processing..."
+                update_progress_exec_run(progress_key_exec_run)
+                st.info(f"{_(opt_module_name_exec_run)} 処理中…")
+                try:
+                    if opt_module_name_exec_run == "Stats": build_stats(out_dir_exec)
+                    elif opt_module_name_exec_run == "Anomaly": detect_anomaly(out_dir_exec)
+                    elif opt_module_name_exec_run == "Fatigue": train_fatigue(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Cluster": cluster_staff(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Skill": build_skill_matrix(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Fairness": run_fairness(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Need forecast":
+                        demand_csv_exec_run_fc = out_dir_exec / "demand_series.csv"
+                        forecast_xls_exec_run_fc = out_dir_exec / "forecast.xlsx"
+                        heat_all_for_fc_exec_run_fc = out_dir_exec / "heat_ALL.xlsx"
+                        if not heat_all_for_fc_exec_run_fc.exists(): st.warning(f"Need forecast: 必須ファイル {heat_all_for_fc_exec_run_fc.name} が見つかりません。")
+                        else:
+                            build_demand_series(heat_all_for_fc_exec_run_fc, demand_csv_exec_run_fc)
+                            if demand_csv_exec_run_fc.exists(): forecast_need(demand_csv_exec_run_fc, forecast_xls_exec_run_fc)
+                            else: st.warning("Need forecast: demand_series.csv の生成に失敗しました。")
+                    elif opt_module_name_exec_run == "RL roster (PPO)":
+                        demand_csv_rl_exec_run_rl = out_dir_exec / "demand_series.csv"
+                        rl_roster_xls_exec_run_rl = out_dir_exec / "rl_roster.xlsx"
+                        if demand_csv_rl_exec_run_rl.exists(): learn_roster(demand_csv_rl_exec_run_rl, rl_roster_xls_exec_run_rl)
+                        else: st.warning("RL Roster: 需要予測データ (demand_series.csv) がありません。")
+                    elif opt_module_name_exec_run == "Hire plan":
+                        demand_csv_hp_exec_run_hp = out_dir_exec / "demand_series.csv"
+                        hire_xls_exec_run_hp = out_dir_exec / "hire_plan.xlsx"
+                        if demand_csv_hp_exec_run_hp.exists(): build_hire_plan(demand_csv_hp_exec_run_hp, hire_xls_exec_run_hp, param_std_work_hours, param_safety_factor, param_target_coverage)
+                        else: st.warning("Hire Plan: 需要予測データ (demand_series.csv) がありません。")
+                    elif opt_module_name_exec_run == "Cost / Benefit":
+                        analyze_cost_benefit(out_dir_exec, param_wage_direct, param_wage_temp, param_hiring_cost, param_penalty_lack)
+                    st.success(f"✅ {_(opt_module_name_exec_run)} 完了")
+                except FileNotFoundError as fe_opt_exec_run_loop:
+                    st.error(f"{_(opt_module_name_exec_run)} の処理中にエラー (ファイル未検出): {fe_opt_exec_run_loop}")
+                    log.error(f"{opt_module_name_exec_run} 処理エラー (FileNotFoundError): {fe_opt_exec_run_loop}", exc_info=True)
+                except Exception as e_opt_exec_run_loop:
+                    st.error(f"{_(opt_module_name_exec_run)} の処理中にエラーが発生しました: {e_opt_exec_run_loop}")
+                    log.error(f"{opt_module_name_exec_run} 処理エラー: {e_opt_exec_run_loop}", exc_info=True)
+
+        progress_bar_val.progress(100); progress_text_area.success("✨ 全工程完了！")
+        st.balloons(); st.success(_("All processes complete!"))
+        st.session_state.analysis_done = True
+    except ValueError as ve_exec_run_main:
+        st.error(_("Error during analysis (ValueError)") + f": {ve_exec_run_main}"); log.error(f"解析エラー (ValueError): {ve_exec_run_main}", exc_info=True)
+        st.session_state.analysis_done = False
+    except FileNotFoundError as fe_exec_run_main:
+        st.error(_("Required file not found") + f": {fe_exec_run_main}"); log.error(f"ファイル未検出エラー: {fe_exec_run_main}", exc_info=True)
+        st.session_state.analysis_done = False
+    except Exception as e_exec_run_main:
+        st.error(_("Unexpected error occurred") + f": {e_exec_run_main}"); log.error(f"予期せぬエラー: {e_exec_run_main}", exc_info=True)
+        st.session_state.analysis_done = False
+    finally:
+        if 'progress_bar_val' in locals() and progress_bar_val is not None: progress_bar_val.empty()
+        if 'progress_text_area' in locals() and progress_text_area is not None: progress_text_area.empty()
+
+    if st.session_state.analysis_done and st.session_state.out_dir_path_str:
+        out_dir_to_save_exec_main_run = Path(st.session_state.out_dir_path_str)
+        if out_dir_to_save_exec_main_run.exists():
+            st.markdown("---"); st.header("3. " + _("Save Analysis Results"))
+            current_save_mode_exec_main_run = st.session_state.save_mode_selectbox_widget
+            if current_save_mode_exec_main_run == _("Save to folder"):
+                st.info(_("Output folder") + f": `{out_dir_to_save_exec_main_run}`")
+                st.markdown(_("Open the above path in Explorer."))
+            else: # ZIP Download
+                zip_base_name_exec_main_run = f"ShiftSuite_Analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                if st.session_state.work_root_path_str is None:
+                    st.error("一時作業ディレクトリが見つかりません。ZIPファイルの作成に失敗しました。")
+                else:
+                    work_root_for_zip_dl_exec_main_run = Path(st.session_state.work_root_path_str)
+                    zip_path_obj_to_download_exec_main_run = work_root_for_zip_dl_exec_main_run / f"{zip_base_name_exec_main_run}.zip"
+                    try:
+                        with zipfile.ZipFile(zip_path_obj_to_download_exec_main_run, 'w', zipfile.ZIP_DEFLATED) as zf_dl_exec_main_run:
+                            for file_to_zip_dl_exec_main_run in out_dir_to_save_exec_main_run.rglob('*'):
+                                if file_to_zip_dl_exec_main_run.is_file():
+                                    zf_dl_exec_main_run.write(file_to_zip_dl_exec_main_run, file_to_zip_dl_exec_main_run.relative_to(out_dir_to_save_exec_main_run))
+                        with open(zip_path_obj_to_download_exec_main_run, "rb") as fp_zip_data_to_download_dl_exec_main_run:
+                            st.download_button(label=_("Download analysis results as ZIP"), data=fp_zip_data_to_download_dl_exec_main_run,
+                                               file_name=f"{zip_base_name_exec_main_run}.zip", mime="application/zip", use_container_width=True)
+                        log.info(f"ZIPファイルを作成し、ダウンロードボタンを表示しました: {zip_path_obj_to_download_exec_main_run}")
+                    except Exception as e_zip_final_exec_run_main_ex_v3:
+                        st.error(_("Error creating ZIP file") + f": {e_zip_final_exec_run_main_ex_v3}")
+                        log.error(f"ZIP作成エラー (最終段階): {e_zip_final_exec_run_main_ex_v3}", exc_info=True)
+        else: log.warning(f"解析は完了しましたが、出力ディレクトリ '{out_dir_to_save_exec_main_run}' が見つかりません。")
+
+# ─────────────────────────────  app.py  (Part 3 / 3)  ──────────────────────────
+def display_overview_tab(tab, data_dir): tab.write(f"Overview from {data_dir}")
+def display_heatmap_tab(tab, data_dir): tab.write(f"Heatmap from {data_dir}")
+def display_shortage_tab(tab, data_dir): tab.write(f"Shortage from {data_dir}")
+def display_fatigue_tab(tab, data_dir): tab.write(f"Fatigue from {data_dir}")
+def display_forecast_tab(tab, data_dir): tab.write(f"Forecast from {data_dir}")
+def display_fairness_tab(tab, data_dir): tab.write(f"Fairness from {data_dir}")
+def display_costsim_tab(tab, data_dir): tab.write(f"Cost Sim from {data_dir}")
+def display_hireplan_tab(tab, data_dir): tab.write(f"Hire Plan from {data_dir}")
+def display_ppt_tab(tab, data_dir): tab.write(f"PPT Report from {data_dir}")
+
 
 st.divider()
+st.header(_("Dashboard (Upload ZIP)"))
+zip_file_uploaded_dash_final_v3_display_main_dash = st.file_uploader(_("Upload ZIP file of 'out' folder"), type=["zip"], key="dashboard_zip_uploader_widget_final_v3_key_dash")
 
-# ───────── 2nd フロー : out.zip → ダッシュボード ─────────────────────────────
-st.header("📊 ダッシュボード (ZIP アップロード)")
-
-zip_file = st.file_uploader(
-    "out フォルダを ZIP 圧縮してアップロード", type=["zip"], key="dash_zip"
-)
-if zip_file:
-    tmp_dir = Path(tempfile.mkdtemp())
-    with zipfile.ZipFile(io.BytesIO(zip_file.read())) as zf:
-        zf.extractall(tmp_dir)
+if zip_file_uploaded_dash_final_v3_display_main_dash:
+    dashboard_temp_base = Path(tempfile.gettempdir()) / "ShiftSuite_Dash_Uploads"
+    dashboard_temp_base.mkdir(parents=True, exist_ok=True)
+    current_dash_tmp_dir = Path(tempfile.mkdtemp(prefix="dash_", dir=dashboard_temp_base))
+    log.info(f"ダッシュボード用一時ディレクトリを作成: {current_dash_tmp_dir}")
+    extracted_data_dir: Optional[Path] = None
     try:
-        out_dir = next(tmp_dir.rglob("heat_ALL.xlsx")).parent
-    except StopIteration:
-        st.error("heat_ALL.xlsx が ZIP に見つかりません")
-        st.stop()
+        with zipfile.ZipFile(io.BytesIO(zip_file_uploaded_dash_final_v3_display_main_dash.read())) as zf:
+            zf.extractall(current_dash_tmp_dir)
+            if (current_dash_tmp_dir / "out").exists() and (current_dash_tmp_dir / "out" / "heat_ALL.xlsx").exists():
+                extracted_data_dir = current_dash_tmp_dir / "out"
+            elif (current_dash_tmp_dir / "heat_ALL.xlsx").exists():
+                 extracted_data_dir = current_dash_tmp_dir
+            else:
+                found_heat_all = list(current_dash_tmp_dir.rglob("heat_ALL.xlsx"))
+                if found_heat_all: extracted_data_dir = found_heat_all[0].parent
+                else: st.error(_("heat_ALL.xlsx not found in ZIP")); log.error(f"ZIP展開後、heat_ALL.xlsx が見つかりません in {current_dash_tmp_dir}"); st.stop()
+        log.info(f"ダッシュボード表示用のデータディレクトリ: {extracted_data_dir}")
+    except Exception as e_zip:
+        st.error(_("Error during ZIP file extraction") + f": {e_zip}"); log.error(f"ZIP展開中エラー: {e_zip}", exc_info=True); st.stop()
 
-    tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
-        ["Overview", "Heatmap", "Shortage", "Fatigue",
-         "Forecast", "Fairness", "Cost Sim", "Hire Plan", "PPT Report"]
-    )
+    import plotly.express as px
+    import plotly.graph_objects as go
 
-    # ------------------------------------------------------------------ 0) Overview
-    with tab0:
-        kpi_fp = out_dir / "shortage_role.xlsx"
-        lack_h = pd.read_excel(kpi_fp)["lack_h"].sum() if kpi_fp.exists() else 0
-        fair_fp = out_dir / "fairness_after.xlsx"
-        jain = (calculate_jain_index(pd.read_excel(fair_fp)["night_ratio"])
-                if fair_fp.exists() else "–")
-        c1, c2 = st.columns(2)
-        c1.metric(_("不足時間(h)"), f"{lack_h:.1f}")
-        c2.metric("夜勤 Jain", jain)
+    tab_keys_en_dash = ["Overview", "Heatmap", "Shortage", "Fatigue", "Forecast", "Fairness", "Cost Sim", "Hire Plan", "PPT Report"]
+    tab_labels_dash = [_ (key) for key in tab_keys_en_dash]
+    tabs_obj_dash = st.tabs(tab_labels_dash)
 
-    # ------------------------------------------------------------- 1) Heatmap
-    with tab1:
-        heat_all = pd.read_excel(out_dir / "heat_ALL.xlsx", index_col=0)
-        mode = st.radio("表示モード", ["Raw", "Ratio"], horizontal=True)
-        zmax = st.slider("zmax", 1.0 if mode == "Ratio" else 10,
-                         3.0 if mode == "Ratio" else 50,
-                         1.5 if mode == "Ratio" else 11,
-                         0.1 if mode == "Ratio" else 1)
-        target = heat_all if mode == "Raw" else (
-            heat_all.div(heat_all["need"]).clip(upper=2)
-        )
-        fig = px.imshow(
-            target.drop(columns=["need","upper","staff","lack","excess"],
-                        errors="ignore"),
-            aspect="auto",
-            color_continuous_scale=("Blues" if mode == "Raw"
-                                    else px.colors.sequential.RdBu_r),
-            zmax=zmax,
-            labels=dict(x=_("Date"), y=_("Time"),
-                        color=_("人数") if mode == "Raw" else _("staff/need")),
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    if extracted_data_dir:
+        display_overview_tab(tabs_obj_dash[0], extracted_data_dir)
+        display_heatmap_tab(tabs_obj_dash[1], extracted_data_dir)
+        display_shortage_tab(tabs_obj_dash[2], extracted_data_dir)
+        display_fatigue_tab(tabs_obj_dash[3], extracted_data_dir)
+        display_forecast_tab(tabs_obj_dash[4], extracted_data_dir)
+        display_fairness_tab(tabs_obj_dash[5], extracted_data_dir)
+        display_costsim_tab(tabs_obj_dash[6], extracted_data_dir)
+        display_hireplan_tab(tabs_obj_dash[7], extracted_data_dir)
+        display_ppt_tab(tabs_obj_dash[8], extracted_data_dir)
+    else:
+        st.warning("ダッシュボードを表示するためのデータがロードされていません。ZIPファイルをアップロードしてください。")
 
-    # ------------------------------------------------------------- 2) Shortage
-    with tab2:
-        fp = out_dir / "shortage_role.xlsx"
-        if fp.exists():
-            df = pd.read_excel(fp)
-            st.dataframe(df, use_container_width=True)
-            st.bar_chart(df, x="role", y="lack_h")
-        else:
-            st.info("shortage_role.xlsx がありません")
-
-    # ------------------------------------------------------------- 3) Fatigue
-    with tab3:
-        fp = out_dir / "fatigue_score.xlsx"
-        st.dataframe(pd.read_excel(fp), use_container_width=True) if fp.exists() \
-            else st.info("fatigue_score.xlsx がありません")
-
-    # ------------------------------------------------------------- 4) Forecast
-    with tab4:
-        fc_fp = out_dir / "forecast.xlsx"
-        if fc_fp.exists() and fc_fp.stat().st_size:
-            fc = pd.read_excel(fc_fp)
-            st.line_chart(fc, x="ds", y="yhat", use_container_width=True)
-        else:
-            st.info("forecast.xlsx がありません")
-
-    # ------------------------------------------------------------- 5) Fairness
-    with tab5:
-        fp = out_dir / "fairness_after.xlsx"
-        st.dataframe(pd.read_excel(fp), use_container_width=True) if fp.exists() \
-            else st.info("fairness_after.xlsx がありません")
-
-    # ------------------------------------------------------------- 6) Cost Sim
-    with tab6:
-        fp = out_dir / "cost_benefit.xlsx"
-        if fp.exists():
-            cb = pd.read_excel(fp, index_col=0)
-            st.bar_chart(cb["Cost_Million"])
-            st.dataframe(cb, use_container_width=True)
-        else:
-            st.info("cost_benefit.xlsx がありません")
-
-    # ------------------------------------------------------------- 7) Hire Plan
-    with tab7:
-        fp = out_dir / "hire_plan.xlsx"
-        if fp.exists():
-            hp = pd.read_excel(fp, sheet_name="hire_plan")
-            st.dataframe(hp, use_container_width=True)
-        else:
-            st.info("hire_plan.xlsx がありません")
-
-    # ------------------------------------------------------------- 8) PPT Export
-    with tab8:
-        if st.button("Generate PPT"):
-            from pptx import Presentation
-            prs = Presentation()
-            prs.slides.add_slide(prs.slide_layouts[5]).shapes.title.text = \
-                f"Shift-Suite Report {dt.date.today()}"
-            ppt_fp = out_dir / "report.pptx"
-            prs.save(ppt_fp)
-            st.download_button(
-                "Download PPT",
-                data=ppt_fp.read_bytes(),
-                file_name="report.pptx",
-                mime=("application/vnd.openxmlformats-officedocument."
-                      "presentationml.presentation"),
-            )
-# ─────────────────────────────  app.py  (Part 3 / 3)  ──────────────────────────
-# ------------------------------------------------------------------
-# CLI デバッグ用:  python app.py book.xlsx --sheets Sheet1 Sheet2 ...
-# （Streamlit 経由のときは実行されない）
-# ------------------------------------------------------------------
-if __name__ == "__main__" and not any("streamlit" in a.lower()
-                                      for a in sys.argv[:2]):
+if __name__ == "__main__" and not st_runtime_exists():
     import argparse
-    p = argparse.ArgumentParser(description="CLI デバッグ – Excel → long_df")
-    p.add_argument("xlsx",               help="Excel シフト原本 (.xlsx)")
-    p.add_argument("--sheets", nargs="+", required=True, help="対象シート名")
-    p.add_argument("--header", type=int, default=3,
-                   help="ヘッダー開始行 (1-indexed)")
-    cli = p.parse_args()
-
-    ld, wt = ingest_excel(
-        Path(cli.xlsx),
-        shift_sheets=cli.sheets,
-        header_row=cli.header,
-    )
-    print(ld.head())
-    print("-----")
-    print(wt.head())
-# ─────────────────────────────  END OF FILE  ──────────────────────────────
+    log.info("CLIモードでapp.pyを実行します。")
+    parser = argparse.ArgumentParser(description="Shift-Suite CLI (app.py経由のデバッグ用)")
+    parser.add_argument("xlsx_file_cli", help="Excel シフト原本 (.xlsx)")
+    parser.add_argument("--sheets_cli", nargs="+", required=True, help="解析対象のシート名")
+    parser.add_argument("--header_cli", type=int, default=3, help="ヘッダー開始行 (1-indexed)")
+    try:
+        cli_args = parser.parse_args()
+        log.info(f"CLI Args: file='{cli_args.xlsx_file_cli}', sheets={cli_args.sheets_cli}, header={cli_args.header_cli}")
+    except SystemExit: pass
+    except Exception as e_cli:
+        log.error(f"CLIモードでの実行中にエラー: {e_cli}", exc_info=True)
