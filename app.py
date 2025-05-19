@@ -551,6 +551,8 @@ if run_button_clicked:
                     
                     if not daily_leave_df.empty:
                         leave_results_temp = {} # 一時的な結果格納用
+                        leave_results_temp['daily_leave_counts'] = daily_leave_df.copy()
+
                         
                         # 2. 希望休関連の集計と分析
                         if LEAVE_TYPE_REQUESTED in param_leave_target_types:
@@ -798,6 +800,44 @@ if st.session_state.get("analysis_done", False) and \
                     staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail], 
                     height=400, use_container_width=True
                 )
+                
+                if not filtered_df.empty:
+                    st.subheader(f"{selected_staff_for_detail}の休暇傾向分析")
+                    
+                    daily_leave_df = results.get('daily_leave_counts')
+                    if daily_leave_df is not None and not daily_leave_df.empty:
+                        staff_daily_leave = daily_leave_df[daily_leave_df['staff'] == selected_staff_for_detail].copy()
+                        
+                        if not staff_daily_leave.empty:
+                            leave_types = sorted(staff_daily_leave['leave_type'].unique())
+                            for leave_type in leave_types:
+                                st.write(f"### {leave_type}の傾向")
+                                type_data = staff_daily_leave[staff_daily_leave['leave_type'] == leave_type]
+                                
+                                dow_summary = leave_analyzer.summarize_leave_by_day_count(type_data, period='dayofweek')
+                                if not dow_summary.empty:
+                                    st.write("曜日別の取得件数:")
+                                    st.bar_chart(dow_summary.set_index('period_unit')['total_leave_days'])
+                                else:
+                                    st.write("曜日別データはありません。")
+                                
+                                month_period_summary = leave_analyzer.summarize_leave_by_day_count(type_data, period='month_period')
+                                if not month_period_summary.empty:
+                                    st.write("月初・月中・月末別の取得件数:")
+                                    st.bar_chart(month_period_summary.set_index('period_unit')['total_leave_days'])
+                                else:
+                                    st.write("月内期間別データはありません。")
+                                
+                                month_summary = leave_analyzer.summarize_leave_by_day_count(type_data, period='month')
+                                if not month_summary.empty:
+                                    st.write("月別の取得件数:")
+                                    st.line_chart(month_summary.set_index('period_unit')['total_leave_days'])
+                                else:
+                                    st.write("月別データはありません。")
+                        else:
+                            st.info(f"{selected_staff_for_detail}の休暇データがありません。")
+                    else:
+                        st.info("職員別の傾向分析に必要なデータがありません。")
         else:
             st.write("表示できる職員別の休暇データがありません。")
 

@@ -17,6 +17,8 @@ if not logger.handlers: # ログハンドラが重複しないように設定
 # --- 定数 ---
 LEAVE_TYPE_PAID = '有給'
 LEAVE_TYPE_REQUESTED = '希望休'
+LEAVE_TYPE_OTHER = 'その他休暇'  # 追加：その他休暇タイプの定数
+
 # DEFAULT_HOLIDAY_TYPE = '通常勤務' # io_excel.py で定義されているものを参照する形でも良い
 
 # --- Helper Functions ---
