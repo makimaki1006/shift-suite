@@ -796,8 +796,9 @@ if st.session_state.get("analysis_done", False) and \
             if selected_staff_for_detail == "全員表示":
                 st.dataframe(staff_leave_list_df, height=400, use_container_width=True)
             else:
+                filtered_df = staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail]
                 st.dataframe(
-                    staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail], 
+                    filtered_df, 
                     height=400, use_container_width=True
                 )
                 
