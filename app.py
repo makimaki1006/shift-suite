@@ -1,7 +1,8 @@
 # ─────────────────────────────  app.py  (Part 1 / 3)  ──────────────────────────
-# Shift-Suite Streamlit GUI + 内蔵ダッシュボード  v1.29.13 (rerun fix)
+# Shift-Suite Streamlit GUI + 内蔵ダッシュボード  v1.30.0 (休暇分析機能追加)
 # ==============================================================================
 # 変更履歴
+#   • v1.30.0: 休暇分析機能を追加。leave_analyzer モジュールとの連携を実装。
 #   • v1.29.13: st.experimental_rerun() を st.rerun() に修正。
 #   • v1.29.12: need_ref_start/end_date_widget の StreamlitAPIException 対策。
 #               ファイルアップロード時の日付範囲推定結果を、フラグを用いて
@@ -52,9 +53,11 @@ from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.hire_plan import build_hire_plan
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
+from shift_suite.tasks import leave_analyzer # ★ 新規インポート
+from shift_suite.tasks.leave_analyzer import LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID # ★ 定数もインポート
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ── ロガー設定 ─────────────────────────────────────
+# ── ロガー設定 ─────────────────────────────────
 log = logging.getLogger("shift_suite_app")
 if not log.handlers:
     log.setLevel(logging.INFO)
@@ -73,6 +76,7 @@ JP = {
     "Overview": "概要", "Heatmap": "ヒートマップ", "Shortage": "不足分析",
     "Fatigue": "疲労", "Forecast": "需要予測", "Fairness": "公平性",
     "Cost Sim": "コスト試算", "Hire Plan": "採用計画", "PPT Report": "PPTレポート",
+    "Leave Analysis": "休暇分析",  # ★ 追加
     "Slot (min)": "スロット (分)",
     "Need Calculation Settings (Day of Week Pattern)": "📊 Need算出設定 (曜日パターン別)",
     "Reference Period for Need Calculation": "参照期間 (Need算出用)",
@@ -110,6 +114,7 @@ JP = {
     "Cluster: Processing...": "Cluster (クラスタリング) 中…",
     "Skill: Processing...": "Skill (スキルNMF) 中…",
     "Fairness: Processing...": "Fairness (公平性分析) 中…",
+    "Leave Analysis: Processing...": "Leave Analysis (休暇分析) 中…",  # ★ 追加
     "Need forecast: Processing...": "Need forecast (需要予測) 中…",
     "RL roster (PPO): Processing...": "RL roster (強化学習シフト) 中…",
     "Hire plan: Processing...": "Hire plan (採用計画) 中…",
@@ -169,7 +174,6 @@ if "app_initialized" not in st.session_state:
     st.session_state.current_step_for_progress = 0
 
     today_val = datetime.date.today()
-    # st.session_state.uploaded_excel_date_range = (today_val - datetime.timedelta(days=59), today_val - datetime.timedelta(days=1)) # 初期値はウィジェット側で持つ
 
     # サイドバーのウィジェットのキーとデフォルト値をセッションステートに初期設定
     st.session_state.slot_input_widget = 30
@@ -193,11 +197,14 @@ if "app_initialized" not in st.session_state:
     st.session_state.max_method_for_upper_options_widget = ["mean+1s", "p75"]
     st.session_state.max_method_for_upper_widget = "p75"
 
+    # ★ 休暇分析を含む追加モジュールリスト
     st.session_state.available_ext_opts_widget = [
         "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness",
+        _("Leave Analysis"), # ★ "休暇分析" を追加
         "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
     ]
-    st.session_state.ext_opts_multiselect_widget = st.session_state.available_ext_opts_widget[:]
+    # デフォルトで休暇分析も選択状態にするかはお好みで
+    st.session_state.ext_opts_multiselect_widget = st.session_state.available_ext_opts_widget[:] 
 
     st.session_state.save_mode_selectbox_options_widget = [_("ZIP Download"), _("Save to folder")]
     st.session_state.save_mode_selectbox_widget = _("ZIP Download")
@@ -213,6 +220,14 @@ if "app_initialized" not in st.session_state:
     st.session_state.excel_path_for_run_script_str = None
     st.session_state.last_uploaded_file_name = None
     st.session_state.last_uploaded_file_size = None
+
+    # ★ 休暇分析用パラメータの初期化
+    st.session_state.leave_analysis_target_types_widget = [LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID] # デフォルトで両方
+    st.session_state.leave_concentration_threshold_widget = 3 # 希望休集中度閾値のデフォルト
+
+    # ★ 休暇分析結果格納用
+    st.session_state.leave_analysis_results = {}
+    
     log.info("セッションステートを初期化しました。")
 
 # --- サイドバーのUI要素 ---
@@ -244,7 +259,6 @@ with st.sidebar:
     )
     st.number_input(
         _("Header start row (1-indexed)"), 1, 20,
-        # value=st.session_state.header_row_input_widget, # valueはkeyから自動的に設定される
         key="header_row_input_widget"
     )
 
@@ -262,12 +276,12 @@ with st.sidebar:
     c1_need_ui, c2_need_ui = st.columns(2)
     with c1_need_ui:
         st.date_input(
-            _("Start Date"), # valueはkeyから自動的に設定される
+            _("Start Date"),
             key="need_ref_start_date_widget", help="Need算出の参照期間の開始日"
         )
     with c2_need_ui:
         st.date_input(
-            _("End Date"), # valueはkeyから自動的に設定される
+            _("End Date"),
             key="need_ref_end_date_widget", help="Need算出の参照期間の終了日"
         )
     st.caption(_("Reference Period for Need Calculation"))
@@ -283,7 +297,7 @@ with st.sidebar:
         key="need_stat_method_widget", help="曜日別・時間帯別のNeedを算出する際の統計指標"
     )
     st.checkbox(
-        _("Remove Outliers for Need Calculation"), # valueはkeyから自動的に設定される
+        _("Remove Outliers for Need Calculation"),
         key="need_remove_outliers_widget", help="IQR法で外れ値を除去してから統計量を計算します"
     )
 
@@ -306,12 +320,32 @@ with st.sidebar:
         )
 
     st.divider()
+    st.subheader("追加分析モジュール")
 
     st.multiselect(
         _("Extra modules"), st.session_state.available_ext_opts_widget,
-        default=st.session_state.ext_opts_multiselect_widget,
+        default=st.session_state.ext_opts_multiselect_widget, # 初期値はセッションステートから
         key="ext_opts_multiselect_widget", help="実行する追加の分析モジュールを選択します。"
     )
+
+    # ★ 休暇分析が選択されている場合のみ、関連パラメータ設定UIを表示
+    if _("Leave Analysis") in st.session_state.ext_opts_multiselect_widget:
+        with st.expander("📊 " + _("Leave Analysis") + " 設定", expanded=True):
+            st.multiselect(
+                "分析対象の休暇タイプ",
+                options=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID], # 将来的に 'その他休暇' なども追加可能
+                key="leave_analysis_target_types_widget",
+                help="分析する休暇の種類を選択します。"
+            )
+            # 希望休が分析対象に含まれている場合のみ閾値設定を表示
+            if LEAVE_TYPE_REQUESTED in st.session_state.leave_analysis_target_types_widget:
+                st.number_input(
+                    "希望休 集中度判定閾値 (人)", 
+                    min_value=1, 
+                    step=1,
+                    key="leave_concentration_threshold_widget",
+                    help="同日にこの人数以上の希望休があった場合に「集中」とみなします。"
+                )
 
     current_save_mode_idx_val = 0
     try: current_save_mode_idx_val = st.session_state.save_mode_selectbox_options_widget.index(st.session_state.save_mode_selectbox_widget)
@@ -385,15 +419,15 @@ if uploaded_file:
                         st.session_state._intended_need_ref_end_date = valid_dates_final[-1]
                         st.session_state._force_update_need_ref_dates_flag = True
                         log.info(f"Excel日付範囲推定(Need参照期間デフォルト用): {valid_dates_final[0]} - {valid_dates_final[-1]}")
-                    else: log.warning("Excelから有効な日付列が見つからず、日付範囲を推定できませんでした。") # この警告が新しいエラーの前に出ていた
+                    else: log.warning("Excelから有効な日付列が見つからず、日付範囲を推定できませんでした。")
                 else: log.warning("勤務区分シート以外の解析対象シートが見つからず、日付範囲を推定できませんでした。")
 
-                st.rerun() # ★ st.experimental_rerun() から修正
+                st.rerun()
 
             except Exception as e_date_range_process:
                 log.warning(f"Excelの日付範囲・シート名取得中に予期せぬエラー: {e_date_range_process}", exc_info=True)
         except Exception as e_save_file_process:
-            st.error(_("Error saving Excel file") + f": {e_save_file_process}");
+            st.error(_("Error saving Excel file") + f": {e_save_file_process}")
 
 # 「解析実行」ボタン
 run_button_disabled_status = not st.session_state.get("excel_path_for_run_script_str") or \
@@ -402,6 +436,7 @@ run_button_clicked = st.button(
     _("Run Analysis"), key="run_analysis_button_final_trigger", use_container_width=True, type="primary",
     disabled=run_button_disabled_status
 )
+
 # ─────────────────────────────  app.py  (Part 2 / 3)  ──────────────────────────
 if run_button_clicked:
     st.session_state.analysis_done = False
@@ -409,7 +444,8 @@ if run_button_clicked:
 
     excel_path_to_use = Path(st.session_state.excel_path_for_run_script_str) if st.session_state.excel_path_for_run_script_str else None
     if st.session_state.work_root_path_str is None or excel_path_to_use is None :
-        st.error("Excelファイルが正しくアップロードされていません。ファイルを再アップロードしてください。"); st.stop()
+        st.error("Excelファイルが正しくアップロードされていません。ファイルを再アップロードしてください。")
+        st.stop()
 
     work_root_exec = Path(st.session_state.work_root_path_str)
     st.session_state.out_dir_path_str = str(work_root_exec / "out")
@@ -436,9 +472,17 @@ if run_button_clicked:
     param_wage_temp = st.session_state.wage_temp_widget
     param_hiring_cost = st.session_state.hiring_cost_once_widget
     param_penalty_lack = st.session_state.penalty_per_lack_widget
+    
+    # ★ 休暇分析用パラメータの取得
+    param_leave_target_types = st.session_state.leave_analysis_target_types_widget
+    param_leave_concentration_threshold = st.session_state.leave_concentration_threshold_widget
+    
+    # ★ セッションステート内の前回結果をクリア
+    st.session_state.leave_analysis_results = {}
     # --- UI値取得ここまで ---
 
-    progress_text_area = st.empty(); progress_bar_val = st.progress(0)
+    progress_text_area = st.empty()
+    progress_bar_val = st.progress(0)
     total_steps_exec_run = 3 + len(param_ext_opts)
 
     def update_progress_exec_run(step_name_key_exec: str):
@@ -447,10 +491,12 @@ if run_button_clicked:
         progress_percentage_exec_run = min(progress_percentage_exec_run, 100)
         try:
             progress_bar_val.progress(progress_percentage_exec_run)
-            progress_text_area.info(f"⚙️ {st.session_state.current_step_for_progress}/{total_steps_exec_run} - {_ (step_name_key_exec)}")
-        except Exception as e_prog_exec_run: log.warning(f"進捗表示の更新中にエラー: {e_prog_exec_run}")
+            progress_text_area.info(f"⚙️ {st.session_state.current_step_for_progress}/{total_steps_exec_run} - {_(step_name_key_exec)}")
+        except Exception as e_prog_exec_run: 
+            log.warning(f"進捗表示の更新中にエラー: {e_prog_exec_run}")
 
-    st.markdown("---"); st.header("2. 解析処理")
+    st.markdown("---")
+    st.header("2. 解析処理")
     try:
         if param_selected_sheets and excel_path_to_use:
             update_progress_exec_run("File Preview (first 8 rows)")
@@ -458,8 +504,11 @@ if run_button_clicked:
             try:
                 preview_df_exec_run = pd.read_excel(excel_path_to_use, sheet_name=param_selected_sheets[0], header=None, nrows=8)
                 st.dataframe(preview_df_exec_run.astype(str), use_container_width=True)
-            except Exception as e_prev_exec_run: st.warning(_("Error during preview display") + f": {e_prev_exec_run}"); log.warning(f"プレビュー表示エラー: {e_prev_exec_run}", exc_info=True)
-        else: st.warning("プレビューを表示するシートが選択されていないか、ファイルパスが無効です。")
+            except Exception as e_prev_exec_run: 
+                st.warning(_("Error during preview display") + f": {e_prev_exec_run}")
+                log.warning(f"プレビュー表示エラー: {e_prev_exec_run}", exc_info=True)
+        else: 
+            st.warning("プレビューを表示するシートが選択されていないか、ファイルパスが無効です。")
 
         update_progress_exec_run("Ingest: Reading Excel data...")
         long_df, wt_df = ingest_excel(excel_path_to_use, shift_sheets=param_selected_sheets, header_row=param_header_row)
@@ -481,40 +530,119 @@ if run_button_clicked:
 
         update_progress_exec_run("Shortage: Analyzing shortage...")
         shortage_result_exec_run = shortage_and_brief(out_dir_exec, param_slot)
-        if shortage_result_exec_run is None: st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
-        else: st.success("✅ Shortage (不足分析) 完了")
+        if shortage_result_exec_run is None: 
+            st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
+        else: 
+            st.success("✅ Shortage (不足分析) 完了")
 
+        # ★----- 休暇分析モジュールの実行 -----★
+        # "休暇分析" (日本語) が選択されているか確認
+        if _("Leave Analysis") in param_ext_opts:
+            update_progress_exec_run("Leave Analysis: Processing...")
+            st.info(f"{_('Leave Analysis')} 処理中…")
+            try:
+                if 'long_df' in locals() and not long_df.empty:
+                    # 1. 日次・職員別の休暇取得フラグデータを生成
+                    daily_leave_df = leave_analyzer.get_daily_leave_counts(
+                        long_df,
+                        target_leave_types=param_leave_target_types
+                    )
+                    st.session_state.leave_analysis_results['daily_leave_df'] = daily_leave_df
+                    
+                    if not daily_leave_df.empty:
+                        leave_results_temp = {} # 一時的な結果格納用
+                        
+                        # 2. 希望休関連の集計と分析
+                        if LEAVE_TYPE_REQUESTED in param_leave_target_types:
+                            requested_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_REQUESTED]
+                            if not requested_leave_daily.empty:
+                                leave_results_temp['summary_dow_requested'] = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='dayofweek')
+                                leave_results_temp['summary_month_period_requested'] = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='month_period')
+                                leave_results_temp['summary_month_requested'] = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='month')
+                                
+                                daily_requested_applicants_counts = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='date')
+                                leave_results_temp['concentration_requested'] = leave_analyzer.analyze_leave_concentration(
+                                    daily_requested_applicants_counts,
+                                    leave_type_to_analyze=LEAVE_TYPE_REQUESTED,
+                                    concentration_threshold=param_leave_concentration_threshold
+                                )
+                            else:
+                                log.info(f"{LEAVE_TYPE_REQUESTED} のデータが見つからなかったため、関連する集計・分析をスキップしました。")
+                                leave_results_temp['summary_dow_requested'] = pd.DataFrame()
+                                leave_results_temp['summary_month_period_requested'] = pd.DataFrame()
+                                leave_results_temp['summary_month_requested'] = pd.DataFrame()
+                                leave_results_temp['concentration_requested'] = pd.DataFrame()
+                        
+                        # 3. 有給休暇関連の集計
+                        if LEAVE_TYPE_PAID in param_leave_target_types:
+                            paid_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_PAID]
+                            if not paid_leave_daily.empty:
+                                leave_results_temp['summary_dow_paid'] = leave_analyzer.summarize_leave_by_day_count(paid_leave_daily.copy(), period='dayofweek')
+                                leave_results_temp['summary_month_paid'] = leave_analyzer.summarize_leave_by_day_count(paid_leave_daily.copy(), period='month')
+                            else:
+                                log.info(f"{LEAVE_TYPE_PAID} のデータが見つからなかったため、関連する集計をスキップしました。")
+                                leave_results_temp['summary_dow_paid'] = pd.DataFrame()
+                                leave_results_temp['summary_month_paid'] = pd.DataFrame()
+                        
+                        # 4. 職員別休暇リスト (終日のみ)
+                        leave_results_temp['staff_leave_list'] = leave_analyzer.get_staff_leave_list(long_df, target_leave_types=param_leave_target_types)
+                        
+                        st.session_state.leave_analysis_results.update(leave_results_temp)
+                        st.success(f"✅ {_('Leave Analysis')} 完了")
+                    else:
+                        st.info(f"{_('Leave Analysis')}: 分析対象となる休暇データが見つかりませんでした。")
+                else:
+                    st.warning(f"{_('Leave Analysis')}: 前提となる long_df が存在しないか空のため、処理をスキップしました。")
+            except Exception as e_leave:
+                st.error(f"{_('Leave Analysis')} の処理中にエラーが発生しました: {e_leave}")
+                log.error(f"休暇分析エラー: {e_leave}", exc_info=True)
+        # ★----- 休暇分析モジュールの実行ここまで -----★
+
+        # 他の追加モジュールの実行
         for opt_module_name_exec_run in st.session_state.available_ext_opts_widget:
-            if opt_module_name_exec_run in param_ext_opts:
+            if opt_module_name_exec_run in param_ext_opts and opt_module_name_exec_run != _("Leave Analysis"):
                 progress_key_exec_run = f"{opt_module_name_exec_run}: Processing..."
                 update_progress_exec_run(progress_key_exec_run)
                 st.info(f"{_(opt_module_name_exec_run)} 処理中…")
                 try:
-                    if opt_module_name_exec_run == "Stats": build_stats(out_dir_exec)
-                    elif opt_module_name_exec_run == "Anomaly": detect_anomaly(out_dir_exec)
-                    elif opt_module_name_exec_run == "Fatigue": train_fatigue(long_df, out_dir_exec)
-                    elif opt_module_name_exec_run == "Cluster": cluster_staff(long_df, out_dir_exec)
-                    elif opt_module_name_exec_run == "Skill": build_skill_matrix(long_df, out_dir_exec)
-                    elif opt_module_name_exec_run == "Fairness": run_fairness(long_df, out_dir_exec)
+                    if opt_module_name_exec_run == "Stats": 
+                        build_stats(out_dir_exec)
+                    elif opt_module_name_exec_run == "Anomaly": 
+                        detect_anomaly(out_dir_exec)
+                    elif opt_module_name_exec_run == "Fatigue": 
+                        train_fatigue(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Cluster": 
+                        cluster_staff(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Skill": 
+                        build_skill_matrix(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Fairness": 
+                        run_fairness(long_df, out_dir_exec)
                     elif opt_module_name_exec_run == "Need forecast":
                         demand_csv_exec_run_fc = out_dir_exec / "demand_series.csv"
                         forecast_xls_exec_run_fc = out_dir_exec / "forecast.xlsx"
                         heat_all_for_fc_exec_run_fc = out_dir_exec / "heat_ALL.xlsx"
-                        if not heat_all_for_fc_exec_run_fc.exists(): st.warning(f"Need forecast: 必須ファイル {heat_all_for_fc_exec_run_fc.name} が見つかりません。")
+                        if not heat_all_for_fc_exec_run_fc.exists(): 
+                            st.warning(f"Need forecast: 必須ファイル {heat_all_for_fc_exec_run_fc.name} が見つかりません。")
                         else:
                             build_demand_series(heat_all_for_fc_exec_run_fc, demand_csv_exec_run_fc)
-                            if demand_csv_exec_run_fc.exists(): forecast_need(demand_csv_exec_run_fc, forecast_xls_exec_run_fc)
-                            else: st.warning("Need forecast: demand_series.csv の生成に失敗しました。")
+                            if demand_csv_exec_run_fc.exists(): 
+                                forecast_need(demand_csv_exec_run_fc, forecast_xls_exec_run_fc)
+                            else: 
+                                st.warning("Need forecast: demand_series.csv の生成に失敗しました。")
                     elif opt_module_name_exec_run == "RL roster (PPO)":
                         demand_csv_rl_exec_run_rl = out_dir_exec / "demand_series.csv"
                         rl_roster_xls_exec_run_rl = out_dir_exec / "rl_roster.xlsx"
-                        if demand_csv_rl_exec_run_rl.exists(): learn_roster(demand_csv_rl_exec_run_rl, rl_roster_xls_exec_run_rl)
-                        else: st.warning("RL Roster: 需要予測データ (demand_series.csv) がありません。")
+                        if demand_csv_rl_exec_run_rl.exists(): 
+                            learn_roster(demand_csv_rl_exec_run_rl, rl_roster_xls_exec_run_rl)
+                        else: 
+                            st.warning("RL Roster: 需要予測データ (demand_series.csv) がありません。")
                     elif opt_module_name_exec_run == "Hire plan":
                         demand_csv_hp_exec_run_hp = out_dir_exec / "demand_series.csv"
                         hire_xls_exec_run_hp = out_dir_exec / "hire_plan.xlsx"
-                        if demand_csv_hp_exec_run_hp.exists(): build_hire_plan(demand_csv_hp_exec_run_hp, hire_xls_exec_run_hp, param_std_work_hours, param_safety_factor, param_target_coverage)
-                        else: st.warning("Hire Plan: 需要予測データ (demand_series.csv) がありません。")
+                        if demand_csv_hp_exec_run_hp.exists(): 
+                            build_hire_plan(demand_csv_hp_exec_run_hp, hire_xls_exec_run_hp, param_std_work_hours, param_safety_factor, param_target_coverage)
+                        else: 
+                            st.warning("Hire Plan: 需要予測データ (demand_series.csv) がありません。")
                     elif opt_module_name_exec_run == "Cost / Benefit":
                         analyze_cost_benefit(out_dir_exec, param_wage_direct, param_wage_temp, param_hiring_cost, param_penalty_lack)
                     st.success(f"✅ {_(opt_module_name_exec_run)} 完了")
@@ -525,26 +653,34 @@ if run_button_clicked:
                     st.error(f"{_(opt_module_name_exec_run)} の処理中にエラーが発生しました: {e_opt_exec_run_loop}")
                     log.error(f"{opt_module_name_exec_run} 処理エラー: {e_opt_exec_run_loop}", exc_info=True)
 
-        progress_bar_val.progress(100); progress_text_area.success("✨ 全工程完了！")
-        st.balloons(); st.success(_("All processes complete!"))
+        progress_bar_val.progress(100)
+        progress_text_area.success("✨ 全工程完了！")
+        st.balloons()
+        st.success(_("All processes complete!"))
         st.session_state.analysis_done = True
     except ValueError as ve_exec_run_main:
-        st.error(_("Error during analysis (ValueError)") + f": {ve_exec_run_main}"); log.error(f"解析エラー (ValueError): {ve_exec_run_main}", exc_info=True)
+        st.error(_("Error during analysis (ValueError)") + f": {ve_exec_run_main}")
+        log.error(f"解析エラー (ValueError): {ve_exec_run_main}", exc_info=True)
         st.session_state.analysis_done = False
     except FileNotFoundError as fe_exec_run_main:
-        st.error(_("Required file not found") + f": {fe_exec_run_main}"); log.error(f"ファイル未検出エラー: {fe_exec_run_main}", exc_info=True)
+        st.error(_("Required file not found") + f": {fe_exec_run_main}")
+        log.error(f"ファイル未検出エラー: {fe_exec_run_main}", exc_info=True)
         st.session_state.analysis_done = False
     except Exception as e_exec_run_main:
-        st.error(_("Unexpected error occurred") + f": {e_exec_run_main}"); log.error(f"予期せぬエラー: {e_exec_run_main}", exc_info=True)
+        st.error(_("Unexpected error occurred") + f": {e_exec_run_main}")
+        log.error(f"予期せぬエラー: {e_exec_run_main}", exc_info=True)
         st.session_state.analysis_done = False
     finally:
-        if 'progress_bar_val' in locals() and progress_bar_val is not None: progress_bar_val.empty()
-        if 'progress_text_area' in locals() and progress_text_area is not None: progress_text_area.empty()
+        if 'progress_bar_val' in locals() and progress_bar_val is not None: 
+            progress_bar_val.empty()
+        if 'progress_text_area' in locals() and progress_text_area is not None: 
+            progress_text_area.empty()
 
     if st.session_state.analysis_done and st.session_state.out_dir_path_str:
         out_dir_to_save_exec_main_run = Path(st.session_state.out_dir_path_str)
         if out_dir_to_save_exec_main_run.exists():
-            st.markdown("---"); st.header("3. " + _("Save Analysis Results"))
+            st.markdown("---")
+            st.header("3. " + _("Save Analysis Results"))
             current_save_mode_exec_main_run = st.session_state.save_mode_selectbox_widget
             if current_save_mode_exec_main_run == _("Save to folder"):
                 st.info(_("Output folder") + f": `{out_dir_to_save_exec_main_run}`")
@@ -568,19 +704,130 @@ if run_button_clicked:
                     except Exception as e_zip_final_exec_run_main_ex_v3:
                         st.error(_("Error creating ZIP file") + f": {e_zip_final_exec_run_main_ex_v3}")
                         log.error(f"ZIP作成エラー (最終段階): {e_zip_final_exec_run_main_ex_v3}", exc_info=True)
-        else: log.warning(f"解析は完了しましたが、出力ディレクトリ '{out_dir_to_save_exec_main_run}' が見つかりません。")
+        else: 
+            log.warning(f"解析は完了しましたが、出力ディレクトリ '{out_dir_to_save_exec_main_run}' が見つかりません。")
+
+# ★ 新しい「休暇分析」タブの表示 (解析が完了し、休暇分析が選択されている場合)
+if st.session_state.get("analysis_done", False) and \
+   _("Leave Analysis") in st.session_state.get("ext_opts_multiselect_widget", []) and \
+   st.session_state.get("leave_analysis_results"):
+    st.divider()
+    st.header("📊 " + _("Leave Analysis") + " 結果")
+    results = st.session_state.leave_analysis_results
+    
+    tab_leave_requested, tab_leave_paid, tab_leave_staff_detail = st.tabs([
+        "希望休 分析", 
+        "有給休暇 分析", 
+        "職員別 休暇リスト"
+    ])
+    
+    with tab_leave_requested:
+        st.subheader("希望休の傾向")
+        if LEAVE_TYPE_REQUESTED in st.session_state.get("leave_analysis_target_types_widget", []):
+            summary_dow_req = results.get('summary_dow_requested')
+            if summary_dow_req is not None and not summary_dow_req.empty:
+                st.write("曜日別の希望休取得件数:")
+                st.bar_chart(summary_dow_req.set_index('period_unit')['total_leave_days'])
+            else:
+                st.write("曜日別の希望休データはありません。")
+            
+            summary_month_period_req = results.get('summary_month_period_requested')
+            if summary_month_period_req is not None and not summary_month_period_req.empty:
+                st.write("月初・月中・月末別の希望休取得件数:")
+                st.bar_chart(summary_month_period_req.set_index('period_unit')['total_leave_days'])
+            else:
+                st.write("月初・月中・月末別の希望休データはありません。")
+            
+            summary_month_req = results.get('summary_month_requested')
+            if summary_month_req is not None and not summary_month_req.empty:
+                st.write("月別の希望休取得件数:")
+                st.line_chart(summary_month_req.set_index('period_unit')['total_leave_days'])
+            else:
+                st.write("月別の希望休データはありません。")
+            
+            concentration_req = results.get('concentration_requested')
+            if concentration_req is not None and not concentration_req.empty:
+                concentrated_days_req = concentration_req[concentration_req['is_concentrated']]
+                if not concentrated_days_req.empty:
+                    st.write(f"希望休が {st.session_state.leave_concentration_threshold_widget} 人以上集中している日:")
+                    st.dataframe(
+                        concentrated_days_req[['date', 'leave_applicants_count']].rename(
+                            columns={'date':'日付', 'leave_applicants_count':'希望休取得者数'}
+                        ).reset_index(drop=True)
+                    )
+                else:
+                    st.write(f"希望休が {st.session_state.leave_concentration_threshold_widget} 人以上集中している日はありませんでした。")
+            else:
+                st.write("希望休の集中度データはありません。")
+        else:
+            st.info("希望休は分析対象として選択されていません。")
+    
+    with tab_leave_paid:
+        st.subheader("有給休暇の傾向 (終日のみ)")
+        if LEAVE_TYPE_PAID in st.session_state.get("leave_analysis_target_types_widget", []):
+            summary_dow_paid = results.get('summary_dow_paid')
+            if summary_dow_paid is not None and not summary_dow_paid.empty:
+                st.write("曜日別の有給休暇取得日数:")
+                st.bar_chart(summary_dow_paid.set_index('period_unit')['total_leave_days'])
+            else:
+                st.write("曜日別の有給休暇データはありません。")
+            
+            summary_month_paid = results.get('summary_month_paid')
+            if summary_month_paid is not None and not summary_month_paid.empty:
+                st.write("月別の有給休暇取得日数:")
+                st.line_chart(summary_month_paid.set_index('period_unit')['total_leave_days'])
+            else:
+                st.write("月別の有給休暇データはありません。")
+        else:
+            st.info("有給休暇は分析対象として選択されていません。")
+            
+    with tab_leave_staff_detail:
+        st.subheader("職員別 休暇リスト (終日希望休・終日有給)")
+        staff_leave_list_df = results.get('staff_leave_list')
+        if staff_leave_list_df is not None and not staff_leave_list_df.empty:
+            all_staff_names = sorted(staff_leave_list_df['staff'].unique())
+            selected_staff_for_detail = st.selectbox(
+                "詳細を表示する職員を選択", 
+                options=["全員表示"] + all_staff_names, 
+                key="leave_detail_staff_select"
+            )
+            if selected_staff_for_detail == "全員表示":
+                st.dataframe(staff_leave_list_df, height=400, use_container_width=True)
+            else:
+                st.dataframe(
+                    staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail], 
+                    height=400, use_container_width=True
+                )
+        else:
+            st.write("表示できる職員別の休暇データがありません。")
 
 # ─────────────────────────────  app.py  (Part 3 / 3)  ──────────────────────────
-def display_overview_tab(tab, data_dir): tab.write(f"Overview from {data_dir}")
-def display_heatmap_tab(tab, data_dir): tab.write(f"Heatmap from {data_dir}")
-def display_shortage_tab(tab, data_dir): tab.write(f"Shortage from {data_dir}")
-def display_fatigue_tab(tab, data_dir): tab.write(f"Fatigue from {data_dir}")
-def display_forecast_tab(tab, data_dir): tab.write(f"Forecast from {data_dir}")
-def display_fairness_tab(tab, data_dir): tab.write(f"Fairness from {data_dir}")
-def display_costsim_tab(tab, data_dir): tab.write(f"Cost Sim from {data_dir}")
-def display_hireplan_tab(tab, data_dir): tab.write(f"Hire Plan from {data_dir}")
-def display_ppt_tab(tab, data_dir): tab.write(f"PPT Report from {data_dir}")
+def display_overview_tab(tab, data_dir): 
+    tab.write(f"Overview from {data_dir}")
 
+def display_heatmap_tab(tab, data_dir): 
+    tab.write(f"Heatmap from {data_dir}")
+
+def display_shortage_tab(tab, data_dir): 
+    tab.write(f"Shortage from {data_dir}")
+
+def display_fatigue_tab(tab, data_dir): 
+    tab.write(f"Fatigue from {data_dir}")
+
+def display_forecast_tab(tab, data_dir): 
+    tab.write(f"Forecast from {data_dir}")
+
+def display_fairness_tab(tab, data_dir): 
+    tab.write(f"Fairness from {data_dir}")
+
+def display_costsim_tab(tab, data_dir): 
+    tab.write(f"Cost Sim from {data_dir}")
+
+def display_hireplan_tab(tab, data_dir): 
+    tab.write(f"Hire Plan from {data_dir}")
+
+def display_ppt_tab(tab, data_dir): 
+    tab.write(f"PPT Report from {data_dir}")
 
 st.divider()
 st.header(_("Dashboard (Upload ZIP)"))
@@ -601,17 +848,23 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
                  extracted_data_dir = current_dash_tmp_dir
             else:
                 found_heat_all = list(current_dash_tmp_dir.rglob("heat_ALL.xlsx"))
-                if found_heat_all: extracted_data_dir = found_heat_all[0].parent
-                else: st.error(_("heat_ALL.xlsx not found in ZIP")); log.error(f"ZIP展開後、heat_ALL.xlsx が見つかりません in {current_dash_tmp_dir}"); st.stop()
+                if found_heat_all: 
+                    extracted_data_dir = found_heat_all[0].parent
+                else: 
+                    st.error(_("heat_ALL.xlsx not found in ZIP"))
+                    log.error(f"ZIP展開後、heat_ALL.xlsx が見つかりません in {current_dash_tmp_dir}")
+                    st.stop()
         log.info(f"ダッシュボード表示用のデータディレクトリ: {extracted_data_dir}")
     except Exception as e_zip:
-        st.error(_("Error during ZIP file extraction") + f": {e_zip}"); log.error(f"ZIP展開中エラー: {e_zip}", exc_info=True); st.stop()
+        st.error(_("Error during ZIP file extraction") + f": {e_zip}")
+        log.error(f"ZIP展開中エラー: {e_zip}", exc_info=True)
+        st.stop()
 
     import plotly.express as px
     import plotly.graph_objects as go
 
     tab_keys_en_dash = ["Overview", "Heatmap", "Shortage", "Fatigue", "Forecast", "Fairness", "Cost Sim", "Hire Plan", "PPT Report"]
-    tab_labels_dash = [_ (key) for key in tab_keys_en_dash]
+    tab_labels_dash = [_(key) for key in tab_keys_en_dash]
     tabs_obj_dash = st.tabs(tab_labels_dash)
 
     if extracted_data_dir:
@@ -637,6 +890,7 @@ if __name__ == "__main__" and not st_runtime_exists():
     try:
         cli_args = parser.parse_args()
         log.info(f"CLI Args: file='{cli_args.xlsx_file_cli}', sheets={cli_args.sheets_cli}, header={cli_args.header_cli}")
-    except SystemExit: pass
+    except SystemExit: 
+        pass
     except Exception as e_cli:
         log.error(f"CLIモードでの実行中にエラー: {e_cli}", exc_info=True)
