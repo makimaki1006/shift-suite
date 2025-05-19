@@ -1,0 +1,308 @@
+# shift_suite/tasks/leave_analyzer.py
+from __future__ import annotations
+import pandas as pd
+import datetime as dt
+from typing import List, Dict, Any, Literal, Union # Union を追加
+import logging
+
+logger = logging.getLogger(__name__)
+if not logger.handlers: # ログハンドラが重複しないように設定
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    logger.setLevel(logging.INFO)
+
+
+# --- 定数 ---
+LEAVE_TYPE_PAID = '有給'
+LEAVE_TYPE_REQUESTED = '希望休'
+# DEFAULT_HOLIDAY_TYPE = '通常勤務' # io_excel.py で定義されているものを参照する形でも良い
+
+# --- Helper Functions ---
+def _is_full_day_leave(parsed_slots_count_val: Union[int, float]) -> bool:
+    """
+    parsed_slots_count が0またはそれに近い場合に終日休暇と判定する。
+    （io_excel.pyのparsed_slots_countはintのはずだが、念のためfloatも許容）
+    """
+    return pd.isna(parsed_slots_count_val) or parsed_slots_count_val == 0
+
+
+# --- Core Analysis Functions ---
+
+def get_daily_leave_counts(
+    long_df: pd.DataFrame,
+    target_leave_types: List[str] = [LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID]
+) -> pd.DataFrame:
+    """
+    日別・職員別・休暇タイプ別の休暇取得「日数」（1日単位）を集計する。
+    - 希望休: その日に該当コードがあれば1日としてカウント。
+    - 有給休暇: 終日有給(parsed_slots_count=0)の場合に1日としてカウント。
+               一部勤務・一部有給(P有など parsed_slots_count > 0)は、
+               ここでは有給休暇日数としてはカウントしない。
+    """
+    if long_df.empty or 'ds' not in long_df.columns:
+        logger.warning("入力されたlong_dfが空またはds列がありません。")
+        return pd.DataFrame(columns=['date', 'staff', 'leave_type', 'leave_day_flag'])
+
+    # 対象の休暇タイプレコードのみ抽出
+    # holiday_type列が存在することを確認
+    if 'holiday_type' not in long_df.columns:
+        logger.error("long_dfにholiday_type列が存在しません。休暇分析を実行できません。")
+        return pd.DataFrame(columns=['date', 'staff', 'leave_type', 'leave_day_flag'])
+        
+    leave_df = long_df[long_df['holiday_type'].isin(target_leave_types)].copy()
+    if leave_df.empty:
+        logger.info("対象となる休暇タイプレコードが見つかりませんでした。")
+        return pd.DataFrame(columns=['date', 'staff', 'leave_type', 'leave_day_flag'])
+
+    leave_df['date'] = leave_df['ds'].dt.normalize() # 日付部分のみに正規化
+
+    # 休暇日フラグ（その日にそのタイプの休暇を取得したか）を立てる
+    processed_records = []
+    for _, row in leave_df.iterrows():
+        is_target_leave = False
+        if row['holiday_type'] == LEAVE_TYPE_REQUESTED:
+            # 希望休は parsed_slots_count == 0 であることを前提とする
+            if _is_full_day_leave(row['parsed_slots_count']):
+                is_target_leave = True
+        elif row['holiday_type'] == LEAVE_TYPE_PAID:
+            # 有給は parsed_slots_count == 0 (終日有給) の場合のみカウント
+            if _is_full_day_leave(row['parsed_slots_count']):
+                is_target_leave = True
+        
+        if is_target_leave:
+            processed_records.append({
+                'date': row['date'],
+                'staff': row['staff'],
+                'leave_type': row['holiday_type'],
+                'leave_day_flag': 1 # 休暇取得日としてフラグを立てる
+            })
+    
+    if not processed_records:
+        return pd.DataFrame(columns=['date', 'staff', 'leave_type', 'leave_day_flag'])
+
+    # 日付と職員と休暇タイプで重複を除去（例：long_dfが時間スロットごとなので、1日の休暇は複数行になるため）
+    daily_leave_df = pd.DataFrame(processed_records).drop_duplicates(subset=['date', 'staff', 'leave_type'])
+    
+    return daily_leave_df.sort_values(by=['date', 'staff', 'leave_type']).reset_index(drop=True)
+
+
+def summarize_leave_by_day_count(
+    daily_leave_df: pd.DataFrame, # get_daily_leave_counts の出力
+    period: Literal['dayofweek', 'month', 'month_period', 'date'] = 'dayofweek',
+) -> pd.DataFrame:
+    """
+    日別休暇取得フラグデータを基に、指定された期間ごとの休暇取得「総日数（総回数）」を集計する。
+    """
+    if daily_leave_df.empty or 'leave_day_flag' not in daily_leave_df.columns:
+        logger.warning("入力されたdaily_leave_dfが空またはleave_day_flag列がありません。")
+        return pd.DataFrame()
+
+    df_to_agg = daily_leave_df.copy()
+    df_to_agg['date'] = pd.to_datetime(df_to_agg['date'])
+
+
+    if period == 'dayofweek':
+        df_to_agg['period_unit'] = df_to_agg['date'].dt.day_name()
+        days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        # 日本語対応
+        day_name_map_jp = {"Monday": "月曜日", "Tuesday": "火曜日", "Wednesday": "水曜日", 
+                           "Thursday": "木曜日", "Friday": "金曜日", "Saturday": "土曜日", "Sunday": "日曜日"}
+        days_of_week_jp = [day_name_map_jp[d] for d in days_of_week]
+        df_to_agg['period_unit'] = pd.Categorical(df_to_agg['period_unit'].map(day_name_map_jp), categories=days_of_week_jp, ordered=True)
+
+    elif period == 'month':
+        df_to_agg['period_unit'] = df_to_agg['date'].dt.to_period('M').astype(str)
+    elif period == 'month_period':
+        def get_month_period(day_val: int) -> str:
+            if day_val <= 10: return '月初(1-10日)'
+            elif day_val <= 20: return '月中(11-20日)'
+            else: return '月末(21-末日)'
+        df_to_agg['period_unit'] = df_to_agg['date'].dt.day.apply(get_month_period)
+        month_periods_order = ['月初(1-10日)', '月中(11-20日)', '月末(21-末日)']
+        df_to_agg['period_unit'] = pd.Categorical(df_to_agg['period_unit'], categories=month_periods_order, ordered=True)
+    elif period == 'date': # 日別の集計
+        df_to_agg['period_unit'] = df_to_agg['date']
+    else:
+        logger.error(f"未対応の集計期間: {period}")
+        return pd.DataFrame()
+
+    summary = df_to_agg.groupby(['period_unit', 'leave_type'], observed=False)['leave_day_flag'].sum().reset_index(name='total_leave_days')
+    
+    if period == 'date': # 日別の場合、日付でソート
+        summary = summary.sort_values(by=['period_unit', 'leave_type']).reset_index(drop=True)
+        summary.rename(columns={'period_unit':'date'}, inplace=True)
+    else: # それ以外の期間の場合
+        summary = summary.sort_values(by=['period_unit', 'leave_type']).reset_index(drop=True)
+
+    return summary
+
+def analyze_leave_concentration(
+    daily_leave_counts_df: pd.DataFrame, # summarize_leave_by_day_count(period='date') の出力など、日別・休暇タイプ別の取得総日数
+    leave_type_to_analyze: str = LEAVE_TYPE_REQUESTED,
+    concentration_threshold: int = 3
+) -> pd.DataFrame:
+    """
+    指定された休暇タイプ（主に希望休）の日ごとの取得者数を評価し、
+    閾値を超える日（集中日）を特定する。
+    """
+    if daily_leave_counts_df.empty or 'total_leave_days' not in daily_leave_counts_df.columns:
+        logger.warning("入力されたdaily_leave_counts_dfが空またはtotal_leave_days列がありません。")
+        return pd.DataFrame(columns=['date', 'leave_applicants_count', 'is_concentrated'])
+
+    target_df = daily_leave_counts_df[daily_leave_counts_df['leave_type'] == leave_type_to_analyze].copy()
+    if target_df.empty:
+        logger.info(f"{leave_type_to_analyze} のデータが見つかりません。集中度分析をスキップします。")
+        return pd.DataFrame(columns=['date', 'leave_applicants_count', 'is_concentrated'])
+
+    concentration_df = target_df.rename(columns={'total_leave_days': 'leave_applicants_count'})
+    concentration_df['is_concentrated'] = concentration_df['leave_applicants_count'] >= concentration_threshold
+    
+    return concentration_df[['date', 'leave_applicants_count', 'is_concentrated']].sort_values(by='date').reset_index(drop=True)
+
+
+def get_staff_leave_list(
+    long_df: pd.DataFrame,
+    target_leave_types: List[str] = [LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID]
+) -> pd.DataFrame:
+    """
+    職員ごと・休暇タイプごとの休暇取得日リスト（終日休暇のみ）を作成する。
+    """
+    if long_df.empty or 'ds' not in long_df.columns:
+        return pd.DataFrame(columns=['staff', 'role', 'leave_type', 'leave_date'])
+
+    if 'holiday_type' not in long_df.columns:
+        return pd.DataFrame(columns=['staff', 'role', 'leave_type', 'leave_date'])
+        
+    leave_df = long_df[
+        long_df['holiday_type'].isin(target_leave_types) &
+        (long_df.apply(lambda row: _is_full_day_leave(row['parsed_slots_count']), axis=1))
+    ].copy()
+
+    if leave_df.empty:
+        return pd.DataFrame(columns=['staff', 'role', 'leave_type', 'leave_date'])
+        
+    leave_df['leave_date'] = leave_df['ds'].dt.date
+    
+    # staff, role, holiday_type, leave_date でユニークなリストを作成
+    staff_leave_list_df = leave_df[['staff', 'role', 'holiday_type', 'leave_date']].drop_duplicates().sort_values(
+        by=['staff', 'role', 'holiday_type', 'leave_date']
+    ).reset_index(drop=True)
+    
+    return staff_leave_list_df
+
+# --- CLI実行のためのダミーコード (app.pyから呼び出す際は不要) ---
+if __name__ == '__main__':
+    logger.setLevel(logging.DEBUG)
+    # ダミーデータ作成
+    sample_data = {
+        'ds': pd.to_datetime([
+            '2023-01-01 00:00', '2023-01-01 00:30', # 山田 希望休
+            '2023-01-01 00:00', '2023-01-01 00:30', # 田中 有給
+            '2023-01-02 09:00', '2023-01-02 09:30', # 山田 P有 (午前勤務)
+            '2023-01-02 00:00',                     # 鈴木 希望休
+            '2023-01-03 00:00',                     # 田中 希望休
+            '2023-01-08 00:00',                     # 山田 希望休 (週明け月曜)
+        ]),
+        'staff': [
+            '山田太郎', '山田太郎', 
+            '田中花子', '田中花子',
+            '山田太郎', '山田太郎', 
+            '鈴木一郎', 
+            '田中花子',
+            '山田太郎',
+        ],
+        'role': ['A', 'A', 'B', 'B', 'A', 'A', 'A', 'B', 'A'], # 配列長を合わせる
+        'code': [
+            '希', '希', 
+            '有', '有', 
+            'P有', 'P有', 
+            '希', 
+            '希',
+            '希',
+        ],
+        'holiday_type': [
+            LEAVE_TYPE_REQUESTED, LEAVE_TYPE_REQUESTED,
+            LEAVE_TYPE_PAID, LEAVE_TYPE_PAID,
+            LEAVE_TYPE_PAID, LEAVE_TYPE_PAID, # P有はholiday_type='有給'
+            LEAVE_TYPE_REQUESTED,
+            LEAVE_TYPE_REQUESTED,
+            LEAVE_TYPE_REQUESTED,
+        ],
+        'parsed_slots_count': [
+            0, 0,
+            0, 0,
+            2, 2, # P有は午前勤務2スロット(1時間)とする例
+            0,
+            0,
+            0,
+        ]
+    }
+    # staffとroleの配列長をdsに合わせる
+    num_records = len(sample_data['ds'])
+    sample_data['role'] = (sample_data['role'] * (num_records // len(sample_data['role']) + 1))[:num_records]
+
+
+    sample_long_df = pd.DataFrame(sample_data)
+
+    logger.info("--- get_daily_leave_counts ---")
+    daily_counts = get_daily_leave_counts(sample_long_df)
+    print(daily_counts)
+    # 期待される出力例 (P有は有給日数にはカウントされない):
+    #          date   staff leave_type  leave_day_flag
+    # 0  2023-01-01  田中花子         有給               1
+    # 1  2023-01-01  山田太郎       希望休               1
+    # 2  2023-01-02  鈴木一郎       希望休               1
+    # 3  2023-01-03  田中花子       希望休               1
+    # 4  2023-01-08  山田太郎       希望休               1
+
+
+    logger.info("\n--- summarize_leave_by_day_count (dayofweek for 希望休) ---")
+    requested_leave_daily = daily_counts[daily_counts['leave_type'] == LEAVE_TYPE_REQUESTED]
+    summary_dow_req = summarize_leave_by_day_count(requested_leave_daily, period='dayofweek')
+    print(summary_dow_req)
+    # 期待される出力例 (日本語曜日):
+    #   period_unit leave_type  total_leave_days  num_days_in_period_unit  avg_leave_days_per_day
+    # 0        月曜日       希望休                   2                        2                     1.0
+    # 1        火曜日       希望休                   1                        1                     1.0
+    # 2        日曜日       希望休                   1                        1                     1.0
+    
+    logger.info("\n--- summarize_leave_by_day_count (month_period for 有給) ---")
+    paid_leave_daily = daily_counts[daily_counts['leave_type'] == LEAVE_TYPE_PAID]
+    summary_month_period_paid = summarize_leave_by_day_count(paid_leave_daily, period='month_period')
+    print(summary_month_period_paid)
+    # 期待される出力例:
+    #     period_unit leave_type  total_leave_days  num_days_in_period_unit  avg_leave_days_per_day
+    # 0  月初(1-10日)         有給                   1                        1                     1.0
+
+
+    logger.info("\n--- analyze_leave_concentration (希望休, threshold=2) ---")
+    daily_requested_summary = summarize_leave_by_day_count(requested_leave_daily, period='date')
+    concentration = analyze_leave_concentration(daily_requested_summary, concentration_threshold=2)
+    print(concentration)
+    # 期待される出力例 (2023-01-01 が集中日になるはずだが、get_daily_leave_countsの仕様変更でstaffでnuniqueするので、
+    # このサンプルでは集中日は出ない。もし日別の総件数なら出る)
+    # → get_daily_leave_counts は staff ごとのフラグなので、analyze_leave_concentration に渡す前に
+    #    日付ごとに staff 数を再集計する必要がある。
+    #    修正：summarize_leave_by_day_count(period='date') の出力をそのまま使えるように、
+    #    analyze_leave_concentration は日別・タイプ別の合計日数（＝該当者数）を期待する。
+
+    # analyze_leave_concentration のための日別取得者数データを作成
+    daily_applicants_requested = requested_leave_daily.groupby(['date', 'leave_type'])['staff'].nunique().reset_index(name='total_leave_days')
+    logger.info("\n--- analyze_leave_concentration (希望休, threshold=1) using re-aggregated data ---")
+    concentration_adj = analyze_leave_concentration(daily_applicants_requested, concentration_threshold=1)
+    print(concentration_adj[concentration_adj['is_concentrated']])
+    #          date  leave_applicants_count  is_concentrated
+    # 0 2023-01-01                       1             True # 山田
+    # 1 2023-01-02                       1             True # 鈴木
+    # 2 2023-01-03                       1             True # 田中
+    # 3 2023-01-08                       1             True # 山田
+
+    logger.info("\n--- get_staff_leave_list (山田太郎) ---")
+    staff_leaves = get_staff_leave_list(sample_long_df, target_leave_types=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID])
+    print(staff_leaves[staff_leaves['staff'] == '山田太郎'])
+    # 期待される出力例 (P有の有給部分は終日ではないためリストされない):
+    #          staff role leave_type  leave_date
+    # 1  山田太郎    A       希望休  2023-01-01
+    # 2  山田太郎    A       希望休  2023-01-08
