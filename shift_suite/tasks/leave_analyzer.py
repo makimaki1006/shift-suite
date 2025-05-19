@@ -194,6 +194,68 @@ def get_staff_leave_list(
     
     return staff_leave_list_df
 
+
+def get_staff_by_period(
+    daily_leave_df: pd.DataFrame, # get_daily_leave_counts の出力
+    period: Literal['dayofweek', 'month_period'] = 'dayofweek',
+    leave_type: str = None
+) -> Dict[str, List[str]]:
+    """
+    日別休暇取得データを基に、指定された期間ごとの休暇取得職員リストを作成する。
+    
+    Args:
+        daily_leave_df: 日別・職員別・休暇タイプ別の休暇取得フラグデータ
+        period: 集計期間 ('dayofweek'=曜日別, 'month_period'=月内期間別)
+        leave_type: 集計対象の休暇タイプ (Noneの場合は全タイプ)
+        
+    Returns:
+        期間単位ごとの職員リスト (辞書形式)
+    """
+    if daily_leave_df.empty or 'leave_day_flag' not in daily_leave_df.columns:
+        logger.warning("入力されたdaily_leave_dfが空またはleave_day_flag列がありません。")
+        return {}
+
+    df_to_process = daily_leave_df.copy()
+    
+    if leave_type is not None:
+        df_to_process = df_to_process[df_to_process['leave_type'] == leave_type]
+        if df_to_process.empty:
+            logger.info(f"{leave_type} のデータが見つかりません。")
+            return {}
+    
+    df_to_process['date'] = pd.to_datetime(df_to_process['date'])
+    
+    if period == 'dayofweek':
+        df_to_process['period_unit'] = df_to_process['date'].dt.day_name()
+        days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        day_name_map_jp = {"Monday": "月曜日", "Tuesday": "火曜日", "Wednesday": "水曜日", 
+                           "Thursday": "木曜日", "Friday": "金曜日", "Saturday": "土曜日", "Sunday": "日曜日"}
+        df_to_process['period_unit'] = df_to_process['period_unit'].map(day_name_map_jp)
+    elif period == 'month_period':
+        def get_month_period(day_val: int) -> str:
+            if day_val <= 10: return '月初(1-10日)'
+            elif day_val <= 20: return '月中(11-20日)'
+            else: return '月末(21-末日)'
+        df_to_process['period_unit'] = df_to_process['date'].dt.day.apply(get_month_period)
+    else:
+        logger.error(f"未対応の集計期間: {period}")
+        return {}
+    
+    result = {}
+    for period_unit, group in df_to_process.groupby('period_unit'):
+        staff_list = sorted(group['staff'].unique())
+        result[period_unit] = staff_list
+    
+    if period == 'dayofweek':
+        ordered_result = {}
+        for day in [day_name_map_jp[d] for d in days_of_week]:
+            if day in result:
+                ordered_result[day] = result[day]
+            else:
+                ordered_result[day] = []
+        return ordered_result
+    
+    return result
 # --- CLI実行のためのダミーコード (app.pyから呼び出す際は不要) ---
 if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
