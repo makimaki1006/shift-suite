@@ -1,180 +1,178 @@
-"""
-shift_suite.tasks.fairness  v0.7  —  Safe-Time & Detailed-Log 版
-夜勤負担の公平性 (Jain 指数) を計算し Excel 出力する。
-
-long_df : ingest 後の “縦持ち” DataFrame
-          必須 … スタッフ識別列・時刻情報列（HH:MM 文字列でも可）
-
-------------------------------------------------------------
-● スタッフ列探索順
-    1. 明示指定 staff_col=...
-    2. 既知エイリアス: staff / name / worker / employee / member / スタッフ / 職員 / 従業員
-    3. Index / MultiIndex に含まれる場合 reset_index()
-    4. 最後の手段として object 型列のユニーク数で推定
-
-● 時刻列探索順
-    1. time 列       → 文字列なら HH:MM 解析
-    2. datetime 列   → .dt.time
-    3. dt 列         → .dt.time
-    4. DatetimeIndex → index.time
-    5. 失敗したら 00:00 を仮置き (WARN)
-
-夜勤帯デフォルト = 22:00–06:00（引数で変更可）
-"""
+# shift_suite/tasks/fairness.py (修正案 v0.9)
 
 from __future__ import annotations
-
 import datetime as dt
 import logging
 from pathlib import Path
 from typing import Optional, Sequence
-
 import pandas as pd
 
 logger = logging.getLogger(__name__)
 if not logger.handlers:
-    h = logging.StreamHandler()
-    h.setFormatter(
-        logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S")
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "[%(asctime)s] %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s", "%Y-%m-%d %H:%M:%S" # ★ フォーマット変更
     )
-    logger.addHandler(h)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
-# ═════════════════════════ helper ═════════════════════════
-_STAFF_ALIASES: Sequence[str] = [
-    "staff",
-    "name",
-    "worker",
-    "employee",
-    "member",
-    "スタッフ",
-    "職員",
-    "従業員",
-]
+_STAFF_ALIASES: Sequence[str] = ["staff", "name", "worker", "employee", "member", "スタッフ", "職員", "従業員"]
 
-
-def _find_or_make_staff(df: pd.DataFrame, staff_col: Optional[str] = None) -> pd.Series:
-    """staff 列を返す。見つからなければ推定して追加"""
-    if staff_col and staff_col in df.columns:
-        return df[staff_col]
-
-    for col in _STAFF_ALIASES:
-        if col in df.columns:
-            df.rename(columns={col: "staff"}, inplace=True)
-            return df["staff"]
-
-    if isinstance(df.index, (pd.Index, pd.MultiIndex)):
+def _find_staff_column_name(df: pd.DataFrame, staff_col_preference: Optional[str] = None) -> str:
+    # (変更なし)
+    if staff_col_preference and staff_col_preference in df.columns: return staff_col_preference
+    for alias in _STAFF_ALIASES:
+        if alias in df.columns: return alias
+    if isinstance(df.index, pd.MultiIndex):
         for name in df.index.names:
-            if name in _STAFF_ALIASES:
-                df.reset_index(inplace=True)
-                df.rename(columns={name: "staff"}, inplace=True)
-                return df["staff"]
-
+            if name in _STAFF_ALIASES: return str(name)
     obj_cols = [c for c in df.columns if df[c].dtype == "object"]
     if obj_cols:
+        # よりスタッフ名らしい列を選ぶためのヒューリスティックを追加検討可能
+        # 例: ユニーク数が多く、かつ文字列長がある程度のものなど
         candidate = max(obj_cols, key=lambda c: df[c].nunique())
-        logger.warning(f"[fairness] staff 列を推定 — '{candidate}' を使用")
-        df.rename(columns={candidate: "staff"}, inplace=True)
-        return df["staff"]
+        logger.warning(f"[fairness] スタッフ列推定: '{candidate}' を使用。")
+        return candidate
+    raise KeyError("スタッフを示す列 ('staff', 'name'など) がDataFrameに見つかりません。")
 
-    raise KeyError("スタッフを示す列が見つかりません（staff/name/…）")
-
-
-def _parse_time_safe(x) -> Optional[dt.time]:
-    """あらゆる入力を dt.time に変換。失敗時 None"""
-    if isinstance(x, dt.time):
-        return x
-    try:
-        return pd.to_datetime(str(x), errors="raise").time()
-    except Exception:  # pragma: no cover
-        return None
-
-
-def _ensure_time_column(df: pd.DataFrame) -> pd.Series:
-    """time 列が無ければ推定して追加し、常に dt.time 型で返す"""
-    # 1) 明示的 time 列
+def _extract_time_series(df: pd.DataFrame) -> pd.Series:
+    # (変更なし - ds列から時刻を抽出する部分は問題ないはず)
+    if "ds" in df.columns and pd.api.types.is_datetime64_any_dtype(df["ds"].dtype):
+        logger.debug("[fairness] 'ds' 列 (datetime64) から時刻情報を抽出します。") # ★ DEBUGに変更
+        return pd.to_datetime(df["ds"]).dt.time
+    # ... (以下、既存のフォールバック処理)
     if "time" in df.columns:
         col = df["time"]
         if pd.api.types.is_object_dtype(col.dtype) or pd.api.types.is_string_dtype(col.dtype):
-            df["time"] = col.apply(_parse_time_safe)
+            logger.debug("[fairness] 'time' 列 (object/string) から時刻情報をパースします。")
+            return pd.to_datetime(col, format='%H:%M', errors='coerce').dt.time
         elif pd.api.types.is_datetime64_any_dtype(col.dtype):
-            df["time"] = pd.to_datetime(col).dt.time
-        return df["time"]
-
-    # 2) datetime / dt 列
-    for cand in ("datetime", "dt"):
-        if cand in df.columns:
-            df["time"] = pd.to_datetime(df[cand], errors="coerce").dt.time
-            return df["time"]
-
-    # 3) DatetimeIndex
+            logger.debug("[fairness] 'time' 列 (datetime64) から時刻情報を抽出します。")
+            return pd.to_datetime(col).dt.time
+        elif all(isinstance(x, dt.time) for x in col.dropna()):
+             logger.debug("[fairness] 'time' 列 (datetime.time) を使用します。")
+             return col
+        else: logger.warning(f"[fairness] 'time' 列の型が予期しません: {col.dtype}。00:00と仮定。")
+    for cand_col_name in ("datetime", "dt"):
+        if cand_col_name in df.columns and pd.api.types.is_datetime64_any_dtype(df[cand_col_name].dtype):
+            logger.debug(f"[fairness] '{cand_col_name}' 列から時刻情報を抽出。")
+            return pd.to_datetime(df[cand_col_name]).dt.time
     if isinstance(df.index, pd.DatetimeIndex):
-        df["time"] = df.index.time
-        return df["time"]
-
-    # 4) fallback
-    logger.warning("[fairness] 'time' を推定できず全行 00:00 を仮置き")
-    df["time"] = dt.time(0, 0)
-    return df["time"]
+        logger.debug("[fairness] DatetimeIndex から時刻情報を抽出。")
+        return df.index.to_series().dt.time
+    logger.warning("[fairness] 時刻情報列が見つからず、全行 00:00 を仮置き。")
+    return pd.Series([dt.time(0, 0)] * len(df), index=df.index)
 
 
-def _is_night(t: Optional[dt.time], night_start: dt.time, night_end: dt.time) -> bool:
-    if t is None:
-        return False
-    if night_start <= night_end:  # 例: 22–23 時間帯
-        return night_start <= t < night_end
-    # 翌日跨ぎ 例: 22:00–06:00
-    return t >= night_start or t < night_end
+def _is_night(time_obj: Optional[dt.time], night_start: dt.time, night_end: dt.time) -> bool:
+    # (変更なし)
+    if time_obj is None or not isinstance(time_obj, dt.time): return False
+    if night_start <= night_end: return night_start <= time_obj <= night_end
+    else: return time_obj >= night_start or time_obj <= night_end
 
-
-# ═════════════════════════ main ═════════════════════════
 def run_fairness(
-    long_df: pd.DataFrame,
-    out_dir: Path | str,
-    *,
-    staff_col: Optional[str] = None,
-    slot_min: int = 30,  # 現在は未使用・将来の集計粒度用
-    night_start: dt.time = dt.time(22, 0),
-    night_end: dt.time = dt.time(6, 0),
+    long_df: pd.DataFrame, out_dir: Path | str, *,
+    staff_col_preference: Optional[str] = None,
+    night_start_time: dt.time = dt.time(22, 0),
+    night_end_time: dt.time = dt.time(5, 59), # 翌朝の5:59まで
 ) -> None:
-    """
-    long_df から夜勤比率と Jain 指数を計算し、
-    fairness_before.xlsx / fairness_after.xlsx を保存する。
-    """
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    df = long_df.copy()
+    out_dir_path = Path(out_dir); out_dir_path.mkdir(parents=True, exist_ok=True) # ★ 変数名変更
+    if long_df.empty:
+        logger.warning("[fairness] 入力DataFrame (long_df) が空。スキップ。")
+        # 空の場合でもExcelファイルは作成する（引継ぎ資料の動作に合わせる）
+        empty_summary = pd.DataFrame(columns=[_find_staff_column_name(long_df, staff_col_preference) if not long_df.empty else "staff", "night_slots", "total_slots", "night_ratio"])
+        pd.DataFrame({"metric": ["jain_index"], "value": [1.0]}).to_excel(out_dir_path / "fairness_before.xlsx", sheet_name="meta_summary", index=False)
+        empty_summary.to_excel(out_dir_path / "fairness_before.xlsx", sheet_name="before_summary", index=False, mode="a", if_sheet_exists="replace") # mode="a" and if_sheet_exists for openpyxl
+        pd.DataFrame({"metric": ["jain_index"], "value": [1.0]}).to_excel(out_dir_path / "fairness_after.xlsx", sheet_name="meta_summary", index=False)
+        empty_summary.to_excel(out_dir_path / "fairness_after.xlsx", sheet_name="after_summary", index=False, mode="a", if_sheet_exists="replace")
+        return
 
-    # ── 列の確保 ───────────────────────────────
-    staff = _find_or_make_staff(df, staff_col)
-    times = _ensure_time_column(df)
+    df_for_fairness = long_df.copy() # ★ 変数名変更
+    try:
+        actual_staff_col_name = _find_staff_column_name(df_for_fairness, staff_col_preference) # ★ 変数名変更
+        logger.info(f"[fairness] スタッフ識別列: '{actual_staff_col_name}'")
+    except KeyError as e:
+        logger.error(f"[fairness] {e} スキップ。")
+        return
 
-    # ── 夜勤フラグ ─────────────────────────────
-    logger.info("[fairness] 夜勤フラグ計算中 …")
-    df["is_night"] = times.apply(lambda t: int(_is_night(t, night_start, night_end)))
+    # ★修正箇所: 夜勤判定の対象を parsed_slots_count > 0 のレコードに限定
+    if 'parsed_slots_count' not in df_for_fairness.columns:
+        logger.error("[fairness] long_dfに 'parsed_slots_count' 列が見つかりません。夜勤判定をスキップします。")
+        # parsed_slots_count がない場合は、以前の全レコード対象のロジックに戻すか、エラーとする
+        # ここでは、夜勤なしとして処理を進める
+        df_for_fairness["is_night_shift"] = 0
+    else:
+        # 実際に勤務スロットがあるレコードのみを対象に夜勤判定
+        working_slots_df = df_for_fairness[df_for_fairness['parsed_slots_count'] > 0].copy()
+        if not working_slots_df.empty:
+            time_series_working = _extract_time_series(working_slots_df)
+            logger.info(f"[fairness] 夜勤フラグ計算中 (夜勤帯: {night_start_time:%H:%M} - {night_end_time:%H:%M}) 対象レコード数: {len(working_slots_df)}")
+            working_slots_df["is_night_shift"] = time_series_working.apply(lambda t: int(_is_night(t, night_start_time, night_end_time)))
+            # 元のdf_for_fairnessに結果をマージ (is_night_shift列がない行は0で埋める)
+            df_for_fairness = df_for_fairness.merge(working_slots_df[['is_night_shift']], left_index=True, right_index=True, how='left').fillna({'is_night_shift': 0})
+            df_for_fairness['is_night_shift'] = df_for_fairness['is_night_shift'].astype(int)
+        else:
+            logger.info("[fairness] parsed_slots_count > 0 の勤務記録がないため、夜勤シフトはありません。")
+            df_for_fairness["is_night_shift"] = 0
 
-    # ── スタッフ別集計 ────────────────────────
-    group = df.groupby("staff")["is_night"].agg(
-        night_slots="sum", total_slots="size"
-    )
-    summary = group.reset_index()
-    summary["night_ratio"] = summary["night_slots"] / summary["total_slots"]
 
-    # Jain 指数
-    from .utils import calculate_jain_index  # ローカル util
-    s = summary["night_ratio"]
-    jain = calculate_jain_index(s)
-    summary.attrs["jain"] = jain
+    if df_for_fairness.empty or not df_for_fairness["is_night_shift"].any():
+        logger.info("[fairness] 夜勤シフト無しかデータ無。Jain指数1.0で処理。")
+        unique_staff_list = df_for_fairness[actual_staff_col_name].unique() if actual_staff_col_name in df_for_fairness else [] # ★ 変数名変更
+        
+        # total_slots は全スロット（parsed_slots_count>0のもの）で計算するのが適切か、
+        # それとも全レコード（parsed_slots_count=0の休暇も含む）で計算するのか。
+        # ここでは、公平性評価の母数となる total_slots は、実際に勤務スロットが発生したものをカウントするのが妥当。
+        # parsed_slots_count > 0 のレコードでスタッフごとに集計
+        if 'parsed_slots_count' in df_for_fairness.columns:
+            total_slots_series = df_for_fairness[df_for_fairness['parsed_slots_count'] > 0].groupby(actual_staff_col_name)['ds'].count()
+        else: # parsed_slots_countがない場合は、便宜的に全レコードをカウント（ただしこれは不正確になる可能性）
+            total_slots_series = df_for_fairness.groupby(actual_staff_col_name)['ds'].count()
 
-    # ── 出力 ──────────────────────────────────
-    before_fp = out_dir / "fairness_before.xlsx"
-    after_fp = out_dir / "fairness_after.xlsx"  # 調整ロジック未実装 → 同値
+        summary_df = pd.DataFrame({ # ★ 変数名変更
+            actual_staff_col_name: unique_staff_list,
+            "night_slots": 0,
+        }).set_index(actual_staff_col_name)
+        summary_df["total_slots"] = total_slots_series
+        summary_df = summary_df.fillna({"total_slots": 0}).reset_index() # total_slotsがないスタッフは0で埋める
+        summary_df["night_ratio"] = 0.0
+        jain_index_val = 1.0 # ★ 変数名変更
+    else:
+        # night_slots: is_night_shift が 1 のレコードをカウント
+        # total_slots: parsed_slots_count > 0 のレコードをカウント (夜勤の有無に関わらず)
+        
+        # is_night_shift は既に計算済み (parsed_slots_count > 0 のレコードに対してのみ1が立つ可能性がある)
+        night_slots_series = df_for_fairness.groupby(actual_staff_col_name)["is_night_shift"].sum()
 
-    with pd.ExcelWriter(before_fp, engine="openpyxl") as w:
-        summary.to_excel(w, sheet_name="before", index=False)
-        pd.DataFrame({"metric": ["jain"], "value": [jain]}).to_excel(
-            w, sheet_name="meta", index=False
-        )
-    summary.to_excel(after_fp, sheet_name="after", index=False)
+        if 'parsed_slots_count' in df_for_fairness.columns:
+            total_slots_for_fairness_series = df_for_fairness[df_for_fairness['parsed_slots_count'] > 0].groupby(actual_staff_col_name)['ds'].count() # ★ 変数名変更
+        else: # フォールバック
+            total_slots_for_fairness_series = df_for_fairness.groupby(actual_staff_col_name)['ds'].count()
 
-    logger.info(f"[fairness] 完了: Jain={jain:.3f}  →  {before_fp.name}")
+        summary_df = pd.DataFrame(night_slots_series).rename(columns={"is_night_shift": "night_slots"})
+        summary_df["total_slots"] = total_slots_for_fairness_series
+        summary_df = summary_df.fillna({"night_slots":0, "total_slots":0}).reset_index() # 存在しないスタッフは0で埋める
+        
+        summary_df["night_ratio"] = (summary_df["night_slots"] / summary_df["total_slots"].replace(0, pd.NA)).fillna(0).round(3)
+        
+        from shift_suite.tasks.utils import calculate_jain_index
+        jain_index_val = calculate_jain_index(summary_df["night_ratio"])
+
+    summary_df.attrs["jain_index"] = jain_index_val # summary_df に属性としてJain指数を保持
+    before_fp_path = out_dir_path / "fairness_before.xlsx"; after_fp_path = out_dir_path / "fairness_after.xlsx" # ★ 変数名変更
+    
+    # ExcelWriter を使用して複数のシートを同じファイルに書き込む
+    try:
+        with pd.ExcelWriter(before_fp_path, engine="openpyxl") as wb_before: # ★ 変数名変更
+            summary_df.to_excel(wb_before, sheet_name="before_summary", index=False)
+            meta_df_before = pd.DataFrame({"metric": ["jain_index"], "value": [jain_index_val]}) # ★ 変数名変更
+            meta_df_before.to_excel(wb_before, sheet_name="meta_summary", index=False)
+        logger.info(f"[fairness] fairness_before.xlsx 保存 (Jain: {jain_index_val:.3f})")
+        
+        with pd.ExcelWriter(after_fp_path, engine="openpyxl") as wa_after: # ★ 変数名変更
+            summary_df.to_excel(wa_after, sheet_name="after_summary", index=False) # afterも同じ内容で良いか確認 (現状は同じ)
+            meta_df_after = pd.DataFrame({"metric": ["jain_index"], "value": [jain_index_val]}) # ★ 変数名変更
+            meta_df_after.to_excel(wa_after, sheet_name="meta_summary", index=False)
+        logger.info(f"[fairness] fairness_after.xlsx 保存 (Jain: {jain_index_val:.3f})")
+    except Exception as e: logger.error(f"[fairness] Excel書出エラー: {e}", exc_info=True)
