@@ -742,6 +742,43 @@ if st.session_state.get("analysis_done", False) and \
                 st.write("希望休の集中度データはありません。")
         else:
             st.info("希望休は分析対象として選択されていません。")
+            if LEAVE_TYPE_REQUESTED in st.session_state.get("leave_analysis_target_types_widget", []):
+                daily_leave_df = results.get('daily_leave_counts')
+                if daily_leave_df is not None and not daily_leave_df.empty:
+                    requested_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_REQUESTED].copy()
+                    
+                    if not requested_leave_daily.empty:
+                        st.subheader("期間別の希望休取得職員")
+                        
+                        with st.expander("曜日別の希望休取得職員", expanded=False):
+                            staff_by_dow = leave_analyzer.get_staff_by_period(
+                                requested_leave_daily,
+                                period='dayofweek',
+                                leave_type=LEAVE_TYPE_REQUESTED
+                            )
+                            
+                            for dow, staff_list in staff_by_dow.items():
+                                st.write(f"**{dow}**")
+                                if staff_list:
+                                    st.write(", ".join(staff_list))
+                                else:
+                                    st.write("（該当する職員はいません）")
+                                st.divider()
+                        
+                        with st.expander("月内期間別の希望休取得職員", expanded=False):
+                            staff_by_month_period = leave_analyzer.get_staff_by_period(
+                                requested_leave_daily,
+                                period='month_period',
+                                leave_type=LEAVE_TYPE_REQUESTED
+                            )
+                            
+                            for period, staff_list in staff_by_month_period.items():
+                                st.write(f"**{period}**")
+                                if staff_list:
+                                    st.write(", ".join(staff_list))
+                                else:
+                                    st.write("（該当する職員はいません）")
+                                st.divider()
             
         if LEAVE_TYPE_REQUESTED in st.session_state.get("leave_analysis_target_types_widget", []):
             daily_leave_df = results.get('daily_leave_counts')
@@ -799,6 +836,43 @@ if st.session_state.get("analysis_done", False) and \
                 st.write("月別の有給休暇データはありません。")
         else:
             st.info("有給休暇は分析対象として選択されていません。")
+            if LEAVE_TYPE_PAID in st.session_state.get("leave_analysis_target_types_widget", []):
+                daily_leave_df = results.get('daily_leave_counts')
+                if daily_leave_df is not None and not daily_leave_df.empty:
+                    paid_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_PAID].copy()
+                    
+                    if not paid_leave_daily.empty:
+                        st.subheader("期間別の有給休暇取得職員")
+                        
+                        with st.expander("曜日別の有給休暇取得職員", expanded=False):
+                            staff_by_dow = leave_analyzer.get_staff_by_period(
+                                paid_leave_daily,
+                                period='dayofweek',
+                                leave_type=LEAVE_TYPE_PAID
+                            )
+                            
+                            for dow, staff_list in staff_by_dow.items():
+                                st.write(f"**{dow}**")
+                                if staff_list:
+                                    st.write(", ".join(staff_list))
+                                else:
+                                    st.write("（該当する職員はいません）")
+                                st.divider()
+                        
+                        with st.expander("月内期間別の有給休暇取得職員", expanded=False):
+                            staff_by_month_period = leave_analyzer.get_staff_by_period(
+                                paid_leave_daily,
+                                period='month_period',
+                                leave_type=LEAVE_TYPE_PAID
+                            )
+                            
+                            for period, staff_list in staff_by_month_period.items():
+                                st.write(f"**{period}**")
+                                if staff_list:
+                                    st.write(", ".join(staff_list))
+                                else:
+                                    st.write("（該当する職員はいません）")
+                                st.divider()
             
         if LEAVE_TYPE_PAID in st.session_state.get("leave_analysis_target_types_widget", []):
             daily_leave_df = results.get('daily_leave_counts')
