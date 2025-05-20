@@ -150,7 +150,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.out_dir_path_str = None
     st.session_state.current_step_for_progress = 0
 
-    today_val = datetime.date.today()
+    today_val = dt.date.today()
 
     st.session_state.slot_input_widget = 30
     st.session_state.header_row_input_widget = 3
@@ -158,8 +158,8 @@ if "app_initialized" not in st.session_state:
     st.session_state.shift_sheets_multiselect_widget = []
     st.session_state._force_update_multiselect_flag = False
 
-    st.session_state.need_ref_start_date_widget = today_val - datetime.timedelta(days=59) # 初期デフォルト
-    st.session_state.need_ref_end_date_widget = today_val - datetime.timedelta(days=1)   # 初期デフォルト
+    st.session_state.need_ref_start_date_widget = today_val - dt.timedelta(days=59) # 初期デフォルト
+    st.session_state.need_ref_end_date_widget = today_val - dt.timedelta(days=1)   # 初期デフォルト
     st.session_state._force_update_need_ref_dates_flag = False
     st.session_state._intended_need_ref_start_date = None
     st.session_state._intended_need_ref_end_date = None
@@ -376,7 +376,7 @@ if uploaded_file:
                 first_content_sheet_name = next((s for s in candidate_sheets_from_file if s in temp_sheets_data), None)
                 if first_content_sheet_name:
                     df_sample = temp_sheets_data[first_content_sheet_name]
-                    parsed_dates_in_sample: List[datetime.date] = []
+                    parsed_dates_in_sample: List[dt.date] = []
                     for col_header in df_sample.columns:
                         parsed_date = _parse_as_date(str(col_header))
                         if parsed_date: parsed_dates_in_sample.append(parsed_date)
@@ -668,7 +668,7 @@ if run_button_clicked:
                 st.info(_("Output folder") + f": `{out_dir_to_save_exec_main_run}`")
                 st.markdown(_("Open the above path in Explorer."))
             else: # ZIP Download
-                zip_base_name_exec_main_run = f"ShiftSuite_Analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                zip_base_name_exec_main_run = f"ShiftSuite_Analysis_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
                 if st.session_state.work_root_path_str is None:
                     st.error("一時作業ディレクトリが見つかりません。ZIPファイルの作成に失敗しました。")
                 else:
