@@ -1,27 +1,8 @@
 # ─────────────────────────────  app.py  (Part 1 / 3)  ──────────────────────────
-# Shift-Suite Streamlit GUI + 内蔵ダッシュボード  v1.30.0 (休暇分析機能追加)
-# ==============================================================================
-# 変更履歴
-#   • v1.30.0: 休暇分析機能を追加。leave_analyzer モジュールとの連携を実装。
-#   • v1.29.13: st.experimental_rerun() を st.rerun() に修正。
-#   • v1.29.12: need_ref_start/end_date_widget の StreamlitAPIException 対策。
-#               ファイルアップロード時の日付範囲推定結果を、フラグを用いて
-#               次回のスクリプト実行時にウィジェットのデフォルト値として安全に反映するよう修正。
-#   • v1.29.11: ログで指摘されたエラー箇所を修正。
-#               - shift_sheets_multiselect_widget の StreamlitAPIException 対策。
-#               - param_penalty_per_lack の NameError 修正。
-#               - progress_bar_exec_main_run 等の NameError 修正。
-#               - ログメッセージ内のタイポ修正。
-#   • v1.29.10: selectboxのdefault引数エラーをindexに統一し、オプションリストをセッションから正しく参照。
-#               全てのウィジェットの値をセッションステートで管理し、初期化を徹底。
-#               ヘッダー開始行UIの表示と値の利用を確実化。
-#               Excel日付範囲推定の安定化。
-#               on_changeコールバックを削除し、よりシンプルなセッションステート管理を目指す。
-# ==============================================================================
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import io
 import json
 import logging
@@ -37,7 +18,6 @@ import streamlit as st
 from streamlit.runtime import exists as st_runtime_exists
 import openpyxl
 
-# ── Shift-Suite task modules ─────────────────────────────────────────────────
 from shift_suite.tasks.io_excel import ingest_excel
 from shift_suite.tasks.utils import _parse_as_date
 from shift_suite.tasks.heatmap import build_heatmap
@@ -57,7 +37,6 @@ from shift_suite.tasks import leave_analyzer # ★ 新規インポート
 from shift_suite.tasks.leave_analyzer import LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID # ★ 定数もインポート
 # ──────────────────────────────────────────────────────────────────────────────
 
-# ── ロガー設定 ─────────────────────────────────
 log = logging.getLogger("shift_suite_app")
 if not log.handlers:
     log.setLevel(logging.INFO)
@@ -71,7 +50,6 @@ if not log.handlers:
         tasks_log.addHandler(handler)
         tasks_log.setLevel(logging.DEBUG)
 
-# ── 日本語ラベル辞書 & _() ───────────────────────────────────────────────────
 JP = {
     "Overview": "概要", "Heatmap": "ヒートマップ", "Shortage": "不足分析",
     "Fatigue": "疲労", "Forecast": "需要予測", "Fairness": "公平性",
@@ -165,7 +143,6 @@ st.title("🗂️ Shift-Suite : 勤務シフト分析ツール")
 
 master_sheet_keyword = "勤務区分"
 
-# --- セッションステートの初期化 (一度だけ実行) ---
 if "app_initialized" not in st.session_state:
     st.session_state.app_initialized = True
     st.session_state.analysis_done = False
@@ -175,7 +152,6 @@ if "app_initialized" not in st.session_state:
 
     today_val = datetime.date.today()
 
-    # サイドバーのウィジェットのキーとデフォルト値をセッションステートに初期設定
     st.session_state.slot_input_widget = 30
     st.session_state.header_row_input_widget = 3
     st.session_state.candidate_sheet_list_for_ui = []
@@ -197,13 +173,11 @@ if "app_initialized" not in st.session_state:
     st.session_state.max_method_for_upper_options_widget = ["mean+1s", "p75"]
     st.session_state.max_method_for_upper_widget = "p75"
 
-    # ★ 休暇分析を含む追加モジュールリスト
     st.session_state.available_ext_opts_widget = [
         "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness",
         _("Leave Analysis"), # ★ "休暇分析" を追加
         "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
     ]
-    # デフォルトで休暇分析も選択状態にするかはお好みで
     st.session_state.ext_opts_multiselect_widget = st.session_state.available_ext_opts_widget[:] 
 
     st.session_state.save_mode_selectbox_options_widget = [_("ZIP Download"), _("Save to folder")]
@@ -221,16 +195,13 @@ if "app_initialized" not in st.session_state:
     st.session_state.last_uploaded_file_name = None
     st.session_state.last_uploaded_file_size = None
 
-    # ★ 休暇分析用パラメータの初期化
     st.session_state.leave_analysis_target_types_widget = [LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID] # デフォルトで両方
     st.session_state.leave_concentration_threshold_widget = 3 # 希望休集中度閾値のデフォルト
 
-    # ★ 休暇分析結果格納用
     st.session_state.leave_analysis_results = {}
     
     log.info("セッションステートを初期化しました。")
 
-# --- サイドバーのUI要素 ---
 with st.sidebar:
     st.header("🛠️ 解析設定")
 
@@ -328,7 +299,6 @@ with st.sidebar:
         key="ext_opts_multiselect_widget", help="実行する追加の分析モジュールを選択します。"
     )
 
-    # ★ 休暇分析が選択されている場合のみ、関連パラメータ設定UIを表示
     if _("Leave Analysis") in st.session_state.ext_opts_multiselect_widget:
         with st.expander("📊 " + _("Leave Analysis") + " 設定", expanded=True):
             st.multiselect(
@@ -337,7 +307,6 @@ with st.sidebar:
                 key="leave_analysis_target_types_widget",
                 help="分析する休暇の種類を選択します。"
             )
-            # 希望休が分析対象に含まれている場合のみ閾値設定を表示
             if LEAVE_TYPE_REQUESTED in st.session_state.leave_analysis_target_types_widget:
                 st.number_input(
                     "希望休 集中度判定閾値 (人)", 
@@ -365,7 +334,6 @@ with st.sidebar:
         st.number_input(_("One-time hiring cost (¥/person)"), 0, 1000000, key="hiring_cost_once_widget")
         st.number_input(_("Penalty for shortage (¥/h)"), 0, 20000, key="penalty_per_lack_widget")
 
-# --- メインコンテンツエリア ---
 st.header("1. ファイルアップロードと設定")
 uploaded_file = st.file_uploader(
     _("Upload Excel shift file (*.xlsx)"),
@@ -429,7 +397,6 @@ if uploaded_file:
         except Exception as e_save_file_process:
             st.error(_("Error saving Excel file") + f": {e_save_file_process}")
 
-# 「解析実行」ボタン
 run_button_disabled_status = not st.session_state.get("excel_path_for_run_script_str") or \
                                not st.session_state.get("shift_sheets_multiselect_widget", [])
 run_button_clicked = st.button(
@@ -453,7 +420,6 @@ if run_button_clicked:
     out_dir_exec.mkdir(parents=True, exist_ok=True)
     log.info(f"解析出力ディレクトリ: {out_dir_exec}")
 
-    # --- 実行時のUIの値をセッションステートから取得 ---
     param_selected_sheets = st.session_state.shift_sheets_multiselect_widget
     param_header_row = st.session_state.header_row_input_widget
     param_slot = st.session_state.slot_input_widget
@@ -473,13 +439,10 @@ if run_button_clicked:
     param_hiring_cost = st.session_state.hiring_cost_once_widget
     param_penalty_lack = st.session_state.penalty_per_lack_widget
     
-    # ★ 休暇分析用パラメータの取得
     param_leave_target_types = st.session_state.leave_analysis_target_types_widget
     param_leave_concentration_threshold = st.session_state.leave_concentration_threshold_widget
     
-    # ★ セッションステート内の前回結果をクリア
     st.session_state.leave_analysis_results = {}
-    # --- UI値取得ここまで ---
 
     progress_text_area = st.empty()
     progress_bar_val = st.progress(0)
@@ -535,73 +498,89 @@ if run_button_clicked:
         else: 
             st.success("✅ Shortage (不足分析) 完了")
 
-        # ★----- 休暇分析モジュールの実行 -----★
-        # "休暇分析" (日本語) が選択されているか確認
         if _("Leave Analysis") in param_ext_opts:
             update_progress_exec_run("Leave Analysis: Processing...")
             st.info(f"{_('Leave Analysis')} 処理中…")
+            
             try:
                 if 'long_df' in locals() and not long_df.empty:
-                    # 1. 日次・職員別の休暇取得フラグデータを生成
                     daily_leave_df = leave_analyzer.get_daily_leave_counts(
                         long_df,
                         target_leave_types=param_leave_target_types
                     )
-                    st.session_state.leave_analysis_results['daily_leave_df'] = daily_leave_df
                     
-                    if not daily_leave_df.empty:
-                        leave_results_temp = {} # 一時的な結果格納用
-                        leave_results_temp['daily_leave_counts'] = daily_leave_df.copy()
-
+                    leave_results_temp = {}
+                    
+                    if LEAVE_TYPE_REQUESTED in param_leave_target_types:
+                        requested_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_REQUESTED].copy()
                         
-                        # 2. 希望休関連の集計と分析
-                        if LEAVE_TYPE_REQUESTED in param_leave_target_types:
-                            requested_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_REQUESTED]
-                            if not requested_leave_daily.empty:
-                                leave_results_temp['summary_dow_requested'] = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='dayofweek')
-                                leave_results_temp['summary_month_period_requested'] = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='month_period')
-                                leave_results_temp['summary_month_requested'] = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='month')
-                                
-                                daily_requested_applicants_counts = leave_analyzer.summarize_leave_by_day_count(requested_leave_daily.copy(), period='date')
-                                leave_results_temp['concentration_requested'] = leave_analyzer.analyze_leave_concentration(
-                                    daily_requested_applicants_counts,
-                                    leave_type_to_analyze=LEAVE_TYPE_REQUESTED,
-                                    concentration_threshold=param_leave_concentration_threshold
-                                )
-                            else:
-                                log.info(f"{LEAVE_TYPE_REQUESTED} のデータが見つからなかったため、関連する集計・分析をスキップしました。")
-                                leave_results_temp['summary_dow_requested'] = pd.DataFrame()
-                                leave_results_temp['summary_month_period_requested'] = pd.DataFrame()
-                                leave_results_temp['summary_month_requested'] = pd.DataFrame()
-                                leave_results_temp['concentration_requested'] = pd.DataFrame()
+                        daily_requested_applicants_counts = leave_analyzer.count_daily_leave_applicants(
+                            requested_leave_daily,
+                            leave_type_to_count=LEAVE_TYPE_REQUESTED
+                        )
+                        leave_results_temp['daily_requested_applicants_counts'] = daily_requested_applicants_counts
                         
-                        # 3. 有給休暇関連の集計
-                        if LEAVE_TYPE_PAID in param_leave_target_types:
-                            paid_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_PAID]
-                            if not paid_leave_daily.empty:
-                                leave_results_temp['summary_dow_paid'] = leave_analyzer.summarize_leave_by_day_count(paid_leave_daily.copy(), period='dayofweek')
-                                leave_results_temp['summary_month_paid'] = leave_analyzer.summarize_leave_by_day_count(paid_leave_daily.copy(), period='month')
-                            else:
-                                log.info(f"{LEAVE_TYPE_PAID} のデータが見つからなかったため、関連する集計をスキップしました。")
-                                leave_results_temp['summary_dow_paid'] = pd.DataFrame()
-                                leave_results_temp['summary_month_paid'] = pd.DataFrame()
+                        leave_results_temp['summary_dow_requested'] = leave_analyzer.summarize_leave_by_day_count(
+                            requested_leave_daily.copy(),
+                            period='dayofweek'
+                        )
                         
-                        # 4. 職員別休暇リスト (終日のみ)
-                        leave_results_temp['staff_leave_list'] = leave_analyzer.get_staff_leave_list(long_df, target_leave_types=param_leave_target_types)
-        leave_results_temp['daily_leave_counts'] = daily_leave_df.copy()
+                        leave_results_temp['summary_month_period_requested'] = leave_analyzer.summarize_leave_by_day_count(
+                            requested_leave_daily.copy(),
+                            period='month_period'
+                        )
                         
-                        st.session_state.leave_analysis_results.update(leave_results_temp)
-                        st.success(f"✅ {_('Leave Analysis')} 完了")
-                    else:
-                        st.info(f"{_('Leave Analysis')}: 分析対象となる休暇データが見つかりませんでした。")
+                        leave_results_temp['summary_month_requested'] = leave_analyzer.summarize_leave_by_day_count(
+                            requested_leave_daily.copy(),
+                            period='month'
+                        )
+                        
+                        leave_results_temp['concentration_requested'] = leave_analyzer.analyze_leave_concentration(
+                            daily_requested_applicants_counts,
+                            leave_type_to_analyze=LEAVE_TYPE_REQUESTED,
+                            concentration_threshold=param_leave_concentration_threshold
+                        )
+                    
+                    if LEAVE_TYPE_PAID in param_leave_target_types:
+                        paid_leave_daily = daily_leave_df[daily_leave_df['leave_type'] == LEAVE_TYPE_PAID].copy()
+                        
+                        daily_paid_applicants_counts = leave_analyzer.count_daily_leave_applicants(
+                            paid_leave_daily,
+                            leave_type_to_count=LEAVE_TYPE_PAID
+                        )
+                        leave_results_temp['daily_paid_applicants_counts'] = daily_paid_applicants_counts
+                        
+                        leave_results_temp['summary_dow_paid'] = leave_analyzer.summarize_leave_by_day_count(
+                            paid_leave_daily.copy(),
+                            period='dayofweek'
+                        )
+                        
+                        leave_results_temp['summary_month_period_paid'] = leave_analyzer.summarize_leave_by_day_count(
+                            paid_leave_daily.copy(),
+                            period='month_period'
+                        )
+                        
+                        leave_results_temp['summary_month_paid'] = leave_analyzer.summarize_leave_by_day_count(
+                            paid_leave_daily.copy(),
+                            period='month'
+                        )
+                        
+                        leave_results_temp['concentration_paid'] = leave_analyzer.analyze_leave_concentration(
+                            daily_paid_applicants_counts,
+                            leave_type_to_analyze=LEAVE_TYPE_PAID,
+                            concentration_threshold=param_leave_concentration_threshold
+                        )
+                    
+                    leave_results_temp['staff_leave_list'] = leave_analyzer.get_staff_leave_list(long_df, target_leave_types=param_leave_target_types)
+                    leave_results_temp['daily_leave_counts'] = daily_leave_df.copy()
+                    
+                    st.session_state.leave_analysis_results.update(leave_results_temp)
+                    st.success(f"✅ {_('Leave Analysis')} 完了")
                 else:
-                    st.warning(f"{_('Leave Analysis')}: 前提となる long_df が存在しないか空のため、処理をスキップしました。")
+                    st.info(f"{_('Leave Analysis')}: 分析対象となる休暇データが見つかりませんでした。")
             except Exception as e_leave:
                 st.error(f"{_('Leave Analysis')} の処理中にエラーが発生しました: {e_leave}")
                 log.error(f"休暇分析エラー: {e_leave}", exc_info=True)
-        # ★----- 休暇分析モジュールの実行ここまで -----★
-
-        # 他の追加モジュールの実行
         for opt_module_name_exec_run in st.session_state.available_ext_opts_widget:
             if opt_module_name_exec_run in param_ext_opts and opt_module_name_exec_run != _("Leave Analysis"):
                 progress_key_exec_run = f"{opt_module_name_exec_run}: Processing..."
@@ -710,7 +689,6 @@ if run_button_clicked:
         else: 
             log.warning(f"解析は完了しましたが、出力ディレクトリ '{out_dir_to_save_exec_main_run}' が見つかりません。")
 
-# ★ 新しい「休暇分析」タブの表示 (解析が完了し、休暇分析が選択されている場合)
 if st.session_state.get("analysis_done", False) and \
    _("Leave Analysis") in st.session_state.get("ext_opts_multiselect_widget", []) and \
    st.session_state.get("leave_analysis_results"):
@@ -920,32 +898,189 @@ if st.session_state.get("analysis_done", False) and \
             st.write("表示できる職員別の休暇データがありません。")
 
 # ─────────────────────────────  app.py  (Part 3 / 3)  ──────────────────────────
-def display_overview_tab(tab, data_dir): 
-    tab.write(f"Overview from {data_dir}")
 
-def display_heatmap_tab(tab, data_dir): 
-    tab.write(f"Heatmap from {data_dir}")
 
-def display_shortage_tab(tab, data_dir): 
-    tab.write(f"Shortage from {data_dir}")
 
-def display_fatigue_tab(tab, data_dir): 
-    tab.write(f"Fatigue from {data_dir}")
+def display_overview_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Overview"))
+        fp_overview = data_dir / "overview.xlsx"
+        if fp_overview.exists():
+            try:
+                df_overview = pd.read_excel(fp_overview, index_col=0)
+                st.dataframe(df_overview, use_container_width=True)
+            except Exception as e: st.error(f"overview.xlsx 表示エラー: {e}")
+        else: st.info(_("Overview") + " (overview.xlsx) " + _("が見つかりません。"))
 
-def display_forecast_tab(tab, data_dir): 
-    tab.write(f"Forecast from {data_dir}")
+def display_heatmap_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Heatmap"))
+        fp_heat = data_dir / "heat_ALL.xlsx"
+        if fp_heat.exists():
+            try:
+                df_heat = pd.read_excel(fp_heat, index_col=0)
+                
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    display_option = st.radio(_("Display Option"), ["Staff", "Need", "Ratio"], key="dash_heat_display_option")
+                with col2:
+                    if display_option == "Ratio":
+                        zmax = st.slider(_("Max Ratio Value"), min_value=1.0, max_value=5.0, value=2.0, step=0.1, key="dash_heat_zmax")
+                
+                if display_option == "Staff":
+                    if "staff" in df_heat.columns and not df_heat.empty:
+                        staff_display_df = df_heat.pivot(index="time", columns="date", values="staff")
+                        fig = px.imshow(staff_display_df, aspect="auto", color_continuous_scale=px.colors.sequential.Viridis, labels={"x":_("Date"),"y":_("Time"),"color":_("Staff Count")})
+                    else:
+                        st.warning("Staff表示に必要な'staff'列または日付データが見つかりません。")
+                        fig = go.Figure()
+                elif display_option == "Need":
+                    if "need" in df_heat.columns and not df_heat.empty:
+                        need_display_df = df_heat.pivot(index="time", columns="date", values="need")
+                        fig = px.imshow(need_display_df, aspect="auto", color_continuous_scale=px.colors.sequential.Plasma, labels={"x":_("Date"),"y":_("Time"),"color":_("Need Count")})
+                    else:
+                        st.warning("Need表示に必要な'need'列または日付データが見つかりません。")
+                        fig = go.Figure()
+                else:  # Ratio
+                    if "staff" in df_heat.columns and "need" in df_heat.columns and not df_heat.empty:
+                        staff_display_df = df_heat.pivot(index="time", columns="date", values="staff")
+                        need_display_df = df_heat.pivot(index="time", columns="date", values="need")
+                        if not need_display_df.empty and (need_display_df > 0).any().any():
+                            ratio_display_df = staff_display_df / need_display_df
+                            ratio_display_df = ratio_display_df.clip(upper=zmax)
+                            fig = px.imshow(ratio_display_df, aspect="auto", color_continuous_scale=px.colors.sequential.RdBu_r, zmin=0, zmax=zmax, labels={"x":_("Date"),"y":_("Time"),"color":_("Ratio (staff ÷ need)")})
+                        else:
+                            st.warning("Ratio表示に必要な'need'列データが0または存在しません。")
+                            fig = go.Figure()
+                    else:
+                        st.warning("Ratio表示に必要な'staff'列、'need'列、または日付データが見つかりません。")
+                        fig = go.Figure()
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e: st.error(f"ヒートマップ表示エラー: {e}")
+        else: st.info(_("Heatmap") + " (heat_ALL.xlsx) " + _("が見つかりません。"))
 
-def display_fairness_tab(tab, data_dir): 
-    tab.write(f"Fairness from {data_dir}")
+def display_shortage_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Shortage"))
+        fp_s_role = data_dir / "shortage_role.xlsx"
+        if fp_s_role.exists():
+            try:
+                df_s_role = pd.read_excel(fp_s_role); st.dataframe(df_s_role,use_container_width=True,hide_index=True)
+                if "role" in df_s_role and "lack_h" in df_s_role: st.bar_chart(df_s_role.set_index("role")["lack_h"], color="#FFA500")
+            except Exception as e: st.error(f"shortage_role.xlsx 表示エラー: {e}")
+        else: st.info(_("Shortage") + " (shortage_role.xlsx) " + _("が見つかりません。"))
+        st.markdown("---")
+        fp_s_time = data_dir / "shortage_time.xlsx"
+        if fp_s_time.exists():
+            try:
+                df_s_time = pd.read_excel(fp_s_time, index_col=0)
+                st.write(_("Shortage by Time (count per day)"))
+                avail_dates = df_s_time.columns.tolist()
+                if avail_dates:
+                    sel_date = st.selectbox(_("Select date to display"), avail_dates, key="dash_short_time_date")
+                    if sel_date: st.bar_chart(df_s_time[sel_date])
+                else: st.info(_("No date columns in shortage data."))
+                with st.expander(_("Display all time-slot shortage data")): st.dataframe(df_s_time, use_container_width=True)
+            except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
+        else: st.info(_("Shortage") + " (shortage_time.xlsx) " + _("が見つかりません。"))
+        
+def display_fatigue_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Fatigue Score per Staff"))
+        fp = data_dir / "fatigue_score.xlsx"
+        if fp.exists():
+            try:
+                df = pd.read_excel(fp) 
+                st.dataframe(df, use_container_width=True, hide_index=True)
+                if "fatigue_score" in df and "staff" in df: 
+                    st.bar_chart(df.set_index("staff")["fatigue_score"])
+            except Exception as e: st.error(f"fatigue_score.xlsx 表示エラー: {e}")
+        else: st.info(_("Fatigue") + " (fatigue_score.xlsx) " + _("が見つかりません。"))
 
-def display_costsim_tab(tab, data_dir): 
-    tab.write(f"Cost Sim from {data_dir}")
+def display_forecast_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Demand Forecast (yhat)"))
+        fp_fc = data_dir / "forecast.xlsx"
+        if fp_fc.exists():
+            try:
+                df_fc = pd.read_excel(fp_fc, parse_dates=["ds"])
+                fig = go.Figure()
+                if "ds" in df_fc and "yhat" in df_fc:
+                    fig.add_trace(go.Scatter(x=df_fc["ds"], y=df_fc["yhat"], mode='lines+markers', name=_("Demand Forecast (yhat)")))
+                fp_demand = data_dir / "demand_series.csv"
+                if fp_demand.exists():
+                    df_actual = pd.read_csv(fp_demand, parse_dates=["ds"])
+                    if "ds" in df_actual and "y" in df_actual:
+                         fig.add_trace(go.Scatter(x=df_actual["ds"], y=df_actual["y"], mode='lines', name=_("Actual (y)"), line=dict(dash='dash')))
+                fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
+                st.plotly_chart(fig, use_container_width=True)
+                with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
+            except Exception as e: st.error(f"forecast.xlsx 表示エラー: {e}")
+        else: st.info(_("Forecast") + " (forecast.xlsx) " + _("が見つかりません。"))
 
-def display_hireplan_tab(tab, data_dir): 
-    tab.write(f"Hire Plan from {data_dir}")
+def display_fairness_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Fairness (Night Shift Ratio)"))
+        fp = data_dir / "fairness_after.xlsx"
+        if fp.exists():
+            try:
+                df = pd.read_excel(fp); st.dataframe(df, use_container_width=True, hide_index=True)
+                if "staff" in df and "night_ratio" in df: st.bar_chart(df.set_index("staff")["night_ratio"], color="#FF8C00")
+            except Exception as e: st.error(f"fairness_after.xlsx 表示エラー: {e}")
+        else: st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
-def display_ppt_tab(tab, data_dir): 
-    tab.write(f"PPT Report from {data_dir}")
+def display_costsim_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Cost Simulation (Million ¥)"))
+        fp = data_dir / "cost_benefit.xlsx"
+        if fp.exists():
+            try:
+                df = pd.read_excel(fp, index_col=0)
+                if "Cost_Million" in df: st.bar_chart(df["Cost_Million"])
+                st.dataframe(df, use_container_width=True)
+            except Exception as e: st.error(f"cost_benefit.xlsx 表示エラー: {e}")
+        else: st.info(_("Cost Sim") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
+
+def display_hireplan_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Hiring Plan (Needed FTE)"))
+        fp = data_dir / "hire_plan.xlsx"
+        if fp.exists():
+            try:
+                xls = pd.ExcelFile(fp)
+                if "hire_plan" in xls.sheet_names:
+                    df_plan = xls.parse("hire_plan"); st.dataframe(df_plan, use_container_width=True, hide_index=True)
+                    if "role" in df_plan and "hire_need" in df_plan: st.bar_chart(df_plan.set_index("role")["hire_need"])
+                if "meta" in xls.sheet_names:
+                    with st.expander(_("Hiring Plan Parameters")): st.table(xls.parse("meta"))
+            except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
+        else: st.info(_("Hire Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
+
+def display_ppt_tab(tab_container, data_dir_ignored): 
+    with tab_container:
+        st.subheader(_("PPT Report"))
+        if st.button(_("Generate PowerPoint Report (β)"), key="dash_generate_ppt_button", use_container_width=True):
+            st.info(_("Generating PowerPoint report..."))
+            try:
+                from pptx import Presentation 
+                prs = Presentation()
+                prs.slides.add_slide(prs.slide_layouts[5]).shapes.title.text = "ダッシュボードからのレポート"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_ppt_dash:
+                    temp_ppt_dash_path = tmp_ppt_dash.name
+                prs.save(temp_ppt_dash_path)
+                with open(temp_ppt_dash_path, "rb") as ppt_file_data_dash:
+                    st.download_button(
+                        label=_("Download Report (PPTX)"), data=ppt_file_data_dash,
+                        file_name=f"ShiftSuite_Dashboard_Report_{dt.datetime.now().strftime('%Y%m%d_%H%M')}.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        use_container_width=True
+                    )
+                Path(temp_ppt_dash_path).unlink()
+                st.success(_("PowerPoint report ready."))
+            except ImportError: st.error(_("python-pptx library required for PPT"))
+            except Exception as e_ppt_dash: st.error(_("Error generating PowerPoint report") + f": {e_ppt_dash}")
+        else:
+            st.markdown(_("Click button to generate report."))
 
 st.divider()
 st.header(_("Dashboard (Upload ZIP)"))
