@@ -36,6 +36,9 @@ import numpy as np
 import streamlit as st
 from streamlit.runtime import exists as st_runtime_exists
 import openpyxl
+import plotly.express as px
+import plotly.graph_objects as go
+import datetime as dt
 
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
 from shift_suite.tasks.io_excel import ingest_excel
@@ -707,6 +710,10 @@ if run_button_clicked:
         else: 
             log.warning(f"解析は完了しましたが、出力ディレクトリ '{out_dir_to_save_exec_main_run}' が見つかりません。")
 
+# 完全修正版 - 休暇分析結果表示コード全体
+
+# Plotlyの全体問題を修正した休暇分析コード
+
 # ★ 新しい「休暇分析」タブの表示 (解析が完了し、休暇分析が選択されている場合)
 if st.session_state.get("analysis_done", False) and \
    _("Leave Analysis") in st.session_state.get("ext_opts_multiselect_widget", []) and \
@@ -715,119 +722,713 @@ if st.session_state.get("analysis_done", False) and \
     st.header("📊 " + _("Leave Analysis") + " 結果")
     results = st.session_state.leave_analysis_results
     
-    tab_leave_requested, tab_leave_paid, tab_leave_staff_detail = st.tabs([
+    # デバッグ用に結果データの構造表示
+    with st.expander("デバッグ情報（データ構造）", expanded=False):
+        st.write("結果キー:", list(results.keys()))
+        for key, value in results.items():
+            if isinstance(value, pd.DataFrame):
+                st.write(f"{key} の列名:", list(value.columns))
+                st.write(f"{key} の最初の数行:")
+                st.dataframe(value.head())
+    
+    tab_leave_requested, tab_leave_paid, tab_leave_staff_detail, tab_leave_insights = st.tabs([
         "希望休 分析", 
         "有給休暇 分析", 
-        "職員別 休暇リスト"
+        "職員別 詳細分析", 
+        "統合インサイト"
     ])
     
+    # 希望休分析タブ
     with tab_leave_requested:
         st.subheader("希望休の傾向")
         if LEAVE_TYPE_REQUESTED in st.session_state.get("leave_analysis_target_types_widget", []):
-            summary_dow_req = results.get('summary_dow_requested')
-            if summary_dow_req is not None and not summary_dow_req.empty:
-                st.write("曜日別の希望休取得件数:")
-                st.bar_chart(summary_dow_req.set_index('period_unit')['total_leave_days'])
-            else:
-                st.write("曜日別の希望休データはありません。")
             
-            summary_month_period_req = results.get('summary_month_period_requested')
-            if summary_month_period_req is not None and not summary_month_period_req.empty:
-                st.write("月初・月中・月末別の希望休取得件数:")
-                st.bar_chart(summary_month_period_req.set_index('period_unit')['total_leave_days'])
-            else:
-                st.write("月初・月中・月末別の希望休データはありません。")
-            
-            summary_month_req = results.get('summary_month_requested')
-            if summary_month_req is not None and not summary_month_req.empty:
-                st.write("月別の希望休取得件数:")
-                st.line_chart(summary_month_req.set_index('period_unit')['total_leave_days'])
-            else:
-                st.write("月別の希望休データはありません。")
-            
-            concentration_req = results.get('concentration_requested')
-            if concentration_req is not None and not concentration_req.empty:
-                concentrated_days_req = concentration_req[concentration_req['is_concentrated']]
-                if not concentrated_days_req.empty:
-                    st.write(f"希望休が {st.session_state.leave_concentration_threshold_widget} 人以上集中している日:")
-                    st.dataframe(
-                        concentrated_days_req[['date', 'leave_applicants_count']].rename(
-                            columns={'date':'日付', 'leave_applicants_count':'希望休取得者数'}
-                        ).reset_index(drop=True)
-                    )
+            # 休暇種別カラム名を特定
+            daily_leave_df = results.get('daily_leave_df')
+            if daily_leave_df is not None and not daily_leave_df.empty:
+                leave_type_column = None
+                for possible_col in ['leave_type', 'holiday_type', 'type', '休暇種別', 'leave_category']:
+                    if possible_col in daily_leave_df.columns:
+                        leave_type_column = possible_col
+                        break
+                        
+                if leave_type_column:
+                    col1_req, col2_req = st.columns(2)
+                    
+                    with col1_req:
+                        # 曜日別分析（職員詳細付き）
+                        summary_dow_req = results.get('summary_dow_requested')
+                        if summary_dow_req is not None and not summary_dow_req.empty:
+                            st.write("**曜日別 希望休取得件数:**")
+                            
+                            # 曜日名をマッピング
+                            dow_mapping = {0: '月曜', 1: '火曜', 2: '水曜', 3: '木曜', 4: '金曜', 5: '土曜', 6: '日曜'}
+                            
+                            # グラフ表示
+                            if 'period_unit' in summary_dow_req.columns:
+                                try:
+                                    dow_chart_data = summary_dow_req.copy()
+                                    dow_chart_data['曜日'] = dow_chart_data['period_unit'].map(dow_mapping)
+                                    fig_dow_req = px.bar(dow_chart_data, x='曜日', y='total_leave_days',
+                                                      title="曜日別 希望休取得件数")
+                                    st.plotly_chart(fig_dow_req, use_container_width=True)
+                                except Exception as e:
+                                    st.error(f"曜日別グラフ表示エラー: {e}")
+                            
+                            # 曜日選択で詳細表示
+                            selected_dow = st.selectbox(
+                                "詳細を見る曜日を選択", 
+                                options=list(dow_mapping.values()),
+                                key="dow_detail_select_req"
+                            )
+                            
+                            # 選択した曜日の詳細職員リスト
+                            if selected_dow:
+                                try:
+                                    dow_num = {v: k for k, v in dow_mapping.items()}[selected_dow]
+                                    req_daily_df = daily_leave_df[daily_leave_df[leave_type_column] == LEAVE_TYPE_REQUESTED].copy()
+                                        
+                                    if not req_daily_df.empty:
+                                        date_column = 'date' if 'date' in req_daily_df.columns else ('leave_date' if 'leave_date' in req_daily_df.columns else None)
+                                        if date_column:
+                                            req_daily_df['dow'] = pd.to_datetime(req_daily_df[date_column]).dt.dayofweek
+                                            dow_detail = req_daily_df[req_daily_df['dow'] == dow_num]
+                                        
+                                        if not dow_detail.empty:
+                                            st.write(f"**{selected_dow}に希望休を取得した職員:**")
+                                            staff_counts = dow_detail['staff'].value_counts()
+                                            st.dataframe(
+                                                staff_counts.reset_index().rename(
+                                                    columns={'index': '職員名', 'staff': f'{selected_dow}の取得回数'}
+                                                )
+                                            )
+                                except Exception as e:
+                                    st.error(f"曜日別詳細表示エラー: {e}")
+                    
+                    with col2_req:
+                        # 月内分布分析
+                        summary_month_period_req = results.get('summary_month_period_requested')
+                        if summary_month_period_req is not None and not summary_month_period_req.empty:
+                            st.write("**月内分布 (月初・月中・月末):**")
+                            try:
+                                fig_period_req = px.bar(summary_month_period_req, 
+                                                      x='period_unit', y='total_leave_days',
+                                                      title="月内期間別 希望休取得件数")
+                                st.plotly_chart(fig_period_req, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"月内分布グラフ表示エラー: {e}")
+                    
+                    # 集中度分析
+                    concentration_req = results.get('concentration_requested')
+                    if concentration_req is not None and not concentration_req.empty:
+                        st.subheader("希望休 集中度分析")
+                        concentrated_days_req = concentration_req[concentration_req['is_concentrated']]
+                        
+                        if not concentrated_days_req.empty:
+                            st.write(f"**希望休が {st.session_state.leave_concentration_threshold_widget} 人以上集中している日:**")
+                            
+                            # 集中日のカレンダー表示風グラフ
+                            try:
+                                fig_concentration = px.scatter(
+                                    concentrated_days_req, 
+                                    x='date', y='leave_applicants_count',
+                                    size='leave_applicants_count',
+                                    title=f"希望休集中日 (閾値: {st.session_state.leave_concentration_threshold_widget}人)",
+                                    hover_data=['date', 'leave_applicants_count']
+                                )
+                                st.plotly_chart(fig_concentration, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"集中度グラフ表示エラー: {e}")
+                            
+                            # 集中日詳細
+                            st.dataframe(
+                                concentrated_days_req[['date', 'leave_applicants_count']].rename(
+                                    columns={'date':'日付', 'leave_applicants_count':'希望休取得者数'}
+                                ).reset_index(drop=True)
+                            )
+                            
+                            # 特定の集中日の職員リスト
+                            selected_conc_date = st.selectbox(
+                                "詳細を見る集中日を選択",
+                                options=concentrated_days_req['date'].tolist(),
+                                key="conc_date_select"
+                            )
+                            
+                            if selected_conc_date:
+                                try:
+                                    req_daily_df = daily_leave_df[daily_leave_df[leave_type_column] == LEAVE_TYPE_REQUESTED].copy()
+                                    date_column = 'date' if 'date' in req_daily_df.columns else 'leave_date'
+                                    date_detail = req_daily_df[req_daily_df[date_column] == selected_conc_date]
+                                    
+                                    if not date_detail.empty:
+                                        st.write(f"**{selected_conc_date} に希望休を取得した職員:**")
+                                        st.write(", ".join(date_detail['staff'].tolist()))
+                                except Exception as e:
+                                    st.error(f"集中日詳細表示エラー: {e}")
+                        else:
+                            st.write(f"希望休が {st.session_state.leave_concentration_threshold_widget} 人以上集中している日はありませんでした。")
+                    else:
+                        st.write("希望休の集中度データはありません。")
                 else:
-                    st.write(f"希望休が {st.session_state.leave_concentration_threshold_widget} 人以上集中している日はありませんでした。")
+                    st.warning("休暇種別を示すカラム名が見つかりません。データ構造を確認してください。")
             else:
-                st.write("希望休の集中度データはありません。")
+                st.warning("日次休暇データが見つかりません。")
         else:
             st.info("希望休は分析対象として選択されていません。")
     
+    # 有給休暇分析タブ
     with tab_leave_paid:
         st.subheader("有給休暇の傾向 (終日のみ)")
         if LEAVE_TYPE_PAID in st.session_state.get("leave_analysis_target_types_widget", []):
-            summary_dow_paid = results.get('summary_dow_paid')
-            if summary_dow_paid is not None and not summary_dow_paid.empty:
-                st.write("曜日別の有給休暇取得日数:")
-                st.bar_chart(summary_dow_paid.set_index('period_unit')['total_leave_days'])
-            else:
-                st.write("曜日別の有給休暇データはありません。")
             
-            summary_month_paid = results.get('summary_month_paid')
-            if summary_month_paid is not None and not summary_month_paid.empty:
-                st.write("月別の有給休暇取得日数:")
-                st.line_chart(summary_month_paid.set_index('period_unit')['total_leave_days'])
+            # 休暇種別カラム名を特定
+            daily_leave_df = results.get('daily_leave_df')
+            if daily_leave_df is not None and not daily_leave_df.empty:
+                leave_type_column = None
+                for possible_col in ['leave_type', 'holiday_type', 'type', '休暇種別', 'leave_category']:
+                    if possible_col in daily_leave_df.columns:
+                        leave_type_column = possible_col
+                        break
+                        
+                if leave_type_column:
+                    col1_paid, col2_paid = st.columns(2)
+                    
+                    with col1_paid:
+                        # 曜日別分析
+                        summary_dow_paid = results.get('summary_dow_paid')
+                        if summary_dow_paid is not None and not summary_dow_paid.empty:
+                            st.write("**曜日別 有給休暇取得日数:**")
+                            
+                            # 曜日名マッピング
+                            dow_mapping = {0: '月曜', 1: '火曜', 2: '水曜', 3: '木曜', 4: '金曜', 5: '土曜', 6: '日曜'}
+                            
+                            if 'period_unit' in summary_dow_paid.columns:
+                                try:
+                                    dow_chart_data_paid = summary_dow_paid.copy()
+                                    dow_chart_data_paid['曜日'] = dow_chart_data_paid['period_unit'].map(dow_mapping)
+                                    fig_dow_paid = px.bar(dow_chart_data_paid, x='曜日', y='total_leave_days',
+                                                        title="曜日別 有給休暇取得日数")
+                                    st.plotly_chart(fig_dow_paid, use_container_width=True)
+                                except Exception as e:
+                                    st.error(f"曜日別有給グラフ表示エラー: {e}")
+                    
+                    with col2_paid:
+                        # 月別分析
+                        summary_month_paid = results.get('summary_month_paid')
+                        if summary_month_paid is not None and not summary_month_paid.empty:
+                            st.write("**月別 有給休暇取得日数:**")
+                            try:
+                                fig_month_paid = px.line(summary_month_paid, 
+                                                       x='period_unit', y='total_leave_days',
+                                                       title="月別 有給休暇取得日数",
+                                                       markers=True)
+                                st.plotly_chart(fig_month_paid, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"月別有給グラフ表示エラー: {e}")
+                            
+                    # 有給休暇取得者リスト
+                    try:
+                        paid_daily_df = daily_leave_df[daily_leave_df[leave_type_column] == LEAVE_TYPE_PAID].copy()
+                        if not paid_daily_df.empty:
+                            st.subheader("有給休暇取得 職員別集計")
+                            staff_paid_counts = paid_daily_df['staff'].value_counts().reset_index()
+                            staff_paid_counts.columns = ['職員名', '有給休暇取得回数']
+                            
+                            # 上位10名をグラフ表示
+                            top_10_paid = staff_paid_counts.head(10)
+                            fig_staff_paid = px.bar(
+                                top_10_paid, 
+                                x='職員名', y='有給休暇取得回数',
+                                title="有給休暇取得回数 上位10名"
+                            )
+                            # 正しい方法で軸の角度を変更
+                            fig_staff_paid.update_layout(xaxis=dict(tickangle=45))
+                            st.plotly_chart(fig_staff_paid, use_container_width=True)
+                            
+                            # 全職員の有給取得一覧
+                            st.dataframe(staff_paid_counts, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"有給休暇取得者リスト表示エラー: {e}")
+                else:
+                    st.warning("休暇種別を示すカラム名が見つかりません。データ構造を確認してください。")
             else:
-                st.write("月別の有給休暇データはありません。")
+                st.warning("日次休暇データが見つかりません。")
         else:
             st.info("有給休暇は分析対象として選択されていません。")
             
+    # 職員別詳細分析タブ
     with tab_leave_staff_detail:
-        st.subheader("職員別 休暇リスト (終日希望休・終日有給)")
+        st.subheader("職員別 詳細分析")
         staff_leave_list_df = results.get('staff_leave_list')
+        
         if staff_leave_list_df is not None and not staff_leave_list_df.empty:
+            # データフレームの構造確認
+            st.write("利用可能なデータ列:", list(staff_leave_list_df.columns))
+            
+            # 休暇種別カラム名の確認
+            leave_type_column = None
+            for possible_col in ['leave_type', 'holiday_type', 'type', '休暇種別', 'leave_category']:
+                if possible_col in staff_leave_list_df.columns:
+                    leave_type_column = possible_col
+                    break
+            
             all_staff_names = sorted(staff_leave_list_df['staff'].unique())
+            
+            # 職員選択
             selected_staff_for_detail = st.selectbox(
-                "詳細を表示する職員を選択", 
-                options=["全員表示"] + all_staff_names, 
+                "分析する職員を選択", 
+                options=all_staff_names, 
                 key="leave_detail_staff_select"
             )
-            if selected_staff_for_detail == "全員表示":
-                st.dataframe(staff_leave_list_df, height=400, use_container_width=True)
+            
+            if selected_staff_for_detail:
+                staff_data = staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail]
+                
+                # 職員のメトリクス表示
+                col1_staff, col2_staff, col3_staff = st.columns(3)
+                
+                with col1_staff:
+                    total_leave_days = len(staff_data)
+                    st.metric("総休暇取得日数", total_leave_days)
+                
+                with col2_staff:
+                    if leave_type_column:
+                        # 休暇種別カラムが見つかった場合、値の種類を確認
+                        unique_leave_types = staff_data[leave_type_column].unique()
+                        st.write("休暇種別:", list(unique_leave_types))
+                        
+                        if LEAVE_TYPE_REQUESTED in unique_leave_types:
+                            requested_count = sum(staff_data[leave_type_column] == LEAVE_TYPE_REQUESTED)
+                            st.metric("希望休日数", requested_count)
+                        else:
+                            st.metric("希望休日数", "N/A")
+                    else:
+                        # 休暇種別カラムが見つからない場合
+                        st.metric("希望休日数", "N/A")
+                
+                with col3_staff:
+                    if leave_type_column:
+                        unique_leave_types = staff_data[leave_type_column].unique()
+                        if LEAVE_TYPE_PAID in unique_leave_types:
+                            paid_count = sum(staff_data[leave_type_column] == LEAVE_TYPE_PAID)
+                            st.metric("有給休暇日数", paid_count)
+                        else:
+                            st.metric("有給休暇日数", "N/A")
+                    else:
+                        # 休暇種別カラムが見つからない場合
+                        st.metric("有給休暇日数", "N/A")
+                
+                # 職員の休暇カレンダー表示
+                if not staff_data.empty:
+                    st.subheader(f"{selected_staff_for_detail} の休暇パターン分析")
+                    
+                    # 日付データを準備
+                    calendar_data = staff_data.copy()
+                    date_column = None
+                    if 'date' in calendar_data.columns:
+                        date_column = 'date'
+                    elif 'leave_date' in calendar_data.columns:
+                        date_column = 'leave_date'
+
+                    if date_column:
+                        try:
+                            calendar_data['date'] = pd.to_datetime(calendar_data[date_column])
+                            calendar_data['month'] = calendar_data['date'].dt.month
+                            calendar_data['day'] = calendar_data['date'].dt.day
+                            calendar_data['year'] = calendar_data['date'].dt.year
+                            calendar_data['dow'] = calendar_data['date'].dt.dayofweek
+                            
+                            
+                            # 月別の休暇集計
+                            if leave_type_column:
+                                # 休暇種別カラムがある場合の月別集計
+                                monthly_pattern = calendar_data.groupby(['month', leave_type_column]).size().reset_index(name='count')
+                                if not monthly_pattern.empty:
+                                    fig_monthly = px.bar(
+                                        monthly_pattern, 
+                                        x='month', y='count', 
+                                        color=leave_type_column,
+                                        title=f"{selected_staff_for_detail} の月別休暇取得パターン",
+                                        labels={'month': '月', 'count': '取得日数'}
+                                    )
+                                    st.plotly_chart(fig_monthly, use_container_width=True)
+                            else:
+                                # 休暇種別カラムがない場合は合計のみ表示
+                                monthly_total = calendar_data.groupby(['month']).size().reset_index(name='count')
+                                if not monthly_total.empty:
+                                    fig_monthly_total = px.bar(
+                                        monthly_total, 
+                                        x='month', y='count',
+                                        title=f"{selected_staff_for_detail} の月別休暇取得パターン (全種別合計)",
+                                        labels={'month': '月', 'count': '取得日数'}
+                                    )
+                                    st.plotly_chart(fig_monthly_total, use_container_width=True)
+                            
+                            # 曜日別パターン
+                            try:
+                                if leave_type_column:
+                                    # 休暇種別カラムがある場合の曜日別集計
+                                    dow_pattern = calendar_data.groupby(['dow', leave_type_column]).size().reset_index(name='count')
+                                    if not dow_pattern.empty:
+                                        dow_mapping = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土', 6: '日'}
+                                        dow_pattern['曜日'] = dow_pattern['dow'].map(dow_mapping)
+                                        
+                                        fig_dow = px.bar(
+                                            dow_pattern, 
+                                            x='曜日', y='count', 
+                                            color=leave_type_column,
+                                            title=f"{selected_staff_for_detail} の曜日別休暇取得パターン"
+                                        )
+                                        st.plotly_chart(fig_dow, use_container_width=True)
+                                else:
+                                    # 休暇種別カラムがない場合は合計のみ表示
+                                    dow_total = calendar_data.groupby(['dow']).size().reset_index(name='count')
+                                    if not dow_total.empty:
+                                        dow_mapping = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土', 6: '日'}
+                                        dow_total['曜日'] = dow_total['dow'].map(dow_mapping)
+                                        
+                                        fig_dow_total = px.bar(
+                                            dow_total, 
+                                            x='曜日', y='count',
+                                            title=f"{selected_staff_for_detail} の曜日別休暇取得パターン (全種別合計)"
+                                        )
+                                        st.plotly_chart(fig_dow_total, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"曜日別パターングラフ表示エラー: {e}")
+                        except Exception as e:
+                            st.error(f"休暇パターン分析エラー: {e}")
+                    else:
+                        st.warning("日付データが見つからないため、パターン分析ができません。")
+                
+                    # 詳細データテーブル
+                    st.subheader("休暇取得詳細")
+                    date_column = None
+                    if 'date' in staff_data.columns:
+                        date_column = 'date'
+                    elif 'leave_date' in staff_data.columns:
+                        date_column = 'leave_date'
+
+                    if date_column:
+                        display_columns = [date_column]
+                
+                        if leave_type_column:
+                            display_columns.append(leave_type_column)
+                        
+                        # 他の可能性のあるカラムを追加
+                        optional_columns = ['shift_code', 'role', 'position', 'department']
+                        for col in optional_columns:
+                            if col in staff_data.columns:
+                                display_columns.append(col)
+                        
+                        # カラム名のマッピング辞書
+                        col_mapping = {
+                            'date': '日付',
+                            'leave_type': '休暇種別',
+                            'holiday_type': '休暇種別',
+                            'type': '種別',
+                            'shift_code': 'シフトコード',
+                            'role': '職種',
+                            'position': '役職',
+                            'department': '部署'
+                        }
+                        
+                        # マッピングを適用                        
+                        rename_dict = {col: col_mapping.get(col, col) for col in display_columns if col in col_mapping}
+                        # leave_date も日付として扱うように追加
+                        if 'leave_date' in display_columns and 'leave_date' not in rename_dict:
+                            rename_dict['leave_date'] = '日付'
+                            
+                        try:
+                            df_to_display = staff_data[display_columns].rename(columns=rename_dict)
+                            if '日付' in df_to_display.columns:
+                                df_to_display = df_to_display.sort_values('日付')
+                            st.dataframe(df_to_display, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"詳細データテーブル表示エラー: {e}")
+                            # フォールバック: 全データを表示
+                            st.write("全データ:")
+                            st.dataframe(staff_data)
+                    else:
+                        st.warning("日付データが見つからないため、詳細テーブルを表示できません。")
             else:
-                st.dataframe(
-                    staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail], 
-                    height=400, use_container_width=True
-                )
+                st.info("職員を選択してください。")
         else:
             st.write("表示できる職員別の休暇データがありません。")
+    
+    # 統合インサイトタブ
+    with tab_leave_insights:
+        st.subheader("統合インサイト")
+        
+        # 全体統計
+        staff_leave_list_df = results.get('staff_leave_list')
+        if staff_leave_list_df is not None and not staff_leave_list_df.empty:
+            
+            # 休暇種別カラム名を特定
+            leave_type_column = None
+            for possible_col in ['leave_type', 'holiday_type', 'type', '休暇種別', 'leave_category']:
+                if possible_col in staff_leave_list_df.columns:
+                    leave_type_column = possible_col
+                    break
+            
+            # 総合統計
+            col1_ins, col2_ins, col3_ins, col4_ins = st.columns(4)
+            
+            with col1_ins:
+                total_staff = staff_leave_list_df['staff'].nunique()
+                st.metric("分析対象職員数", total_staff)
+            
+            with col2_ins:
+                total_leave_instances = len(staff_leave_list_df)
+                st.metric("総休暇取得回数", total_leave_instances)
+            
+            with col3_ins:
+                if total_staff > 0:
+                    avg_per_staff = total_leave_instances / total_staff
+                    st.metric("職員あたり平均休暇日数", f"{avg_per_staff:.1f}")
+            
+            with col4_ins:
+                date_column = None
+                if 'date' in staff_leave_list_df.columns:
+                    date_column = 'date'
+                elif 'leave_date' in staff_leave_list_df.columns:
+                    date_column = 'leave_date'
+
+                if date_column:
+                    try:
+                        date_range = pd.to_datetime(staff_leave_list_df[date_column])
+                        period_days = (date_range.max() - date_range.min()).days
+                        if period_days > 0:
+                            st.metric("分析期間", f"{period_days}日")
+                    except Exception as e:
+                        st.error(f"分析期間計算エラー: {e}")            
+            
+            
+            # 職員別休暇取得ランキング
+            st.subheader("職員別 休暇取得ランキング")
+            
+            try:
+                # 基本集計を実施
+                date_col = 'date' if 'date' in staff_leave_list_df.columns else staff_leave_list_df.columns[0]
+                staff_ranking = staff_leave_list_df.groupby('staff').size().reset_index(name='総休暇日数')
+                
+                # 休暇種別カラムが存在する場合の詳細集計
+                if leave_type_column:
+                    # 種別の一覧を取得
+                    leave_types = staff_leave_list_df[leave_type_column].unique()
+                    
+                    if LEAVE_TYPE_REQUESTED in leave_types:
+                        # 希望休をクロス集計
+                        requested_counts = staff_leave_list_df[staff_leave_list_df[leave_type_column] == LEAVE_TYPE_REQUESTED] \
+                            .groupby('staff').size().reset_index(name='希望休日数')
+                        staff_ranking = pd.merge(staff_ranking, requested_counts, on='staff', how='left')
+                        staff_ranking['希望休日数'] = staff_ranking['希望休日数'].fillna(0).astype(int)
+                    
+                    if LEAVE_TYPE_PAID in leave_types:
+                        # 有給休暇をクロス集計
+                        paid_counts = staff_leave_list_df[staff_leave_list_df[leave_type_column] == LEAVE_TYPE_PAID] \
+                            .groupby('staff').size().reset_index(name='有給休暇日数')
+                        staff_ranking = pd.merge(staff_ranking, paid_counts, on='staff', how='left')
+                        staff_ranking['有給休暇日数'] = staff_ranking['有給休暇日数'].fillna(0).astype(int)
+                
+                # 降順ソート
+                staff_ranking = staff_ranking.sort_values('総休暇日数', ascending=False)
+                
+                # 上位10名のグラフ
+                if len(staff_ranking) > 0:
+                    top_10_staff = staff_ranking.head(10)
+                    fig_ranking = px.bar(
+                        top_10_staff, 
+                        x='staff', y='総休暇日数',
+                        title="職員別 総休暇取得日数 (上位10名)"
+                    )
+                    # 正しい方法でX軸のラベル角度を設定
+                    fig_ranking.update_layout(xaxis=dict(tickangle=45))
+                    st.plotly_chart(fig_ranking, use_container_width=True)
+                    
+                    # 詳細ランキングテーブル
+                    st.dataframe(staff_ranking, use_container_width=True)
+                else:
+                    st.info("集計できる休暇データが見つかりません。")
+            except Exception as e:
+                st.error(f"職員別ランキング生成エラー: {e}")
+                st.write("データ構造を確認してください。")
+        else:
+            st.write("統合インサイトを生成するための休暇データがありません。")
 
 # ─────────────────────────────  app.py  (Part 3 / 3)  ──────────────────────────
-def display_overview_tab(tab, data_dir): 
-    tab.write(f"Overview from {data_dir}")
+def display_overview_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Overview"))
+        kpi_fp = data_dir / "shortage_role.xlsx"; lack_h = 0.0
+        if kpi_fp.exists():
+            try: df_sh_role = pd.read_excel(kpi_fp); lack_h = df_sh_role["lack_h"].sum() if "lack_h" in df_sh_role else 0.0
+            except Exception as e: st.warning(f"shortage_role.xlsx 読込/集計エラー: {e}")
+        fair_fp_meta = data_dir / "fairness_before.xlsx"; jain_display = "N/A"
+        if fair_fp_meta.exists():
+            try:
+                meta_df = pd.read_excel(fair_fp_meta, sheet_name="meta_summary")
+                jain_row = meta_df[meta_df["metric"] == "jain_index"]
+                if not jain_row.empty: jain_display = f"{float(jain_row['value'].iloc[0]):.3f}"
+            except Exception: pass 
+        c1, c2 = st.columns(2)
+        c1.metric(_("不足時間(h)"), f"{lack_h:.1f}")
+        c2.metric("夜勤 Jain指数", jain_display)
 
-def display_heatmap_tab(tab, data_dir): 
-    tab.write(f"Heatmap from {data_dir}")
+def display_heatmap_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Heatmap"))
+        fp = data_dir / "heat_ALL.xlsx"
+        if fp.exists():
+            try:
+                df_heat = pd.read_excel(fp, index_col=0)
+                mode_opts = {"Raw": _("Raw Count"), "Ratio": _("Ratio (staff ÷ need)")}
+                mode_lbl = st.radio(_("Display Mode"), list(mode_opts.values()), horizontal=True, key="dash_heat_mode_radio")
+                mode_key = [k for k,v in mode_opts.items() if v == mode_lbl][0]
+                z_def, z_min, z_max, z_stp = (11.,1.,50.,1.) if mode_key=="Raw" else (1.5,.1,3.,.1)
+                zmax = st.slider(_("Color Scale Max (zmax)"), z_min, z_max, z_def, z_stp, key="dash_heat_zmax_slider")
+                disp_df_heat = df_heat.drop(columns=[c for c in SUMMARY5_CONST if c in df_heat.columns], errors="ignore")
+                if mode_key == "Raw":
+                    fig = px.imshow(disp_df_heat, aspect="auto", color_continuous_scale="Blues", zmax=zmax, labels={"x":_("Date"),"y":_("Time"),"color":_("Raw Count")})
+                else: 
+                    if "need" in df_heat.columns and "staff" in df_heat.columns and not disp_df_heat.empty :
+                        ratio_calc_df = disp_df_heat.copy()
+                        # Ratio計算: 各日付列の各時間帯の値を、その時間帯の staff 値 / need 値で更新
+                        if 'need' in df_heat.columns and df_heat['need'].replace(0, pd.NA).notna().any(): # needが0でない有効な値を持つか
+                            ratio_display_df = disp_df_heat.apply(lambda date_col: date_col / df_heat['need'].replace(0, pd.NA), axis=0)
+                            ratio_display_df = ratio_display_df.clip(upper=zmax)
+                            fig = px.imshow(ratio_display_df, aspect="auto", color_continuous_scale=px.colors.sequential.RdBu_r, zmin=0, zmax=zmax, labels={"x":_("Date"),"y":_("Time"),"color":_("Ratio (staff ÷ need)")})
+                        else:
+                            st.warning("Ratio表示に必要な'need'列データが0または存在しません。")
+                            fig = go.Figure()
+                    else:
+                        st.warning("Ratio表示に必要な'staff'列、'need'列、または日付データが見つかりません。")
+                        fig = go.Figure()
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e: st.error(f"ヒートマップ表示エラー: {e}")
+        else: st.info(_("Heatmap") + " (heat_ALL.xlsx) " + _("が見つかりません。"))
 
-def display_shortage_tab(tab, data_dir): 
-    tab.write(f"Shortage from {data_dir}")
+def display_shortage_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Shortage"))
+        fp_s_role = data_dir / "shortage_role.xlsx"
+        if fp_s_role.exists():
+            try:
+                df_s_role = pd.read_excel(fp_s_role); st.dataframe(df_s_role,use_container_width=True,hide_index=True)
+                if "role" in df_s_role and "lack_h" in df_s_role: st.bar_chart(df_s_role.set_index("role")["lack_h"], color="#FFA500")
+            except Exception as e: st.error(f"shortage_role.xlsx 表示エラー: {e}")
+        else: st.info(_("Shortage") + " (shortage_role.xlsx) " + _("が見つかりません。"))
+        st.markdown("---")
+        fp_s_time = data_dir / "shortage_time.xlsx"
+        if fp_s_time.exists():
+            try:
+                df_s_time = pd.read_excel(fp_s_time, index_col=0)
+                st.write(_("Shortage by Time (count per day)"))
+                avail_dates = df_s_time.columns.tolist()
+                if avail_dates:
+                    sel_date = st.selectbox(_("Select date to display"), avail_dates, key="dash_short_time_date")
+                    if sel_date: st.bar_chart(df_s_time[sel_date])
+                else: st.info(_("No date columns in shortage data."))
+                with st.expander(_("Display all time-slot shortage data")): st.dataframe(df_s_time, use_container_width=True)
+            except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
+        else: st.info(_("Shortage") + " (shortage_time.xlsx) " + _("が見つかりません。"))
+        
+def display_fatigue_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Fatigue Score per Staff"))
+        fp = data_dir / "fatigue_score.xlsx"
+        if fp.exists():
+            try:
+                df = pd.read_excel(fp) 
+                st.dataframe(df, use_container_width=True, hide_index=True)
+                if "fatigue_score" in df and "staff" in df: 
+                    st.bar_chart(df.set_index("staff")["fatigue_score"])
+            except Exception as e: st.error(f"fatigue_score.xlsx 表示エラー: {e}")
+        else: st.info(_("Fatigue") + " (fatigue_score.xlsx) " + _("が見つかりません。"))
 
-def display_fatigue_tab(tab, data_dir): 
-    tab.write(f"Fatigue from {data_dir}")
+def display_forecast_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Demand Forecast (yhat)"))
+        fp_fc = data_dir / "forecast.xlsx"
+        if fp_fc.exists():
+            try:
+                df_fc = pd.read_excel(fp_fc, parse_dates=["ds"])
+                fig = go.Figure()
+                if "ds" in df_fc and "yhat" in df_fc:
+                    fig.add_trace(go.Scatter(x=df_fc["ds"], y=df_fc["yhat"], mode='lines+markers', name=_("Demand Forecast (yhat)")))
+                fp_demand = data_dir / "demand_series.csv"
+                if fp_demand.exists():
+                    df_actual = pd.read_csv(fp_demand, parse_dates=["ds"])
+                    if "ds" in df_actual and "y" in df_actual:
+                         fig.add_trace(go.Scatter(x=df_actual["ds"], y=df_actual["y"], mode='lines', name=_("Actual (y)"), line=dict(dash='dash')))
+                fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
+                st.plotly_chart(fig, use_container_width=True)
+                with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
+            except Exception as e: st.error(f"forecast.xlsx 表示エラー: {e}")
+        else: st.info(_("Forecast") + " (forecast.xlsx) " + _("が見つかりません。"))
 
-def display_forecast_tab(tab, data_dir): 
-    tab.write(f"Forecast from {data_dir}")
+def display_fairness_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Fairness (Night Shift Ratio)"))
+        fp = data_dir / "fairness_after.xlsx"
+        if fp.exists():
+            try:
+                df = pd.read_excel(fp); st.dataframe(df, use_container_width=True, hide_index=True)
+                if "staff" in df and "night_ratio" in df: st.bar_chart(df.set_index("staff")["night_ratio"], color="#FF8C00")
+            except Exception as e: st.error(f"fairness_after.xlsx 表示エラー: {e}")
+        else: st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
-def display_fairness_tab(tab, data_dir): 
-    tab.write(f"Fairness from {data_dir}")
+def display_costsim_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Cost Simulation (Million ¥)"))
+        fp = data_dir / "cost_benefit.xlsx"
+        if fp.exists():
+            try:
+                df = pd.read_excel(fp, index_col=0)
+                if "Cost_Million" in df: st.bar_chart(df["Cost_Million"])
+                st.dataframe(df, use_container_width=True)
+            except Exception as e: st.error(f"cost_benefit.xlsx 表示エラー: {e}")
+        else: st.info(_("Cost Sim") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
 
-def display_costsim_tab(tab, data_dir): 
-    tab.write(f"Cost Sim from {data_dir}")
+def display_hireplan_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("Hiring Plan (Needed FTE)"))
+        fp = data_dir / "hire_plan.xlsx"
+        if fp.exists():
+            try:
+                xls = pd.ExcelFile(fp)
+                if "hire_plan" in xls.sheet_names:
+                    df_plan = xls.parse("hire_plan"); st.dataframe(df_plan, use_container_width=True, hide_index=True)
+                    if "role" in df_plan and "hire_need" in df_plan: st.bar_chart(df_plan.set_index("role")["hire_need"])
+                if "meta" in xls.sheet_names:
+                    with st.expander(_("Hiring Plan Parameters")): st.table(xls.parse("meta"))
+            except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
+        else: st.info(_("Hire Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
-def display_hireplan_tab(tab, data_dir): 
-    tab.write(f"Hire Plan from {data_dir}")
-
-def display_ppt_tab(tab, data_dir): 
-    tab.write(f"PPT Report from {data_dir}")
+def display_ppt_tab(tab_container, data_dir_ignored): 
+    with tab_container:
+        st.subheader(_("PPT Report"))
+        if st.button(_("Generate PowerPoint Report (β)"), key="dash_generate_ppt_button", use_container_width=True):
+            st.info(_("Generating PowerPoint report..."))
+            try:
+                from pptx import Presentation 
+                prs = Presentation()
+                prs.slides.add_slide(prs.slide_layouts[5]).shapes.title.text = "ダッシュボードからのレポート"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_ppt_dash:
+                    temp_ppt_dash_path = tmp_ppt_dash.name
+                prs.save(temp_ppt_dash_path)
+                with open(temp_ppt_dash_path, "rb") as ppt_file_data_dash:
+                    st.download_button(
+                        label=_("Download Report (PPTX)"), data=ppt_file_data_dash,
+                        file_name=f"ShiftSuite_Dashboard_Report_{dt.datetime.now().strftime('%Y%m%d_%H%M')}.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        use_container_width=True
+                    )
+                Path(temp_ppt_dash_path).unlink()
+                st.success(_("PowerPoint report ready."))
+            except ImportError: st.error(_("python-pptx library required for PPT"))
+            except Exception as e_ppt_dash: st.error(_("Error generating PowerPoint report") + f": {e_ppt_dash}")
+        else:
+            st.markdown(_("Click button to generate report."))
 
 st.divider()
 st.header(_("Dashboard (Upload ZIP)"))
@@ -867,16 +1468,28 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
     tab_labels_dash = [_(key) for key in tab_keys_en_dash]
     tabs_obj_dash = st.tabs(tab_labels_dash)
 
+
     if extracted_data_dir:
-        display_overview_tab(tabs_obj_dash[0], extracted_data_dir)
-        display_heatmap_tab(tabs_obj_dash[1], extracted_data_dir)
-        display_shortage_tab(tabs_obj_dash[2], extracted_data_dir)
-        display_fatigue_tab(tabs_obj_dash[3], extracted_data_dir)
-        display_forecast_tab(tabs_obj_dash[4], extracted_data_dir)
-        display_fairness_tab(tabs_obj_dash[5], extracted_data_dir)
-        display_costsim_tab(tabs_obj_dash[6], extracted_data_dir)
-        display_hireplan_tab(tabs_obj_dash[7], extracted_data_dir)
-        display_ppt_tab(tabs_obj_dash[8], extracted_data_dir)
+        tab_function_map_dash = {
+            "Overview": display_overview_tab, 
+            "Heatmap": display_heatmap_tab,
+            "Shortage": display_shortage_tab, 
+            "Fatigue": display_fatigue_tab,
+            "Forecast": display_forecast_tab, 
+            "Fairness": display_fairness_tab,
+            "Cost Sim": display_costsim_tab, 
+            "Hire Plan": display_hireplan_tab,
+            "PPT Report": display_ppt_tab,
+        }
+        
+        # 各タブに対応する表示関数を呼び出す
+        for i, tab_key in enumerate(tab_keys_en_dash):
+            if tab_key in tab_function_map_dash:
+                tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
+            else:
+                with tabs_obj_dash[i]: 
+                    st.subheader(_(tab_key))
+                    st.info(f"{_(tab_key)} の表示は現在準備中です。")
     else:
         st.warning("ダッシュボードを表示するためのデータがロードされていません。ZIPファイルをアップロードしてください。")
 
