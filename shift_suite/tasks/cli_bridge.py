@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> list[Path]:
 
     if args.analysis in ("rest", "score", "all"):
         rest_res = RestTimeAnalyzer().analyze(df)
-        fp = out_dir / "rest_time.csv"
+        fp = out_dir / "rest_time_monthly.csv"
         rest_res.to_csv(fp, index=False)
         print(f"Results saved to {fp}")
         results.append(fp)
@@ -55,7 +55,7 @@ def main(argv: list[str] | None = None) -> list[Path]:
 
     if args.analysis in ("work", "score", "all"):
         work_res = WorkPatternAnalyzer().analyze(df)
-        fp = out_dir / "work_patterns.csv"
+        fp = out_dir / "work_pattern_monthly.csv"
         work_res.to_csv(fp, index=False)
         print(f"Results saved to {fp}")
         results.append(fp)

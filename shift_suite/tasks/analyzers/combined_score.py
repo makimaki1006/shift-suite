@@ -15,14 +15,16 @@ class CombinedScoreCalculator:
             return pd.DataFrame()
 
         avg_rest = (
-            rest_df.groupby('staff')['rest_hours'].mean().reset_index()
-            if not rest_df.empty else pd.DataFrame(columns=['staff', 'rest_hours'])
+            rest_df.groupby('staff')['avg_rest_hours'].mean().reset_index()
+            if not rest_df.empty else pd.DataFrame(columns=['staff', 'avg_rest_hours'])
         )
+        avg_rest = avg_rest.rename(columns={'avg_rest_hours': 'rest_hours'})
 
         if not work_df.empty:
-            tmp = work_df.set_index('staff')
-            totals = tmp.sum(axis=1)
-            dominant = tmp.max(axis=1) / totals.replace(0, pd.NA)
+            code_cols = [c for c in work_df.columns if c not in {'staff', 'month'} and not c.endswith('_ratio')]
+            monthly_totals = work_df.groupby('staff')[code_cols].sum()
+            totals = monthly_totals.sum(axis=1)
+            dominant = monthly_totals.max(axis=1) / totals.replace(0, pd.NA)
             pattern_df = dominant.reset_index(name='dominant_ratio')
         else:
             pattern_df = pd.DataFrame(columns=['staff', 'dominant_ratio'])
