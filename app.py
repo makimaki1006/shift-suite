@@ -59,6 +59,8 @@ from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks import leave_analyzer # ★ 新規インポート
 from shift_suite.tasks.leave_analyzer import LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID # ★ 定数もインポート
 # ──────────────────────────────────────────────────────────────────────────────
+from shift_suite.tasks.analyzers import RestTimeAnalyzer, WorkPatternAnalyzer, AttendanceBehaviorAnalyzer, CombinedScoreCalculator
+from shift_suite.tasks import dashboard
 
 # ── ロガー設定 ─────────────────────────────────
 log = logging.getLogger("shift_suite_app")
@@ -83,6 +85,7 @@ JP = {
     "Slot (min)": "スロット (分)",
     "Need Calculation Settings (Day of Week Pattern)": "📊 Need算出設定 (曜日パターン別)",
     "Reference Period for Need Calculation": "参照期間 (Need算出用)",
+    "Rest Time Analysis": "休息時間分析", "Work Pattern Analysis": "勤務パターン分析", "Attendance Analysis": "出勤状況分析", "Combined Score": "総合スコア",
     "Start Date": "開始日", "End Date": "終了日",
     "Statistical Metric for Need": "統計的指標 (Need算出用)",
     "Remove Outliers for Need Calculation": "外れ値を除去してNeedを算出",
@@ -120,6 +123,10 @@ JP = {
     "Leave Analysis: Processing...": "Leave Analysis (休暇分析) 中…",  # ★ 追加
     "Need forecast: Processing...": "Need forecast (需要予測) 中…",
     "RL roster (PPO): Processing...": "RL roster (強化学習シフト) 中…",
+    "Rest Time Analysis: Processing...": "Rest Time Analysis (休息時間分析) 中…",
+    "Work Pattern Analysis: Processing...": "勤務パターン分析 中…",
+    "Attendance Analysis: Processing...": "出勤状況分析 中…",
+    "Combined Score: Processing...": "総合スコア計算 中…",
     "Hire plan: Processing...": "Hire plan (採用計画) 中…",
     "Cost / Benefit: Processing...": "Cost / Benefit (コスト便益分析) 中…",
     "Ingest: Excel data read complete.": "✅ Excelデータ読み込み完了",
@@ -202,9 +209,7 @@ if "app_initialized" not in st.session_state:
 
     # ★ 休暇分析を含む追加モジュールリスト
     st.session_state.available_ext_opts_widget = [
-        "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness",
-        _("Leave Analysis"), # ★ "休暇分析" を追加
-        "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
+        "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness", "Rest Time Analysis", "Work Pattern Analysis", "Attendance Analysis", "Combined Score", _("Leave Analysis"), "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
     ]
     # デフォルトで休暇分析も選択状態にするかはお好みで
     st.session_state.ext_opts_multiselect_widget = st.session_state.available_ext_opts_widget[:] 
@@ -231,6 +236,10 @@ if "app_initialized" not in st.session_state:
     # ★ 休暇分析結果格納用
     st.session_state.leave_analysis_results = {}
     
+    st.session_state.rest_time_results = None
+    st.session_state.work_pattern_results = None
+    st.session_state.attendance_results = None
+    st.session_state.combined_score_results = None
     log.info("セッションステートを初期化しました。")
 
 # --- サイドバーのUI要素 ---
@@ -484,6 +493,10 @@ if run_button_clicked:
     st.session_state.leave_analysis_results = {}
     # --- UI値取得ここまで ---
 
+    st.session_state.rest_time_results = None
+    st.session_state.work_pattern_results = None
+    st.session_state.attendance_results = None
+    st.session_state.combined_score_results = None
     progress_text_area = st.empty()
     progress_bar_val = st.progress(0)
     total_steps_exec_run = 3 + len(param_ext_opts)
@@ -620,6 +633,21 @@ if run_button_clicked:
                         build_skill_matrix(long_df, out_dir_exec)
                     elif opt_module_name_exec_run == "Fairness": 
                         run_fairness(long_df, out_dir_exec)
+                    elif opt_module_name_exec_run == "Rest Time Analysis":
+                        st.session_state.rest_time_results = RestTimeAnalyzer().analyze(long_df)
+                        st.session_state.rest_time_results.to_csv(out_dir_exec / "rest_time.csv", index=False)
+                    elif opt_module_name_exec_run == "Work Pattern Analysis":
+                        st.session_state.work_pattern_results = WorkPatternAnalyzer().analyze(long_df)
+                        st.session_state.work_pattern_results.to_csv(out_dir_exec / "work_patterns.csv", index=False)
+                    elif opt_module_name_exec_run == "Attendance Analysis":
+                        st.session_state.attendance_results = AttendanceBehaviorAnalyzer().analyze(long_df)
+                        st.session_state.attendance_results.to_csv(out_dir_exec / "attendance.csv", index=False)
+                    elif opt_module_name_exec_run == "Combined Score":
+                        rest_df = st.session_state.rest_time_results if st.session_state.rest_time_results is not None else pd.DataFrame()
+                        work_df = st.session_state.work_pattern_results if st.session_state.work_pattern_results is not None else pd.DataFrame()
+                        att_df = st.session_state.attendance_results if st.session_state.attendance_results is not None else pd.DataFrame()
+                        st.session_state.combined_score_results = CombinedScoreCalculator().calculate(rest_df, work_df, att_df)
+                        st.session_state.combined_score_results.to_csv(out_dir_exec / "combined_score.csv", index=False)
                     elif opt_module_name_exec_run == "Need forecast":
                         demand_csv_exec_run_fc = out_dir_exec / "demand_series.csv"
                         forecast_xls_exec_run_fc = out_dir_exec / "forecast.xlsx"
