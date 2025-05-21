@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..tasks import leave_analyzer
+from .. import leave_analyzer
 
 
 class LeaveAnalyzer:
