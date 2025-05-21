@@ -6,12 +6,22 @@ class WorkPatternAnalyzer:
     """Analyse frequency of shift codes per staff."""
 
     def analyze(self, df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty or 'code' not in df.columns:
+        if df.empty or "code" not in df.columns:
             return pd.DataFrame()
-        work_df = df[df.get('parsed_slots_count', 0) > 0].copy()
+
+        work_df = df[df.get("parsed_slots_count", 0) > 0].copy()
         if work_df.empty:
             return pd.DataFrame()
-        counts = work_df.groupby(['staff', 'code']).size().unstack(fill_value=0)
-        counts = counts.reset_index()
-        counts.columns = [str(c) for c in counts.columns]
-        return counts
+
+        # raw counts of each shift code per staff
+        counts = work_df.groupby(["staff", "code"]).size().unstack(fill_value=0)
+
+        # calculate per-staff totals and ratios for each code
+        totals = counts.sum(axis=1)
+        ratios = counts.div(totals.replace(0, pd.NA), axis=0).fillna(0)
+        ratios = ratios.add_suffix("_ratio")
+
+        # combine counts and ratio columns
+        df_out = pd.concat([counts, ratios], axis=1).reset_index()
+        df_out.columns = [str(c) for c in df_out.columns]
+        return df_out
