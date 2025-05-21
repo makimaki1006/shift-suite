@@ -59,7 +59,13 @@ from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks import leave_analyzer # ★ 新規インポート
 from shift_suite.tasks.leave_analyzer import LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID # ★ 定数もインポート
 # ──────────────────────────────────────────────────────────────────────────────
-from shift_suite.tasks.analyzers import RestTimeAnalyzer, WorkPatternAnalyzer, AttendanceBehaviorAnalyzer, CombinedScoreCalculator
+from shift_suite.tasks.analyzers import (
+    RestTimeAnalyzer,
+    WorkPatternAnalyzer,
+    AttendanceBehaviorAnalyzer,
+    CombinedScoreCalculator,
+    LowStaffLoadAnalyzer,
+)
 from shift_suite.tasks import dashboard
 
 # ── ロガー設定 ─────────────────────────────────
@@ -86,6 +92,7 @@ JP = {
     "Need Calculation Settings (Day of Week Pattern)": "📊 Need算出設定 (曜日パターン別)",
     "Reference Period for Need Calculation": "参照期間 (Need算出用)",
     "Rest Time Analysis": "休息時間分析", "Work Pattern Analysis": "勤務パターン分析", "Attendance Analysis": "出勤状況分析", "Combined Score": "総合スコア",
+    "Low Staff Load": "少人数勤務分析",
     "Start Date": "開始日", "End Date": "終了日",
     "Statistical Metric for Need": "統計的指標 (Need算出用)",
     "Remove Outliers for Need Calculation": "外れ値を除去してNeedを算出",
@@ -127,6 +134,7 @@ JP = {
     "Work Pattern Analysis: Processing...": "勤務パターン分析 中…",
     "Attendance Analysis: Processing...": "出勤状況分析 中…",
     "Combined Score: Processing...": "総合スコア計算 中…",
+    "Low Staff Load: Processing...": "少人数勤務分析 中…",
     "Hire plan: Processing...": "Hire plan (採用計画) 中…",
     "Cost / Benefit: Processing...": "Cost / Benefit (コスト便益分析) 中…",
     "Ingest: Excel data read complete.": "✅ Excelデータ読み込み完了",
@@ -209,7 +217,7 @@ if "app_initialized" not in st.session_state:
 
     # ★ 休暇分析を含む追加モジュールリスト
     st.session_state.available_ext_opts_widget = [
-        "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness", "Rest Time Analysis", "Work Pattern Analysis", "Attendance Analysis", "Combined Score", _("Leave Analysis"), "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
+        "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness", "Rest Time Analysis", "Work Pattern Analysis", "Attendance Analysis", "Combined Score", "Low Staff Load", _("Leave Analysis"), "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
     ]
     # デフォルトで休暇分析も選択状態にするかはお好みで
     st.session_state.ext_opts_multiselect_widget = st.session_state.available_ext_opts_widget[:] 
@@ -242,6 +250,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.work_pattern_monthly = None
     st.session_state.attendance_results = None
     st.session_state.combined_score_results = None
+    st.session_state.low_staff_load_results = None
     log.info("セッションステートを初期化しました。")
 
 # --- サイドバーのUI要素 ---
@@ -499,6 +508,7 @@ if run_button_clicked:
     st.session_state.work_pattern_results = None
     st.session_state.attendance_results = None
     st.session_state.combined_score_results = None
+    st.session_state.low_staff_load_results = None
     progress_text_area = st.empty()
     progress_bar_val = st.progress(0)
     total_steps_exec_run = 3 + len(param_ext_opts)
@@ -652,6 +662,10 @@ if run_button_clicked:
                     elif opt_module_name_exec_run == "Attendance Analysis":
                         st.session_state.attendance_results = AttendanceBehaviorAnalyzer().analyze(long_df)
                         st.session_state.attendance_results.to_csv(out_dir_exec / "attendance.csv", index=False)
+                    elif opt_module_name_exec_run == "Low Staff Load":
+                        lsl = LowStaffLoadAnalyzer()
+                        st.session_state.low_staff_load_results = lsl.analyze(long_df, threshold=0.25)
+                        st.session_state.low_staff_load_results.to_csv(out_dir_exec / "low_staff_load.csv", index=False)
                     elif opt_module_name_exec_run == "Combined Score":
                         rest_df = st.session_state.rest_time_results if st.session_state.rest_time_results is not None else pd.DataFrame()
                         work_df = st.session_state.work_pattern_results if st.session_state.work_pattern_results is not None else pd.DataFrame()
@@ -1317,6 +1331,10 @@ if st.session_state.get("analysis_done", False) and \
         if st.session_state.get("attendance_results") is not None:
             st.subheader(_("Attendance Analysis"))
             st.dataframe(st.session_state.attendance_results, use_container_width=True)
+
+        if st.session_state.get("low_staff_load_results") is not None:
+            st.subheader(_("Low Staff Load"))
+            st.dataframe(st.session_state.low_staff_load_results, use_container_width=True)
 
         if st.session_state.get("combined_score_results") is not None:
             st.subheader(_("Combined Score"))
