@@ -11,10 +11,11 @@ from .analyzers import (
     WorkPatternAnalyzer,
     AttendanceBehaviorAnalyzer,
     CombinedScoreCalculator,
+    LowStaffLoadAnalyzer,
 )
 
 
-DEF_CHOICES = ["leave", "rest", "work", "attendance", "score", "all"]
+DEF_CHOICES = ["leave", "rest", "work", "attendance", "score", "lowstaff", "all"]
 
 
 def main(argv: list[str] | None = None) -> list[Path]:
@@ -26,6 +27,12 @@ def main(argv: list[str] | None = None) -> list[Path]:
         choices=DEF_CHOICES,
         default="leave",
         help="Type of analysis to run",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.25,
+        help="Threshold for low staff load. If 0<value<1, treated as quantile",
     )
     args = parser.parse_args(argv)
 
@@ -86,6 +93,13 @@ def main(argv: list[str] | None = None) -> list[Path]:
         results.append(fp)
     else:
         attend_res = None
+
+    if args.analysis == "lowstaff":
+        low_res = LowStaffLoadAnalyzer().analyze(df, threshold=args.threshold)
+        fp = out_dir / "low_staff_load.csv"
+        low_res.to_csv(fp, index=False)
+        print(f"Results saved to {fp}")
+        results.append(fp)
 
     if args.analysis in ("score", "all"):
         score_res = CombinedScoreCalculator().calculate(
