@@ -50,6 +50,9 @@ def main(argv: list[str] | None = None) -> list[Path]:
         rest_res.to_csv(fp, index=False)
         print(f"Results saved to {fp}")
         results.append(fp)
+        fp_month = out_dir / "rest_time_monthly.csv"
+        rest_res.to_csv(fp_month, index=False)
+        results.append(fp_month)
     else:
         rest_res = None
 
@@ -59,6 +62,9 @@ def main(argv: list[str] | None = None) -> list[Path]:
         work_res.to_csv(fp, index=False)
         print(f"Results saved to {fp}")
         results.append(fp)
+        fp_month = out_dir / "work_pattern_monthly.csv"
+        work_res.to_csv(fp_month, index=False)
+        results.append(fp_month)
     else:
         work_res = None
 

@@ -14,13 +14,25 @@ class CombinedScoreCalculator:
         if attendance_df.empty:
             return pd.DataFrame()
 
-        avg_rest = (
-            rest_df.groupby('staff')['rest_hours'].mean().reset_index()
-            if not rest_df.empty else pd.DataFrame(columns=['staff', 'rest_hours'])
-        )
+        if rest_df.empty:
+            avg_rest = pd.DataFrame(columns=['staff', 'rest_hours'])
+        else:
+            rest_col = 'rest_hours'
+            if 'avg_rest_hours' in rest_df.columns:
+                rest_col = 'avg_rest_hours'
+            avg_rest = (
+                rest_df.groupby('staff')[rest_col]
+                .mean()
+                .reset_index(name='rest_hours')
+            )
 
         if not work_df.empty:
-            tmp = work_df.set_index('staff')
+            ratio_cols = [c for c in work_df.columns if c.endswith('_ratio')]
+            count_cols = [
+                c for c in work_df.columns
+                if c not in {'staff', 'month'} and c not in ratio_cols
+            ]
+            tmp = work_df.groupby('staff')[count_cols].sum()
             totals = tmp.sum(axis=1)
             dominant = tmp.max(axis=1) / totals.replace(0, pd.NA)
             pattern_df = dominant.reset_index(name='dominant_ratio')

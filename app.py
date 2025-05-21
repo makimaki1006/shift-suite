@@ -636,9 +636,11 @@ if run_button_clicked:
                     elif opt_module_name_exec_run == "Rest Time Analysis":
                         st.session_state.rest_time_results = RestTimeAnalyzer().analyze(long_df)
                         st.session_state.rest_time_results.to_csv(out_dir_exec / "rest_time.csv", index=False)
+                        st.session_state.rest_time_results.to_csv(out_dir_exec / "rest_time_monthly.csv", index=False)
                     elif opt_module_name_exec_run == "Work Pattern Analysis":
                         st.session_state.work_pattern_results = WorkPatternAnalyzer().analyze(long_df)
                         st.session_state.work_pattern_results.to_csv(out_dir_exec / "work_patterns.csv", index=False)
+                        st.session_state.work_pattern_results.to_csv(out_dir_exec / "work_pattern_monthly.csv", index=False)
                     elif opt_module_name_exec_run == "Attendance Analysis":
                         st.session_state.attendance_results = AttendanceBehaviorAnalyzer().analyze(long_df)
                         st.session_state.attendance_results.to_csv(out_dir_exec / "attendance.csv", index=False)
@@ -1003,14 +1005,16 @@ if st.session_state.get("analysis_done", False) and \
             all_staff_names = sorted(staff_leave_list_df['staff'].unique())
             
             # 職員選択
-            selected_staff_for_detail = st.selectbox(
-                "分析する職員を選択", 
-                options=all_staff_names, 
+            selected_staff_for_detail = st.multiselect(
+                "分析する職員を選択",
+                options=all_staff_names,
                 key="leave_detail_staff_select"
             )
-            
+
             if selected_staff_for_detail:
-                staff_data = staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail]
+                staff_data = staff_leave_list_df[staff_leave_list_df['staff'].isin(selected_staff_for_detail)]
+                first_staff = selected_staff_for_detail[0]
+                single_data = staff_leave_list_df[staff_leave_list_df['staff'] == first_staff]
                 
                 # 職員のメトリクス表示
                 col1_staff, col2_staff, col3_staff = st.columns(3)
@@ -1034,6 +1038,7 @@ if st.session_state.get("analysis_done", False) and \
                         # 休暇種別カラムが見つからない場合
                         st.metric("希望休日数", "N/A")
                 
+
                 with col3_staff:
                     if leave_type_column:
                         unique_leave_types = staff_data[leave_type_column].unique()
@@ -1045,10 +1050,48 @@ if st.session_state.get("analysis_done", False) and \
                     else:
                         # 休暇種別カラムが見つからない場合
                         st.metric("有給休暇日数", "N/A")
+
+                view_opt = st.radio(
+                    "表示データ",
+                    ["休息時間", "勤務パターン"],
+                    horizontal=True,
+                    key="rest_work_view_option",
+                )
+                if view_opt == "休息時間":
+                    rest_df = st.session_state.get("rest_time_results")
+                    if rest_df is not None and not rest_df.empty:
+                        rest_filtered = rest_df[rest_df["staff"].isin(selected_staff_for_detail)]
+                        if not rest_filtered.empty:
+                            fig_rest = px.line(
+                                rest_filtered,
+                                x="month",
+                                y="avg_rest_hours",
+                                color="staff",
+                                markers=True,
+                                title="月別平均休息時間",
+                            )
+                            st.plotly_chart(fig_rest, use_container_width=True)
+                else:
+                    work_df = st.session_state.get("work_pattern_results")
+                    if work_df is not None and not work_df.empty:
+                        work_filtered = work_df[work_df["staff"].isin(selected_staff_for_detail)]
+                        ratio_cols = [c for c in work_filtered.columns if c.endswith("_ratio")]
+                        if not work_filtered.empty and ratio_cols:
+                            melt_df = work_filtered.melt(id_vars=["staff", "month"], value_vars=ratio_cols, var_name="code", value_name="ratio")
+                            fig_work = px.bar(
+                                melt_df,
+                                x="month",
+                                y="ratio",
+                                color="code",
+                                barmode="group",
+                                facet_col="staff",
+                                title="勤務コード割合（月別）",
+                            )
+                            st.plotly_chart(fig_work, use_container_width=True)
                 
                 # 職員の休暇カレンダー表示
                 if not staff_data.empty:
-                    st.subheader(f"{selected_staff_for_detail} の休暇パターン分析")
+                    st.subheader(f"{first_staff} の休暇パターン分析")
                     
                     # 日付データを準備
                     calendar_data = staff_data.copy()
@@ -1076,7 +1119,7 @@ if st.session_state.get("analysis_done", False) and \
                                         monthly_pattern, 
                                         x='month', y='count', 
                                         color=leave_type_column,
-                                        title=f"{selected_staff_for_detail} の月別休暇取得パターン",
+                                        title=f"{first_staff} の月別休暇取得パターン",
                                         labels={'month': '月', 'count': '取得日数'}
                                     )
                                     st.plotly_chart(fig_monthly, use_container_width=True)
@@ -1087,7 +1130,7 @@ if st.session_state.get("analysis_done", False) and \
                                     fig_monthly_total = px.bar(
                                         monthly_total, 
                                         x='month', y='count',
-                                        title=f"{selected_staff_for_detail} の月別休暇取得パターン (全種別合計)",
+                                        title=f"{first_staff} の月別休暇取得パターン (全種別合計)",
                                         labels={'month': '月', 'count': '取得日数'}
                                     )
                                     st.plotly_chart(fig_monthly_total, use_container_width=True)
@@ -1105,7 +1148,7 @@ if st.session_state.get("analysis_done", False) and \
                                             dow_pattern, 
                                             x='曜日', y='count', 
                                             color=leave_type_column,
-                                            title=f"{selected_staff_for_detail} の曜日別休暇取得パターン"
+                                            title=f"{first_staff} の曜日別休暇取得パターン"
                                         )
                                         st.plotly_chart(fig_dow, use_container_width=True)
                                 else:
@@ -1118,7 +1161,7 @@ if st.session_state.get("analysis_done", False) and \
                                         fig_dow_total = px.bar(
                                             dow_total, 
                                             x='曜日', y='count',
-                                            title=f"{selected_staff_for_detail} の曜日別休暇取得パターン (全種別合計)"
+                                            title=f"{first_staff} の曜日別休暇取得パターン (全種別合計)"
                                         )
                                         st.plotly_chart(fig_dow_total, use_container_width=True)
                             except Exception as e:
@@ -1465,8 +1508,9 @@ if st.session_state.get("analysis_done", False):
             st.subheader(_("Rest Time Analysis"))
             df_rest = st.session_state.rest_time_results
             st.dataframe(df_rest, use_container_width=True)
-            if not df_rest.empty and {"staff", "rest_hours"}.issubset(df_rest.columns):
-                avg_rest = df_rest.groupby("staff")["rest_hours"].mean().reset_index()
+            rest_col = "rest_hours" if "rest_hours" in df_rest.columns else "avg_rest_hours"
+            if not df_rest.empty and {"staff", rest_col}.issubset(df_rest.columns):
+                avg_rest = df_rest.groupby("staff")[rest_col].mean().reset_index(name="rest_hours")
                 fig_rest = px.bar(avg_rest, x="staff", y="rest_hours", title="Average Rest Hours per Staff")
                 st.plotly_chart(fig_rest, use_container_width=True)
         elif mod == "Work Pattern Analysis" and st.session_state.get("work_pattern_results") is not None:
