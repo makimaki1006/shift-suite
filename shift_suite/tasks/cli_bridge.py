@@ -45,20 +45,36 @@ def main(argv: list[str] | None = None) -> list[Path]:
         results.append(fp)
 
     if args.analysis in ("rest", "score", "all"):
-        rest_res = RestTimeAnalyzer().analyze(df)
+        rta = RestTimeAnalyzer()
+        rest_res = rta.analyze(df)
         fp = out_dir / "rest_time.csv"
         rest_res.to_csv(fp, index=False)
         print(f"Results saved to {fp}")
         results.append(fp)
+
+        monthly_rest = rta.monthly(rest_res)
+        if not monthly_rest.empty:
+            fp_m = out_dir / "rest_time_monthly.csv"
+            monthly_rest.to_csv(fp_m, index=False)
+            print(f"Results saved to {fp_m}")
+            results.append(fp_m)
     else:
         rest_res = None
 
     if args.analysis in ("work", "score", "all"):
-        work_res = WorkPatternAnalyzer().analyze(df)
+        wpa = WorkPatternAnalyzer()
+        work_res = wpa.analyze(df)
         fp = out_dir / "work_patterns.csv"
         work_res.to_csv(fp, index=False)
         print(f"Results saved to {fp}")
         results.append(fp)
+
+        monthly_work = wpa.analyze_monthly(df)
+        if not monthly_work.empty:
+            fp_m = out_dir / "work_pattern_monthly.csv"
+            monthly_work.to_csv(fp_m, index=False)
+            print(f"Results saved to {fp_m}")
+            results.append(fp_m)
     else:
         work_res = None
 

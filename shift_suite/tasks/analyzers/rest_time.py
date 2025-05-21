@@ -29,3 +29,16 @@ class RestTimeAnalyzer:
             daily.groupby("staff")["start"].shift(-1) - daily["end"]
         ).dt.total_seconds() / 3600.0
         return daily[["staff", "date", "rest_hours"]]
+
+    def monthly(self, daily_df: pd.DataFrame) -> pd.DataFrame:
+        """Aggregate daily rest time DataFrame to monthly averages."""
+        if daily_df.empty or not {"staff", "date", "rest_hours"}.issubset(daily_df.columns):
+            return pd.DataFrame()
+
+        df = daily_df.copy()
+        df["month"] = pd.to_datetime(df["date"]).dt.to_period("M")
+        monthly = (
+            df.groupby(["staff", "month"])["rest_hours"].mean().reset_index()
+        )
+        monthly["month"] = monthly["month"].astype(str)
+        return monthly

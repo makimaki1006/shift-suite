@@ -237,7 +237,9 @@ if "app_initialized" not in st.session_state:
     st.session_state.leave_analysis_results = {}
     
     st.session_state.rest_time_results = None
+    st.session_state.rest_time_monthly = None
     st.session_state.work_pattern_results = None
+    st.session_state.work_pattern_monthly = None
     st.session_state.attendance_results = None
     st.session_state.combined_score_results = None
     log.info("セッションステートを初期化しました。")
@@ -634,11 +636,19 @@ if run_button_clicked:
                     elif opt_module_name_exec_run == "Fairness": 
                         run_fairness(long_df, out_dir_exec)
                     elif opt_module_name_exec_run == "Rest Time Analysis":
-                        st.session_state.rest_time_results = RestTimeAnalyzer().analyze(long_df)
+                        rta = RestTimeAnalyzer()
+                        st.session_state.rest_time_results = rta.analyze(long_df)
                         st.session_state.rest_time_results.to_csv(out_dir_exec / "rest_time.csv", index=False)
+                        st.session_state.rest_time_monthly = rta.monthly(st.session_state.rest_time_results)
+                        if st.session_state.rest_time_monthly is not None:
+                            st.session_state.rest_time_monthly.to_csv(out_dir_exec / "rest_time_monthly.csv", index=False)
                     elif opt_module_name_exec_run == "Work Pattern Analysis":
-                        st.session_state.work_pattern_results = WorkPatternAnalyzer().analyze(long_df)
+                        wpa = WorkPatternAnalyzer()
+                        st.session_state.work_pattern_results = wpa.analyze(long_df)
                         st.session_state.work_pattern_results.to_csv(out_dir_exec / "work_patterns.csv", index=False)
+                        st.session_state.work_pattern_monthly = wpa.analyze_monthly(long_df)
+                        if st.session_state.work_pattern_monthly is not None:
+                            st.session_state.work_pattern_monthly.to_csv(out_dir_exec / "work_pattern_monthly.csv", index=False)
                     elif opt_module_name_exec_run == "Attendance Analysis":
                         st.session_state.attendance_results = AttendanceBehaviorAnalyzer().analyze(long_df)
                         st.session_state.attendance_results.to_csv(out_dir_exec / "attendance.csv", index=False)
