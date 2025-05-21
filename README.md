@@ -67,15 +67,21 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
    - `--slot`: time slot length in minutes (default: 30)
    - `--zip`: optionally compress the output directory
 
-4. To run the leave analysis pipeline with a simple CSV file use the helper
-   CLI:
+4. Run analyses directly on a CSV file using the module entry point:
 
    ```bash
-   python shift_suite/tasks/cli_bridge.py shifts.csv --out results
+   python -m shift_suite.tasks.cli_bridge --analysis <type> <csv> --out <dir>
    ```
 
-   The command produces `results/leave_analysis.csv` summarising leave days per
-   staff member.
+   Available analysis types are `leave`, `rest`, `work`, `attendance`,
+   `score` and `all`.  The `leave` option mirrors the previous behaviour and
+   outputs `leave_analysis.csv`.
+
+   Example: generate combined scores with
+
+   ```bash
+   python -m shift_suite.tasks.cli_bridge --analysis score shifts.csv --out results
+   ```
 
 The analysis code lives under the `shift_suite/tasks` package.  Results are
 written to the specified output directory or displayed directly in the GUI.
