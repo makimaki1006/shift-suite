@@ -21,7 +21,10 @@ class LowStaffLoadAnalyzer:
         if df.empty or not {"ds", "staff"}.issubset(df.columns):
             return pd.DataFrame(columns=["staff", "low_staff_days", "ratio"])
 
-        work_df = df[df.get("parsed_slots_count", 0) > 0].copy()
+        if "parsed_slots_count" not in df.columns:
+            return pd.DataFrame(columns=["staff", "low_staff_days", "ratio"])
+
+        work_df = df[df["parsed_slots_count"] > 0].copy()
         if work_df.empty:
             return pd.DataFrame(columns=["staff", "low_staff_days", "ratio"])
 
