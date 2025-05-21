@@ -2,29 +2,87 @@ from __future__ import annotations
 
 from argparse import ArgumentParser
 from pathlib import Path
+import pandas as pd
 
 from .data_loader import ShiftDataLoader
-from .analyzers import LeaveAnalyzer
+from .analyzers import (
+    LeaveAnalyzer,
+    RestTimeAnalyzer,
+    WorkPatternAnalyzer,
+    AttendanceBehaviorAnalyzer,
+    CombinedScoreCalculator,
+)
 
 
-def main(argv: list[str] | None = None) -> Path:
+DEF_CHOICES = ["leave", "rest", "work", "attendance", "score", "all"]
+
+
+def main(argv: list[str] | None = None) -> list[Path]:
     parser = ArgumentParser("Shift Suite CLI Bridge")
     parser.add_argument("csv", help="CSV file with shift data")
     parser.add_argument("--out", default="out", help="Output directory")
+    parser.add_argument(
+        "--analysis",
+        choices=DEF_CHOICES,
+        default="leave",
+        help="Type of analysis to run",
+    )
     args = parser.parse_args(argv)
 
     loader = ShiftDataLoader(args.csv)
     df = loader.load()
 
-    analyzer = LeaveAnalyzer()
-    result = analyzer.analyze(df)
-
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    output_file = out_dir / "leave_analysis.csv"
-    result.to_csv(output_file, index=False)
-    print(f"Results saved to {output_file}")
-    return output_file
+
+    results: list[Path] = []
+
+    if args.analysis in ("leave", "all"):
+        leave_res = LeaveAnalyzer().analyze(df)
+        fp = out_dir / "leave_analysis.csv"
+        leave_res.to_csv(fp, index=False)
+        print(f"Results saved to {fp}")
+        results.append(fp)
+
+    if args.analysis in ("rest", "score", "all"):
+        rest_res = RestTimeAnalyzer().analyze(df)
+        fp = out_dir / "rest_time.csv"
+        rest_res.to_csv(fp, index=False)
+        print(f"Results saved to {fp}")
+        results.append(fp)
+    else:
+        rest_res = None
+
+    if args.analysis in ("work", "score", "all"):
+        work_res = WorkPatternAnalyzer().analyze(df)
+        fp = out_dir / "work_patterns.csv"
+        work_res.to_csv(fp, index=False)
+        print(f"Results saved to {fp}")
+        results.append(fp)
+    else:
+        work_res = None
+
+    if args.analysis in ("attendance", "score", "all"):
+        attend_res = AttendanceBehaviorAnalyzer().analyze(df)
+        fp = out_dir / "attendance.csv"
+        attend_res.to_csv(fp, index=False)
+        print(f"Results saved to {fp}")
+        results.append(fp)
+    else:
+        attend_res = None
+
+    if args.analysis in ("score", "all"):
+        score_res = CombinedScoreCalculator().calculate(
+            rest_res if rest_res is not None else pd.DataFrame(),
+            work_res if work_res is not None else pd.DataFrame(),
+            attend_res if attend_res is not None else pd.DataFrame(),
+        )
+        fp = out_dir / "combined_score.csv"
+        score_res.to_csv(fp, index=False)
+        print(f"Results saved to {fp}")
+        results.append(fp)
+
+    return results
 
 
 if __name__ == "__main__":
