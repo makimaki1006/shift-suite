@@ -3,7 +3,13 @@ from __future__ import annotations
 import pandas as pd
 
 class WorkPatternAnalyzer:
-    """Analyse frequency of shift codes per staff."""
+    """Analyse frequency of shift codes and return monthly summaries.
+
+    The :meth:`analyze` method returns a ``pandas.DataFrame`` containing
+    aggregated metrics for each ``staff`` member by ``month``. The frame
+    includes raw counts of shift codes and corresponding ratio columns for each
+    month.
+    """
 
     def analyze(self, df: pd.DataFrame) -> pd.DataFrame:
         if df.empty or "code" not in df.columns:
