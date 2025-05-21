@@ -3,7 +3,13 @@ from __future__ import annotations
 import pandas as pd
 
 class RestTimeAnalyzer:
-    """Analyze rest hours between consecutive working days for each staff."""
+    """Analyze rest hours between working days and summarize results monthly.
+
+    The :meth:`analyze` method returns a ``pandas.DataFrame`` aggregated by
+    month.  The returned frame contains the ``staff`` identifier, a ``month``
+    column in ``YYYY-MM`` format, and aggregated metrics such as
+    ``rest_hours`` for that period.
+    """
 
     def analyze(self, df: pd.DataFrame, slot_minutes: int = 30) -> pd.DataFrame:
         if df.empty or "ds" not in df.columns:
