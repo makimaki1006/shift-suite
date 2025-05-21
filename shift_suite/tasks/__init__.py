@@ -4,6 +4,7 @@ from .analyzers import (
     WorkPatternAnalyzer,
     AttendanceBehaviorAnalyzer,
     CombinedScoreCalculator,
+    LowStaffLoadAnalyzer,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "WorkPatternAnalyzer",
     "AttendanceBehaviorAnalyzer",
     "CombinedScoreCalculator",
+    "LowStaffLoadAnalyzer",
 ]
