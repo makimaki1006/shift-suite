@@ -1003,53 +1003,58 @@ if st.session_state.get("analysis_done", False) and \
             
             all_staff_names = sorted(staff_leave_list_df['staff'].unique())
             
-            # 職員選択
-            selected_staff_for_detail = st.selectbox(
-                "分析する職員を選択", 
-                options=all_staff_names, 
+            # 職員選択 (複数選択に対応)
+            selected_staffs_for_detail = st.multiselect(
+                "分析する職員を選択",
+                options=all_staff_names,
+                default=all_staff_names[:1],
                 key="leave_detail_staff_select"
             )
-            
-            if selected_staff_for_detail:
-                staff_data = staff_leave_list_df[staff_leave_list_df['staff'] == selected_staff_for_detail]
-                
-                # 職員のメトリクス表示
-                col1_staff, col2_staff, col3_staff = st.columns(3)
-                
-                with col1_staff:
-                    total_leave_days = len(staff_data)
-                    st.metric("総休暇取得日数", total_leave_days)
-                
-                with col2_staff:
-                    if leave_type_column:
-                        # 休暇種別カラムが見つかった場合、値の種類を確認
-                        unique_leave_types = staff_data[leave_type_column].unique()
-                        st.write("休暇種別:", list(unique_leave_types))
-                        
-                        if LEAVE_TYPE_REQUESTED in unique_leave_types:
-                            requested_count = sum(staff_data[leave_type_column] == LEAVE_TYPE_REQUESTED)
-                            st.metric("希望休日数", requested_count)
-                        else:
-                            st.metric("希望休日数", "N/A")
-                    else:
-                        # 休暇種別カラムが見つからない場合
-                        st.metric("希望休日数", "N/A")
-                
-                with col3_staff:
-                    if leave_type_column:
-                        unique_leave_types = staff_data[leave_type_column].unique()
-                        if LEAVE_TYPE_PAID in unique_leave_types:
-                            paid_count = sum(staff_data[leave_type_column] == LEAVE_TYPE_PAID)
-                            st.metric("有給休暇日数", paid_count)
-                        else:
-                            st.metric("有給休暇日数", "N/A")
-                    else:
-                        # 休暇種別カラムが見つからない場合
-                        st.metric("有給休暇日数", "N/A")
-                
-                # 職員の休暇カレンダー表示
-                if not staff_data.empty:
-                    st.subheader(f"{selected_staff_for_detail} の休暇パターン分析")
+
+            if selected_staffs_for_detail:
+                # スタッフごとにタブを分けて表示
+                staff_tabs = st.tabs(selected_staffs_for_detail) if len(selected_staffs_for_detail) > 1 else [st.container()]
+                for tab_obj, staff_name in zip(staff_tabs, selected_staffs_for_detail):
+                    with tab_obj:
+                        staff_data = staff_leave_list_df[staff_leave_list_df['staff'] == staff_name]
+
+                        # 職員のメトリクス表示
+                        col1_staff, col2_staff, col3_staff = st.columns(3)
+
+                        with col1_staff:
+                            total_leave_days = len(staff_data)
+                            st.metric("総休暇取得日数", total_leave_days)
+
+                        with col2_staff:
+                            if leave_type_column:
+                                # 休暇種別カラムが見つかった場合、値の種類を確認
+                                unique_leave_types = staff_data[leave_type_column].unique()
+                                st.write("休暇種別:", list(unique_leave_types))
+
+                                if LEAVE_TYPE_REQUESTED in unique_leave_types:
+                                    requested_count = sum(staff_data[leave_type_column] == LEAVE_TYPE_REQUESTED)
+                                    st.metric("希望休日数", requested_count)
+                                else:
+                                    st.metric("希望休日数", "N/A")
+                            else:
+                                # 休暇種別カラムが見つからない場合
+                                st.metric("希望休日数", "N/A")
+
+                        with col3_staff:
+                            if leave_type_column:
+                                unique_leave_types = staff_data[leave_type_column].unique()
+                                if LEAVE_TYPE_PAID in unique_leave_types:
+                                    paid_count = sum(staff_data[leave_type_column] == LEAVE_TYPE_PAID)
+                                    st.metric("有給休暇日数", paid_count)
+                                else:
+                                    st.metric("有給休暇日数", "N/A")
+                            else:
+                                # 休暇種別カラムが見つからない場合
+                                st.metric("有給休暇日数", "N/A")
+
+                        # 職員の休暇カレンダー表示
+                        if not staff_data.empty:
+                            st.subheader(f"{staff_name} の休暇パターン分析")
                     
                     # 日付データを準備
                     calendar_data = staff_data.copy()
@@ -1077,7 +1082,7 @@ if st.session_state.get("analysis_done", False) and \
                                         monthly_pattern, 
                                         x='month', y='count', 
                                         color=leave_type_column,
-                                        title=f"{selected_staff_for_detail} の月別休暇取得パターン",
+                                        title=f"{staff_name} の月別休暇取得パターン",
                                         labels={'month': '月', 'count': '取得日数'}
                                     )
                                     st.plotly_chart(fig_monthly, use_container_width=True)
@@ -1088,7 +1093,7 @@ if st.session_state.get("analysis_done", False) and \
                                     fig_monthly_total = px.bar(
                                         monthly_total, 
                                         x='month', y='count',
-                                        title=f"{selected_staff_for_detail} の月別休暇取得パターン (全種別合計)",
+                                        title=f"{staff_name} の月別休暇取得パターン (全種別合計)",
                                         labels={'month': '月', 'count': '取得日数'}
                                     )
                                     st.plotly_chart(fig_monthly_total, use_container_width=True)
@@ -1106,7 +1111,7 @@ if st.session_state.get("analysis_done", False) and \
                                             dow_pattern, 
                                             x='曜日', y='count', 
                                             color=leave_type_column,
-                                            title=f"{selected_staff_for_detail} の曜日別休暇取得パターン"
+                                            title=f"{staff_name} の曜日別休暇取得パターン"
                                         )
                                         st.plotly_chart(fig_dow, use_container_width=True)
                                 else:
@@ -1119,7 +1124,7 @@ if st.session_state.get("analysis_done", False) and \
                                         fig_dow_total = px.bar(
                                             dow_total, 
                                             x='曜日', y='count',
-                                            title=f"{selected_staff_for_detail} の曜日別休暇取得パターン (全種別合計)"
+                                            title=f"{staff_name} の曜日別休暇取得パターン (全種別合計)"
                                         )
                                         st.plotly_chart(fig_dow_total, use_container_width=True)
                             except Exception as e:
