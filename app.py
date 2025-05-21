@@ -1458,6 +1458,35 @@ def display_ppt_tab(tab_container, data_dir_ignored):
         else:
             st.markdown(_("Click button to generate report."))
 
+if st.session_state.get("analysis_done", False):
+    selected_modules_disp = st.session_state.get("ext_opts_multiselect_widget", [])
+    for mod in selected_modules_disp:
+        if mod == "Rest Time Analysis" and st.session_state.get("rest_time_results") is not None:
+            st.subheader(_("Rest Time Analysis"))
+            df_rest = st.session_state.rest_time_results
+            st.dataframe(df_rest, use_container_width=True)
+            if not df_rest.empty and {"staff", "rest_hours"}.issubset(df_rest.columns):
+                avg_rest = df_rest.groupby("staff")["rest_hours"].mean().reset_index()
+                fig_rest = px.bar(avg_rest, x="staff", y="rest_hours", title="Average Rest Hours per Staff")
+                st.plotly_chart(fig_rest, use_container_width=True)
+        elif mod == "Work Pattern Analysis" and st.session_state.get("work_pattern_results") is not None:
+            st.subheader(_("Work Pattern Analysis"))
+            st.dataframe(st.session_state.work_pattern_results, use_container_width=True)
+        elif mod == "Attendance Analysis" and st.session_state.get("attendance_results") is not None:
+            st.subheader(_("Attendance Analysis"))
+            st.dataframe(st.session_state.attendance_results, use_container_width=True)
+        elif mod == "Combined Score" and st.session_state.get("combined_score_results") is not None:
+            st.subheader(_("Combined Score"))
+            df_score = st.session_state.combined_score_results
+            st.dataframe(df_score, use_container_width=True)
+            if not df_score.empty:
+                try:
+                    st.plotly_chart(dashboard.employee_overview(df_score), use_container_width=True)
+                    if 'long_df' in locals():
+                        st.plotly_chart(dashboard.department_overview(df_score, long_df), use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error displaying combined score charts: {e}")
+
 st.divider()
 st.header(_("Dashboard (Upload ZIP)"))
 zip_file_uploaded_dash_final_v3_display_main_dash = st.file_uploader(_("Upload ZIP file of 'out' folder"), type=["zip"], key="dashboard_zip_uploader_widget_final_v3_key_dash")
