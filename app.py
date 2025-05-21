@@ -1465,10 +1465,21 @@ if st.session_state.get("analysis_done", False):
             st.subheader(_("Rest Time Analysis"))
             df_rest = st.session_state.rest_time_results
             st.dataframe(df_rest, use_container_width=True)
-            if not df_rest.empty and {"staff", "rest_hours"}.issubset(df_rest.columns):
-                avg_rest = df_rest.groupby("staff")["rest_hours"].mean().reset_index()
-                fig_rest = px.bar(avg_rest, x="staff", y="rest_hours", title="Average Rest Hours per Staff")
+            if not df_rest.empty and {"staff", "rest_hours", "date"}.issubset(df_rest.columns):
+                df_rest["month"] = pd.to_datetime(df_rest["date"]).dt.to_period("M")
+                monthly_avg = (
+                    df_rest.groupby(["staff", "month"])["rest_hours"].mean().reset_index()
+                )
+                fig_rest = px.bar(
+                    monthly_avg,
+                    x="staff",
+                    y="rest_hours",
+                    color="month",
+                    barmode="group",
+                    title="Average Rest Hours per Staff by Month",
+                )
                 st.plotly_chart(fig_rest, use_container_width=True)
+                monthly_avg.to_csv("rest_time.csv", index=False)
         elif mod == "Work Pattern Analysis" and st.session_state.get("work_pattern_results") is not None:
             st.subheader(_("Work Pattern Analysis"))
             st.dataframe(st.session_state.work_pattern_results, use_container_width=True)
