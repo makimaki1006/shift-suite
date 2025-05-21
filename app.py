@@ -1360,11 +1360,24 @@ def display_heatmap_tab(tab_container, data_dir):
                 mode_lbl = st.radio(_("Display Mode"), list(mode_opts.values()), horizontal=True, key="dash_heat_mode_radio")
                 mode_key = [k for k,v in mode_opts.items() if v == mode_lbl][0]
                 z_def, z_min, z_max, z_stp = (11.,1.,50.,1.) if mode_key=="Raw" else (1.5,.1,3.,.1)
-                zmax = st.slider(_("Color Scale Max (zmax)"), z_min, z_max, z_def, z_stp, key="dash_heat_zmax_slider")
                 disp_df_heat = df_heat.drop(columns=[c for c in SUMMARY5_CONST if c in df_heat.columns], errors="ignore")
+
                 if mode_key == "Raw":
+                    pos_vals = disp_df_heat[disp_df_heat > 0].stack()
+                    p90 = float(pos_vals.quantile(0.90)) if not pos_vals.empty else z_def
+                    p95 = float(pos_vals.quantile(0.95)) if not pos_vals.empty else z_def
+                    p99 = float(pos_vals.quantile(0.99)) if not pos_vals.empty else z_def
+                    zmode = st.selectbox("zmax mode", ["Manual", "90th percentile", "95th percentile", "99th percentile"], key="dash_heat_zmax_mode")
+                    if zmode == "Manual":
+                        zmax = st.slider(_("Color Scale Max (zmax)"), z_min, z_max, z_def, z_stp, key="dash_heat_zmax_slider")
+                    else:
+                        perc_map = {"90th percentile": p90, "95th percentile": p95, "99th percentile": p99}
+                        z_val = perc_map.get(zmode, z_def)
+                        st.slider(_("Color Scale Max (zmax)"), z_min, z_max, z_val, z_stp, key="dash_heat_zmax_slider", disabled=True)
+                        zmax = z_val
                     fig = px.imshow(disp_df_heat, aspect="auto", color_continuous_scale="Blues", zmax=zmax, labels={"x":_("Date"),"y":_("Time"),"color":_("Raw Count")})
-                else: 
+                else:
+                    zmax = st.slider(_("Color Scale Max (zmax)"), z_min, z_max, z_def, z_stp, key="dash_heat_zmax_slider")
                     if "need" in df_heat.columns and "staff" in df_heat.columns and not disp_df_heat.empty :
                         ratio_calc_df = disp_df_heat.copy()
                         # Ratio計算: 各日付列の各時間帯の値を、その時間帯の staff 値 / need 値で更新

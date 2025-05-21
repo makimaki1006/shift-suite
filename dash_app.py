@@ -30,26 +30,42 @@ def drop_summary_cols(df: pd.DataFrame) -> pd.DataFrame:
 
 # ────────────────── 2. データロード (エラーハンドリングを少し追加) ──────────────────
 try:
-    heat_all_df = pd.read_excel(DATA_DIR / "heat_ALL.xlsx", index_col=0) # ★ 変数名変更
-    # need_ser は ratio_df 計算にのみ使用
-    need_series_for_ratio = heat_all_df["need"].replace(0, np.nan) # ★ 変数名変更, 0をnanに(0除算対策)
+    heat_all_df = pd.read_excel(DATA_DIR / "heat_ALL.xlsx", index_col=0)
+    need_series_for_ratio = heat_all_df["need"].replace(0, np.nan)
 
-    heat_staff_data = drop_summary_cols(heat_all_df) # ★ 変数名変更
+    heat_staff_data = drop_summary_cols(heat_all_df)
+    ratio_calculated_df = heat_staff_data.div(need_series_for_ratio, axis=0).clip(lower=0, upper=2)
 
-    # ratio_df の計算: heat_staff_data (日付列のみ) を need_series_for_ratio で割る
-    # heat_staff_data の各列に対して、対応する行(時間帯)のneedで割る
-    ratio_calculated_df = heat_staff_data.div(need_series_for_ratio, axis=0).clip(lower=0, upper=2) # ★ clipにlower=0追加, 変数名変更
-
-    RAW_ZMAX_DEFAULT_CALC = 10.0 # デフォルト値を設定
-    if not heat_staff_data.empty: # 空でない場合のみ計算
+    RAW_ZMAX_DEFAULT_CALC = 10.0
+    RAW_ZMAX_P90 = RAW_ZMAX_DEFAULT_CALC
+    RAW_ZMAX_P95 = RAW_ZMAX_DEFAULT_CALC
+    RAW_ZMAX_P99 = RAW_ZMAX_DEFAULT_CALC
+    if not heat_staff_data.empty:
         positive_values = heat_staff_data[heat_staff_data > 0].stack()
         if not positive_values.empty:
-            RAW_ZMAX_DEFAULT_CALC = float(positive_values.quantile(0.95))
-            RAW_ZMAX_DEFAULT_CALC = max(10.0, min(50.0, RAW_ZMAX_DEFAULT_CALC)) # ★ .0 を追加してfloatに
-    
-    # 他のファイルも存在チェックをしてから読み込むようにする (オプション)
+            RAW_ZMAX_P90 = float(positive_values.quantile(0.90))
+            RAW_ZMAX_P95 = float(positive_values.quantile(0.95))
+            RAW_ZMAX_P99 = float(positive_values.quantile(0.99))
+            RAW_ZMAX_DEFAULT_CALC = max(10.0, min(50.0, RAW_ZMAX_P95))
+
     shortage_time_df = pd.read_excel(DATA_DIR / "shortage_time.xlsx", index_col=0) if (DATA_DIR / "shortage_time.xlsx").exists() else pd.DataFrame()
-    # ... (他のファイルのロードも同様に if exists() を追加推奨)
+    kpi_lack_h = None
+    jain_index_val = None
+    if (DATA_DIR / "shortage_role.xlsx").exists():
+        try:
+            df_sr = pd.read_excel(DATA_DIR / "shortage_role.xlsx")
+            if "lack_h" in df_sr:
+                kpi_lack_h = float(df_sr["lack_h"].sum())
+        except Exception as e:
+            print(f"shortage_role.xlsx 読込エラー: {e}")
+    if (DATA_DIR / "fairness_before.xlsx").exists():
+        try:
+            df_fb = pd.read_excel(DATA_DIR / "fairness_before.xlsx", sheet_name="meta_summary")
+            row = df_fb[df_fb["metric"] == "jain_index"]
+            if not row.empty:
+                jain_index_val = float(row["value"].iloc[0])
+        except Exception as e:
+            print(f"fairness_before.xlsx 読込エラー: {e}")
 
 except FileNotFoundError:
     print(f"エラー: {DATA_DIR / 'heat_ALL.xlsx'} が見つかりません。先にstreamlit app.pyで解析を実行してください。")
@@ -87,7 +103,26 @@ app.layout = html.Div([
 
 # ─────────── 4. ページレイアウト (雛形) ───────────
 def page_overview():
-    return html.H3("Overview Page - TODO: KPI Cards") # ★ 少し具体的に
+    cards = []
+    if kpi_lack_h is not None:
+        cards.append(
+            html.Div(
+                [html.H6("不足時間(h)", className="card-title"),
+                 html.H2(f"{kpi_lack_h:.1f}", className="card-text")],
+                className="card p-3 me-3"
+            )
+        )
+    if jain_index_val is not None:
+        cards.append(
+            html.Div(
+                [html.H6("夜勤 Jain指数", className="card-title"),
+                 html.H2(f"{jain_index_val:.3f}", className="card-text")],
+                className="card p-3 me-3"
+            )
+        )
+    if not cards:
+        cards.append(html.Div("KPIデータがありません", className="p-3"))
+    return html.Div([html.H3("Overview"), html.Div(cards, className="d-flex")])
 
 def page_heat():
     if heat_staff_data.empty: # ★ データロード失敗時の表示
@@ -110,15 +145,29 @@ def page_heat():
                         inline=True,
                         className="me-3" # ★ Bootstrapクラス追加
                     ),
+                    dcc.Dropdown(
+                        id="hm-zmax-mode",
+                        options=[
+                            {"label": "Manual", "value": "manual"},
+                            {"label": "90th %tile", "value": "p90"},
+                            {"label": "95th %tile", "value": "p95"},
+                            {"label": "99th %tile", "value": "p99"},
+                        ],
+                        value="manual",
+                        clearable=False,
+                        style={"width": "150px"},
+                        className="me-2"
+                    ),
                     html.Label("カラースケール上限(zmax):", className="me-2"), # ★ ラベル追加
                     dcc.Slider(
-                        id="hm-zmax-slider", # ★ id変更
-                        min=5, # ★ min調整
+                        id="hm-zmax-slider",
+                        min=5,
                         max=50,
-                        step=1, # ★ step調整
+                        step=1,
                         value=RAW_ZMAX_DEFAULT_CALC,
                         tooltip={"placement": "bottom", "always_visible": True},
-                        className="flex-grow-1" # ★ Bootstrapクラス追加
+                        className="flex-grow-1",
+                        disabled=False,
                     ),
                 ],
                 className="d-flex align-items-center mb-3 p-2 border rounded bg-light" # ★ Bootstrapクラス追加
@@ -151,28 +200,36 @@ def router(path):
 
 # ─────────── 6. Heatmap コールバック ───────────
 @callback(
-    Output("hm-main-graph", "figure"), # ★ id変更
-    Output("hm-zmax-slider", "disabled"), # ★ id変更
-    Input("hm-mode-radio", "value"), # ★ id変更
-    Input("hm-zmax-slider", "value"), # ★ id変更
+    Output("hm-main-graph", "figure"),
+    Output("hm-zmax-slider", "disabled"),
+    Output("hm-zmax-slider", "value"),
+    Input("hm-mode-radio", "value"),
+    Input("hm-zmax-slider", "value"),
+    Input("hm-zmax-mode", "value"),
 )
-def update_heatmap(mode: str, zmax_val: float): # ★ 引数名変更
+def update_heatmap(mode: str, zmax_val: float, zmode: str):
     if heat_staff_data.empty and mode == "raw": # ★ データなしの場合のフォールバック
-        return px.imshow(pd.DataFrame()), True # 空のグラフとスライダー無効化
+        return px.imshow(pd.DataFrame()), True, zmax_val
     if ratio_calculated_df.empty and mode == "ratio":
-        return px.imshow(pd.DataFrame()), True
+        return px.imshow(pd.DataFrame()), True, zmax_val
 
     if mode == "raw":
-        # ★カラースキーム変更 (Raw人数)
+        if zmode == "p90":
+            zmax_val = RAW_ZMAX_P90
+        elif zmode == "p95":
+            zmax_val = RAW_ZMAX_P95
+        elif zmode == "p99":
+            zmax_val = RAW_ZMAX_P99
+        slider_disabled = zmode != "manual"
         fig = px.imshow(
-            heat_staff_data, # SUMMARY5除去済みデータを使用
+            heat_staff_data,
             aspect="auto",
-            color_continuous_scale="YlOrRd", # "Blues" から "YlOrRd" に変更
+            color_continuous_scale="Blues",
             zmin=0,
             zmax=zmax_val,
-            labels=dict(x="日付", y="時間帯", color="配置人数"), # ★ ラベル日本語化
+            labels=dict(x="日付", y="時間帯", color="配置人数"),
         )
-        return fig, False # スライダー有効
+        return fig, slider_disabled, zmax_val
 
     # Ratio モード
     fig = px.imshow(
@@ -183,7 +240,7 @@ def update_heatmap(mode: str, zmax_val: float): # ★ 引数名変更
         zmax=2, # Ratioモードのデフォルトzmaxは2 (固定、スライダーは無効化)
         labels=dict(x="日付", y="時間帯", color="充足率 (実績/必要)"), # ★ ラベル日本語化
     )
-    return fig, True # スライダー無効
+    return fig, True, zmax_val
 
 
 @callback(
