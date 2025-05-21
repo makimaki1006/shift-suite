@@ -9,7 +9,10 @@ class RestTimeAnalyzer:
         if df.empty or "ds" not in df.columns:
             return pd.DataFrame(columns=["staff", "date", "rest_hours"])
 
-        work_df = df[df.get("parsed_slots_count", 0) > 0].copy()
+        if "parsed_slots_count" not in df.columns:
+            return pd.DataFrame(columns=["staff", "date", "rest_hours"])
+
+        work_df = df[df["parsed_slots_count"] > 0].copy()
         if work_df.empty:
             return pd.DataFrame(columns=["staff", "date", "rest_hours"])
 
