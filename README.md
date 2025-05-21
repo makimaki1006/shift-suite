@@ -74,13 +74,21 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
    ```
 
    Available analysis types are `leave`, `rest`, `work`, `attendance`,
-   `score` and `all`.  The `leave` option mirrors the previous behaviour and
-   outputs `leave_analysis.csv`.
+   `lowstaff`, `score` and `all`.  The `leave` option mirrors the previous
+   behaviour and outputs `leave_analysis.csv`.  When using `lowstaff`, you
+   may optionally pass `--threshold` to set the staff-count threshold (either
+   a value or quantile).
 
    Example: generate combined scores with
 
    ```bash
    python -m shift_suite.tasks.cli_bridge --analysis score shifts.csv --out results
+   ```
+
+   Example: analyze low staff load with a custom threshold
+
+   ```bash
+   python -m shift_suite.tasks.cli_bridge --analysis lowstaff --threshold 0.2 shifts.csv --out results
    ```
 
 The analysis code lives under the `shift_suite/tasks` package.  Results are

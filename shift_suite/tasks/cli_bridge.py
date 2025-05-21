@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> list[Path]:
     else:
         attend_res = None
 
-    if args.analysis == "lowstaff":
+    if args.analysis in ("lowstaff", "all"):
         low_res = LowStaffLoadAnalyzer().analyze(df, threshold=args.threshold)
         fp = out_dir / "low_staff_load.csv"
         low_res.to_csv(fp, index=False)
