@@ -13,6 +13,24 @@ and a lightweight command line tool for batch execution.
   analysis pipeline without the GUI.  It ingests an Excel file, builds a
   heatmap, runs shortage analysis and summarises the results.
 
+The `shift_suite/tasks` package holds the analysis modules listed below. They
+are automatically imported by `shift_suite/__init__.py`, so you can simply
+`import shift_suite` and access them as attributes (e.g. `shift_suite.heatmap`).
+
+- **`heatmap`** – Generates time-slot heatmaps and calculates required staff
+  numbers from shift records.
+- **`shortage`** – Computes staff shortages based on heatmap data and outputs
+  summary spreadsheets.
+- **`build_stats`** – Aggregates KPIs and produces overall and monthly
+  statistics.
+- **`forecast`** – Builds demand series and forecasts future staffing needs via
+  time‑series models.
+- **`fairness`** – Evaluates fairness in shift allocation across staff members.
+- **`rl`** – Experimental reinforcement‑learning module for generating
+  optimised rosters.
+- **`hire_plan`** – Estimates the number of hires required to meet forecast
+  demand.
+
 ## Usage
 
 1. Install dependencies (Python 3.10+):
