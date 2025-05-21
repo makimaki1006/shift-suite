@@ -20,12 +20,16 @@ class CombinedScoreCalculator:
         )
 
         if not work_df.empty:
-            tmp = work_df.set_index('staff')
-            totals = tmp.sum(axis=1)
-            dominant = tmp.max(axis=1) / totals.replace(0, pd.NA)
-            pattern_df = dominant.reset_index(name='dominant_ratio')
+            tmp = work_df.set_index("staff")
+            ratio_cols = [c for c in tmp.columns if c.endswith("_ratio")]
+            if ratio_cols:
+                dominant = tmp[ratio_cols].max(axis=1)
+            else:
+                totals = tmp.sum(axis=1)
+                dominant = tmp.max(axis=1) / totals.replace(0, pd.NA)
+            pattern_df = dominant.reset_index(name="dominant_ratio")
         else:
-            pattern_df = pd.DataFrame(columns=['staff', 'dominant_ratio'])
+            pattern_df = pd.DataFrame(columns=["staff", "dominant_ratio"])
 
         df = attendance_df.merge(avg_rest, on='staff', how='left').merge(pattern_df, on='staff', how='left')
         df['rest_score'] = df['rest_hours'].fillna(0) / 24
