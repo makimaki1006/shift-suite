@@ -15,12 +15,11 @@ import dash
 import pandas as pd
 import plotly.express as px
 from dash import dcc, html, Input, Output, callback
-import numpy as np # ★ 追加: np.nan のため
+import numpy as np  # ★ 追加: np.nan のため
+from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 
 # ────────────────── 1. 定数 & ヘルパ ──────────────────
-DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out" # ★ .resolve() を追加
-
-SUMMARY5_CONST = {"need", "upper", "staff", "lack", "excess"} # ★ SUMMARY5 -> SUMMARY5_CONST に変更 (app.pyと合わせる)
+DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out"  # ★ .resolve() を追加
 
 
 def drop_summary_cols(df: pd.DataFrame) -> pd.DataFrame:
