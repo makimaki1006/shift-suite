@@ -759,11 +759,12 @@ if st.session_state.get("analysis_done", False) and \
                 st.write(f"{key} の最初の数行:")
                 st.dataframe(value.head())
     
-    tab_leave_requested, tab_leave_paid, tab_leave_staff_detail, tab_leave_insights = st.tabs([
-        "希望休 分析", 
-        "有給休暇 分析", 
-        "職員別 詳細分析", 
-        "統合インサイト"
+    tab_leave_requested, tab_leave_paid, tab_leave_staff_detail, tab_leave_insights, tab_vac_analysis = st.tabs([
+        "希望休 分析",
+        "有給休暇 分析",
+        "職員別 詳細分析",
+        "統合インサイト",
+        "休暇分析"
     ])
     
     # 希望休分析タブ
@@ -1283,6 +1284,37 @@ if st.session_state.get("analysis_done", False) and \
         else:
             st.write("統合インサイトを生成するための休暇データがありません。")
 
+    # 休暇分析タブ (他モジュール結果)
+    with tab_vac_analysis:
+        if st.session_state.get("rest_time_results") is not None:
+            st.subheader(_("Rest Time Analysis"))
+            df_rest = st.session_state.rest_time_results
+            st.dataframe(df_rest, use_container_width=True)
+            if not df_rest.empty and {"staff", "rest_hours"}.issubset(df_rest.columns):
+                avg_rest = df_rest.groupby("staff")["rest_hours"].mean().reset_index()
+                fig_rest = px.bar(avg_rest, x="staff", y="rest_hours", title="Average Rest Hours per Staff")
+                st.plotly_chart(fig_rest, use_container_width=True)
+
+        if st.session_state.get("work_pattern_results") is not None:
+            st.subheader(_("Work Pattern Analysis"))
+            st.dataframe(st.session_state.work_pattern_results, use_container_width=True)
+
+        if st.session_state.get("attendance_results") is not None:
+            st.subheader(_("Attendance Analysis"))
+            st.dataframe(st.session_state.attendance_results, use_container_width=True)
+
+        if st.session_state.get("combined_score_results") is not None:
+            st.subheader(_("Combined Score"))
+            df_score = st.session_state.combined_score_results
+            st.dataframe(df_score, use_container_width=True)
+            if not df_score.empty:
+                try:
+                    st.plotly_chart(dashboard.employee_overview(df_score), use_container_width=True)
+                    if 'long_df' in locals():
+                        st.plotly_chart(dashboard.department_overview(df_score, long_df), use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error displaying combined score charts: {e}")
+
 # ─────────────────────────────  app.py  (Part 3 / 3)  ──────────────────────────
 def display_overview_tab(tab_container, data_dir):
     with tab_container:
@@ -1458,34 +1490,6 @@ def display_ppt_tab(tab_container, data_dir_ignored):
         else:
             st.markdown(_("Click button to generate report."))
 
-if st.session_state.get("analysis_done", False):
-    selected_modules_disp = st.session_state.get("ext_opts_multiselect_widget", [])
-    for mod in selected_modules_disp:
-        if mod == "Rest Time Analysis" and st.session_state.get("rest_time_results") is not None:
-            st.subheader(_("Rest Time Analysis"))
-            df_rest = st.session_state.rest_time_results
-            st.dataframe(df_rest, use_container_width=True)
-            if not df_rest.empty and {"staff", "rest_hours"}.issubset(df_rest.columns):
-                avg_rest = df_rest.groupby("staff")["rest_hours"].mean().reset_index()
-                fig_rest = px.bar(avg_rest, x="staff", y="rest_hours", title="Average Rest Hours per Staff")
-                st.plotly_chart(fig_rest, use_container_width=True)
-        elif mod == "Work Pattern Analysis" and st.session_state.get("work_pattern_results") is not None:
-            st.subheader(_("Work Pattern Analysis"))
-            st.dataframe(st.session_state.work_pattern_results, use_container_width=True)
-        elif mod == "Attendance Analysis" and st.session_state.get("attendance_results") is not None:
-            st.subheader(_("Attendance Analysis"))
-            st.dataframe(st.session_state.attendance_results, use_container_width=True)
-        elif mod == "Combined Score" and st.session_state.get("combined_score_results") is not None:
-            st.subheader(_("Combined Score"))
-            df_score = st.session_state.combined_score_results
-            st.dataframe(df_score, use_container_width=True)
-            if not df_score.empty:
-                try:
-                    st.plotly_chart(dashboard.employee_overview(df_score), use_container_width=True)
-                    if 'long_df' in locals():
-                        st.plotly_chart(dashboard.department_overview(df_score, long_df), use_container_width=True)
-                except Exception as e:
-                    st.error(f"Error displaying combined score charts: {e}")
 
 st.divider()
 st.header(_("Dashboard (Upload ZIP)"))
