@@ -833,30 +833,55 @@ if st.session_state.get("analysis_done", False) and \
                             st.write("**曜日別 希望休取得件数:**")
                             
                             # 曜日名をマッピング
-                            dow_mapping = {0: '月曜', 1: '火曜', 2: '水曜', 3: '木曜', 4: '金曜', 5: '土曜', 6: '日曜'}
+                            # summarize_leave_by_day_count では曜日名（日本語）を
+                            # period_unit として返すため、表示用に短縮形へ
+                            dow_mapping = {
+                                "月曜日": "月曜",
+                                "火曜日": "火曜",
+                                "水曜日": "水曜",
+                                "木曜日": "木曜",
+                                "金曜日": "金曜",
+                                "土曜日": "土曜",
+                                "日曜日": "日曜",
+                            }
+                            dow_num_map = {
+                                "月曜": 0,
+                                "火曜": 1,
+                                "水曜": 2,
+                                "木曜": 3,
+                                "金曜": 4,
+                                "土曜": 5,
+                                "日曜": 6,
+                            }
+                            dow_order = list(dow_mapping.values())
                             
                             # グラフ表示
                             if 'period_unit' in summary_dow_req.columns:
                                 try:
                                     dow_chart_data = summary_dow_req.copy()
                                     dow_chart_data['曜日'] = dow_chart_data['period_unit'].map(dow_mapping)
-                                    fig_dow_req = px.bar(dow_chart_data, x='曜日', y='total_leave_days',
-                                                      title="曜日別 希望休取得件数")
+                                    fig_dow_req = px.bar(
+                                        dow_chart_data,
+                                        x='曜日',
+                                        y='total_leave_days',
+                                        title="曜日別 希望休取得件数",
+                                        category_orders={'曜日': dow_order},
+                                    )
                                     st.plotly_chart(fig_dow_req, use_container_width=True)
                                 except Exception as e:
                                     st.error(f"曜日別グラフ表示エラー: {e}")
                             
                             # 曜日選択で詳細表示
                             selected_dow = st.selectbox(
-                                "詳細を見る曜日を選択", 
-                                options=list(dow_mapping.values()),
+                                "詳細を見る曜日を選択",
+                                options=dow_order,
                                 key="dow_detail_select_req"
                             )
                             
                             # 選択した曜日の詳細職員リスト
                             if selected_dow:
                                 try:
-                                    dow_num = {v: k for k, v in dow_mapping.items()}[selected_dow]
+                                    dow_num = dow_num_map[selected_dow]
                                     req_daily_df = daily_leave_df[daily_leave_df[leave_type_column] == LEAVE_TYPE_REQUESTED].copy()
                                         
                                     if not req_daily_df.empty:
@@ -1007,14 +1032,28 @@ if st.session_state.get("analysis_done", False) and \
                             st.write("**曜日別 有給休暇取得日数:**")
                             
                             # 曜日名マッピング
-                            dow_mapping = {0: '月曜', 1: '火曜', 2: '水曜', 3: '木曜', 4: '金曜', 5: '土曜', 6: '日曜'}
+                            dow_mapping = {
+                                "月曜日": "月曜",
+                                "火曜日": "火曜",
+                                "水曜日": "水曜",
+                                "木曜日": "木曜",
+                                "金曜日": "金曜",
+                                "土曜日": "土曜",
+                                "日曜日": "日曜",
+                            }
+                            dow_order = list(dow_mapping.values())
                             
                             if 'period_unit' in summary_dow_paid.columns:
                                 try:
                                     dow_chart_data_paid = summary_dow_paid.copy()
                                     dow_chart_data_paid['曜日'] = dow_chart_data_paid['period_unit'].map(dow_mapping)
-                                    fig_dow_paid = px.bar(dow_chart_data_paid, x='曜日', y='total_leave_days',
-                                                        title="曜日別 有給休暇取得日数")
+                                    fig_dow_paid = px.bar(
+                                        dow_chart_data_paid,
+                                        x='曜日',
+                                        y='total_leave_days',
+                                        title="曜日別 有給休暇取得日数",
+                                        category_orders={'曜日': dow_order},
+                                    )
                                     st.plotly_chart(fig_dow_paid, use_container_width=True)
                                 except Exception as e:
                                     st.error(f"曜日別有給グラフ表示エラー: {e}")
