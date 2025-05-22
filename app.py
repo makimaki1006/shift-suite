@@ -882,6 +882,15 @@ if st.session_state.get("analysis_done", False) and \
                             
                             # 集中日のカレンダー表示風グラフ
                             try:
+                                req_staff_by_date = (
+                                    daily_leave_df[daily_leave_df[leave_type_column] == LEAVE_TYPE_REQUESTED]
+                                    .groupby("date")["staff"]
+                                    .apply(lambda s: ", ".join(sorted(s.unique())))
+                                    .reset_index(name="applicant_names")
+                                )
+                                concentrated_days_req = concentrated_days_req.merge(
+                                    req_staff_by_date, on="date", how="left"
+                                )
                                 concentrated_days_req["date_label"] = pd.to_datetime(
                                     concentrated_days_req["date"]
                                 ).dt.strftime("%Y-%m-%d (%a)")
@@ -892,7 +901,7 @@ if st.session_state.get("analysis_done", False) and \
                                     y="leave_applicants_count",
                                     size="leave_applicants_count",
                                     title=f"希望休集中日 (閾値: {st.session_state.leave_concentration_threshold_widget}人)",
-                                    hover_data=["date", "leave_applicants_count"],
+                                    hover_data=["date", "leave_applicants_count", "applicant_names"],
                                 )
                                 fig_concentration.update_layout(
                                     xaxis_title="日付 (曜日)", xaxis_tickangle=-45
