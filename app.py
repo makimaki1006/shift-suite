@@ -594,6 +594,24 @@ if run_button_clicked:
                                     leave_type_to_analyze=LEAVE_TYPE_REQUESTED,
                                     concentration_threshold=param_leave_concentration_threshold
                                 )
+                                # --- 新規: 勤務予定人数との比較データ作成 ---
+                                try:
+                                    total_staff_per_day = (
+                                        long_df[long_df["parsed_slots_count"] > 0]
+                                        .assign(date=lambda df: pd.to_datetime(df["ds"]).dt.normalize())
+                                        .groupby("date")["staff"].nunique()
+                                        .reset_index(name="total_staff")
+                                    )
+                                    staff_balance = total_staff_per_day.merge(
+                                        daily_requested_applicants_counts.rename(columns={"total_leave_days": "leave_applicants_count"})[["date", "leave_applicants_count"]],
+                                        on="date",
+                                        how="left",
+                                    )
+                                    staff_balance["leave_applicants_count"] = staff_balance["leave_applicants_count"].fillna(0).astype(int)
+                                    staff_balance["non_leave_staff"] = staff_balance["total_staff"] - staff_balance["leave_applicants_count"]
+                                    leave_results_temp["staff_balance_daily"] = staff_balance
+                                except Exception as e:
+                                    log.error(f"勤務予定人数の計算中にエラー: {e}")
                             else:
                                 log.info(f"{LEAVE_TYPE_REQUESTED} のデータが見つからなかったため、関連する集計・分析をスキップしました。")
                                 leave_results_temp['summary_dow_requested'] = pd.DataFrame()
@@ -909,6 +927,23 @@ if st.session_state.get("analysis_done", False) and \
                                 st.plotly_chart(
                                     fig_concentration, use_container_width=True
                                 )
+                                # --- 新規: 勤務予定人数比較グラフ ---
+                                staff_balance_daily = results.get("staff_balance_daily")
+                                if staff_balance_daily is not None and not staff_balance_daily.empty:
+                                    try:
+                                        plot_df = staff_balance_daily.copy()
+                                        plot_df["date_label"] = pd.to_datetime(plot_df["date"]).dt.strftime("%Y-%m-%d (%a)")
+                                        fig_balance = px.bar(
+                                            plot_df,
+                                            x="date_label",
+                                            y=["leave_applicants_count", "non_leave_staff"],
+                                            barmode="group",
+                                            title="勤務予定人数と希望休取得者数の比較",
+                                        )
+                                        fig_balance.update_layout(xaxis_title="日付 (曜日)", xaxis_tickangle=-45)
+                                        st.plotly_chart(fig_balance, use_container_width=True)
+                                    except Exception as e:
+                                        st.error(f"勤務予定人数グラフ表示エラー: {e}")
                             except Exception as e:
                                 st.error(f"集中度グラフ表示エラー: {e}")
                             
