@@ -23,3 +23,26 @@ def department_overview(score_df: pd.DataFrame, long_df: pd.DataFrame):
     fig = px.bar(dept, x="role", y="final_score", title="Average Score by Role")
     fig.update_layout(xaxis_title="Role", yaxis_title="Score")
     return fig
+
+
+def work_pattern_heatmap(df: pd.DataFrame):
+    """Return heatmap of shift-code ratios per staff."""
+    if df is None or df.empty or "staff" not in df.columns:
+        return px.imshow(pd.DataFrame(), aspect="auto")
+
+    ratio_cols = [c for c in df.columns if c.endswith("_ratio")]
+    if not ratio_cols:
+        return px.imshow(pd.DataFrame(), aspect="auto")
+
+    heat_df = df.set_index("staff")[ratio_cols].copy()
+    heat_df.columns = [c.replace("_ratio", "") for c in heat_df.columns]
+
+    fig = px.imshow(
+        heat_df,
+        aspect="auto",
+        zmin=0,
+        zmax=1,
+        color_continuous_scale="Blues",
+        labels={"x": "Shift Code", "y": "Staff", "color": "Ratio"},
+    )
+    return fig

@@ -1419,7 +1419,10 @@ if st.session_state.get("analysis_done", False) and \
 
         if st.session_state.get("work_pattern_results") is not None:
             st.subheader(_("Work Pattern Analysis"))
-            st.dataframe(st.session_state.work_pattern_results, use_container_width=True)
+            df = st.session_state.work_pattern_results
+            st.plotly_chart(dashboard.work_pattern_heatmap(df), use_container_width=True)
+            with st.expander("Raw Data"):
+                st.dataframe(df, use_container_width=True)
 
         if st.session_state.get("attendance_results") is not None:
             st.subheader(_("Attendance Analysis"))
