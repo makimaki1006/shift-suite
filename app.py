@@ -779,36 +779,6 @@ if run_button_clicked:
 
 st.session_state.analysis_done = True
 
-# Multi-file results display
-if st.session_state.get("analysis_done", False) and st.session_state.analysis_results:
-    st.divider()
-    file_tabs = st.tabs(list(st.session_state.analysis_results.keys()))
-    for tab_obj, fname in zip(file_tabs, st.session_state.analysis_results.keys()):
-        with tab_obj:
-            results = st.session_state.analysis_results[fname]
-            st.subheader(f"Results for {fname}")
-            data_dir = Path(results["out_dir_path_str"])
-            tab_keys_en_dash = [
-                "Overview", "Heatmap", "Shortage", "Fatigue", "Forecast",
-                "Fairness", "Cost Sim", "Hire Plan", "PPT Report"
-            ]
-            tab_labels_dash = [_(key) for key in tab_keys_en_dash]
-            inner_tabs = st.tabs(tab_labels_dash)
-            tab_func_map_dash = {
-                "Overview": display_overview_tab,
-                "Heatmap": display_heatmap_tab,
-                "Shortage": display_shortage_tab,
-                "Fatigue": display_fatigue_tab,
-                "Forecast": display_forecast_tab,
-                "Fairness": display_fairness_tab,
-                "Cost Sim": display_costsim_tab,
-                "Hire Plan": display_hireplan_tab,
-                "PPT Report": display_ppt_tab,
-            }
-            for i, key in enumerate(tab_keys_en_dash):
-                if key in tab_func_map_dash:
-                    tab_func_map_dash[key](inner_tabs[i], data_dir)
-
 # 完全修正版 - 休暇分析結果表示コード全体
 
 # Plotlyの全体問題を修正した休暇分析コード
@@ -1001,6 +971,36 @@ def display_ppt_tab(tab_container, data_dir_ignored):
             except Exception as e_ppt_dash: st.error(_("Error generating PowerPoint report") + f": {e_ppt_dash}")
         else:
             st.markdown(_("Click button to generate report."))
+# Multi-file results display
+if st.session_state.get("analysis_done", False) and st.session_state.analysis_results:
+    st.divider()
+    file_tabs = st.tabs(list(st.session_state.analysis_results.keys()))
+    for tab_obj, fname in zip(file_tabs, st.session_state.analysis_results.keys()):
+        with tab_obj:
+            results = st.session_state.analysis_results[fname]
+            st.subheader(f"Results for {fname}")
+            data_dir = Path(results["out_dir_path_str"])
+            tab_keys_en_dash = [
+                "Overview", "Heatmap", "Shortage", "Fatigue", "Forecast",
+                "Fairness", "Cost Sim", "Hire Plan", "PPT Report"
+            ]
+            tab_labels_dash = [_(key) for key in tab_keys_en_dash]
+            inner_tabs = st.tabs(tab_labels_dash)
+            tab_func_map_dash = {
+                "Overview": display_overview_tab,
+                "Heatmap": display_heatmap_tab,
+                "Shortage": display_shortage_tab,
+                "Fatigue": display_fatigue_tab,
+                "Forecast": display_forecast_tab,
+                "Fairness": display_fairness_tab,
+                "Cost Sim": display_costsim_tab,
+                "Hire Plan": display_hireplan_tab,
+                "PPT Report": display_ppt_tab,
+            }
+            for i, key in enumerate(tab_keys_en_dash):
+                if key in tab_func_map_dash:
+                    tab_func_map_dash[key](inner_tabs[i], data_dir)
+
 
 
 st.divider()
