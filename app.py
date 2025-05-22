@@ -418,6 +418,21 @@ if uploaded_files:
                     "path": str(excel_path_for_processing),
                     "size": uploaded_file.size,
                 }
+
+                # --- NEW: シート名リストを取得してUIを更新 ---
+                try:
+                    xls = pd.ExcelFile(excel_path_for_processing)
+                    candidate_sheets = [s for s in xls.sheet_names if master_sheet_keyword not in s]
+                    if candidate_sheets:
+                        st.session_state.candidate_sheet_list_for_ui = candidate_sheets
+                        st.session_state.shift_sheets_multiselect_widget = candidate_sheets
+                    else:
+                        st.session_state.candidate_sheet_list_for_ui = []
+                        st.session_state.shift_sheets_multiselect_widget = []
+                        st.warning(_("No analysis target sheets found"))
+                    st.session_state._force_update_multiselect_flag = True
+                except Exception as e_get_sheet:
+                    st.error(_("Error getting sheet names from Excel") + f": {e_get_sheet}")
             except Exception as e_save_file_process:
                 st.error(_("Error saving Excel file") + f": {e_save_file_process}")
 
