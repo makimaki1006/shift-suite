@@ -12,7 +12,7 @@ plotly>=5.20
 matplotlib>=3.8
 
 # 笏笏笏笏笏 ML 笏笏笏笏笏
-scikit-learn==1.4.2
+scikit-learn==1.4.1.post1
 lightgbm==4.3.0
 prophet==1.1.6         # 笘・Python 3.12 縺ｧ蜍穂ｽ懊☆繧区怙譁ｰ迚・
 stable-baselines3>=2.3

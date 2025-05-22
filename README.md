@@ -41,11 +41,14 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 
 ## Usage
 
-1. Install dependencies (Python 3.10+):
+1. Install dependencies (requires Python 3.12):
 
    ```bash
    pip install -r requirements.txt
    ```
+
+   The `requirements.txt` file pins `scikit-learn` to `1.4.1.post1` for
+   compatibility with Python 3.12.
 
 2. To use the GUI, run:
 
