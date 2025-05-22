@@ -1173,134 +1173,134 @@ if st.session_state.get("analysis_done", False) and \
                         if not staff_data.empty:
                             st.subheader(f"{staff_name} の休暇パターン分析")
                     
-                    # 日付データを準備
-                    calendar_data = staff_data.copy()
-                    date_column = None
-                    if 'date' in calendar_data.columns:
-                        date_column = 'date'
-                    elif 'leave_date' in calendar_data.columns:
-                        date_column = 'leave_date'
-
-                    if date_column:
-                        try:
-                            calendar_data['date'] = pd.to_datetime(calendar_data[date_column])
-                            calendar_data['month'] = calendar_data['date'].dt.month
-                            calendar_data['day'] = calendar_data['date'].dt.day
-                            calendar_data['year'] = calendar_data['date'].dt.year
-                            calendar_data['dow'] = calendar_data['date'].dt.dayofweek
-                            
-                            
-                            # 月別の休暇集計
-                            if leave_type_column:
-                                # 休暇種別カラムがある場合の月別集計
-                                monthly_pattern = calendar_data.groupby(['month', leave_type_column]).size().reset_index(name='count')
-                                if not monthly_pattern.empty:
-                                    fig_monthly = px.bar(
-                                        monthly_pattern, 
-                                        x='month', y='count', 
-                                        color=leave_type_column,
-                                        title=f"{staff_name} の月別休暇取得パターン",
-                                        labels={'month': '月', 'count': '取得日数'}
-                                    )
-                                    st.plotly_chart(fig_monthly, use_container_width=True)
-                            else:
-                                # 休暇種別カラムがない場合は合計のみ表示
-                                monthly_total = calendar_data.groupby(['month']).size().reset_index(name='count')
-                                if not monthly_total.empty:
-                                    fig_monthly_total = px.bar(
-                                        monthly_total, 
-                                        x='month', y='count',
-                                        title=f"{staff_name} の月別休暇取得パターン (全種別合計)",
-                                        labels={'month': '月', 'count': '取得日数'}
-                                    )
-                                    st.plotly_chart(fig_monthly_total, use_container_width=True)
-                            
-                            # 曜日別パターン
+                        # 日付データを準備
+                        calendar_data = staff_data.copy()
+                        date_column = None
+                        if 'date' in calendar_data.columns:
+                            date_column = 'date'
+                        elif 'leave_date' in calendar_data.columns:
+                            date_column = 'leave_date'
+    
+                        if date_column:
                             try:
+                                calendar_data['date'] = pd.to_datetime(calendar_data[date_column])
+                                calendar_data['month'] = calendar_data['date'].dt.month
+                                calendar_data['day'] = calendar_data['date'].dt.day
+                                calendar_data['year'] = calendar_data['date'].dt.year
+                                calendar_data['dow'] = calendar_data['date'].dt.dayofweek
+                                
+                                
+                                # 月別の休暇集計
                                 if leave_type_column:
-                                    # 休暇種別カラムがある場合の曜日別集計
-                                    dow_pattern = calendar_data.groupby(['dow', leave_type_column]).size().reset_index(name='count')
-                                    if not dow_pattern.empty:
-                                        dow_mapping = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土', 6: '日'}
-                                        dow_pattern['曜日'] = dow_pattern['dow'].map(dow_mapping)
-                                        
-                                        fig_dow = px.bar(
-                                            dow_pattern, 
-                                            x='曜日', y='count', 
+                                    # 休暇種別カラムがある場合の月別集計
+                                    monthly_pattern = calendar_data.groupby(['month', leave_type_column]).size().reset_index(name='count')
+                                    if not monthly_pattern.empty:
+                                        fig_monthly = px.bar(
+                                            monthly_pattern, 
+                                            x='month', y='count', 
                                             color=leave_type_column,
-                                            title=f"{staff_name} の曜日別休暇取得パターン"
+                                            title=f"{staff_name} の月別休暇取得パターン",
+                                            labels={'month': '月', 'count': '取得日数'}
                                         )
-                                        st.plotly_chart(fig_dow, use_container_width=True)
+                                        st.plotly_chart(fig_monthly, use_container_width=True)
                                 else:
                                     # 休暇種別カラムがない場合は合計のみ表示
-                                    dow_total = calendar_data.groupby(['dow']).size().reset_index(name='count')
-                                    if not dow_total.empty:
-                                        dow_mapping = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土', 6: '日'}
-                                        dow_total['曜日'] = dow_total['dow'].map(dow_mapping)
-                                        
-                                        fig_dow_total = px.bar(
-                                            dow_total, 
-                                            x='曜日', y='count',
-                                            title=f"{staff_name} の曜日別休暇取得パターン (全種別合計)"
+                                    monthly_total = calendar_data.groupby(['month']).size().reset_index(name='count')
+                                    if not monthly_total.empty:
+                                        fig_monthly_total = px.bar(
+                                            monthly_total, 
+                                            x='month', y='count',
+                                            title=f"{staff_name} の月別休暇取得パターン (全種別合計)",
+                                            labels={'month': '月', 'count': '取得日数'}
                                         )
-                                        st.plotly_chart(fig_dow_total, use_container_width=True)
+                                        st.plotly_chart(fig_monthly_total, use_container_width=True)
+                                
+                                # 曜日別パターン
+                                try:
+                                    if leave_type_column:
+                                        # 休暇種別カラムがある場合の曜日別集計
+                                        dow_pattern = calendar_data.groupby(['dow', leave_type_column]).size().reset_index(name='count')
+                                        if not dow_pattern.empty:
+                                            dow_mapping = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土', 6: '日'}
+                                            dow_pattern['曜日'] = dow_pattern['dow'].map(dow_mapping)
+                                            
+                                            fig_dow = px.bar(
+                                                dow_pattern, 
+                                                x='曜日', y='count', 
+                                                color=leave_type_column,
+                                                title=f"{staff_name} の曜日別休暇取得パターン"
+                                            )
+                                            st.plotly_chart(fig_dow, use_container_width=True)
+                                    else:
+                                        # 休暇種別カラムがない場合は合計のみ表示
+                                        dow_total = calendar_data.groupby(['dow']).size().reset_index(name='count')
+                                        if not dow_total.empty:
+                                            dow_mapping = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土', 6: '日'}
+                                            dow_total['曜日'] = dow_total['dow'].map(dow_mapping)
+                                            
+                                            fig_dow_total = px.bar(
+                                                dow_total, 
+                                                x='曜日', y='count',
+                                                title=f"{staff_name} の曜日別休暇取得パターン (全種別合計)"
+                                            )
+                                            st.plotly_chart(fig_dow_total, use_container_width=True)
+                                except Exception as e:
+                                    st.error(f"曜日別パターングラフ表示エラー: {e}")
                             except Exception as e:
-                                st.error(f"曜日別パターングラフ表示エラー: {e}")
-                        except Exception as e:
-                            st.error(f"休暇パターン分析エラー: {e}")
-                    else:
-                        st.warning("日付データが見つからないため、パターン分析ができません。")
-                
-                    # 詳細データテーブル
-                    st.subheader("休暇取得詳細")
-                    date_column = None
-                    if 'date' in staff_data.columns:
-                        date_column = 'date'
-                    elif 'leave_date' in staff_data.columns:
-                        date_column = 'leave_date'
-
-                    if date_column:
-                        display_columns = [date_column]
-                
-                        if leave_type_column:
-                            display_columns.append(leave_type_column)
-                        
-                        # 他の可能性のあるカラムを追加
-                        optional_columns = ['shift_code', 'role', 'position', 'department']
-                        for col in optional_columns:
-                            if col in staff_data.columns:
-                                display_columns.append(col)
-                        
-                        # カラム名のマッピング辞書
-                        col_mapping = {
-                            'date': '日付',
-                            'leave_type': '休暇種別',
-                            'holiday_type': '休暇種別',
-                            'type': '種別',
-                            'shift_code': 'シフトコード',
-                            'role': '職種',
-                            'position': '役職',
-                            'department': '部署'
-                        }
-                        
-                        # マッピングを適用                        
-                        rename_dict = {col: col_mapping.get(col, col) for col in display_columns if col in col_mapping}
-                        # leave_date も日付として扱うように追加
-                        if 'leave_date' in display_columns and 'leave_date' not in rename_dict:
-                            rename_dict['leave_date'] = '日付'
+                                st.error(f"休暇パターン分析エラー: {e}")
+                        else:
+                            st.warning("日付データが見つからないため、パターン分析ができません。")
+                    
+                        # 詳細データテーブル
+                        st.subheader("休暇取得詳細")
+                        date_column = None
+                        if 'date' in staff_data.columns:
+                            date_column = 'date'
+                        elif 'leave_date' in staff_data.columns:
+                            date_column = 'leave_date'
+    
+                        if date_column:
+                            display_columns = [date_column]
+                    
+                            if leave_type_column:
+                                display_columns.append(leave_type_column)
                             
-                        try:
-                            df_to_display = staff_data[display_columns].rename(columns=rename_dict)
-                            if '日付' in df_to_display.columns:
-                                df_to_display = df_to_display.sort_values('日付')
-                            st.dataframe(df_to_display, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"詳細データテーブル表示エラー: {e}")
-                            # フォールバック: 全データを表示
-                            st.write("全データ:")
-                            st.dataframe(staff_data)
-                    else:
-                        st.warning("日付データが見つからないため、詳細テーブルを表示できません。")
+                            # 他の可能性のあるカラムを追加
+                            optional_columns = ['shift_code', 'role', 'position', 'department']
+                            for col in optional_columns:
+                                if col in staff_data.columns:
+                                    display_columns.append(col)
+                            
+                            # カラム名のマッピング辞書
+                            col_mapping = {
+                                'date': '日付',
+                                'leave_type': '休暇種別',
+                                'holiday_type': '休暇種別',
+                                'type': '種別',
+                                'shift_code': 'シフトコード',
+                                'role': '職種',
+                                'position': '役職',
+                                'department': '部署'
+                            }
+                            
+                            # マッピングを適用                        
+                            rename_dict = {col: col_mapping.get(col, col) for col in display_columns if col in col_mapping}
+                            # leave_date も日付として扱うように追加
+                            if 'leave_date' in display_columns and 'leave_date' not in rename_dict:
+                                rename_dict['leave_date'] = '日付'
+                                
+                            try:
+                                df_to_display = staff_data[display_columns].rename(columns=rename_dict)
+                                if '日付' in df_to_display.columns:
+                                    df_to_display = df_to_display.sort_values('日付')
+                                st.dataframe(df_to_display, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"詳細データテーブル表示エラー: {e}")
+                                # フォールバック: 全データを表示
+                                st.write("全データ:")
+                                st.dataframe(staff_data)
+                        else:
+                            st.warning("日付データが見つからないため、詳細テーブルを表示できません。")
             else:
                 st.info("職員を選択してください。")
         else:
