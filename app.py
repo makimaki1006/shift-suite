@@ -946,10 +946,11 @@ def display_hireplan_tab(tab_container, data_dir):
             except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
         else: st.info(_("Hire Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
-def display_ppt_tab(tab_container, data_dir_ignored): 
+def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
     with tab_container:
         st.subheader(_("PPT Report"))
-        if st.button(_("Generate PowerPoint Report (β)"), key="dash_generate_ppt_button", use_container_width=True):
+        button_key = f"dash_generate_ppt_button_{key_prefix or 'default'}"
+        if st.button(_("Generate PowerPoint Report (β)"), key=button_key, use_container_width=True):
             st.info(_("Generating PowerPoint report..."))
             try:
                 from pptx import Presentation 
@@ -999,7 +1000,10 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
             }
             for i, key in enumerate(tab_keys_en_dash):
                 if key in tab_func_map_dash:
-                    tab_func_map_dash[key](inner_tabs[i], data_dir)
+                    if key == "PPT Report":
+                        tab_func_map_dash[key](inner_tabs[i], data_dir, key_prefix=fname)
+                    else:
+                        tab_func_map_dash[key](inner_tabs[i], data_dir)
 
 
 
@@ -1058,7 +1062,10 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         # 各タブに対応する表示関数を呼び出す
         for i, tab_key in enumerate(tab_keys_en_dash):
             if tab_key in tab_function_map_dash:
-                tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
+                if tab_key == "PPT Report":
+                    tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir, key_prefix="zip")
+                else:
+                    tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
             else:
                 with tabs_obj_dash[i]: 
                     st.subheader(_(tab_key))
