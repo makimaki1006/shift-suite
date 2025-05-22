@@ -882,14 +882,24 @@ if st.session_state.get("analysis_done", False) and \
                             
                             # 集中日のカレンダー表示風グラフ
                             try:
+                                concentrated_days_req["date_label"] = pd.to_datetime(
+                                    concentrated_days_req["date"]
+                                ).dt.strftime("%Y-%m-%d (%a)")
+
                                 fig_concentration = px.scatter(
-                                    concentrated_days_req, 
-                                    x='date', y='leave_applicants_count',
-                                    size='leave_applicants_count',
+                                    concentrated_days_req,
+                                    x="date_label",
+                                    y="leave_applicants_count",
+                                    size="leave_applicants_count",
                                     title=f"希望休集中日 (閾値: {st.session_state.leave_concentration_threshold_widget}人)",
-                                    hover_data=['date', 'leave_applicants_count']
+                                    hover_data=["date", "leave_applicants_count"],
                                 )
-                                st.plotly_chart(fig_concentration, use_container_width=True)
+                                fig_concentration.update_layout(
+                                    xaxis_title="日付 (曜日)", xaxis_tickangle=-45
+                                )
+                                st.plotly_chart(
+                                    fig_concentration, use_container_width=True
+                                )
                             except Exception as e:
                                 st.error(f"集中度グラフ表示エラー: {e}")
                             
