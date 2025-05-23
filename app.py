@@ -397,6 +397,12 @@ uploaded_files = st.file_uploader(
     help="勤務実績と勤務区分が記載されたExcelファイルをアップロードしてください。",
     accept_multiple_files=True
 )
+holiday_file_uploaded = st.file_uploader(
+    _("Optional holiday file (CSV or JSON)"),
+    type=["csv", "json"],
+    key="holiday_file_widget",
+    help="不足分析で考慮する休業日リスト (YYYY-MM-DD)"
+)
 
 if uploaded_files:
     for uploaded_file in uploaded_files:
@@ -448,6 +454,19 @@ run_button_clicked = st.button(
 if run_button_clicked:
     st.session_state.analysis_done = False
     st.session_state.analysis_results = {}
+
+    holiday_dates_for_run = None
+    if holiday_file_uploaded is not None:
+        try:
+            if holiday_file_uploaded.name.lower().endswith(".json"):
+                import json
+                holiday_dates_for_run = [pd.to_datetime(d).date() for d in json.load(holiday_file_uploaded)]
+            else:
+                df_h = pd.read_csv(holiday_file_uploaded, header=None)
+                holiday_dates_for_run = [pd.to_datetime(x).date() for x in df_h.iloc[:,0].dropna().unique()]
+        except Exception as e_hread:
+            st.warning(f"Holiday file parse error: {e_hread}")
+            log.warning(f"Holiday file parse error: {e_hread}")
 
     for file_name, file_info in st.session_state.uploaded_files_info.items():
         st.session_state.current_step_for_progress = 0
@@ -544,7 +563,7 @@ if run_button_clicked:
             st.success("✅ Heatmap生成完了")
     
             update_progress_exec_run("Shortage: Analyzing shortage...")
-            shortage_result_exec_run = shortage_and_brief(out_dir_exec, param_slot)
+            shortage_result_exec_run = shortage_and_brief(out_dir_exec, param_slot, holidays=holiday_dates_for_run)
             if shortage_result_exec_run is None:
                 st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
             else:
