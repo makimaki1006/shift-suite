@@ -41,7 +41,7 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 
 ## Usage
 
-1. Install dependencies (requires Python 3.12):
+1. Install dependencies (requires Python 3.12 or later):
 
    ```bash
    pip install -r requirements.txt
