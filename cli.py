@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 from shift_suite import ingest_excel, build_heatmap, shortage_and_brief, summary
 from shift_suite.h2hire import build_hire_plan as build_hire_plan_from_shortage
+from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.utils import safe_make_archive
 
 def main():
@@ -70,6 +71,11 @@ def main():
         build_hire_plan_from_shortage(out)
     except Exception as e:
         print(f"hire_plan generation failed: {e}")
+    else:
+        try:
+            analyze_cost_benefit(out)
+        except Exception as e:
+            print(f"cost-benefit analysis failed: {e}")
     summary.build_staff_stats(long, out)
 
     if args.zip:

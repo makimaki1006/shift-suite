@@ -141,3 +141,13 @@ After `shortage_role.xlsx` is generated, the application now calls
 `h2hire.build_hire_plan` to convert shortage hours into required FTE counts.
 The resulting `hire_plan.xlsx` is stored in the same output folder and the
 **Shortage** tab displays these FTE numbers per role.
+
+The CLI additionally runs a cost/benefit simulation once the hire plan has
+been created. `analyze_cost_benefit(out_dir)` writes `cost_benefit.xlsx`
+to the same folder. You can customise the calculation with optional
+parameters:
+
+- `wage_direct` – hourly cost of direct employees (default `1500`)
+- `wage_temp` – hourly cost for temporary staff (default `2200`)
+- `hiring_cost_once` – one‑time cost per hire (default `180000`)
+- `penalty_per_lack_h` – penalty per uncovered hour (default `4000`)
