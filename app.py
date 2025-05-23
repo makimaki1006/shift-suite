@@ -865,10 +865,25 @@ def display_shortage_tab(tab_container, data_dir):
         fp_s_role = data_dir / "shortage_role.xlsx"
         if fp_s_role.exists():
             try:
-                df_s_role = pd.read_excel(fp_s_role); st.dataframe(df_s_role,use_container_width=True,hide_index=True)
-                if "role" in df_s_role and "lack_h" in df_s_role: st.bar_chart(df_s_role.set_index("role")["lack_h"], color="#FFA500")
-            except Exception as e: st.error(f"shortage_role.xlsx 表示エラー: {e}")
-        else: st.info(_("Shortage") + " (shortage_role.xlsx) " + _("が見つかりません。"))
+                xls = pd.ExcelFile(fp_s_role)
+                sheet_role = "role_summary" if "role_summary" in xls.sheet_names else xls.sheet_names[0]
+                df_s_role = xls.parse(sheet_role)
+                st.dataframe(df_s_role, use_container_width=True, hide_index=True)
+                if "role" in df_s_role and "lack_h" in df_s_role:
+                    st.bar_chart(df_s_role.set_index("role")["lack_h"], color="#FFA500")
+
+                if "role_monthly" in xls.sheet_names:
+                    df_month = xls.parse("role_monthly")
+                    if not df_month.empty and {"month", "role", "lack_h"}.issubset(df_month.columns):
+                        fig_m = px.bar(df_month, x="month", y="lack_h", color="role", barmode="stack",
+                                       title=_("Monthly Shortage Hours by Role"))
+                        st.plotly_chart(fig_m, use_container_width=True)
+                        with st.expander(_("Monthly shortage data")):
+                            st.dataframe(df_month, use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"shortage_role.xlsx 表示エラー: {e}")
+        else:
+            st.info(_("Shortage") + " (shortage_role.xlsx) " + _("が見つかりません。"))
         st.markdown("---")
         fp_s_time = data_dir / "shortage_time.xlsx"
         if fp_s_time.exists():
@@ -883,6 +898,18 @@ def display_shortage_tab(tab_container, data_dir):
                 with st.expander(_("Display all time-slot shortage data")): st.dataframe(df_s_time, use_container_width=True)
             except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
         else: st.info(_("Shortage") + " (shortage_time.xlsx) " + _("が見つかりません。"))
+
+        fp_cost = data_dir / "cost_benefit.xlsx"
+        if fp_cost.exists():
+            st.markdown("---")
+            try:
+                df_cost = pd.read_excel(fp_cost, index_col=0)
+                st.write(_("Estimated Cost Impact (Million ¥)"))
+                if "Cost_Million" in df_cost:
+                    st.bar_chart(df_cost["Cost_Million"])
+                st.dataframe(df_cost, use_container_width=True)
+            except Exception as e:
+                st.error(f"cost_benefit.xlsx 表示エラー: {e}")
         
 def display_fatigue_tab(tab_container, data_dir):
     with tab_container:
