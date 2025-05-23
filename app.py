@@ -50,6 +50,7 @@ from shift_suite.tasks.fairness import run_fairness
 from shift_suite.tasks.forecast import build_demand_series, forecast_need
 from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.hire_plan import build_hire_plan
+from shift_suite.tasks.h2hire import build_hire_plan as build_hire_plan_from_kpi
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks import leave_analyzer  # ★ 新規インポート
@@ -165,6 +166,7 @@ JP = {
     "Cost Simulation (Million ¥)": "コスト試算 (百万円)",
     "Hiring Plan (Needed FTE)": "採用計画 (必要採用人数)",
     "Hiring Plan Parameters": "採用計画パラメータ",
+    "Required FTE per Role": "職種別必要FTE数",
     "Generate PowerPoint Report (β)": "📊 PowerPointレポート生成 (β版)",
     "Generating PowerPoint report...": "PowerPointレポートを生成中です... 少々お待ちください。",
     "PowerPoint report ready.": "PowerPointレポートの準備ができました。",
@@ -543,10 +545,14 @@ if run_button_clicked:
     
             update_progress_exec_run("Shortage: Analyzing shortage...")
             shortage_result_exec_run = shortage_and_brief(out_dir_exec, param_slot)
-            if shortage_result_exec_run is None: 
+            if shortage_result_exec_run is None:
                 st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
-            else: 
+            else:
                 st.success("✅ Shortage (不足分析) 完了")
+                try:
+                    build_hire_plan_from_kpi(out_dir_exec)
+                except Exception as e:
+                    log.warning(f"hire_plan generation error: {e}")
     
             # ★----- 休暇分析モジュールの実行 -----★
             # "休暇分析" (日本語) が選択されているか確認
@@ -871,6 +877,17 @@ def display_shortage_tab(tab_container, data_dir):
                 st.dataframe(df_s_role, use_container_width=True, hide_index=True)
                 if "role" in df_s_role and "lack_h" in df_s_role:
                     st.bar_chart(df_s_role.set_index("role")["lack_h"], color="#FFA500")
+
+                fp_hire = data_dir / "hire_plan.xlsx"
+                if fp_hire.exists():
+                    try:
+                        df_hire = pd.read_excel(fp_hire)
+                        if {"role", "hire_fte"}.issubset(df_hire.columns):
+                            st.markdown(_("Required FTE per Role"))
+                            st.dataframe(df_hire[["role", "hire_fte"]], use_container_width=True, hide_index=True)
+                            st.bar_chart(df_hire.set_index("role")["hire_fte"])
+                    except Exception as e:
+                        st.error(f"hire_plan.xlsx 表示エラー: {e}")
 
                 if "role_monthly" in xls.sheet_names:
                     df_month = xls.parse("role_monthly")

@@ -30,6 +30,7 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
   optimised rosters.
 - **`hire_plan`** – Estimates the number of hires required to meet forecast
   demand.
+- **`h2hire`** – Converts shortage hours into required FTE hires.
 - **`cluster`** – Groups staff automatically by shift pattern.
 - **`fatigue`** – Trains a simple model and outputs fatigue scores per staff.
 - **`skill_nmf`** – Estimates a latent skill matrix using non‑negative matrix factorisation.
@@ -130,3 +131,10 @@ The tab also shows line charts for days where leave requests exceed the
 concentration threshold. Hovering over the points reveals the staff names who
 requested leave. A second chart plots the share of requesting staff
 (`leave_applicants_count ÷ total_staff`) for those days.
+
+### Shortage → Hire plan workflow
+
+After `shortage_role.xlsx` is generated, the application now calls
+`h2hire.build_hire_plan` to convert shortage hours into required FTE counts.
+The resulting `hire_plan.xlsx` is stored in the same output folder and the
+**Shortage** tab displays these FTE numbers per role.
