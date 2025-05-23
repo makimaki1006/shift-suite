@@ -11,8 +11,12 @@ def main():
     ap.add_argument("excel")
     ap.add_argument("out")
     ap.add_argument("--slot", type=int, default=30)
-    ap.add_argument("--header", type=int, default=3,
-                    help="Header row number of shift sheets (1-indexed)")
+    ap.add_argument(
+        "--header",
+        type=int,
+        default=2,
+        help="Header row number of shift sheets (1-indexed)",
+    )
     ap.add_argument("--zip", action="store_true")
     args = ap.parse_args()
 

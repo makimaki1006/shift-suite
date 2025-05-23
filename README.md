@@ -63,12 +63,13 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 3. To use the CLI, run:
 
    ```bash
-   python cli.py <excel.xlsx> <out_dir> [--slot MIN] [--zip]
+   python cli.py <excel.xlsx> <out_dir> [--slot MIN] [--header ROW] [--zip]
    ```
 
    - `<excel.xlsx>`: path to the source Excel file
    - `<out_dir>`: directory where results will be written
    - `--slot`: time slot length in minutes (default: 30)
+   - `--header`: header row number in the shift sheets (default: 2)
    - `--zip`: optionally compress the output directory
 
 4. Run analyses directly on a CSV file using the module entry point:
