@@ -56,8 +56,11 @@ from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.hire_plan import build_hire_plan
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
-from shift_suite.tasks import leave_analyzer # ★ 新規インポート
-from shift_suite.tasks.leave_analyzer import LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID # ★ 定数もインポート
+from shift_suite.tasks import leave_analyzer  # ★ 新規インポート
+from shift_suite.tasks.leave_analyzer import (
+    LEAVE_TYPE_REQUESTED,
+    LEAVE_TYPE_PAID,
+)
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
     RestTimeAnalyzer,
@@ -946,6 +949,66 @@ def display_hireplan_tab(tab_container, data_dir):
             except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
         else: st.info(_("Hire Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
+def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
+    """Render leave analysis results using in-memory DataFrames."""
+    results_dict = results_dict or {}
+    with tab_container:
+        st.subheader(_("Leave Analysis"))
+        if not results_dict:
+            st.info("No leave analysis results available.")
+            return
+
+        daily_df = results_dict.get("daily_leave_df")
+        if isinstance(daily_df, pd.DataFrame) and not daily_df.empty:
+            st.markdown("**日次・職員別取得データ**")
+            st.dataframe(daily_df, use_container_width=True, hide_index=True)
+
+        def _bar_chart(df: pd.DataFrame, title: str):
+            if "period_unit" in df.columns and "total_leave_days" in df.columns:
+                fig = px.bar(df, x="period_unit", y="total_leave_days", title=title)
+                st.plotly_chart(fig, use_container_width=True)
+            with st.expander("Data"):
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+        df_req_dow = results_dict.get("summary_dow_requested")
+        if isinstance(df_req_dow, pd.DataFrame) and not df_req_dow.empty:
+            _bar_chart(df_req_dow, "希望休 曜日別")
+
+        df_req_mp = results_dict.get("summary_month_period_requested")
+        if isinstance(df_req_mp, pd.DataFrame) and not df_req_mp.empty:
+            _bar_chart(df_req_mp, "希望休 月内区分別")
+
+        df_req_month = results_dict.get("summary_month_requested")
+        if isinstance(df_req_month, pd.DataFrame) and not df_req_month.empty:
+            _bar_chart(df_req_month, "希望休 月別")
+
+        df_conc = results_dict.get("concentration_requested")
+        if isinstance(df_conc, pd.DataFrame) and not df_conc.empty:
+            st.markdown("**希望休 集中日判定**")
+            st.dataframe(df_conc, use_container_width=True, hide_index=True)
+
+        df_paid_dow = results_dict.get("summary_dow_paid")
+        if isinstance(df_paid_dow, pd.DataFrame) and not df_paid_dow.empty:
+            _bar_chart(df_paid_dow, "有給 曜日別")
+
+        df_paid_month = results_dict.get("summary_month_paid")
+        if isinstance(df_paid_month, pd.DataFrame) and not df_paid_month.empty:
+            _bar_chart(df_paid_month, "有給 月別")
+
+        df_balance = results_dict.get("staff_balance_daily")
+        if isinstance(df_balance, pd.DataFrame) and not df_balance.empty:
+            st.markdown("**勤務予定人数と希望休取得者数**")
+            fig = px.line(df_balance, x="date", y=["total_staff", "leave_applicants_count", "non_leave_staff"],
+                           markers=True)
+            st.plotly_chart(fig, use_container_width=True)
+            with st.expander("Data"):
+                st.dataframe(df_balance, use_container_width=True, hide_index=True)
+
+        df_staff = results_dict.get("staff_leave_list")
+        if isinstance(df_staff, pd.DataFrame) and not df_staff.empty:
+            st.markdown("**職員別休暇リスト**")
+            st.dataframe(df_staff, use_container_width=True, hide_index=True)
+
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
     with tab_container:
         st.subheader(_("PPT Report"))
@@ -983,7 +1046,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
             data_dir = Path(results["out_dir_path_str"])
             tab_keys_en_dash = [
                 "Overview", "Heatmap", "Shortage", "Fatigue", "Forecast",
-                "Fairness", "Cost Sim", "Hire Plan", "PPT Report"
+                "Fairness", "Leave Analysis", "Cost Sim", "Hire Plan", "PPT Report"
             ]
             tab_labels_dash = [_(key) for key in tab_keys_en_dash]
             inner_tabs = st.tabs(tab_labels_dash)
@@ -994,6 +1057,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Fatigue": display_fatigue_tab,
                 "Forecast": display_forecast_tab,
                 "Fairness": display_fairness_tab,
+                "Leave Analysis": display_leave_analysis_tab,
                 "Cost Sim": display_costsim_tab,
                 "Hire Plan": display_hireplan_tab,
                 "PPT Report": display_ppt_tab,
@@ -1002,6 +1066,8 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 if key in tab_func_map_dash:
                     if key == "PPT Report":
                         tab_func_map_dash[key](inner_tabs[i], data_dir, key_prefix=fname)
+                    elif key == "Leave Analysis":
+                        tab_func_map_dash[key](inner_tabs[i], results.get("leave_analysis_results", {}))
                     else:
                         tab_func_map_dash[key](inner_tabs[i], data_dir)
 
@@ -1041,20 +1107,21 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
     import plotly.express as px
     import plotly.graph_objects as go
 
-    tab_keys_en_dash = ["Overview", "Heatmap", "Shortage", "Fatigue", "Forecast", "Fairness", "Cost Sim", "Hire Plan", "PPT Report"]
+    tab_keys_en_dash = ["Overview", "Heatmap", "Shortage", "Fatigue", "Forecast", "Fairness", "Leave Analysis", "Cost Sim", "Hire Plan", "PPT Report"]
     tab_labels_dash = [_(key) for key in tab_keys_en_dash]
     tabs_obj_dash = st.tabs(tab_labels_dash)
 
 
     if extracted_data_dir:
         tab_function_map_dash = {
-            "Overview": display_overview_tab, 
+            "Overview": display_overview_tab,
             "Heatmap": display_heatmap_tab,
-            "Shortage": display_shortage_tab, 
+            "Shortage": display_shortage_tab,
             "Fatigue": display_fatigue_tab,
-            "Forecast": display_forecast_tab, 
+            "Forecast": display_forecast_tab,
             "Fairness": display_fairness_tab,
-            "Cost Sim": display_costsim_tab, 
+            "Leave Analysis": display_leave_analysis_tab,
+            "Cost Sim": display_costsim_tab,
             "Hire Plan": display_hireplan_tab,
             "PPT Report": display_ppt_tab,
         }
@@ -1064,6 +1131,8 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             if tab_key in tab_function_map_dash:
                 if tab_key == "PPT Report":
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir, key_prefix="zip")
+                elif tab_key == "Leave Analysis":
+                    tab_function_map_dash[tab_key](tabs_obj_dash[i], {})
                 else:
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
             else:
