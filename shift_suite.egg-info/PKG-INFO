@@ -3,7 +3,7 @@ Name: shift-suite
 Version: 0.9.0
 Summary: Excel シフト表を解析・可視化するツール
 Author-email: Shinya Fujimaki <fuji1006@example.com>
-Requires-Python: >=3.10
+Requires-Python: >=3.12
 Requires-Dist: pandas>=2.2
 Requires-Dist: numpy>=1.26
 Requires-Dist: plotly>=5.20
