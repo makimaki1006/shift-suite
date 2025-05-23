@@ -139,27 +139,43 @@ def summarize_leave_by_day_count(
     return summary
 
 def analyze_leave_concentration(
-    daily_leave_counts_df: pd.DataFrame, # summarize_leave_by_day_count(period='date') の出力など、日別・休暇タイプ別の取得総日数
+    daily_leave_counts_df: pd.DataFrame,  # summarize_leave_by_day_count(period='date') の出力など、日別・休暇タイプ別の取得総日数
     leave_type_to_analyze: str = LEAVE_TYPE_REQUESTED,
-    concentration_threshold: int = 3
+    concentration_threshold: int = 3,
+    daily_leave_df: pd.DataFrame | None = None,  # get_daily_leave_counts の出力 (スタッフ名取得用)
 ) -> pd.DataFrame:
-    """
-    指定された休暇タイプ（主に希望休）の日ごとの取得者数を評価し、
-    閾値を超える日（集中日）を特定する。
-    """
+    """指定された休暇タイプ（主に希望休）の日ごとの取得者数を評価し、
+    閾値を超える日（集中日）を特定する。スタッフ名リストも付与する。"""
+
     if daily_leave_counts_df.empty or 'total_leave_days' not in daily_leave_counts_df.columns:
         logger.warning("入力されたdaily_leave_counts_dfが空またはtotal_leave_days列がありません。")
-        return pd.DataFrame(columns=['date', 'leave_applicants_count', 'is_concentrated'])
+        return pd.DataFrame(columns=['date', 'leave_applicants_count', 'is_concentrated', 'staff_names'])
 
     target_df = daily_leave_counts_df[daily_leave_counts_df['leave_type'] == leave_type_to_analyze].copy()
     if target_df.empty:
         logger.info(f"{leave_type_to_analyze} のデータが見つかりません。集中度分析をスキップします。")
-        return pd.DataFrame(columns=['date', 'leave_applicants_count', 'is_concentrated'])
+        return pd.DataFrame(columns=['date', 'leave_applicants_count', 'is_concentrated', 'staff_names'])
 
     concentration_df = target_df.rename(columns={'total_leave_days': 'leave_applicants_count'})
     concentration_df['is_concentrated'] = concentration_df['leave_applicants_count'] >= concentration_threshold
-    
-    return concentration_df[['date', 'leave_applicants_count', 'is_concentrated']].sort_values(by='date').reset_index(drop=True)
+
+    # staff_names を取得
+    if daily_leave_df is not None and not daily_leave_df.empty:
+        if {'date', 'staff', 'leave_type'}.issubset(daily_leave_df.columns):
+            names_df = (
+                daily_leave_df[daily_leave_df['leave_type'] == leave_type_to_analyze]
+                .groupby('date')['staff']
+                .unique()
+                .apply(lambda x: sorted(x))
+                .reset_index(name='staff_names')
+            )
+            concentration_df = concentration_df.merge(names_df, on='date', how='left')
+        else:
+            concentration_df['staff_names'] = [[] for _ in range(len(concentration_df))]
+    else:
+        concentration_df['staff_names'] = [[] for _ in range(len(concentration_df))]
+
+    return concentration_df[['date', 'leave_applicants_count', 'is_concentrated', 'staff_names']].sort_values(by='date').reset_index(drop=True)
 
 
 def get_staff_leave_list(
