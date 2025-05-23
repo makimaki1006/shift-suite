@@ -23,26 +23,22 @@ from __future__ import annotations
 
 import datetime
 import io
-import json
 import logging
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import List, Tuple, Optional, Any
+from typing import Optional
 
 import pandas as pd
-import numpy as np
 import streamlit as st
 from streamlit.runtime import exists as st_runtime_exists
-import openpyxl
 import plotly.express as px
 import plotly.graph_objects as go
 import datetime as dt
 
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
 from shift_suite.tasks.io_excel import ingest_excel
-from shift_suite.tasks.utils import _parse_as_date
 from shift_suite.tasks.heatmap import build_heatmap
 from shift_suite.tasks.shortage import shortage_and_brief
 from shift_suite.tasks.build_stats import build_stats
@@ -69,7 +65,6 @@ from shift_suite.tasks.analyzers import (
     CombinedScoreCalculator,
     LowStaffLoadAnalyzer,
 )
-from shift_suite.tasks import dashboard
 
 # ── ロガー設定 ─────────────────────────────────
 log = logging.getLogger("shift_suite_app")
@@ -582,7 +577,8 @@ if run_button_clicked:
                                     leave_results_temp['concentration_requested'] = leave_analyzer.analyze_leave_concentration(
                                         daily_requested_applicants_counts,
                                         leave_type_to_analyze=LEAVE_TYPE_REQUESTED,
-                                        concentration_threshold=param_leave_concentration_threshold
+                                        concentration_threshold=param_leave_concentration_threshold,
+                                        daily_leave_df=requested_leave_daily.copy()
                                     )
                                     # --- 新規: 勤務予定人数との比較データ作成 ---
                                     try:
@@ -599,6 +595,7 @@ if run_button_clicked:
                                         )
                                         staff_balance["leave_applicants_count"] = staff_balance["leave_applicants_count"].fillna(0).astype(int)
                                         staff_balance["non_leave_staff"] = staff_balance["total_staff"] - staff_balance["leave_applicants_count"]
+                                        staff_balance["leave_ratio"] = staff_balance["leave_applicants_count"] / staff_balance["total_staff"]
                                         leave_results_temp["staff_balance_daily"] = staff_balance
                                     except Exception as e:
                                         log.error(f"勤務予定人数の計算中にエラー: {e}")
@@ -984,6 +981,17 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
 
         df_conc = results_dict.get("concentration_requested")
         if isinstance(df_conc, pd.DataFrame) and not df_conc.empty:
+            df_bar = df_conc[df_conc["leave_applicants_count"] >= st.session_state.leave_concentration_threshold_widget]
+            if not df_bar.empty:
+                fig = px.line(
+                    df_bar,
+                    x="date",
+                    y="leave_applicants_count",
+                    hover_data=["staff_names"],
+                    markers=True,
+                    title="希望休取得集中日",
+                )
+                st.plotly_chart(fig, use_container_width=True)
             st.markdown("**希望休 集中日判定**")
             st.dataframe(df_conc, use_container_width=True, hide_index=True)
 
@@ -1001,6 +1009,21 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             fig = px.line(df_balance, x="date", y=["total_staff", "leave_applicants_count", "non_leave_staff"],
                            markers=True)
             st.plotly_chart(fig, use_container_width=True)
+
+            df_ratio = df_balance[df_balance["leave_applicants_count"] >= st.session_state.leave_concentration_threshold_widget]
+            if isinstance(df_conc, pd.DataFrame):
+                df_ratio = df_ratio.merge(df_conc[["date", "staff_names"]], on="date", how="left")
+            if not df_ratio.empty:
+                fig_ratio = px.line(
+                    df_ratio,
+                    x="date",
+                    y="leave_ratio",
+                    hover_data=["staff_names"],
+                    markers=True,
+                    title="希望休取得率",
+                )
+                st.plotly_chart(fig_ratio, use_container_width=True)
+
             with st.expander("Data"):
                 st.dataframe(df_balance, use_container_width=True, hide_index=True)
 
