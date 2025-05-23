@@ -721,6 +721,8 @@ if run_button_clicked:
                                         forecast_xls_exec_run_fc,
                                         periods=30,
                                         leave_csv=fc_leave if fc_leave.exists() else None,
+                                        holidays=holiday_dates_for_run,
+                                        log_csv=out_dir_exec / "forecast_history.csv",
                                     )
                                 else:
                                     st.warning("Need forecast: demand_series.csv の生成に失敗しました。")

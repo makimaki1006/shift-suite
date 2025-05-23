@@ -1,11 +1,14 @@
 """
-shift_suite.tasks.forecast  v1.4.0 – 休暇データ対応 & 1か月予測
+shift_suite.tasks.forecast  v1.5.0 – 休暇・履歴対応
 ────────────────────────────────────────────────────────
-■ v1.4 変更点 ★
+■ v1.5 変更点 ★
   1. 予測期間の既定を 30 日に延長
   2. build_demand_series / forecast_need が leave_analysis.csv を任意で受け付け
   3. MAPE 計算を 0 除算回避処理付きに修正
   4. forecast_need() が生成する out_df に “model” 列を必ず付与
+  5. forecast_need() が祝日データを受け取り exogenous 変数として利用
+  6. forecast_need() 実行履歴を ``forecast_history.csv`` に追記
+  7. 直近の履歴 MAPE が閾値を超える場合はモデル選択を調整
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -183,6 +186,8 @@ def forecast_need(
     seasonal: str = "add",
     periods: int = 30,
     leave_csv: Path | None = None,
+    holidays: Sequence[dt.date] | None = None,
+    log_csv: Path | None = None,
 ) -> Path:
     """需要系列 CSV → 1 か月先需要予測 Excel
 
@@ -200,6 +205,11 @@ def forecast_need(
         予測期間（日数）
     leave_csv : Path | None, optional
         ``leave_analysis.csv`` を与えると休暇取得数を説明変数として利用
+    holidays : Sequence[datetime.date] | None, optional
+        祝日の日付リストを与えると ``holiday`` 列が追加され、ARIMA の説明変数として利用
+    log_csv : Path | None, optional
+        予測実行履歴を追記する CSV パス。未指定時 ``excel_out`` と同じディレクトリの
+        ``forecast_history.csv`` を使用
 
     Returns
     -------
@@ -208,6 +218,27 @@ def forecast_need(
     """
     log.info("[forecast] forecast_need start")
     df = pd.read_csv(demand_csv, parse_dates=["ds"])
+
+    log_csv = Path(log_csv) if log_csv else excel_out.parent / "forecast_history.csv"
+
+    if holidays:
+        holiday_set = {pd.to_datetime(d).date() for d in holidays}
+        df["holiday"] = df["ds"].dt.date.map(lambda d: 1 if d in holiday_set else 0)
+    else:
+        holiday_set = set()
+
+    # ───── 直近履歴確認 ─────
+    if log_csv.exists():
+        try:
+            hist = pd.read_csv(log_csv)
+            recent_mape = hist["mape"].tail(5).mean()
+            if choose == "auto" and recent_mape > 0.25:
+                log.info("[forecast] recent MAPE high → prefer ARIMA")
+                choose = "arima"
+            if seasonal == "add" and recent_mape > 0.25:
+                seasonal = "mul"
+        except Exception as e:
+            log.warning(f"[forecast] history read failed: {e}")
 
     if leave_csv and Path(leave_csv).exists():
         try:
@@ -244,6 +275,8 @@ def forecast_need(
         )
         return excel_out
 
+    future_dates = pd.date_range(df["ds"].max() + dt.timedelta(days=1), periods=periods)
+
     # ───── ETS モデル ─────
     ets_mod = sm.tsa.ExponentialSmoothing(
         df["y"], trend="add", seasonal=seasonal, seasonal_periods=7
@@ -272,6 +305,9 @@ def forecast_need(
             if exog_cols
             else None
         )
+        if future_exog is not None:
+            if "holiday" in exog_cols:
+                future_exog["holiday"] = [1 if d.date() in holiday_set else 0 for d in future_dates]
         arima_fc = arima_mod.predict(n_periods=periods, exogenous=future_exog)
         denom_a = np.where(arima_mod.y != 0, arima_mod.y, np.nan)
         arima_mape = np.nanmean(
@@ -289,7 +325,6 @@ def forecast_need(
         sel, forecast, sel_mape = "ETS", ets_fc, ets_mape  # fallback
 
     # ───── 予測結果組立 ─────
-    future_dates = pd.date_range(df["ds"].max() + dt.timedelta(days=1), periods=periods)
     out_df = pd.DataFrame({"ds": future_dates, "yhat": forecast})
     out_df["model"] = sel  # ★ 追加: 常に model 列を付与
 
@@ -303,6 +338,15 @@ def forecast_need(
         periods=periods,
         created=str(dt.datetime.now()),
     )
+    try:
+        hist_row = pd.DataFrame({
+            "timestamp": [dt.datetime.now().isoformat()],
+            "model": [sel],
+            "mape": [float(np.round(sel_mape, 6))],
+        })
+        hist_row.to_csv(log_csv, mode="a", index=False, header=not log_csv.exists())
+    except Exception as e:
+        log.warning(f"[forecast] failed to update history: {e}")
     log.info(f"[forecast] forecast saved → {excel_out}")
     return excel_out
 
