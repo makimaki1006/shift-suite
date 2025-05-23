@@ -1,25 +1,25 @@
-﻿# 笏笏笏笏笏 core 笏笏笏笏笏
-pandas==2.2.*          # 3.12 蟇ｾ蠢・
-numpy==1.26.*          # 3.12 蟇ｾ蠢・
+# ───── core ─────
+pandas==2.2.*          # 3.12 対応
+numpy==1.26.*          # 3.12 対応
 openpyxl==3.1.*        # Excel I/O
-XlsxWriter>=3.2        # 笘・譛菴・3.2 邉ｻ繧呈・遉ｺ
+XlsxWriter>=3.2        # ★ 最低 3.2 系を明示
 
-# 笏笏笏 visual / web 笏笏笏
+# ─── visual / web ───
 streamlit>=1.44        # GUI
-dash==2.16.*           # 蜀・鳩 Dash
-dash-bootstrap-components>=1.7  # 笘・1.7 莉･髯阪〒莠呈鋤遒ｺ隱・
+dash==2.16.*           # 内蔵 Dash
+dash-bootstrap-components>=1.7  # ★ 1.7 以降で互換確認
 plotly>=5.20
 matplotlib>=3.8
 
-# 笏笏笏笏笏 ML 笏笏笏笏笏
+# ───── ML ─────
 scikit-learn==1.4.1.post1
 lightgbm==4.3.0
-prophet==1.1.6         # 笘・Python 3.12 縺ｧ蜍穂ｽ懊☆繧区怙譁ｰ迚・
+prophet==1.1.6         # ★ Python 3.12 で動作する最新版
 stable-baselines3>=2.3
-gymnasium>=0.29        # 笘・譏守､ｺ
-torch>=2.3             # 笘・CPU/GPU 縺ｩ縺｡繧峨〒繧ょ庄
+gymnasium>=0.29        # ★ 明示
+torch>=2.3             # ★ CPU/GPU どちらでも可
 
-# 笏笏笏 misc / utils 笏笏笏
+# ─── misc / utils ───
 python-pptx>=0.6
 ruff                   # Linter
 pytest                 # Tests
