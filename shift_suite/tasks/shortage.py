@@ -90,6 +90,7 @@ def shortage_and_brief(
     log.debug(f"--- shortage_time.xlsx 計算デバッグ (全体) 終了 ---")
 
     role_kpi_rows: List[Dict[str, Any]] = []
+    monthly_role_rows: List[Dict[str, Any]] = []
     processed_role_names_list = []
 
     for fp_role_heatmap_item in out_dir_path.glob("heat_*.xlsx"):
@@ -145,6 +146,20 @@ def shortage_and_brief(
         # lack_h は休業日のneed=0を考慮したlackの合計
         total_lack_hours_for_role = role_lack_count_for_specific_role_df.sum().sum() * slot_hours
 
+        # 月別不足h集計
+        try:
+            lack_by_date = role_lack_count_for_specific_role_df.sum()
+            lack_by_date.index = pd.to_datetime(lack_by_date.index)
+            lack_month = lack_by_date.groupby(lack_by_date.index.to_period("M")).sum() * slot_hours
+            for mon, val in lack_month.items():
+                monthly_role_rows.append({
+                    "role": role_name_current,
+                    "month": str(mon),
+                    "lack_h": int(round(val)),
+                })
+        except Exception as e_month:
+            log.debug(f"月別不足集計エラー ({role_name_current}): {e_month}")
+
         role_kpi_rows.append({
             "role": role_name_current,
             "need_h": int(round(total_need_hours_for_role)),
@@ -158,17 +173,27 @@ def shortage_and_brief(
     role_summary_df = pd.DataFrame(role_kpi_rows)
     if not role_summary_df.empty:
         role_summary_df = role_summary_df.sort_values("lack_h", ascending=False, na_position="last").reset_index(drop=True)
-    
-    fp_shortage_role = save_df_xlsx(role_summary_df, out_dir_path / "shortage_role.xlsx", sheet_name="role_summary", index=False)
+
+    monthly_role_df = pd.DataFrame(monthly_role_rows)
+    if not monthly_role_df.empty:
+        monthly_role_df = monthly_role_df.sort_values(["month", "role"]).reset_index(drop=True)
+
+    fp_shortage_role = out_dir_path / "shortage_role.xlsx"
+    with pd.ExcelWriter(fp_shortage_role, engine="openpyxl") as ew:
+        role_summary_df.to_excel(ew, sheet_name="role_summary", index=False)
+        if not monthly_role_df.empty:
+            monthly_role_df.to_excel(ew, sheet_name="role_monthly", index=False)
 
     meta_dates_list_shortage = date_columns_in_heat_all
     meta_roles_list_shortage = role_summary_df["role"].tolist() if not role_summary_df.empty else processed_role_names_list
+    meta_months_list_shortage = monthly_role_df["month"].tolist() if not monthly_role_df.empty else []
 
     write_meta(
         out_dir_path / "shortage.meta.json",
         slot=slot,
         dates=sorted(list(set(meta_dates_list_shortage))),
         roles=sorted(list(set(meta_roles_list_shortage))),
+        months=sorted(list(set(meta_months_list_shortage))),
         estimated_holidays_used=[d.isoformat() for d in sorted(list(estimated_holidays_set))]
     )
 
