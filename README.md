@@ -24,7 +24,8 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 - **`build_stats`** – Aggregates KPIs and produces overall and monthly
   statistics.
 - **`forecast`** – Builds demand series and forecasts future staffing needs via
-  time‑series models.
+  time‑series models. Each run appends the selected model and MAPE to
+  `forecast_history.csv` and holiday dates can be passed as exogenous inputs.
 - **`fairness`** – Evaluates fairness in shift allocation across staff members.
 - **`rl`** – Experimental reinforcement‑learning module for generating
   optimised rosters.
@@ -64,7 +65,7 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 3. To use the CLI, run:
 
    ```bash
-   python cli.py <excel.xlsx> <out_dir> [--slot MIN] [--header ROW] [--zip]
+   python cli.py <excel.xlsx> <out_dir> [--slot MIN] [--header ROW] [--zip] [--holidays FILE]
    ```
 
    - `<excel.xlsx>`: path to the source Excel file
@@ -72,6 +73,7 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
    - `--slot`: time slot length in minutes (default: 30)
    - `--header`: header row number in the shift sheets (default: 2)
    - `--zip`: optionally compress the output directory
+   - `--holidays`: optional CSV or JSON file listing holiday dates
 
 4. Run analyses directly on a CSV file using the module entry point:
 
