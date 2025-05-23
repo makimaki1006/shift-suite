@@ -129,6 +129,7 @@ JP = {
     "Leave Analysis: Processing...": "Leave Analysis (休暇分析) 中…",  # ★ 追加
     "Need forecast: Processing...": "Need forecast (需要予測) 中…",
     "RL roster (PPO): Processing...": "RL roster (強化学習シフト) 中…",
+    "RL roster (model): Processing...": "RL roster (学習済みモデル) 中…",
     "Rest Time Analysis: Processing...": "Rest Time Analysis (休息時間分析) 中…",
     "Work Pattern Analysis: Processing...": "勤務パターン分析 中…",
     "Attendance Analysis: Processing...": "出勤状況分析 中…",
@@ -217,7 +218,7 @@ if "app_initialized" not in st.session_state:
 
     # ★ 休暇分析を含む追加モジュールリスト
     st.session_state.available_ext_opts_widget = [
-        "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness", "Rest Time Analysis", "Work Pattern Analysis", "Attendance Analysis", "Combined Score", "Low Staff Load", _("Leave Analysis"), "Need forecast", "RL roster (PPO)", "Hire plan", "Cost / Benefit"
+        "Stats", "Anomaly", "Fatigue", "Cluster", "Skill", "Fairness", "Rest Time Analysis", "Work Pattern Analysis", "Attendance Analysis", "Combined Score", "Low Staff Load", _("Leave Analysis"), "Need forecast", "RL roster (PPO)", "RL roster (model)", "Hire plan", "Cost / Benefit"
     ]
     # デフォルトで休暇分析も選択状態にするかはお好みで
     st.session_state.ext_opts_multiselect_widget = st.session_state.available_ext_opts_widget[:] 
@@ -727,10 +728,36 @@ if run_button_clicked:
                         elif opt_module_name_exec_run == "RL roster (PPO)":
                             demand_csv_rl_exec_run_rl = out_dir_exec / "demand_series.csv"
                             rl_roster_xls_exec_run_rl = out_dir_exec / "rl_roster.xlsx"
-                            if demand_csv_rl_exec_run_rl.exists(): 
-                                learn_roster(demand_csv_rl_exec_run_rl, rl_roster_xls_exec_run_rl)
-                            else: 
+                            model_zip_rl = out_dir_exec / "ppo_model.zip"
+                            fc_xls = out_dir_exec / "forecast.xlsx"
+                            shortage_xlsx = out_dir_exec / "shortage_time.xlsx"
+                            if demand_csv_rl_exec_run_rl.exists():
+                                learn_roster(
+                                    demand_csv_rl_exec_run_rl,
+                                    rl_roster_xls_exec_run_rl,
+                                    forecast_csv=fc_xls if fc_xls.exists() else None,
+                                    shortage_csv=shortage_xlsx if shortage_xlsx.exists() else None,
+                                    model_path=model_zip_rl,
+                                )
+                            else:
                                 st.warning("RL Roster: 需要予測データ (demand_series.csv) がありません。")
+                        elif opt_module_name_exec_run == "RL roster (model)":
+                            demand_csv_rl_exec_run_rl = out_dir_exec / "demand_series.csv"
+                            rl_roster_xls_use = out_dir_exec / "rl_roster.xlsx"
+                            model_zip_rl = out_dir_exec / "ppo_model.zip"
+                            fc_xls = out_dir_exec / "forecast.xlsx"
+                            shortage_xlsx = out_dir_exec / "shortage_time.xlsx"
+                            if model_zip_rl.exists() and fc_xls.exists():
+                                learn_roster(
+                                    demand_csv_rl_exec_run_rl if demand_csv_rl_exec_run_rl.exists() else fc_xls,
+                                    rl_roster_xls_use,
+                                    forecast_csv=fc_xls,
+                                    shortage_csv=shortage_xlsx if shortage_xlsx.exists() else None,
+                                    model_path=model_zip_rl,
+                                    use_saved_model=True,
+                                )
+                            else:
+                                st.warning("RL Roster: 学習済みモデルまたは forecast.xlsx が見つかりません。")
                         elif opt_module_name_exec_run == "Hire plan":
                             demand_csv_hp_exec_run_hp = out_dir_exec / "demand_series.csv"
                             hire_xls_exec_run_hp = out_dir_exec / "hire_plan.xlsx"
