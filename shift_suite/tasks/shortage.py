@@ -9,7 +9,7 @@ shortage.py – v2.4.1 (休業日対応のデバッグ強化)
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Tuple, List, Dict, Any, Set
+from typing import Tuple, List, Dict, Any, Set, Iterable
 import json
 import datetime as dt
 
@@ -22,12 +22,14 @@ from .constants import SUMMARY5
 def shortage_and_brief(
     out_dir: Path | str,
     slot: int,
+    *,
+    holidays: Iterable[dt.date] | None = None,
 ) -> Tuple[Path, Path] | None:
     out_dir_path = Path(out_dir)
     time_labels = gen_labels(slot)
     slot_hours = slot / 60.0
 
-    estimated_holidays_set: Set[dt.date] = set()
+    estimated_holidays_set: Set[dt.date] = set(holidays or [])
     heatmap_meta_path = out_dir_path / "heatmap.meta.json"
     try:
         with open(heatmap_meta_path, 'r', encoding='utf-8') as f:
@@ -73,19 +75,18 @@ def shortage_and_brief(
         return None
     need_series_per_time_overall_orig = heat_all_df['need'].reindex(index=time_labels).fillna(0).clip(lower=0)
 
-    lack_count_overall_df = pd.DataFrame(index=staff_actual_data_all_df.index, columns=staff_actual_data_all_df.columns, dtype=float)
-    log.debug(f"--- shortage_time.xlsx 計算デバッグ (全体) ---")
-    for date_col_overall_str in staff_actual_data_all_df.columns:
-        current_date_obj_overall = _parse_as_date(date_col_overall_str)
-        is_holiday_overall = False
-        if current_date_obj_overall and estimated_holidays_set and current_date_obj_overall in estimated_holidays_set:
-            is_holiday_overall = True
-        
-        current_day_need_for_overall = pd.Series(0, index=need_series_per_time_overall_orig.index) if is_holiday_overall else need_series_per_time_overall_orig
-        log.debug(f"  日付: {date_col_overall_str}, 休業日か: {is_holiday_overall}, 適用need合計: {current_day_need_for_overall.sum()}")
-        lack_count_overall_df[date_col_overall_str] = (current_day_need_for_overall - staff_actual_data_all_df[date_col_overall_str]).clip(lower=0)
-    
-    lack_count_overall_df = lack_count_overall_df.fillna(0).astype(int)
+    parsed_date_list_all = [_parse_as_date(c) for c in staff_actual_data_all_df.columns]
+    holiday_mask_all = [d in estimated_holidays_set if d else False for d in parsed_date_list_all]
+    need_df_all = pd.DataFrame(
+        np.repeat(need_series_per_time_overall_orig.values[:, np.newaxis], len(staff_actual_data_all_df.columns), axis=1),
+        index=need_series_per_time_overall_orig.index,
+        columns=staff_actual_data_all_df.columns
+    )
+    if any(holiday_mask_all):
+        for col, is_h in zip(need_df_all.columns, holiday_mask_all):
+            if is_h:
+                need_df_all[col] = 0
+    lack_count_overall_df = (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
     fp_shortage_time = save_df_xlsx(lack_count_overall_df, out_dir_path / "shortage_time.xlsx", sheet_name="lack_time", index=True)
     log.debug(f"--- shortage_time.xlsx 計算デバッグ (全体) 終了 ---")
 
@@ -120,25 +121,25 @@ def shortage_and_brief(
             continue
         
         role_staff_actual_data_df = role_heat_current_df[role_date_columns_list].copy().reindex(index=time_labels).fillna(0)
-        role_lack_count_for_specific_role_df = pd.DataFrame(index=role_staff_actual_data_df.index, columns=role_staff_actual_data_df.columns, dtype=float)
-        
-        total_need_slots_for_role_working_days = 0
-        num_working_days_for_current_role = 0
 
-        for date_col_for_role_str in role_staff_actual_data_df.columns:
-            current_date_obj_for_role = _parse_as_date(date_col_for_role_str)
-            is_holiday_role = False
-            if current_date_obj_for_role and estimated_holidays_set and current_date_obj_for_role in estimated_holidays_set:
-                is_holiday_role = True
-            
-            current_day_need_for_role_calc = pd.Series(0, index=role_need_per_time_series_orig_for_role.index) if is_holiday_role else role_need_per_time_series_orig_for_role
-            
-            if not is_holiday_role and current_date_obj_for_role: # 稼働日であれば
-                total_need_slots_for_role_working_days += current_day_need_for_role_calc.sum()
-                num_working_days_for_current_role +=1
-            
-            log.debug(f"  職種日付: {date_col_for_role_str}, 休業日か: {is_holiday_role}, 適用need合計: {current_day_need_for_role_calc.sum()}")
-            role_lack_count_for_specific_role_df[date_col_for_role_str] = (current_day_need_for_role_calc - role_staff_actual_data_df[date_col_for_role_str]).clip(lower=0)
+        parsed_role_dates = [_parse_as_date(c) for c in role_staff_actual_data_df.columns]
+        holiday_mask_role = [d in estimated_holidays_set if d else False for d in parsed_role_dates]
+
+        need_df_role = pd.DataFrame(
+            np.repeat(role_need_per_time_series_orig_for_role.values[:, np.newaxis], len(role_staff_actual_data_df.columns), axis=1),
+            index=role_need_per_time_series_orig_for_role.index,
+            columns=role_staff_actual_data_df.columns
+        )
+        if any(holiday_mask_role):
+            for c, is_h in zip(need_df_role.columns, holiday_mask_role):
+                if is_h:
+                    need_df_role[c] = 0
+
+        working_cols_role = [c for c, is_h in zip(role_staff_actual_data_df.columns, holiday_mask_role) if not is_h and _parse_as_date(c)]
+        num_working_days_for_current_role = len(working_cols_role)
+        total_need_slots_for_role_working_days = role_need_per_time_series_orig_for_role.sum() * num_working_days_for_current_role
+
+        role_lack_count_for_specific_role_df = (need_df_role - role_staff_actual_data_df).clip(lower=0)
         
         total_need_hours_for_role = total_need_slots_for_role_working_days * slot_hours
         # staff_h は全日の実績で計算（休業日も実績0として含まれる）
