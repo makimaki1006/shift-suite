@@ -87,6 +87,7 @@ JP = {
     "Fatigue": "疲労", "Forecast": "需要予測", "Fairness": "公平性",
     "Cost Sim": "コスト試算", "Hire Plan": "採用計画", "PPT Report": "PPTレポート",
     "Leave Analysis": "休暇分析",  # ★ 追加
+    "Alerts": "アラート",
     "Slot (min)": "スロット (分)",
     "Need Calculation Settings (Day of Week Pattern)": "📊 Need算出設定 (曜日パターン別)",
     "Reference Period for Need Calculation": "参照期間 (Need算出用)",
@@ -946,6 +947,19 @@ def display_shortage_tab(tab_container, data_dir):
                 st.dataframe(df_cost, use_container_width=True)
             except Exception as e:
                 st.error(f"cost_benefit.xlsx 表示エラー: {e}")
+
+        fp_stats = data_dir / "stats.xlsx"
+        if fp_stats.exists():
+            try:
+                xls_stats = pd.ExcelFile(fp_stats)
+                if "alerts" in xls_stats.sheet_names:
+                    df_alerts = xls_stats.parse("alerts")
+                    if not df_alerts.empty:
+                        st.markdown("---")
+                        st.subheader(_("Alerts"))
+                        st.dataframe(df_alerts, use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"stats.xlsx alerts表示エラー: {e}")
         
 def display_fatigue_tab(tab_container, data_dir):
     with tab_container:

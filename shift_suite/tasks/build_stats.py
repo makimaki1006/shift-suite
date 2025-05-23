@@ -201,6 +201,55 @@ def build_stats(out_dir: str | Path) -> None:
 
     logger.debug(f"日次メトリクス計算完了 (daily_metrics_df):\n{daily_metrics_df.head().to_string()}")
 
+    # ══════════ Derived Indicators & Alerts ══════════
+    alerts_rows: List[Dict[str, Any]] = []
+
+    # --- night shift ratio per staff (threshold > 0.5) ---
+    staff_stats_fp = out_dir_path / "staff_stats.xlsx"
+    if staff_stats_fp.exists():
+        try:
+            df_staff_stats = pd.read_excel(staff_stats_fp, sheet_name="by_staff")
+            if {"staff", "night_ratio"}.issubset(df_staff_stats.columns):
+                high_night = df_staff_stats[df_staff_stats["night_ratio"] > 0.5]
+                for _, row in high_night.iterrows():
+                    alerts_rows.append({
+                        "category": "high_night_ratio",
+                        "staff": row["staff"],
+                        "value": float(row["night_ratio"]),
+                    })
+        except Exception as e:  # pragma: no cover - runtime warning only
+            logger.warning(f"night ratio alert calculation failed: {e}")
+
+    # --- monthly shortage trend ---
+    if not daily_metrics_df.empty and "lack_hours" in daily_metrics_df.columns:
+        monthly_lack = daily_metrics_df["lack_hours"].groupby(
+            daily_metrics_df.index.to_period("M")
+        ).sum()
+        prev_period = None
+        consecutive = 0
+        for period, val in monthly_lack.items():
+            alerts_rows.append({
+                "category": "monthly_shortage",
+                "month": str(period),
+                "value": float(val),
+            })
+            if val > 0:
+                if prev_period is not None and (period - prev_period).n == 1:
+                    consecutive += 1
+                else:
+                    consecutive = 1
+                if consecutive >= 2:
+                    alerts_rows.append({
+                        "category": "persistent_shortage",
+                        "month": str(period),
+                        "value": float(val),
+                    })
+            else:
+                consecutive = 0
+            prev_period = period
+
+    alerts_df = pd.DataFrame(alerts_rows)
+
     overall_metrics = []
     denominator_for_avg = num_actual_working_days if num_actual_working_days > 0 else 1
 
@@ -340,12 +389,16 @@ def build_stats(out_dir: str | Path) -> None:
 
     try:
         with pd.ExcelWriter(stats_fp, engine="openpyxl", mode="w") as writer:
-            if not overall_df.empty: overall_df.to_excel(writer, sheet_name="Overall_Summary", index=False)
-            if not monthly_df.empty: monthly_df.to_excel(writer, sheet_name="Monthly_Summary", index=False)
-            if not daily_metrics_df.empty: 
+            if not overall_df.empty:
+                overall_df.to_excel(writer, sheet_name="Overall_Summary", index=False)
+            if not monthly_df.empty:
+                monthly_df.to_excel(writer, sheet_name="Monthly_Summary", index=False)
+            if not daily_metrics_df.empty:
                 # ★ daily_metrics_df の parsed_date_debug 列はデバッグ用なので、最終的なExcel出力からは除外しても良い
                 cols_to_output_dm = [col for col in daily_metrics_df.columns if col != 'parsed_date_debug']
                 daily_metrics_df[cols_to_output_dm].to_excel(writer, sheet_name="Daily_Metrics_Raw", index=True)
+            if not alerts_df.empty:
+                alerts_df.to_excel(writer, sheet_name="alerts", index=False)
         logger.info(f"✅ stats.xlsx を正常に作成/更新しました: {stats_fp}")
     except Exception as e:
         logger.error(f"stats.xlsx の書き出し中にエラーが発生しました: {e}", exc_info=True)
