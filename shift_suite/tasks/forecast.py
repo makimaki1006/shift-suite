@@ -1,12 +1,11 @@
 """
-shift_suite.tasks.forecast  v1.3.0 – pmdarima 対応 + “model” 列固定出力
+shift_suite.tasks.forecast  v1.4.0 – 休暇データ対応 & 1か月予測
 ────────────────────────────────────────────────────────
-■ v1.3 変更点 ★
-  1. forecast_need() が生成する out_df に “model” 列を必ず付与
-     - app.py 側で 'model' KeyError が発生していた問題を解消
-  2. write_meta() に rows/selected_model だけでなく
-     - mape_selected, periods, created も記録
-  3. ドキュメント整理・型ヒント微調整
+■ v1.4 変更点 ★
+  1. 予測期間の既定を 30 日に延長
+  2. build_demand_series / forecast_need が leave_analysis.csv を任意で受け付け
+  3. MAPE 計算を 0 除算回避処理付きに修正
+  4. forecast_need() が生成する out_df に “model” 列を必ず付与
 """
 
 from __future__ import annotations
@@ -115,8 +114,24 @@ def build_demand_series(
     *,
     summary_col: str = "need",
     raise_on_empty: bool = True,
+    leave_csv: Path | None = None,
 ) -> Path:
-    """heat_ALL.xlsx → 需要系列 CSV(ds,y) を生成"""
+    """heat_ALL.xlsx → 需要系列 CSV(ds,y) を生成
+
+    Parameters
+    ----------
+    heat_xlsx : Path
+        heat_ALL.xlsx のパス
+    csv_out : Path
+        出力 CSV パス
+    summary_col : str, default ``"need"``
+        集計対象の列名
+    raise_on_empty : bool, default ``True``
+        日付列が検出できなかった場合に例外を送出するか
+    leave_csv : Path | None, optional
+        ``leave_analysis.csv`` (日付・休暇タイプ別取得数) を指定すると、
+        休暇取得数を ``leave_…`` 列として付与する
+    """
     log.info("[forecast] build_demand_series start")
     heat = pd.read_excel(heat_xlsx, index_col=0)
 
@@ -134,6 +149,24 @@ def build_demand_series(
 
     rows = [{"ds": d, "y": heat[col].sum()} for d, col in sorted(date_map.items())]
     df = pd.DataFrame(rows).sort_values("ds")
+
+    if leave_csv and Path(leave_csv).exists():
+        try:
+            leave_df = pd.read_csv(leave_csv, parse_dates=["date"])
+            pivot = (
+                leave_df.pivot_table(
+                    index="date",
+                    columns="leave_type",
+                    values="total_leave_days",
+                    aggfunc="sum",
+                    fill_value=0,
+                )
+            )
+            pivot = pivot.add_prefix("leave_").reset_index().rename(columns={"date": "ds"})
+            df = df.merge(pivot, on="ds", how="left").fillna(0)
+        except Exception as e:
+            log.warning(f"[forecast] leave_csv load failed: {e}")
+
     csv_out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(csv_out, index=False)
 
@@ -148,15 +181,50 @@ def forecast_need(
     *,
     choose: str = "auto",  # "auto" | "arima" | "ets"
     seasonal: str = "add",
-    periods: int = 14,
+    periods: int = 30,
+    leave_csv: Path | None = None,
 ) -> Path:
-    """需要系列 CSV → 14 日先需要予測 Excel
+    """需要系列 CSV → 1 か月先需要予測 Excel
 
-    返り値: 生成した Excel パス
-    Excel には必ず列 ["ds","yhat","model"] が含まれる
+    Parameters
+    ----------
+    demand_csv : Path
+        :func:`build_demand_series` で生成した CSV
+    excel_out : Path
+        予測結果を保存する Excel
+    choose : {"auto", "arima", "ets"}, default "auto"
+        モデル選択方法
+    seasonal : str, default "add"
+        ETS モデルの季節成分タイプ
+    periods : int, default 30
+        予測期間（日数）
+    leave_csv : Path | None, optional
+        ``leave_analysis.csv`` を与えると休暇取得数を説明変数として利用
+
+    Returns
+    -------
+    Path
+        生成した Excel ファイルパス
     """
     log.info("[forecast] forecast_need start")
     df = pd.read_csv(demand_csv, parse_dates=["ds"])
+
+    if leave_csv and Path(leave_csv).exists():
+        try:
+            leave_df = pd.read_csv(leave_csv, parse_dates=["date"])
+            pivot = (
+                leave_df.pivot_table(
+                    index="date",
+                    columns="leave_type",
+                    values="total_leave_days",
+                    aggfunc="sum",
+                    fill_value=0,
+                )
+            )
+            pivot = pivot.add_prefix("leave_").reset_index().rename(columns={"date": "ds"})
+            df = df.merge(pivot, on="ds", how="left").fillna(0)
+        except Exception as e:
+            log.warning(f"[forecast] leave_csv load failed: {e}")
 
     # ───── データ不足 → Naive ─────
     if len(df) < 2 or df["y"].sum() < 2:
@@ -181,24 +249,33 @@ def forecast_need(
         df["y"], trend="add", seasonal=seasonal, seasonal_periods=7
     ).fit(optimized=True)
     ets_fc = ets_mod.forecast(periods)
-    ets_mape = np.mean(np.abs((ets_mod.fittedvalues - df["y"]) / df["y"]))
+    denom = np.where(df["y"] != 0, df["y"], np.nan)
+    ets_mape = np.nanmean(np.abs((ets_mod.fittedvalues - df["y"]) / denom))
 
     # ───── ARIMA (pmdarima) ─────
     arima_mape = np.inf
     arima_fc = None
+    exog_cols = [c for c in df.columns if c not in {"ds", "y"}]
     if _HAS_PMDARIMA:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             arima_mod = pm.auto_arima(
                 df["y"],
+                exogenous=df[exog_cols] if exog_cols else None,
                 seasonal=False,
                 stepwise=True,
                 suppress_warnings=True,
                 error_action="ignore",
             )
-        arima_fc = arima_mod.predict(n_periods=periods)
-        arima_mape = np.mean(
-            np.abs((arima_mod.y - arima_mod.predict_in_sample()) / arima_mod.y)
+        future_exog = (
+            pd.DataFrame([df[exog_cols].iloc[-1]] * periods)
+            if exog_cols
+            else None
+        )
+        arima_fc = arima_mod.predict(n_periods=periods, exogenous=future_exog)
+        denom_a = np.where(arima_mod.y != 0, arima_mod.y, np.nan)
+        arima_mape = np.nanmean(
+            np.abs((arima_mod.y - arima_mod.predict_in_sample()) / denom_a)
         )
     elif choose in ("auto", "arima"):
         log.warning("[forecast] ARIMA 指定ですが pmdarima が無いため ETS を使用")

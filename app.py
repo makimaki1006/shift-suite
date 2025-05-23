@@ -684,10 +684,20 @@ if run_button_clicked:
                             if not heat_all_for_fc_exec_run_fc.exists(): 
                                 st.warning(f"Need forecast: 必須ファイル {heat_all_for_fc_exec_run_fc.name} が見つかりません。")
                             else:
-                                build_demand_series(heat_all_for_fc_exec_run_fc, demand_csv_exec_run_fc)
-                                if demand_csv_exec_run_fc.exists(): 
-                                    forecast_need(demand_csv_exec_run_fc, forecast_xls_exec_run_fc)
-                                else: 
+                                build_demand_series(
+                                    heat_all_for_fc_exec_run_fc,
+                                    demand_csv_exec_run_fc,
+                                    leave_csv=out_dir_exec / "leave_analysis.csv" if (out_dir_exec / "leave_analysis.csv").exists() else None,
+                                )
+                                if demand_csv_exec_run_fc.exists():
+                                    fc_leave = out_dir_exec / "leave_analysis.csv"
+                                    forecast_need(
+                                        demand_csv_exec_run_fc,
+                                        forecast_xls_exec_run_fc,
+                                        periods=30,
+                                        leave_csv=fc_leave if fc_leave.exists() else None,
+                                    )
+                                else:
                                     st.warning("Need forecast: demand_series.csv の生成に失敗しました。")
                         elif opt_module_name_exec_run == "RL roster (PPO)":
                             demand_csv_rl_exec_run_rl = out_dir_exec / "demand_series.csv"
