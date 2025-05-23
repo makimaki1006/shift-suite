@@ -1112,23 +1112,23 @@ def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
         if st.button(_("Generate PowerPoint Report (β)"), key=button_key, use_container_width=True):
             st.info(_("Generating PowerPoint report..."))
             try:
-                from pptx import Presentation 
-                prs = Presentation()
-                prs.slides.add_slide(prs.slide_layouts[5]).shapes.title.text = "ダッシュボードからのレポート"
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp_ppt_dash:
-                    temp_ppt_dash_path = tmp_ppt_dash.name
-                prs.save(temp_ppt_dash_path)
-                with open(temp_ppt_dash_path, "rb") as ppt_file_data_dash:
+                from shift_suite.tasks.ppt import build_ppt
+
+                ppt_path = build_ppt(data_dir_ignored)
+                with open(ppt_path, "rb") as ppt_file_data_dash:
                     st.download_button(
-                        label=_("Download Report (PPTX)"), data=ppt_file_data_dash,
-                        file_name=f"ShiftSuite_Dashboard_Report_{dt.datetime.now().strftime('%Y%m%d_%H%M')}.pptx",
+                        label=_("Download Report (PPTX)"),
+                        data=ppt_file_data_dash,
+                        file_name=f"ShiftSuite_Report_{dt.datetime.now().strftime('%Y%m%d_%H%M')}.pptx",
                         mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        use_container_width=True
+                        use_container_width=True,
                     )
-                Path(temp_ppt_dash_path).unlink()
+                Path(ppt_path).unlink(missing_ok=True)
                 st.success(_("PowerPoint report ready."))
-            except ImportError: st.error(_("python-pptx library required for PPT"))
-            except Exception as e_ppt_dash: st.error(_("Error generating PowerPoint report") + f": {e_ppt_dash}")
+            except ImportError:
+                st.error(_("python-pptx library required for PPT"))
+            except Exception as e_ppt_dash:
+                st.error(_("Error generating PowerPoint report") + f": {e_ppt_dash}")
         else:
             st.markdown(_("Click button to generate report."))
 # Multi-file results display

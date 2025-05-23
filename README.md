@@ -36,7 +36,8 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 - **`skill_nmf`** – Estimates a latent skill matrix using non‑negative matrix factorisation.
 - **`anomaly`** – Detects irregular shift patterns via IsolationForest.
 - **`cost_benefit`** – Simulates labour costs and hiring scenarios.
-- **`ppt`** – Generates a PowerPoint report (requires `python-pptx`).
+- **`ppt`** – Builds a PowerPoint report summarising heatmaps, shortage metrics
+  and cost simulations (requires the optional `python-pptx` library).
 - **`leave_analyzer`** – Summarises paid and requested leave days.
 - **`cli_bridge`** – Lightweight CLI for `leave_analyzer` based on CSV input.
 
@@ -101,10 +102,11 @@ written to the specified output directory or displayed directly in the GUI.
 
 ### Additional dependencies
 
-Some modules require optional libraries such as `prophet` for forecasting,
-`stable-baselines3` and `torch` for reinforcement learning, and `python-pptx`
-to build PowerPoint reports.  Install them via `pip install -r requirements.txt`
-before running `app.py` or the CLIs.
+Some modules require extra libraries such as `prophet` for forecasting or
+`stable-baselines3` and `torch` for reinforcement learning.  PowerPoint report
+generation uses `python-pptx`, which is optional.  Install these via
+`pip install -r requirements.txt` before running `app.py` or the CLIs if you
+need the related features.
 
 ### Example output
 
