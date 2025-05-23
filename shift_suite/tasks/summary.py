@@ -8,6 +8,7 @@ shift_suite.summary  v0.3.1 (KeyError: 'name' 対応)
 from __future__ import annotations
 
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from .utils import log
 
