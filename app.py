@@ -1045,6 +1045,32 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
         else: st.info(_("Shortage") + " (shortage_time.xlsx) " + _("が見つかりません。"))
 
+        fp_s_ratio = data_dir / "shortage_ratio.xlsx"
+        if fp_s_ratio.exists():
+            try:
+                df_ratio = pd.read_excel(fp_s_ratio, index_col=0)
+                st.write(_("Shortage Ratio by Time"))
+                avail_ratio_dates = df_ratio.columns.tolist()
+                if avail_ratio_dates:
+                    sel_ratio_date = st.selectbox(_("Select date for ratio"), avail_ratio_dates, key="short_ratio_date")
+                    if sel_ratio_date:
+                        fig_ratio = px.bar(
+                            df_ratio[sel_ratio_date].reset_index(),
+                            x=df_ratio.index.name or "index",
+                            y=sel_ratio_date,
+                            labels={df_ratio.index.name or "index": _("Time"), sel_ratio_date: _("Shortage Ratio")},
+                            color_discrete_sequence=["#FF6347"],
+                        )
+                        st.plotly_chart(fig_ratio, use_container_width=True)
+                else:
+                    st.info(_("No date columns in shortage ratio."))
+                with st.expander(_("Display all ratio data")):
+                    st.dataframe(df_ratio, use_container_width=True)
+            except Exception as e:
+                st.error(f"shortage_ratio.xlsx 表示エラー: {e}")
+        else:
+            st.info(_("Shortage") + " (shortage_ratio.xlsx) " + _("が見つかりません。"))
+
         fp_cost = data_dir / "cost_benefit.xlsx"
         if fp_cost.exists():
             st.markdown("---")

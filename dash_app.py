@@ -49,6 +49,7 @@ try:
             RAW_ZMAX_DEFAULT_CALC = max(10.0, min(50.0, RAW_ZMAX_P95))
 
     shortage_time_df = pd.read_excel(DATA_DIR / "shortage_time.xlsx", index_col=0) if (DATA_DIR / "shortage_time.xlsx").exists() else pd.DataFrame()
+    shortage_ratio_df = pd.read_excel(DATA_DIR / "shortage_ratio.xlsx", index_col=0) if (DATA_DIR / "shortage_ratio.xlsx").exists() else pd.DataFrame()
     kpi_lack_h = None
     jain_index_val = None
     if (DATA_DIR / "shortage_role.xlsx").exists():
@@ -75,10 +76,11 @@ except FileNotFoundError:
     ratio_calculated_df = pd.DataFrame()
     RAW_ZMAX_DEFAULT_CALC = 10.0
     shortage_time_df = pd.DataFrame()
+    shortage_ratio_df = pd.DataFrame()
     # ... (他のDFも空で初期化)
 except Exception as e:
     print(f"データロード中に予期せぬエラーが発生しました: {e}")
-    heat_all_df = pd.DataFrame(); heat_staff_data = pd.DataFrame(); ratio_calculated_df = pd.DataFrame(); RAW_ZMAX_DEFAULT_CALC = 10.0; shortage_time_df = pd.DataFrame()
+    heat_all_df = pd.DataFrame(); heat_staff_data = pd.DataFrame(); ratio_calculated_df = pd.DataFrame(); RAW_ZMAX_DEFAULT_CALC = 10.0; shortage_time_df = pd.DataFrame(); shortage_ratio_df = pd.DataFrame()
 
 
 # ────────────────── 3. Dash App ──────────────────
@@ -187,7 +189,37 @@ def page_heat():
     )
 
 # (他のページの雛形は省略。必要なら同様に調整)
-def page_shortage(): return html.Div("TODO: shortage page content") 
+def page_shortage():
+    if shortage_ratio_df.empty:
+        return html.Div([
+            html.H4("Shortage Ratio Data Not Found"),
+            html.P("Run analysis via the Streamlit app to generate shortage_ratio.xlsx")
+        ])
+
+    return html.Div([
+        html.H3("Shortage Ratio Heatmap"),
+        dcc.Graph(
+            id="shortage-ratio-heatmap",
+            figure=px.imshow(
+                shortage_ratio_df,
+                aspect="auto",
+                color_continuous_scale=px.colors.sequential.OrRd,
+                zmin=0,
+                zmax=1,
+                labels=dict(x="Date", y="Time", color="Shortage Ratio"),
+            ),
+        ),
+        html.Hr(),
+        html.H4("Time Slot Shortage Ratio"),
+        dcc.Dropdown(
+            id="shortage-ratio-date-dropdown",
+            options=[{"label": str(d), "value": str(d)} for d in shortage_ratio_df.columns],
+            value=str(shortage_ratio_df.columns[0]) if len(shortage_ratio_df.columns) > 0 else None,
+            style={"width": "300px"},
+            className="mb-2",
+        ),
+        dcc.Graph(id="shortage-ratio-bar-graph"),
+    ])
 # ...
 
 # ─────────── 5. ルーティング ───────────
@@ -263,6 +295,26 @@ def update_shortage_bar(selected_date_str: str | None): # ★ 引数名変更、
         # template="plotly_dark", # ダークテーマはオプション
     )
     fig.update_layout(showlegend=False, xaxis_tickangle=-45, height=350) # ★ tickangle調整, height調整
+    return fig
+
+
+@callback(
+    Output("shortage-ratio-bar-graph", "figure"),
+    Input("shortage-ratio-date-dropdown", "value")
+)
+def update_shortage_ratio_bar(date_str: str | None):
+    if date_str is None or shortage_ratio_df.empty or date_str not in shortage_ratio_df.columns:
+        fig_empty = px.bar(title="日付を選択してください")
+        fig_empty.update_layout(showlegend=False, height=300)
+        return fig_empty
+    series = shortage_ratio_df[date_str]
+    fig = px.bar(
+        x=series.index,
+        y=series.values,
+        labels={"x": "時間帯", "y": "不足率"},
+        title=f"{date_str} の時間帯別不足率"
+    )
+    fig.update_layout(showlegend=False, xaxis_tickangle=-45, height=350)
     return fig
 
 # ────────────────── 7. Main ──────────────────
