@@ -158,6 +158,7 @@ JP = {
     "Color Scale Max (zmax)": "カラースケール上限 (zmax)",
     "Shortage by Role (hours)": "職種別不足時間 (h)",
     "Shortage by Time (count per day)": "時間帯別不足人数 (日別)",
+    "Shortage Frequency (days)": "不足発生頻度 (日数)",
     "Select date to display": "表示する日付を選択",
     "No date columns in shortage data.": "不足時間データに日付列がありません。",
     "Display all time-slot shortage data": "全時間帯別不足データ表示",
@@ -1070,6 +1071,29 @@ def display_shortage_tab(tab_container, data_dir):
                 st.error(f"shortage_ratio.xlsx 表示エラー: {e}")
         else:
             st.info(_("Shortage") + " (shortage_ratio.xlsx) " + _("が見つかりません。"))
+
+        fp_s_freq = data_dir / "shortage_freq.xlsx"
+        if fp_s_freq.exists():
+            try:
+                df_freq = pd.read_excel(fp_s_freq, index_col=0)
+                st.write(_("Shortage Frequency (days)"))
+                fig_freq = px.bar(
+                    df_freq.reset_index(),
+                    x=df_freq.index.name or "index",
+                    y="shortage_days",
+                    labels={
+                        df_freq.index.name or "index": _("Time"),
+                        "shortage_days": _("Shortage Frequency (days)")
+                    },
+                    color_discrete_sequence=["#708090"],
+                )
+                st.plotly_chart(fig_freq, use_container_width=True)
+                with st.expander(_("Data")):
+                    st.dataframe(df_freq, use_container_width=True)
+            except Exception as e:
+                st.error(f"shortage_freq.xlsx 表示エラー: {e}")
+        else:
+            st.info(_("Shortage") + " (shortage_freq.xlsx) " + _("が見つかりません。"))
 
         fp_cost = data_dir / "cost_benefit.xlsx"
         if fp_cost.exists():
