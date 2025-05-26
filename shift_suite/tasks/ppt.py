@@ -9,6 +9,21 @@ import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches
 
+JP = {
+    "Staff": "スタッフ",
+    "Score": "スコア",
+    "Role": "職種",
+    "Month": "月",
+    "Shortage Hours": "不足時間(h)",
+    "Total Leave Days": "総休暇日数",
+    "Shortage by Role": "職種別不足",
+    "Cost Benefit Scenarios": "コスト便益シナリオ",
+}
+
+
+def _(text: str) -> str:
+    return JP.get(text, text)
+
 log = logging.getLogger(__name__)
 
 
@@ -22,15 +37,15 @@ def _add_shortage_slide(prs: Presentation, shortage_fp: Path) -> None:
 
     fig, ax = plt.subplots(figsize=(6, 4))
     df.plot.bar(x="role", y="lack_h", ax=ax)
-    ax.set_title("Shortage by Role")
-    ax.set_ylabel("Lack Hours")
+    ax.set_title(_("Shortage by Role"))
+    ax.set_ylabel(_("Shortage Hours"))
     plt.tight_layout()
 
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_png:
         fig.savefig(tmp_png.name)
         plt.close(fig)
         slide = prs.slides.add_slide(prs.slide_layouts[5])
-        slide.shapes.title.text = "Shortage by Role"
+        slide.shapes.title.text = _("Shortage by Role")
         slide.shapes.add_picture(tmp_png.name, Inches(1), Inches(1), width=Inches(8))
     Path(tmp_png.name).unlink(missing_ok=True)
 
@@ -48,14 +63,14 @@ def _add_cost_slide(prs: Presentation, cost_fp: Path) -> None:
     fig, ax = plt.subplots(figsize=(6, 4))
     df[cost_col].plot.bar(ax=ax)
     ax.set_ylabel(cost_col)
-    ax.set_title("Cost Benefit Scenarios")
+    ax.set_title(_("Cost Benefit Scenarios"))
     plt.tight_layout()
 
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_png:
         fig.savefig(tmp_png.name)
         plt.close(fig)
         slide = prs.slides.add_slide(prs.slide_layouts[5])
-        slide.shapes.title.text = "Cost Benefit"
+        slide.shapes.title.text = _("Cost Benefit Scenarios")
         slide.shapes.add_picture(tmp_png.name, Inches(1), Inches(1), width=Inches(8))
     Path(tmp_png.name).unlink(missing_ok=True)
 
