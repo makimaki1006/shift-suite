@@ -176,6 +176,18 @@ JP = {
     "python-pptx library required for PPT": "PowerPointレポートの生成には `python-pptx` ライブラリが必要です。\nインストールしてください: `pip install python-pptx`",
     "Error generating PowerPoint report": "PowerPointレポートの生成中にエラーが発生しました",
     "Click button to generate report.": "ボタンをクリックすると、主要な分析結果を含むPowerPointレポートが生成されます（現在はβ版です）。",
+    "Holiday file parse error": "休日ファイルの解析エラー",
+    "Need forecast": "需要予測",
+    "RL Roster": "強化学習シフト",
+    "Estimated Cost Impact (Million ¥)": "想定コスト影響額 (百万円)",
+    "zmax mode": "zmax モード",
+    "Manual": "手動",
+    "90th percentile": "90パーセンタイル",
+    "95th percentile": "95パーセンタイル",
+    "99th percentile": "99パーセンタイル",
+    "No leave analysis results available.": "休暇分析の結果がありません。",
+    "Results for {fname}": "{fname} の結果",
+    "Data": "データ",
 }
 def _(text_key: str) -> str:
     return JP.get(text_key, text_key)
@@ -467,7 +479,7 @@ if run_button_clicked:
                 df_h = pd.read_csv(holiday_file_uploaded, header=None)
                 holiday_dates_for_run = [pd.to_datetime(x).date() for x in df_h.iloc[:,0].dropna().unique()]
         except Exception as e_hread:
-            st.warning(f"Holiday file parse error: {e_hread}")
+            st.warning(_("Holiday file parse error") + f": {e_hread}")
             log.warning(f"Holiday file parse error: {e_hread}")
 
     for file_name, file_info in st.session_state.uploaded_files_info.items():
@@ -708,8 +720,8 @@ if run_button_clicked:
                             demand_csv_exec_run_fc = out_dir_exec / "demand_series.csv"
                             forecast_xls_exec_run_fc = out_dir_exec / "forecast.xlsx"
                             heat_all_for_fc_exec_run_fc = out_dir_exec / "heat_ALL.xlsx"
-                            if not heat_all_for_fc_exec_run_fc.exists(): 
-                                st.warning(f"Need forecast: 必須ファイル {heat_all_for_fc_exec_run_fc.name} が見つかりません。")
+                            if not heat_all_for_fc_exec_run_fc.exists():
+                                st.warning(_("Need forecast") + f": 必須ファイル {heat_all_for_fc_exec_run_fc.name} が見つかりません。")
                             else:
                                 build_demand_series(
                                     heat_all_for_fc_exec_run_fc,
@@ -727,7 +739,7 @@ if run_button_clicked:
                                         log_csv=out_dir_exec / "forecast_history.csv",
                                     )
                                 else:
-                                    st.warning("Need forecast: demand_series.csv の生成に失敗しました。")
+                                    st.warning(_("Need forecast") + ": demand_series.csv の生成に失敗しました。")
                         elif opt_module_name_exec_run == "RL roster (PPO)":
                             demand_csv_rl_exec_run_rl = out_dir_exec / "demand_series.csv"
                             rl_roster_xls_exec_run_rl = out_dir_exec / "rl_roster.xlsx"
@@ -743,7 +755,7 @@ if run_button_clicked:
                                     model_path=model_zip_rl,
                                 )
                             else:
-                                st.warning("RL Roster: 需要予測データ (demand_series.csv) がありません。")
+                                st.warning(_("RL Roster") + ": 需要予測データ (demand_series.csv) がありません。")
                         elif opt_module_name_exec_run == "RL roster (model)":
                             demand_csv_rl_exec_run_rl = out_dir_exec / "demand_series.csv"
                             rl_roster_xls_use = out_dir_exec / "rl_roster.xlsx"
@@ -760,14 +772,14 @@ if run_button_clicked:
                                     use_saved_model=True,
                                 )
                             else:
-                                st.warning("RL Roster: 学習済みモデルまたは forecast.xlsx が見つかりません。")
+                                st.warning(_("RL Roster") + ": 学習済みモデルまたは forecast.xlsx が見つかりません。")
                         elif opt_module_name_exec_run == "Hire plan":
                             demand_csv_hp_exec_run_hp = out_dir_exec / "demand_series.csv"
                             hire_xls_exec_run_hp = out_dir_exec / "hire_plan.xlsx"
                             if demand_csv_hp_exec_run_hp.exists(): 
                                 build_hire_plan(demand_csv_hp_exec_run_hp, hire_xls_exec_run_hp, param_std_work_hours, param_safety_factor, param_target_coverage)
-                            else: 
-                                st.warning("Hire Plan: 需要予測データ (demand_series.csv) がありません。")
+                            else:
+                                st.warning(_("Hire Plan") + ": 需要予測データ (demand_series.csv) がありません。")
                         elif opt_module_name_exec_run == "Cost / Benefit":
                             analyze_cost_benefit(out_dir_exec, param_wage_direct, param_wage_temp, param_hiring_cost, param_penalty_lack)
                         st.success(f"✅ {_(opt_module_name_exec_run)} 完了")
@@ -886,7 +898,12 @@ def display_heatmap_tab(tab_container, data_dir):
                     p90 = float(pos_vals.quantile(0.90)) if not pos_vals.empty else z_def
                     p95 = float(pos_vals.quantile(0.95)) if not pos_vals.empty else z_def
                     p99 = float(pos_vals.quantile(0.99)) if not pos_vals.empty else z_def
-                    zmode = st.selectbox("zmax mode", ["Manual", "90th percentile", "95th percentile", "99th percentile"], key="dash_heat_zmax_mode")
+                    zmode = st.selectbox(
+                        _("zmax mode"),
+                        ["Manual", "90th percentile", "95th percentile", "99th percentile"],
+                        key="dash_heat_zmax_mode",
+                        format_func=lambda x: _(x),
+                    )
                     if zmode == "Manual":
                         zmax = st.slider(_("Color Scale Max (zmax)"), z_min, z_max, z_def, z_stp, key="dash_heat_zmax_slider")
                     else:
@@ -1068,7 +1085,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
     with tab_container:
         st.subheader(_("Leave Analysis"))
         if not results_dict:
-            st.info("No leave analysis results available.")
+            st.info(_("No leave analysis results available."))
             return
 
         daily_df = results_dict.get("daily_leave_df")
@@ -1080,7 +1097,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             if "period_unit" in df.columns and "total_leave_days" in df.columns:
                 fig = px.bar(df, x="period_unit", y="total_leave_days", title=title)
                 st.plotly_chart(fig, use_container_width=True)
-            with st.expander("Data"):
+            with st.expander(_("Data")):
                 st.dataframe(df, use_container_width=True, hide_index=True)
 
         df_req_dow = results_dict.get("summary_dow_requested")
@@ -1140,7 +1157,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 )
                 st.plotly_chart(fig_ratio, use_container_width=True)
 
-            with st.expander("Data"):
+            with st.expander(_("Data")):
                 st.dataframe(df_balance, use_container_width=True, hide_index=True)
 
         df_staff = results_dict.get("staff_leave_list")
@@ -1181,7 +1198,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
     for tab_obj, fname in zip(file_tabs, st.session_state.analysis_results.keys()):
         with tab_obj:
             results = st.session_state.analysis_results[fname]
-            st.subheader(f"Results for {fname}")
+            st.subheader(_("Results for {fname}").format(fname=fname))
             data_dir = Path(results["out_dir_path_str"])
             tab_keys_en_dash = [
                 "Overview", "Heatmap", "Shortage", "Fatigue", "Forecast",
