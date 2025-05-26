@@ -19,26 +19,36 @@ def main():
         help="Header row number of shift sheets (1-indexed)",
     )
     ap.add_argument("--zip", action="store_true")
-    ap.add_argument("--holidays", help="Optional holiday CSV or JSON file")
+    ap.add_argument("--holidays-global", help="Global holiday CSV or JSON file")
+    ap.add_argument("--holidays-local", help="Local holiday CSV or JSON file")
     args = ap.parse_args()
 
     excel = Path(args.excel).expanduser()
     out   = Path(args.out).expanduser()
-    holiday_dates = None
-    if args.holidays:
-        fp_h = Path(args.holidays).expanduser()
+    holiday_dates_global = None
+    holiday_dates_local = None
+    def _read_holiday_file(fp: Path):
+        if fp.suffix.lower() == ".json":
+            import json
+            with open(fp, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return [pd.to_datetime(d).date() for d in data] if isinstance(data, list) else None
+        df_h = pd.read_csv(fp, header=None)
+        return [pd.to_datetime(x).date() for x in df_h.iloc[:,0].dropna().unique()]
+
+    if args.holidays_global:
+        fp_hg = Path(args.holidays_global).expanduser()
         try:
-            if fp_h.suffix.lower() == ".json":
-                import json
-                with open(fp_h, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if isinstance(data, list):
-                    holiday_dates = [pd.to_datetime(d).date() for d in data]
-            else:
-                df_h = pd.read_csv(fp_h, header=None)
-                holiday_dates = [pd.to_datetime(x).date() for x in df_h.iloc[:,0].dropna().unique()]
+            holiday_dates_global = _read_holiday_file(fp_hg)
         except Exception as e:
-            print(f"Failed to read holidays from {fp_h}: {e}")
+            print(f"Failed to read holidays from {fp_hg}: {e}")
+
+    if args.holidays_local:
+        fp_hl = Path(args.holidays_local).expanduser()
+        try:
+            holiday_dates_local = _read_holiday_file(fp_hl)
+        except Exception as e:
+            print(f"Failed to read holidays from {fp_hl}: {e}")
     shutil.rmtree(out, ignore_errors=True)
 
     # Determine shift sheet names by excluding the master sheet
@@ -66,7 +76,12 @@ def main():
         min_method="p25",
         max_method="p75",
     )
-    shortage_and_brief(out, args.slot, holidays=holiday_dates)
+    shortage_and_brief(
+        out,
+        args.slot,
+        holidays_global=holiday_dates_global,
+        holidays_local=holiday_dates_local,
+    )
     try:
         build_hire_plan_from_shortage(out)
     except Exception as e:

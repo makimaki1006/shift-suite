@@ -426,11 +426,17 @@ uploaded_files = st.file_uploader(
     help="勤務実績と勤務区分が記載されたExcelファイルをアップロードしてください。",
     accept_multiple_files=True
 )
-holiday_file_uploaded = st.file_uploader(
-    _("Optional holiday file (CSV or JSON)"),
+holiday_file_global_uploaded = st.file_uploader(
+    _("Global holiday file (CSV or JSON)"),
     type=["csv", "json"],
-    key="holiday_file_widget",
-    help="不足分析で考慮する休業日リスト (YYYY-MM-DD)"
+    key="holiday_file_global_widget",
+    help="全国共通の祝日など (YYYY-MM-DD)"
+)
+holiday_file_local_uploaded = st.file_uploader(
+    _("Local holiday file (CSV or JSON)"),
+    type=["csv", "json"],
+    key="holiday_file_local_widget",
+    help="施設固有の休業日 (YYYY-MM-DD)"
 )
 
 if uploaded_files:
@@ -484,15 +490,26 @@ if run_button_clicked:
     st.session_state.analysis_done = False
     st.session_state.analysis_results = {}
 
-    holiday_dates_for_run = None
-    if holiday_file_uploaded is not None:
+    holiday_dates_global_for_run = None
+    holiday_dates_local_for_run = None
+
+    def _read_holiday_upload(uploaded_file):
+        if uploaded_file.name.lower().endswith(".json"):
+            import json
+            return [pd.to_datetime(d).date() for d in json.load(uploaded_file)]
+        df_h = pd.read_csv(uploaded_file, header=None)
+        return [pd.to_datetime(x).date() for x in df_h.iloc[:,0].dropna().unique()]
+
+    if holiday_file_global_uploaded is not None:
         try:
-            if holiday_file_uploaded.name.lower().endswith(".json"):
-                import json
-                holiday_dates_for_run = [pd.to_datetime(d).date() for d in json.load(holiday_file_uploaded)]
-            else:
-                df_h = pd.read_csv(holiday_file_uploaded, header=None)
-                holiday_dates_for_run = [pd.to_datetime(x).date() for x in df_h.iloc[:,0].dropna().unique()]
+            holiday_dates_global_for_run = _read_holiday_upload(holiday_file_global_uploaded)
+        except Exception as e_hread:
+            st.warning(_("Holiday file parse error") + f": {e_hread}")
+            log.warning(f"Holiday file parse error: {e_hread}")
+
+    if holiday_file_local_uploaded is not None:
+        try:
+            holiday_dates_local_for_run = _read_holiday_upload(holiday_file_local_uploaded)
         except Exception as e_hread:
             st.warning(_("Holiday file parse error") + f": {e_hread}")
             log.warning(f"Holiday file parse error: {e_hread}")
@@ -592,7 +609,12 @@ if run_button_clicked:
             st.success("✅ Heatmap生成完了")
     
             update_progress_exec_run("Shortage: Analyzing shortage...")
-            shortage_result_exec_run = shortage_and_brief(out_dir_exec, param_slot, holidays=holiday_dates_for_run)
+            shortage_result_exec_run = shortage_and_brief(
+                out_dir_exec,
+                param_slot,
+                holidays_global=holiday_dates_global_for_run,
+                holidays_local=holiday_dates_local_for_run,
+            )
             if shortage_result_exec_run is None:
                 st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
             else:
@@ -750,7 +772,7 @@ if run_button_clicked:
                                         forecast_xls_exec_run_fc,
                                         periods=30,
                                         leave_csv=fc_leave if fc_leave.exists() else None,
-                                        holidays=holiday_dates_for_run,
+                                        holidays=(holiday_dates_global_for_run or []) + (holiday_dates_local_for_run or []),
                                         log_csv=out_dir_exec / "forecast_history.csv",
                                     )
                                 else:

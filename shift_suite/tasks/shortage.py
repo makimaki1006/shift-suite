@@ -23,13 +23,33 @@ def shortage_and_brief(
     out_dir: Path | str,
     slot: int,
     *,
+    holidays_global: Iterable[dt.date] | None = None,
+    holidays_local: Iterable[dt.date] | None = None,
     holidays: Iterable[dt.date] | None = None,
 ) -> Tuple[Path, Path] | None:
+    """Run shortage analysis and KPI summary.
+
+    Parameters
+    ----------
+    out_dir:
+        Output directory containing heatmap files.
+    slot:
+        Slot size in minutes.
+    holidays_global:
+        Dates for globally observed holidays.
+    holidays_local:
+        Additional local or facility specific holidays.
+    holidays:
+        Legacy single holiday list; combined with the above.
+    """
     out_dir_path = Path(out_dir)
     time_labels = gen_labels(slot)
     slot_hours = slot / 60.0
 
-    estimated_holidays_set: Set[dt.date] = set(holidays or [])
+    estimated_holidays_set: Set[dt.date] = set()
+    for src in (holidays_global, holidays_local, holidays):
+        if src:
+            estimated_holidays_set.update(src)
     heatmap_meta_path = out_dir_path / "heatmap.meta.json"
     try:
         with open(heatmap_meta_path, 'r', encoding='utf-8') as f:
