@@ -61,10 +61,11 @@ def shortage_and_brief(
     date_columns_in_heat_all = [str(col) for col in heat_all_df.columns if col not in SUMMARY5 and _parse_as_date(str(col)) is not None]
     if not date_columns_in_heat_all:
         log.warning("[shortage] heat_ALL.xlsx に日付データ列が見つかりませんでした。")
-        # 空のExcelを生成して返すか、Noneを返す
+        # 空のExcelを生成して返す
         empty_df = pd.DataFrame(index=time_labels)
         fp_s_t_empty = save_df_xlsx(empty_df, out_dir_path / "shortage_time.xlsx", sheet_name="lack_time", index=True)
         fp_s_r_empty = save_df_xlsx(pd.DataFrame(), out_dir_path / "shortage_role.xlsx", sheet_name="role_summary", index=False)
+        save_df_xlsx(empty_df, out_dir_path / "shortage_freq.xlsx", sheet_name="freq_by_time", index=True)
         return fp_s_t_empty, fp_s_r_empty if fp_s_t_empty and fp_s_r_empty else None
 
 
@@ -92,7 +93,14 @@ def shortage_and_brief(
 
     fp_shortage_time = save_df_xlsx(lack_count_overall_df, out_dir_path / "shortage_time.xlsx", sheet_name="lack_time", index=True)
     fp_shortage_ratio = save_df_xlsx(shortage_ratio_df, out_dir_path / "shortage_ratio.xlsx", sheet_name="lack_ratio", index=True)
-    log.debug(f"--- shortage_time.xlsx / shortage_ratio.xlsx 計算デバッグ (全体) 終了 ---")
+
+    lack_occurrence_df = (lack_count_overall_df > 0).astype(int)
+    shortage_freq_df = pd.DataFrame(lack_occurrence_df.sum(axis=1), columns=["shortage_days"])
+    fp_shortage_freq = save_df_xlsx(shortage_freq_df, out_dir_path / "shortage_freq.xlsx", sheet_name="freq_by_time", index=True)
+
+    log.debug(
+        "--- shortage_time.xlsx / shortage_ratio.xlsx / shortage_freq.xlsx 計算デバッグ (全体) 終了 ---"
+    )
 
     role_kpi_rows: List[Dict[str, Any]] = []
     monthly_role_rows: List[Dict[str, Any]] = []
@@ -200,13 +208,15 @@ def shortage_and_brief(
         roles=sorted(list(set(meta_roles_list_shortage))),
         months=sorted(list(set(meta_months_list_shortage))),
         ratio_file="shortage_ratio.xlsx",
+        freq_file="shortage_freq.xlsx",
         estimated_holidays_used=[d.isoformat() for d in sorted(list(estimated_holidays_set))]
     )
 
     log.info(
         f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
-        f"shortage_ratio → {fp_shortage_ratio.name}, shortage_role → {fp_shortage_role.name}"
+        f"shortage_ratio → {fp_shortage_ratio.name}, "
+        f"shortage_freq → {fp_shortage_freq.name}, shortage_role → {fp_shortage_role.name}"
     )
-    if fp_shortage_time and fp_shortage_role and fp_shortage_ratio:
+    if fp_shortage_time and fp_shortage_role and fp_shortage_ratio and fp_shortage_freq:
         return fp_shortage_time, fp_shortage_role
     return None
