@@ -86,9 +86,13 @@ def shortage_and_brief(
         for col, is_h in zip(need_df_all.columns, holiday_mask_all):
             if is_h:
                 need_df_all[col] = 0
+
     lack_count_overall_df = (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
+    shortage_ratio_df = ((need_df_all - staff_actual_data_all_df) / need_df_all.replace(0, np.nan)).clip(lower=0).fillna(0)
+
     fp_shortage_time = save_df_xlsx(lack_count_overall_df, out_dir_path / "shortage_time.xlsx", sheet_name="lack_time", index=True)
-    log.debug(f"--- shortage_time.xlsx 計算デバッグ (全体) 終了 ---")
+    fp_shortage_ratio = save_df_xlsx(shortage_ratio_df, out_dir_path / "shortage_ratio.xlsx", sheet_name="lack_ratio", index=True)
+    log.debug(f"--- shortage_time.xlsx / shortage_ratio.xlsx 計算デバッグ (全体) 終了 ---")
 
     role_kpi_rows: List[Dict[str, Any]] = []
     monthly_role_rows: List[Dict[str, Any]] = []
@@ -195,10 +199,14 @@ def shortage_and_brief(
         dates=sorted(list(set(meta_dates_list_shortage))),
         roles=sorted(list(set(meta_roles_list_shortage))),
         months=sorted(list(set(meta_months_list_shortage))),
+        ratio_file="shortage_ratio.xlsx",
         estimated_holidays_used=[d.isoformat() for d in sorted(list(estimated_holidays_set))]
     )
 
-    log.info(f"[shortage] completed — shortage_time → {fp_shortage_time.name}, shortage_role → {fp_shortage_role.name}")
-    if fp_shortage_time and fp_shortage_role:
+    log.info(
+        f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
+        f"shortage_ratio → {fp_shortage_ratio.name}, shortage_role → {fp_shortage_role.name}"
+    )
+    if fp_shortage_time and fp_shortage_role and fp_shortage_ratio:
         return fp_shortage_time, fp_shortage_role
     return None
