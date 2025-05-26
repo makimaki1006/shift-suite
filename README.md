@@ -60,12 +60,15 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
    ```
 
    Follow the on-screen instructions to upload your shift spreadsheet and
-   execute the desired analyses.
+   execute the desired analyses. Separate upload fields are provided for
+   global and local holiday calendars if you wish to factor them into the
+   shortage analysis and forecasts.
 
 3. To use the CLI, run:
 
    ```bash
-   python cli.py <excel.xlsx> <out_dir> [--slot MIN] [--header ROW] [--zip] [--holidays FILE]
+   python cli.py <excel.xlsx> <out_dir> [--slot MIN] [--header ROW] [--zip] \
+       [--holidays-global FILE] [--holidays-local FILE]
    ```
 
    - `<excel.xlsx>`: path to the source Excel file
@@ -73,7 +76,8 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
    - `--slot`: time slot length in minutes (default: 30)
    - `--header`: header row number in the shift sheets (default: 2)
    - `--zip`: optionally compress the output directory
-   - `--holidays`: optional CSV or JSON file listing holiday dates
+   - `--holidays-global`: CSV/JSON with nationally observed holidays
+   - `--holidays-local`: CSV/JSON with site-specific holidays
 
 4. Run analyses directly on a CSV file using the module entry point:
 
