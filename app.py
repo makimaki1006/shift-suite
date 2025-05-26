@@ -190,6 +190,15 @@ JP = {
     "Role": "職種",
     "Shortage Hours": "不足時間(h)",
     "Total Leave Days": "総休暇日数",
+    "Staff": "スタッフ",
+    "Score": "スコア",
+    "Night Shift Ratio": "夜勤比率",
+    "Need Hours": "必要時間(h)",
+    "Staff Hours": "実働時間(h)",
+    "Working Days": "稼働日数",
+    "Note": "備考",
+    "hire_fte": "必要FTE",
+    "hire_need": "必要採用人数",
     "No leave analysis results available.": "休暇分析の結果がありません。",
     "Results for {fname}": "{fname} の結果",
     "Data": "データ",
@@ -945,13 +954,26 @@ def display_shortage_tab(tab_container, data_dir):
                 xls = pd.ExcelFile(fp_s_role)
                 sheet_role = "role_summary" if "role_summary" in xls.sheet_names else xls.sheet_names[0]
                 df_s_role = xls.parse(sheet_role)
-                st.dataframe(df_s_role, use_container_width=True, hide_index=True)
+                display_role_df = df_s_role.rename(
+                    columns={
+                        "role": _("Role"),
+                        "need_h": _("Need Hours"),
+                        "staff_h": _("Staff Hours"),
+                        "lack_h": _("Shortage Hours"),
+                        "working_days_considered": _("Working Days"),
+                        "note": _("Note"),
+                    }
+                )
+                st.dataframe(display_role_df, use_container_width=True, hide_index=True)
                 if "role" in df_s_role and "lack_h" in df_s_role:
-                    st.bar_chart(
-                        df_s_role.set_index("role")["lack_h"],
-                        color="#FFA500",
-                        labels={"index": _("Role"), "value": _("Shortage Hours")},
+                    fig_role = px.bar(
+                        df_s_role,
+                        x="role",
+                        y="lack_h",
+                        labels={"role": _("Role"), "lack_h": _("Shortage Hours")},
+                        color_discrete_sequence=["#FFA500"],
                     )
+                    st.plotly_chart(fig_role, use_container_width=True)
 
                 fp_hire = data_dir / "hire_plan.xlsx"
                 if fp_hire.exists():
@@ -959,11 +981,18 @@ def display_shortage_tab(tab_container, data_dir):
                         df_hire = pd.read_excel(fp_hire)
                         if {"role", "hire_fte"}.issubset(df_hire.columns):
                             st.markdown(_("Required FTE per Role"))
-                            st.dataframe(df_hire[["role", "hire_fte"]], use_container_width=True, hide_index=True)
-                            st.bar_chart(
-                                df_hire.set_index("role")["hire_fte"],
-                                labels={"index": _("Role"), "value": "hire_fte"},
+                            display_hire_df = df_hire[["role", "hire_fte"]].rename(
+                                columns={"role": _("Role"), "hire_fte": _("hire_fte")}
                             )
+                            st.dataframe(display_hire_df, use_container_width=True, hide_index=True)
+                            fig_hire = px.bar(
+                                df_hire,
+                                x="role",
+                                y="hire_fte",
+                                labels={"role": _("Role"), "hire_fte": _("hire_fte")},
+                                color_discrete_sequence=["#1f77b4"],
+                            )
+                            st.plotly_chart(fig_hire, use_container_width=True)
                     except Exception as e:
                         st.error(f"hire_plan.xlsx 表示エラー: {e}")
 
@@ -1000,10 +1029,17 @@ def display_shortage_tab(tab_container, data_dir):
                 if avail_dates:
                     sel_date = st.selectbox(_("Select date to display"), avail_dates, key="dash_short_time_date")
                     if sel_date:
-                        st.bar_chart(
-                            df_s_time[sel_date],
-                            labels={"index": _("Time"), "value": _("Shortage Hours")},
+                        fig_time = px.bar(
+                            df_s_time[sel_date].reset_index(),
+                            x=df_s_time.index.name or "index",
+                            y=sel_date,
+                            labels={
+                                df_s_time.index.name or "index": _("Time"),
+                                sel_date: _("Shortage Hours"),
+                            },
+                            color_discrete_sequence=["#FFA500"],
                         )
+                        st.plotly_chart(fig_time, use_container_width=True)
                 else: st.info(_("No date columns in shortage data."))
                 with st.expander(_("Display all time-slot shortage data")): st.dataframe(df_s_time, use_container_width=True)
             except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
@@ -1016,7 +1052,13 @@ def display_shortage_tab(tab_container, data_dir):
                 df_cost = pd.read_excel(fp_cost, index_col=0)
                 st.write(_("Estimated Cost Impact (Million ¥)"))
                 if "Cost_Million" in df_cost:
-                    st.bar_chart(df_cost["Cost_Million"])
+                    fig_cost = px.bar(
+                        df_cost.reset_index(),
+                        x=df_cost.index.name or "index",
+                        y="Cost_Million",
+                        labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
+                    )
+                    st.plotly_chart(fig_cost, use_container_width=True)
                 st.dataframe(df_cost, use_container_width=True)
             except Exception as e:
                 st.error(f"cost_benefit.xlsx 表示エラー: {e}")
@@ -1040,10 +1082,18 @@ def display_fatigue_tab(tab_container, data_dir):
         fp = data_dir / "fatigue_score.xlsx"
         if fp.exists():
             try:
-                df = pd.read_excel(fp) 
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                if "fatigue_score" in df and "staff" in df: 
-                    st.bar_chart(df.set_index("staff")["fatigue_score"])
+                df = pd.read_excel(fp)
+                display_df = df.rename(columns={"staff": _("Staff"), "fatigue_score": _("Score")})
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                if "fatigue_score" in df and "staff" in df:
+                    fig_fatigue = px.bar(
+                        df,
+                        x="staff",
+                        y="fatigue_score",
+                        labels={"staff": _("Staff"), "fatigue_score": _("Score")},
+                        color_discrete_sequence=["#FF8C00"],
+                    )
+                    st.plotly_chart(fig_fatigue, use_container_width=True)
             except Exception as e: st.error(f"fatigue_score.xlsx 表示エラー: {e}")
         else: st.info(_("Fatigue") + " (fatigue_score.xlsx) " + _("が見つかりません。"))
 
@@ -1074,8 +1124,18 @@ def display_fairness_tab(tab_container, data_dir):
         fp = data_dir / "fairness_after.xlsx"
         if fp.exists():
             try:
-                df = pd.read_excel(fp); st.dataframe(df, use_container_width=True, hide_index=True)
-                if "staff" in df and "night_ratio" in df: st.bar_chart(df.set_index("staff")["night_ratio"], color="#FF8C00")
+                df = pd.read_excel(fp)
+                display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                if "staff" in df and "night_ratio" in df:
+                    fig_fair = px.bar(
+                        df,
+                        x="staff",
+                        y="night_ratio",
+                        labels={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"},
+                        color_discrete_sequence=["#FF8C00"],
+                    )
+                    st.plotly_chart(fig_fair, use_container_width=True)
             except Exception as e: st.error(f"fairness_after.xlsx 表示エラー: {e}")
         else: st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
@@ -1086,7 +1146,14 @@ def display_costsim_tab(tab_container, data_dir):
         if fp.exists():
             try:
                 df = pd.read_excel(fp, index_col=0)
-                if "Cost_Million" in df: st.bar_chart(df["Cost_Million"])
+                if "Cost_Million" in df:
+                    fig_cost = px.bar(
+                        df.reset_index(),
+                        x=df.index.name or "index",
+                        y="Cost_Million",
+                        labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
+                    )
+                    st.plotly_chart(fig_cost, use_container_width=True)
                 st.dataframe(df, use_container_width=True)
             except Exception as e: st.error(f"cost_benefit.xlsx 表示エラー: {e}")
         else: st.info(_("Cost Sim") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
@@ -1099,8 +1166,18 @@ def display_hireplan_tab(tab_container, data_dir):
             try:
                 xls = pd.ExcelFile(fp)
                 if "hire_plan" in xls.sheet_names:
-                    df_plan = xls.parse("hire_plan"); st.dataframe(df_plan, use_container_width=True, hide_index=True)
-                    if "role" in df_plan and "hire_need" in df_plan: st.bar_chart(df_plan.set_index("role")["hire_need"])
+                    df_plan = xls.parse("hire_plan")
+                    display_plan_df = df_plan.rename(columns={"role": _("Role"), "hire_need": _("hire_need")})
+                    st.dataframe(display_plan_df, use_container_width=True, hide_index=True)
+                    if "role" in df_plan and "hire_need" in df_plan:
+                        fig_plan = px.bar(
+                            df_plan,
+                            x="role",
+                            y="hire_need",
+                            labels={"role": _("Role"), "hire_need": _("hire_need")},
+                            color_discrete_sequence=["#1f77b4"],
+                        )
+                        st.plotly_chart(fig_plan, use_container_width=True)
                 if "meta" in xls.sheet_names:
                     with st.expander(_("Hiring Plan Parameters")): st.table(xls.parse("meta"))
             except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
