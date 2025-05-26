@@ -185,6 +185,11 @@ JP = {
     "90th percentile": "90パーセンタイル",
     "95th percentile": "95パーセンタイル",
     "99th percentile": "99パーセンタイル",
+    "Month": "月",
+    "Time": "時間帯",
+    "Role": "職種",
+    "Shortage Hours": "不足時間(h)",
+    "Total Leave Days": "総休暇日数",
     "No leave analysis results available.": "休暇分析の結果がありません。",
     "Results for {fname}": "{fname} の結果",
     "Data": "データ",
@@ -942,7 +947,11 @@ def display_shortage_tab(tab_container, data_dir):
                 df_s_role = xls.parse(sheet_role)
                 st.dataframe(df_s_role, use_container_width=True, hide_index=True)
                 if "role" in df_s_role and "lack_h" in df_s_role:
-                    st.bar_chart(df_s_role.set_index("role")["lack_h"], color="#FFA500")
+                    st.bar_chart(
+                        df_s_role.set_index("role")["lack_h"],
+                        color="#FFA500",
+                        labels={"index": _("Role"), "value": _("Shortage Hours")},
+                    )
 
                 fp_hire = data_dir / "hire_plan.xlsx"
                 if fp_hire.exists():
@@ -951,15 +960,29 @@ def display_shortage_tab(tab_container, data_dir):
                         if {"role", "hire_fte"}.issubset(df_hire.columns):
                             st.markdown(_("Required FTE per Role"))
                             st.dataframe(df_hire[["role", "hire_fte"]], use_container_width=True, hide_index=True)
-                            st.bar_chart(df_hire.set_index("role")["hire_fte"])
+                            st.bar_chart(
+                                df_hire.set_index("role")["hire_fte"],
+                                labels={"index": _("Role"), "value": "hire_fte"},
+                            )
                     except Exception as e:
                         st.error(f"hire_plan.xlsx 表示エラー: {e}")
 
                 if "role_monthly" in xls.sheet_names:
                     df_month = xls.parse("role_monthly")
                     if not df_month.empty and {"month", "role", "lack_h"}.issubset(df_month.columns):
-                        fig_m = px.bar(df_month, x="month", y="lack_h", color="role", barmode="stack",
-                                       title=_("Monthly Shortage Hours by Role"))
+                        fig_m = px.bar(
+                            df_month,
+                            x="month",
+                            y="lack_h",
+                            color="role",
+                            barmode="stack",
+                            title=_("Monthly Shortage Hours by Role"),
+                            labels={
+                                "month": _("Month"),
+                                "lack_h": _("Shortage Hours"),
+                                "role": _("Role"),
+                            },
+                        )
                         st.plotly_chart(fig_m, use_container_width=True)
                         with st.expander(_("Monthly shortage data")):
                             st.dataframe(df_month, use_container_width=True, hide_index=True)
@@ -976,7 +999,11 @@ def display_shortage_tab(tab_container, data_dir):
                 avail_dates = df_s_time.columns.tolist()
                 if avail_dates:
                     sel_date = st.selectbox(_("Select date to display"), avail_dates, key="dash_short_time_date")
-                    if sel_date: st.bar_chart(df_s_time[sel_date])
+                    if sel_date:
+                        st.bar_chart(
+                            df_s_time[sel_date],
+                            labels={"index": _("Time"), "value": _("Shortage Hours")},
+                        )
                 else: st.info(_("No date columns in shortage data."))
                 with st.expander(_("Display all time-slot shortage data")): st.dataframe(df_s_time, use_container_width=True)
             except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
@@ -1095,7 +1122,16 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
 
         def _bar_chart(df: pd.DataFrame, title: str):
             if "period_unit" in df.columns and "total_leave_days" in df.columns:
-                fig = px.bar(df, x="period_unit", y="total_leave_days", title=title)
+                fig = px.bar(
+                    df,
+                    x="period_unit",
+                    y="total_leave_days",
+                    title=title,
+                    labels={
+                        "period_unit": _("Month"),
+                        "total_leave_days": _("Total Leave Days"),
+                    },
+                )
                 st.plotly_chart(fig, use_container_width=True)
             with st.expander(_("Data")):
                 st.dataframe(df, use_container_width=True, hide_index=True)
@@ -1124,6 +1160,10 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     markers=True,
                     title="希望休取得集中日",
                 )
+                fig.update_layout(
+                    xaxis_title=_("Date"),
+                    yaxis_title=_("leave_applicants_count"),
+                )
                 st.plotly_chart(fig, use_container_width=True)
             st.markdown("**希望休 集中日判定**")
             st.dataframe(df_conc, use_container_width=True, hide_index=True)
@@ -1139,8 +1179,13 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
         df_balance = results_dict.get("staff_balance_daily")
         if isinstance(df_balance, pd.DataFrame) and not df_balance.empty:
             st.markdown("**勤務予定人数と希望休取得者数**")
-            fig = px.line(df_balance, x="date", y=["total_staff", "leave_applicants_count", "non_leave_staff"],
-                           markers=True)
+            fig = px.line(
+                df_balance,
+                x="date",
+                y=["total_staff", "leave_applicants_count", "non_leave_staff"],
+                markers=True,
+            )
+            fig.update_layout(xaxis_title=_("Date"), yaxis_title=_("total_staff"))
             st.plotly_chart(fig, use_container_width=True)
 
             df_ratio = df_balance[df_balance["leave_applicants_count"] >= st.session_state.leave_concentration_threshold_widget]
@@ -1154,6 +1199,10 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     hover_data=["staff_names"],
                     markers=True,
                     title="希望休取得率",
+                )
+                fig_ratio.update_layout(
+                    xaxis_title=_("Date"),
+                    yaxis_title=_("leave_ratio"),
                 )
                 st.plotly_chart(fig_ratio, use_container_width=True)
 
