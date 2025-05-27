@@ -103,6 +103,11 @@ def learn_roster(
         if col:
             shortage_hist = df_sh[col].values.astype(float)[: len(demand)]
 
+    if len(shortage_hist) < len(forecast):
+        # Padding prevents index errors when the forecast extends beyond
+        # the available shortage history.
+        shortage_hist = np.pad(shortage_hist, (0, len(forecast) - len(shortage_hist)), constant_values=0)
+
     if len(demand) < 2 or demand.sum() == 0:
         log.warning("[rl] 需要データが不足しているため学習をスキップ")
         return None
