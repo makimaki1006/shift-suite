@@ -33,3 +33,5 @@ def test_learn_roster_forecast_longer(monkeypatch, tmp_path):
 
     out = rl.learn_roster(demand_fp, tmp_path / "out.xlsx", forecast_csv=fc_fp, shortage_csv=sh_fp)
     assert out is not None
+    df_out = pd.read_excel(out)
+    assert len(df_out) == len(fc_df)

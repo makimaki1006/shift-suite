@@ -85,12 +85,15 @@ def learn_roster(
 
     # --- 予測需要の読み込み ---------------------------
     forecast = None
+    fc_dates = None
     if forecast_csv and Path(forecast_csv).exists():
         df_fc = pd.read_excel(forecast_csv) if str(forecast_csv).endswith(".xlsx") else pd.read_csv(forecast_csv)
         if "yhat" in df_fc.columns:
             forecast = df_fc["yhat"].values.astype(float)
         elif "forecast" in df_fc.columns:
             forecast = df_fc["forecast"].values.astype(float)
+        if "ds" in df_fc.columns:
+            fc_dates = df_fc["ds"].copy()
 
     if forecast is None:
         forecast = demand
@@ -133,7 +136,21 @@ def learn_roster(
         if done:
             break
 
-    out_df = pd.DataFrame({"ds": df["ds"].iloc[: len(roster)], "roster": roster})
+    if fc_dates is not None:
+        ds_col = pd.to_datetime(fc_dates).iloc[: len(roster)]
+    else:
+        ds_col = df["ds"].copy()
+        if len(ds_col) < len(roster):
+            if len(ds_col) > 1:
+                freq = ds_col.iloc[1] - ds_col.iloc[0]
+            else:
+                freq = pd.Timedelta(days=1)
+            start = ds_col.iloc[-1] + freq
+            extra = pd.date_range(start, periods=len(roster) - len(ds_col), freq=freq)
+            ds_col = pd.concat([ds_col, pd.Series(extra)])
+        ds_col = ds_col.iloc[: len(roster)]
+
+    out_df = pd.DataFrame({"ds": ds_col.values, "roster": roster})
     save_df_xlsx(out_df, excel_out, sheet_name="rl_roster")
 
     # meta
