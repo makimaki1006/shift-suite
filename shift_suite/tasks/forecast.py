@@ -309,9 +309,13 @@ def forecast_need(
             if "holiday" in exog_cols:
                 future_exog["holiday"] = [1 if d.date() in holiday_set else 0 for d in future_dates]
         arima_fc = arima_mod.predict(n_periods=periods, exogenous=future_exog)
-        denom_a = np.where(arima_mod.y != 0, arima_mod.y, np.nan)
+        try:
+            train_y = getattr(arima_mod, "y", arima_mod.arima_res_.data.endog)
+        except Exception:
+            train_y = df["y"].to_numpy()
+        denom_a = np.where(train_y != 0, train_y, np.nan)
         arima_mape = np.nanmean(
-            np.abs((arima_mod.y - arima_mod.predict_in_sample()) / denom_a)
+            np.abs((train_y - arima_mod.predict_in_sample()) / denom_a)
         )
     elif choose in ("auto", "arima"):
         log.warning("[forecast] ARIMA 指定ですが pmdarima が無いため ETS を使用")
