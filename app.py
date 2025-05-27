@@ -35,7 +35,14 @@ import streamlit as st
 from streamlit.runtime import exists as st_runtime_exists
 import plotly.express as px
 import plotly.graph_objects as go
-from streamlit_plotly_events import plotly_events
+
+try:
+    from streamlit_plotly_events import plotly_events
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    plotly_events = None
+    logging.getLogger(__name__).warning(
+        "streamlit-plotly-events not installed; interactive plots disabled"
+    )
 import datetime as dt
 
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
@@ -1338,7 +1345,15 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     xaxis_title=_("Date"),
                     yaxis_title=_("leave_applicants_count"),
                 )
-                events = plotly_events(fig, click_event=True, select_event=True)
+                if plotly_events:
+                    events = plotly_events(
+                        fig, click_event=True, select_event=True
+                    )
+                else:
+                    st.info(
+                        "Install streamlit-plotly-events for interactive selection."
+                    )
+                    events = []
                 selected_dates = {
                     pd.to_datetime(ev.get("x")).normalize()
                     for ev in events
