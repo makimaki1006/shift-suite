@@ -217,6 +217,38 @@ JP = {
 def _(text_key: str) -> str:
     return JP.get(text_key, text_key)
 
+
+def _file_mtime(path: Path) -> float:
+    """Return the modification time of a file for cache keys."""
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+@st.cache_data(show_spinner=False)
+def load_excel_cached(
+    file_path: str,
+    *,
+    sheet_name: str | None = None,
+    index_col: int | str | None = None,
+    parse_dates=None,
+    file_mtime: float | None = None,
+):
+    """Load an Excel file with caching based on file path and mtime."""
+    return pd.read_excel(
+        file_path,
+        sheet_name=sheet_name,
+        index_col=index_col,
+        parse_dates=parse_dates,
+    )
+
+
+@st.cache_data(show_spinner=False)
+def load_excelfile_cached(file_path: str, *, file_mtime: float | None = None):
+    """Load ``pd.ExcelFile`` with caching so repeated reads are fast."""
+    return pd.ExcelFile(file_path)
+
 st.set_page_config(page_title="Shift-Suite", layout="wide", initial_sidebar_state="expanded")
 st.title("🗂️ Shift-Suite : 勤務シフト分析ツール")
 
@@ -914,15 +946,27 @@ def display_overview_tab(tab_container, data_dir):
         st.subheader(_("Overview"))
         kpi_fp = data_dir / "shortage_role.xlsx"; lack_h = 0.0
         if kpi_fp.exists():
-            try: df_sh_role = pd.read_excel(kpi_fp); lack_h = df_sh_role["lack_h"].sum() if "lack_h" in df_sh_role else 0.0
-            except Exception as e: st.warning(f"shortage_role.xlsx 読込/集計エラー: {e}")
+            try:
+                df_sh_role = load_excel_cached(
+                    str(kpi_fp),
+                    file_mtime=_file_mtime(kpi_fp),
+                )
+                lack_h = df_sh_role["lack_h"].sum() if "lack_h" in df_sh_role else 0.0
+            except Exception as e:
+                st.warning(f"shortage_role.xlsx 読込/集計エラー: {e}")
         fair_fp_meta = data_dir / "fairness_before.xlsx"; jain_display = "N/A"
         if fair_fp_meta.exists():
             try:
-                meta_df = pd.read_excel(fair_fp_meta, sheet_name="meta_summary")
+                meta_df = load_excel_cached(
+                    str(fair_fp_meta),
+                    sheet_name="meta_summary",
+                    file_mtime=_file_mtime(fair_fp_meta),
+                )
                 jain_row = meta_df[meta_df["metric"] == "jain_index"]
-                if not jain_row.empty: jain_display = f"{float(jain_row['value'].iloc[0]):.3f}"
-            except Exception: pass 
+                if not jain_row.empty:
+                    jain_display = f"{float(jain_row['value'].iloc[0]):.3f}"
+            except Exception:
+                pass
         c1, c2 = st.columns(2)
         c1.metric(_("不足時間(h)"), f"{lack_h:.1f}")
         c2.metric("夜勤 Jain指数", jain_display)
@@ -933,7 +977,11 @@ def display_heatmap_tab(tab_container, data_dir):
         fp = data_dir / "heat_ALL.xlsx"
         if fp.exists():
             try:
-                df_heat = pd.read_excel(fp, index_col=0)
+                df_heat = load_excel_cached(
+                    str(fp),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp),
+                )
                 mode_opts = {"Raw": _("Raw Count"), "Ratio": _("Ratio (staff ÷ need)")}
                 mode_lbl = st.radio(_("Display Mode"), list(mode_opts.values()), horizontal=True, key="dash_heat_mode_radio")
                 mode_key = [k for k,v in mode_opts.items() if v == mode_lbl][0]
@@ -984,7 +1032,10 @@ def display_shortage_tab(tab_container, data_dir):
         fp_s_role = data_dir / "shortage_role.xlsx"
         if fp_s_role.exists():
             try:
-                xls = pd.ExcelFile(fp_s_role)
+                xls = load_excelfile_cached(
+                    str(fp_s_role),
+                    file_mtime=_file_mtime(fp_s_role),
+                )
                 sheet_role = "role_summary" if "role_summary" in xls.sheet_names else xls.sheet_names[0]
                 df_s_role = xls.parse(sheet_role)
                 display_role_df = df_s_role.rename(
@@ -1011,7 +1062,10 @@ def display_shortage_tab(tab_container, data_dir):
                 fp_hire = data_dir / "hire_plan.xlsx"
                 if fp_hire.exists():
                     try:
-                        df_hire = pd.read_excel(fp_hire)
+                        df_hire = load_excel_cached(
+                            str(fp_hire),
+                            file_mtime=_file_mtime(fp_hire),
+                        )
                         if {"role", "hire_fte"}.issubset(df_hire.columns):
                             st.markdown(_("Required FTE per Role"))
                             display_hire_df = df_hire[["role", "hire_fte"]].rename(
@@ -1056,7 +1110,11 @@ def display_shortage_tab(tab_container, data_dir):
         fp_s_time = data_dir / "shortage_time.xlsx"
         if fp_s_time.exists():
             try:
-                df_s_time = pd.read_excel(fp_s_time, index_col=0)
+                df_s_time = load_excel_cached(
+                    str(fp_s_time),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_s_time),
+                )
                 st.write(_("Shortage by Time (count per day)"))
                 avail_dates = df_s_time.columns.tolist()
                 if avail_dates:
@@ -1081,7 +1139,11 @@ def display_shortage_tab(tab_container, data_dir):
         fp_s_ratio = data_dir / "shortage_ratio.xlsx"
         if fp_s_ratio.exists():
             try:
-                df_ratio = pd.read_excel(fp_s_ratio, index_col=0)
+                df_ratio = load_excel_cached(
+                    str(fp_s_ratio),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_s_ratio),
+                )
                 st.write(_("Shortage Ratio by Time"))
                 avail_ratio_dates = df_ratio.columns.tolist()
                 if avail_ratio_dates:
@@ -1107,7 +1169,11 @@ def display_shortage_tab(tab_container, data_dir):
         fp_s_freq = data_dir / "shortage_freq.xlsx"
         if fp_s_freq.exists():
             try:
-                df_freq = pd.read_excel(fp_s_freq, index_col=0)
+                df_freq = load_excel_cached(
+                    str(fp_s_freq),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_s_freq),
+                )
                 st.write(_("Shortage Frequency (days)"))
                 fig_freq = px.bar(
                     df_freq.reset_index(),
@@ -1130,7 +1196,10 @@ def display_shortage_tab(tab_container, data_dir):
         fp_s_leave = data_dir / "shortage_leave.xlsx"
         if fp_s_leave.exists():
             try:
-                df_sl = pd.read_excel(fp_s_leave)
+                df_sl = load_excel_cached(
+                    str(fp_s_leave),
+                    file_mtime=_file_mtime(fp_s_leave),
+                )
                 st.write(_("Shortage with Leave"))
                 display_sl = df_sl.rename(columns={
                     "time": _("Time"),
@@ -1149,7 +1218,11 @@ def display_shortage_tab(tab_container, data_dir):
         if fp_cost.exists():
             st.markdown("---")
             try:
-                df_cost = pd.read_excel(fp_cost, index_col=0)
+                df_cost = load_excel_cached(
+                    str(fp_cost),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_cost),
+                )
                 st.write(_("Estimated Cost Impact (Million ¥)"))
                 if "Cost_Million" in df_cost:
                     fig_cost = px.bar(
@@ -1166,7 +1239,10 @@ def display_shortage_tab(tab_container, data_dir):
         fp_stats = data_dir / "stats.xlsx"
         if fp_stats.exists():
             try:
-                xls_stats = pd.ExcelFile(fp_stats)
+                xls_stats = load_excelfile_cached(
+                    str(fp_stats),
+                    file_mtime=_file_mtime(fp_stats),
+                )
                 if "alerts" in xls_stats.sheet_names:
                     df_alerts = xls_stats.parse("alerts")
                     if not df_alerts.empty:
@@ -1182,7 +1258,10 @@ def display_fatigue_tab(tab_container, data_dir):
         fp = data_dir / "fatigue_score.xlsx"
         if fp.exists():
             try:
-                df = pd.read_excel(fp)
+                df = load_excel_cached(
+                    str(fp),
+                    file_mtime=_file_mtime(fp),
+                )
                 display_df = df.rename(columns={"staff": _("Staff"), "fatigue_score": _("Score")})
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 if "fatigue_score" in df and "staff" in df:
@@ -1203,7 +1282,11 @@ def display_forecast_tab(tab_container, data_dir):
         fp_fc = data_dir / "forecast.xlsx"
         if fp_fc.exists():
             try:
-                df_fc = pd.read_excel(fp_fc, parse_dates=["ds"])
+                df_fc = load_excel_cached(
+                    str(fp_fc),
+                    parse_dates=["ds"],
+                    file_mtime=_file_mtime(fp_fc),
+                )
                 fig = go.Figure()
                 if "ds" in df_fc and "yhat" in df_fc:
                     fig.add_trace(go.Scatter(x=df_fc["ds"], y=df_fc["yhat"], mode='lines+markers', name=_("Demand Forecast (yhat)")))
@@ -1224,7 +1307,10 @@ def display_fairness_tab(tab_container, data_dir):
         fp = data_dir / "fairness_after.xlsx"
         if fp.exists():
             try:
-                df = pd.read_excel(fp)
+                df = load_excel_cached(
+                    str(fp),
+                    file_mtime=_file_mtime(fp),
+                )
                 display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 if "staff" in df and "night_ratio" in df:
@@ -1245,7 +1331,11 @@ def display_costsim_tab(tab_container, data_dir):
         fp = data_dir / "cost_benefit.xlsx"
         if fp.exists():
             try:
-                df = pd.read_excel(fp, index_col=0)
+                df = load_excel_cached(
+                    str(fp),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp),
+                )
                 if "Cost_Million" in df:
                     fig_cost = px.bar(
                         df.reset_index(),
@@ -1264,7 +1354,10 @@ def display_hireplan_tab(tab_container, data_dir):
         fp = data_dir / "hire_plan.xlsx"
         if fp.exists():
             try:
-                xls = pd.ExcelFile(fp)
+                xls = load_excelfile_cached(
+                    str(fp),
+                    file_mtime=_file_mtime(fp),
+                )
                 if "hire_plan" in xls.sheet_names:
                     df_plan = xls.parse("hire_plan")
                     display_plan_df = df_plan.rename(columns={"role": _("Role"), "hire_need": _("hire_need")})
