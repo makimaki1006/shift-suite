@@ -6,7 +6,7 @@ hire_plan.py  ── “必要な採用人数” を算出するユーティリ�
 呼出 : build_hire_plan(csv_path       = Path,
                         out_path       = Path,
                         std_work_hours = 160,   # 月あたり所定労働時間
-                        safety_factor  = 1.10,  # 安全係数（10% 上乗せ）
+                        safety_factor  = 1.10,  # 安全係数（不足時間に乗算する倍率。例:1.10は10%増）
                         target_coverage= 0.95)  # シフト充足率の目標
 """
 
@@ -60,7 +60,7 @@ def build_hire_plan(
     )
 
     # 3. 必要採用人数 = 不足時間 / 所定労働時間 / target_coverage
-    #    × 安全係数（切り上げ）
+    #    × 安全係数（倍率として適用し、切り上げ）
     summary["hire_need"] = (
         (summary["lack_h_total"] * safety_factor) / (std_work_hours * target_coverage)
     ).apply(lambda x: int(-(-x // 1)))  # 天井関数 (ceil)
