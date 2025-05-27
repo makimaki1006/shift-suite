@@ -163,3 +163,9 @@ parameters:
 - `wage_temp` – hourly cost for temporary staff (default `2200`)
 - `hiring_cost_once` – one‑time cost per hire (default `180000`)
 - `penalty_per_lack_h` – penalty per uncovered hour (default `4000`)
+
+If a `leave_analysis.csv` is also present in the output folder you can call
+`merge_shortage_leave(out_dir)` to create `shortage_leave.xlsx`. This file
+combines the per-slot shortage counts with daily leave applicants and adds a
+`net_shortage` column. The Streamlit dashboard automatically visualises this
+table under the **Shortage** tab.

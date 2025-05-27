@@ -24,6 +24,7 @@ to_hhmm             = utils.to_hhmm
 ingest_excel        = sys.modules["shift_suite.io_excel"].ingest_excel
 build_heatmap       = sys.modules["shift_suite.heatmap"].build_heatmap
 shortage_and_brief  = sys.modules["shift_suite.shortage"].shortage_and_brief
+merge_shortage_leave = sys.modules["shift_suite.shortage"].merge_shortage_leave
 # build_stats関数のインポート
 build_stats         = sys.modules["shift_suite.tasks.build_stats"].build_stats
 detect_anomaly      = sys.modules["shift_suite.anomaly"].detect_anomaly

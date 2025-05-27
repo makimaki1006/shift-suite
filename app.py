@@ -160,6 +160,8 @@ JP = {
     "Shortage by Role (hours)": "職種別不足時間 (h)",
     "Shortage by Time (count per day)": "時間帯別不足人数 (日別)",
     "Shortage Frequency (days)": "不足発生頻度 (日数)",
+    "Shortage with Leave": "不足と休暇数",
+    "Net Shortage": "差引不足",
     "Select date to display": "表示する日付を選択",
     "No date columns in shortage data.": "不足時間データに日付列がありません。",
     "Display all time-slot shortage data": "全時間帯別不足データ表示",
@@ -1117,6 +1119,24 @@ def display_shortage_tab(tab_container, data_dir):
                 st.error(f"shortage_freq.xlsx 表示エラー: {e}")
         else:
             st.info(_("Shortage") + " (shortage_freq.xlsx) " + _("が見つかりません。"))
+
+        fp_s_leave = data_dir / "shortage_leave.xlsx"
+        if fp_s_leave.exists():
+            try:
+                df_sl = pd.read_excel(fp_s_leave)
+                st.write(_("Shortage with Leave"))
+                display_sl = df_sl.rename(columns={
+                    "time": _("Time"),
+                    "date": _("Date"),
+                    "lack": _("Shortage Hours"),
+                    "leave_applicants": _("Total Leave Days"),
+                    "net_shortage": _("Net Shortage"),
+                })
+                st.dataframe(display_sl, use_container_width=True, hide_index=True)
+            except Exception as e:
+                st.error(f"shortage_leave.xlsx 表示エラー: {e}")
+        else:
+            st.info(_("Shortage") + " (shortage_leave.xlsx) " + _("が見つかりません。"))
 
         fp_cost = data_dir / "cost_benefit.xlsx"
         if fp_cost.exists():

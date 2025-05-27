@@ -240,3 +240,71 @@ def shortage_and_brief(
     if fp_shortage_time and fp_shortage_role and fp_shortage_ratio and fp_shortage_freq:
         return fp_shortage_time, fp_shortage_role
     return None
+
+
+def merge_shortage_leave(
+    out_dir: Path | str,
+    *,
+    shortage_xlsx: str | Path = "shortage_time.xlsx",
+    leave_csv: str | Path = "leave_analysis.csv",
+    out_excel: str | Path = "shortage_leave.xlsx",
+) -> Path | None:
+    """Combine shortage_time.xlsx with leave counts.
+
+    Parameters
+    ----------
+    out_dir:
+        Directory containing shortage and leave files.
+    shortage_xlsx:
+        Name of ``shortage_time.xlsx``. Must exist under ``out_dir``.
+    leave_csv:
+        Optional ``leave_analysis.csv`` with columns ``date`` and
+        ``total_leave_days``. If missing, leave counts are treated as ``0``.
+    out_excel:
+        Output Excel filename.
+
+    Returns
+    -------
+    Path | None
+        Path to the saved Excel file or ``None`` if shortage data missing.
+    """
+
+    out_dir_path = Path(out_dir)
+    shortage_fp = out_dir_path / shortage_xlsx
+    if not shortage_fp.exists():
+        log.error(f"[shortage] {shortage_fp} not found")
+        return None
+
+    try:
+        shortage_df = pd.read_excel(shortage_fp, index_col=0)
+    except Exception as e:
+        log.error(f"[shortage] failed to read {shortage_fp}: {e}")
+        return None
+
+    # Convert wide time×date to long format
+    long_df = shortage_df.stack().reset_index()
+    long_df.columns = ["time", "date", "lack"]
+    long_df["date"] = pd.to_datetime(long_df["date"])
+
+    leave_fp = out_dir_path / leave_csv
+    if leave_fp.exists():
+        try:
+            leave_df = pd.read_csv(leave_fp, parse_dates=["date"])
+            leave_sum = (
+                leave_df.groupby("date")["total_leave_days"].sum().astype(int).reset_index()
+            )
+            long_df = long_df.merge(leave_sum, on="date", how="left")
+            long_df.rename(columns={"total_leave_days": "leave_applicants"}, inplace=True)
+        except Exception as e:
+            log.warning(f"[shortage] leave_csv load failed: {e}")
+            long_df["leave_applicants"] = 0
+    else:
+        long_df["leave_applicants"] = 0
+
+    long_df["leave_applicants"] = long_df["leave_applicants"].fillna(0).astype(int)
+    long_df["net_shortage"] = (long_df["lack"] - long_df["leave_applicants"]).clip(lower=0)
+
+    out_fp = save_df_xlsx(long_df, out_dir_path / out_excel, index=False)
+    return out_fp
+
+
