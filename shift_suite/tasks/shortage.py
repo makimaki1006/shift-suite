@@ -127,7 +127,8 @@ def shortage_and_brief(
     processed_role_names_list = []
 
     for fp_role_heatmap_item in out_dir_path.glob("heat_*.xlsx"):
-        if fp_role_heatmap_item.name == "heat_ALL.xlsx": continue
+        if fp_role_heatmap_item.name == "heat_ALL.xlsx":
+            continue
         
         role_name_current = fp_role_heatmap_item.stem.replace("heat_", "")
         processed_role_names_list.append(role_name_current)
