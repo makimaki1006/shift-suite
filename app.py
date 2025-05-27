@@ -111,7 +111,7 @@ JP = {
     "ZIP Download": "ZIP形式でダウンロード", "Save to folder": "フォルダに保存",
     "Run Analysis": "▶ 解析実行", "Cost & Hire Parameters": "💰 コスト・採用計画パラメータ",
     "Standard work hours (h/month)": "所定労働時間 (h/月)",
-    "Safety factor (shortage h multiplier)": "安全係数 (不足h上乗せ)",
+    "Safety factor (shortage h multiplier)": "安全係数 (不足h倍率)",
     "Target coverage rate": "目標充足率",
     "Direct employee labor cost (¥/h)": "正職員 人件費 (¥/h)",
     "Temporary staff labor cost (¥/h)": "派遣 人件費 (¥/h)",
@@ -452,7 +452,13 @@ with st.sidebar:
 
     with st.expander(_("Cost & Hire Parameters")):
         st.number_input(_("Standard work hours (h/month)"),   100, 300, key="std_work_hours_widget")
-        st.slider      (_("Safety factor (shortage h multiplier)"), 1.00, 2.00, key="safety_factor_widget")
+        st.slider(
+            _("Safety factor (shortage h multiplier)"),
+            0.00,
+            2.00,
+            key="safety_factor_widget",
+            help="不足時間に乗算する倍率 (例: 1.10 は 10% 上乗せ)"
+        )
         st.slider      (_("Target coverage rate"), 0.50, 1.00, key="target_coverage_widget")
         st.number_input(_("Direct employee labor cost (¥/h)"),   500, 10000, key="wage_direct_widget")
         st.number_input(_("Temporary staff labor cost (¥/h)"),   800, 12000, key="wage_temp_widget")

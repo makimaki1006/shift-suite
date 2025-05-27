@@ -170,6 +170,8 @@ parameters:
 - `wage_temp` – hourly cost for temporary staff (default `2200`)
 - `hiring_cost_once` – one‑time cost per hire (default `180000`)
 - `penalty_per_lack_h` – penalty per uncovered hour (default `4000`)
+- `safety_factor` – multiplier applied to shortage hours when converting
+  to required hires (default `1.10`). This is a factor, not an hour count.
 
 If a `leave_analysis.csv` is also present in the output folder you can call
 `merge_shortage_leave(out_dir)` to create `shortage_leave.xlsx`. This file
