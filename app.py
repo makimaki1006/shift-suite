@@ -1369,6 +1369,11 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             final_dates = st.session_state.leave_selected_dates
             if final_dates:
                 df_selected = df_conc[df_conc["date"].isin(final_dates)]
+                # 表示用テーブル（選択された日付とスタッフ名）
+                df_display = df_selected[["date", "staff_names"]].sort_values("date")
+                st.markdown("**選択日一覧**")
+                st.table(df_display)
+
                 all_names = sorted({name for names in df_selected["staff_names"] for name in names})
                 if all_names:
                     st.markdown("**選択日のスタッフ:** " + ", ".join(all_names))
