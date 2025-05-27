@@ -116,6 +116,12 @@ generation uses `python-pptx`, which is optional.  Install these via
 `pip install -r requirements.txt` before running `app.py` or the CLIs if you
 need the related features.
 
+### Reinforcement learning
+
+`learn_roster` optionally loads a saved PPO model. If the model cannot
+be deserialised, an error is logged and the function returns `None`
+instead of raising an exception.
+
 ### Example output
 
 Running the bridge command on a CSV with `staff`, `ds` (timestamp) and

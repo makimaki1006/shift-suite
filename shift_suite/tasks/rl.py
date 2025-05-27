@@ -118,7 +118,11 @@ def learn_roster(
     # --- モデル学習 or 読み込み -----------------------
     env = RosterEnv(demand, shortage_hist)
     if use_saved_model and model_path and Path(model_path).exists():
-        model = PPO.load(model_path)
+        try:
+            model = PPO.load(model_path)
+        except Exception as e:  # pragma: no cover - just in case
+            log.error(f"[rl] model load failed: {e}", exc_info=True)
+            return None
     else:
         model = PPO("MlpPolicy", env, verbose=0)
         model.learn(total_timesteps=len(demand) * horizon)
