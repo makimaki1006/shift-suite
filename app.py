@@ -974,7 +974,7 @@ def display_heatmap_tab(tab_container, data_dir):
                     else:
                         st.warning("Ratio表示に必要な'staff'列、'need'列、または日付データが見つかりません。")
                         fig = go.Figure()
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key="heatmap_chart")
             except Exception as e: st.error(f"ヒートマップ表示エラー: {e}")
         else: st.info(_("Heatmap") + " (heat_ALL.xlsx) " + _("が見つかりません。"))
 
@@ -1006,7 +1006,7 @@ def display_shortage_tab(tab_container, data_dir):
                         labels={"role": _("Role"), "lack_h": _("Shortage Hours")},
                         color_discrete_sequence=["#FFA500"],
                     )
-                    st.plotly_chart(fig_role, use_container_width=True)
+                    st.plotly_chart(fig_role, use_container_width=True, key="short_role_chart")
 
                 fp_hire = data_dir / "hire_plan.xlsx"
                 if fp_hire.exists():
@@ -1025,7 +1025,7 @@ def display_shortage_tab(tab_container, data_dir):
                                 labels={"role": _("Role"), "hire_fte": _("hire_fte")},
                                 color_discrete_sequence=["#1f77b4"],
                             )
-                            st.plotly_chart(fig_hire, use_container_width=True)
+                            st.plotly_chart(fig_hire, use_container_width=True, key="short_hire_chart")
                     except Exception as e:
                         st.error(f"hire_plan.xlsx 表示エラー: {e}")
 
@@ -1045,7 +1045,7 @@ def display_shortage_tab(tab_container, data_dir):
                                 "role": _("Role"),
                             },
                         )
-                        st.plotly_chart(fig_m, use_container_width=True)
+                        st.plotly_chart(fig_m, use_container_width=True, key="short_month_chart")
                         with st.expander(_("Monthly shortage data")):
                             st.dataframe(df_month, use_container_width=True, hide_index=True)
             except Exception as e:
@@ -1072,7 +1072,7 @@ def display_shortage_tab(tab_container, data_dir):
                             },
                             color_discrete_sequence=["#FFA500"],
                         )
-                        st.plotly_chart(fig_time, use_container_width=True)
+                        st.plotly_chart(fig_time, use_container_width=True, key="short_time_chart")
                 else: st.info(_("No date columns in shortage data."))
                 with st.expander(_("Display all time-slot shortage data")): st.dataframe(df_s_time, use_container_width=True)
             except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
@@ -1094,7 +1094,7 @@ def display_shortage_tab(tab_container, data_dir):
                             labels={df_ratio.index.name or "index": _("Time"), sel_ratio_date: _("Shortage Ratio")},
                             color_discrete_sequence=["#FF6347"],
                         )
-                        st.plotly_chart(fig_ratio, use_container_width=True)
+                        st.plotly_chart(fig_ratio, use_container_width=True, key="short_ratio_chart")
                 else:
                     st.info(_("No date columns in shortage ratio."))
                 with st.expander(_("Display all ratio data")):
@@ -1119,7 +1119,7 @@ def display_shortage_tab(tab_container, data_dir):
                     },
                     color_discrete_sequence=["#708090"],
                 )
-                st.plotly_chart(fig_freq, use_container_width=True)
+                st.plotly_chart(fig_freq, use_container_width=True, key="short_freq_chart")
                 with st.expander(_("Data")):
                     st.dataframe(df_freq, use_container_width=True)
             except Exception as e:
@@ -1158,7 +1158,7 @@ def display_shortage_tab(tab_container, data_dir):
                         y="Cost_Million",
                         labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
                     )
-                    st.plotly_chart(fig_cost, use_container_width=True)
+                    st.plotly_chart(fig_cost, use_container_width=True, key="short_cost_chart")
                 st.dataframe(df_cost, use_container_width=True)
             except Exception as e:
                 st.error(f"cost_benefit.xlsx 表示エラー: {e}")
@@ -1193,7 +1193,7 @@ def display_fatigue_tab(tab_container, data_dir):
                         labels={"staff": _("Staff"), "fatigue_score": _("Score")},
                         color_discrete_sequence=["#FF8C00"],
                     )
-                    st.plotly_chart(fig_fatigue, use_container_width=True)
+                    st.plotly_chart(fig_fatigue, use_container_width=True, key="fatigue_chart")
             except Exception as e: st.error(f"fatigue_score.xlsx 表示エラー: {e}")
         else: st.info(_("Fatigue") + " (fatigue_score.xlsx) " + _("が見つかりません。"))
 
@@ -1213,7 +1213,7 @@ def display_forecast_tab(tab_container, data_dir):
                     if "ds" in df_actual and "y" in df_actual:
                          fig.add_trace(go.Scatter(x=df_actual["ds"], y=df_actual["y"], mode='lines', name=_("Actual (y)"), line=dict(dash='dash')))
                 fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
                 with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
             except Exception as e: st.error(f"forecast.xlsx 表示エラー: {e}")
         else: st.info(_("Forecast") + " (forecast.xlsx) " + _("が見つかりません。"))
@@ -1235,7 +1235,7 @@ def display_fairness_tab(tab_container, data_dir):
                         labels={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"},
                         color_discrete_sequence=["#FF8C00"],
                     )
-                    st.plotly_chart(fig_fair, use_container_width=True)
+                    st.plotly_chart(fig_fair, use_container_width=True, key="fairness_chart")
             except Exception as e: st.error(f"fairness_after.xlsx 表示エラー: {e}")
         else: st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
@@ -1253,7 +1253,7 @@ def display_costsim_tab(tab_container, data_dir):
                         y="Cost_Million",
                         labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
                     )
-                    st.plotly_chart(fig_cost, use_container_width=True)
+                    st.plotly_chart(fig_cost, use_container_width=True, key="costsim_chart")
                 st.dataframe(df, use_container_width=True)
             except Exception as e: st.error(f"cost_benefit.xlsx 表示エラー: {e}")
         else: st.info(_("Cost Sim") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
@@ -1277,7 +1277,7 @@ def display_hireplan_tab(tab_container, data_dir):
                             labels={"role": _("Role"), "hire_need": _("hire_need")},
                             color_discrete_sequence=["#1f77b4"],
                         )
-                        st.plotly_chart(fig_plan, use_container_width=True)
+                        st.plotly_chart(fig_plan, use_container_width=True, key="hireplan_chart")
                 if "meta" in xls.sheet_names:
                     with st.expander(_("Hiring Plan Parameters")): st.table(xls.parse("meta"))
             except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
@@ -1309,7 +1309,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         "total_leave_days": _("Total Leave Days"),
                     },
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"leave_bar_{title}")
             with st.expander(_("Data")):
                 st.dataframe(df, use_container_width=True, hide_index=True)
 
@@ -1382,7 +1382,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         title="選択日のスタッフ出現率",
                         labels={"ratio": "appearance_ratio"},
                     )
-                    st.plotly_chart(fig_ratio_bar, use_container_width=True)
+                    st.plotly_chart(fig_ratio_bar, use_container_width=True, key="leave_ratio_bar_chart")
             st.markdown("**希望休 集中日判定**")
             st.dataframe(df_conc, use_container_width=True, hide_index=True)
 
@@ -1404,7 +1404,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 markers=True,
             )
             fig.update_layout(xaxis_title=_("Date"), yaxis_title=_("total_staff"))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="leave_balance_chart")
 
             df_ratio = df_balance[df_balance["leave_applicants_count"] >= st.session_state.leave_concentration_threshold_widget]
             if isinstance(df_conc, pd.DataFrame):
@@ -1422,7 +1422,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     xaxis_title=_("Date"),
                     yaxis_title=_("leave_ratio"),
                 )
-                st.plotly_chart(fig_ratio, use_container_width=True)
+                st.plotly_chart(fig_ratio, use_container_width=True, key="leave_ratio_line_chart")
 
             with st.expander(_("Data")):
                 st.dataframe(df_balance, use_container_width=True, hide_index=True)
