@@ -1331,10 +1331,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
 
         df_conc = results_dict.get("concentration_requested")
         if isinstance(df_conc, pd.DataFrame) and not df_conc.empty:
-            df_bar = df_conc[
-                df_conc["leave_applicants_count"]
-                >= st.session_state.leave_concentration_threshold_widget
-            ]
+            df_bar = df_conc
             selected_dates = set()
             if not df_bar.empty:
                 fig = px.line(
@@ -1343,11 +1340,14 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     y="leave_applicants_count",
                     hover_data=["staff_names"],
                     markers=True,
-                    title="希望休取得集中日",
                 )
                 fig.update_layout(
                     xaxis_title=_("Date"),
                     yaxis_title=_("leave_applicants_count"),
+                )
+                fig.add_hline(
+                    y=st.session_state.leave_concentration_threshold_widget,
+                    line_dash="dash",
                 )
                 if plotly_events:
                     events = plotly_events(
