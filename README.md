@@ -141,6 +141,10 @@ concentration threshold. Hovering over the points reveals the staff names who
 requested leave. A second chart plots the share of requesting staff
 (`leave_applicants_count ÷ total_staff`) for those days.
 
+You can click or lasso points on this chart to select specific dates. The
+selected staff members are listed below, together with a bar chart showing how
+frequently each person appears within the chosen dates.
+
 ### Shortage → Hire plan workflow
 
 After `shortage_role.xlsx` is generated, the application now calls

@@ -35,6 +35,7 @@ import streamlit as st
 from streamlit.runtime import exists as st_runtime_exists
 import plotly.express as px
 import plotly.graph_objects as go
+from streamlit_plotly_events import plotly_events
 import datetime as dt
 
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
@@ -1299,7 +1300,11 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
 
         df_conc = results_dict.get("concentration_requested")
         if isinstance(df_conc, pd.DataFrame) and not df_conc.empty:
-            df_bar = df_conc[df_conc["leave_applicants_count"] >= st.session_state.leave_concentration_threshold_widget]
+            df_bar = df_conc[
+                df_conc["leave_applicants_count"]
+                >= st.session_state.leave_concentration_threshold_widget
+            ]
+            selected_dates = set()
             if not df_bar.empty:
                 fig = px.line(
                     df_bar,
@@ -1313,7 +1318,36 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     xaxis_title=_("Date"),
                     yaxis_title=_("leave_applicants_count"),
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                events = plotly_events(fig, click_event=True, select_event=True)
+                selected_dates = {
+                    pd.to_datetime(ev.get("x")).normalize()
+                    for ev in events
+                    if ev.get("x") is not None
+                }
+            if selected_dates:
+                df_selected = df_conc[df_conc["date"].isin(selected_dates)]
+                all_names = sorted({name for names in df_selected["staff_names"] for name in names})
+                if all_names:
+                    st.markdown("**選択日のスタッフ:** " + ", ".join(all_names))
+                    counts = {}
+                    for names in df_selected["staff_names"]:
+                        for name in names:
+                            counts[name] = counts.get(name, 0) + 1
+                    ratio_df = (
+                        pd.DataFrame({
+                            "staff": list(counts.keys()),
+                            "ratio": [c / len(selected_dates) for c in counts.values()],
+                        })
+                        .sort_values("ratio", ascending=False)
+                    )
+                    fig_ratio_bar = px.bar(
+                        ratio_df,
+                        x="staff",
+                        y="ratio",
+                        title="選択日のスタッフ出現率",
+                        labels={"ratio": "appearance_ratio"},
+                    )
+                    st.plotly_chart(fig_ratio_bar, use_container_width=True)
             st.markdown("**希望休 集中日判定**")
             st.dataframe(df_conc, use_container_width=True, hide_index=True)
 
