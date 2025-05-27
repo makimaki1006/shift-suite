@@ -14,6 +14,7 @@ dependencies = [
     "pandas>=2.2",
     "numpy>=1.26",
     "plotly>=5.20",
+    "streamlit-plotly-events>=0.0.6",
     "streamlit>=1.34",
     "dash>=2.17",
     "dash-bootstrap-components>=1.6",
