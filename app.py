@@ -244,9 +244,13 @@ def load_excel_cached(
     )
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def load_excelfile_cached(file_path: str, *, file_mtime: float | None = None):
-    """Load ``pd.ExcelFile`` with caching so repeated reads are fast."""
+    """Load ``pd.ExcelFile`` with caching so repeated reads are fast.
+
+    ``pd.ExcelFile`` objects are not picklable so we cache the handle as a
+    resource rather than using ``st.cache_data``.
+    """
     return pd.ExcelFile(file_path)
 
 st.set_page_config(page_title="Shift-Suite", layout="wide", initial_sidebar_state="expanded")
