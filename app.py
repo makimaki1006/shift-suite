@@ -1297,6 +1297,10 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             st.markdown("**日次・職員別取得データ**")
             st.dataframe(daily_df, use_container_width=True, hide_index=True)
 
+        # 選択した日付をセッション状態で保持する
+        if "leave_selected_dates" not in st.session_state:
+            st.session_state.leave_selected_dates = set()
+
         def _bar_chart(df: pd.DataFrame, title: str):
             if "period_unit" in df.columns and "total_leave_days" in df.columns:
                 fig = px.bar(
@@ -1359,8 +1363,12 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     for ev in events
                     if ev.get("x") is not None
                 }
-            if selected_dates:
-                df_selected = df_conc[df_conc["date"].isin(selected_dates)]
+                if selected_dates:
+                    st.session_state.leave_selected_dates.update(selected_dates)
+
+            final_dates = st.session_state.leave_selected_dates
+            if final_dates:
+                df_selected = df_conc[df_conc["date"].isin(final_dates)]
                 all_names = sorted({name for names in df_selected["staff_names"] for name in names})
                 if all_names:
                     st.markdown("**選択日のスタッフ:** " + ", ".join(all_names))
@@ -1371,7 +1379,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     ratio_df = (
                         pd.DataFrame({
                             "staff": list(counts.keys()),
-                            "ratio": [c / len(selected_dates) for c in counts.values()],
+                            "ratio": [c / len(final_dates) for c in counts.values()],
                         })
                         .sort_values("ratio", ascending=False)
                     )
@@ -1383,6 +1391,8 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         labels={"ratio": "appearance_ratio"},
                     )
                     st.plotly_chart(fig_ratio_bar, use_container_width=True, key="leave_ratio_bar_chart")
+                    if st.button("選択をクリア", key="leave_clear_button"):
+                        st.session_state.leave_selected_dates = set()
             st.markdown("**希望休 集中日判定**")
             st.dataframe(df_conc, use_container_width=True, hide_index=True)
 
