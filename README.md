@@ -52,6 +52,8 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 
    The `requirements.txt` file pins `scikit-learn` to `1.4.1.post1` for
    compatibility with Python 3.12.
+   It also installs `streamlit-plotly-events` so the leave analysis charts
+   can respond to clicks and selections.
 
 2. To use the GUI, run:
 
