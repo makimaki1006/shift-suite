@@ -959,6 +959,7 @@ def display_overview_tab(tab_container, data_dir):
             try:
                 df_sh_role = load_excel_cached(
                     str(kpi_fp),
+                    sheet_name="role_summary",
                     file_mtime=_file_mtime(kpi_fp),
                 )
                 lack_h = df_sh_role["lack_h"].sum() if "lack_h" in df_sh_role else 0.0
@@ -1074,6 +1075,7 @@ def display_shortage_tab(tab_container, data_dir):
                     try:
                         df_hire = load_excel_cached(
                             str(fp_hire),
+                            sheet_name="hire_plan",
                             file_mtime=_file_mtime(fp_hire),
                         )
                         if {"role", "hire_fte"}.issubset(df_hire.columns):
@@ -1122,6 +1124,7 @@ def display_shortage_tab(tab_container, data_dir):
             try:
                 df_s_time = load_excel_cached(
                     str(fp_s_time),
+                    sheet_name="lack_time",
                     index_col=0,
                     file_mtime=_file_mtime(fp_s_time),
                 )
@@ -1151,6 +1154,7 @@ def display_shortage_tab(tab_container, data_dir):
             try:
                 df_ratio = load_excel_cached(
                     str(fp_s_ratio),
+                    sheet_name="lack_ratio",
                     index_col=0,
                     file_mtime=_file_mtime(fp_s_ratio),
                 )
@@ -1181,6 +1185,7 @@ def display_shortage_tab(tab_container, data_dir):
             try:
                 df_freq = load_excel_cached(
                     str(fp_s_freq),
+                    sheet_name="freq_by_time",
                     index_col=0,
                     file_mtime=_file_mtime(fp_s_freq),
                 )
@@ -1208,6 +1213,7 @@ def display_shortage_tab(tab_container, data_dir):
             try:
                 df_sl = load_excel_cached(
                     str(fp_s_leave),
+                    sheet_name="shortage_leave",
                     file_mtime=_file_mtime(fp_s_leave),
                 )
                 st.write(_("Shortage with Leave"))
@@ -1230,6 +1236,7 @@ def display_shortage_tab(tab_container, data_dir):
             try:
                 df_cost = load_excel_cached(
                     str(fp_cost),
+                    sheet_name=0,
                     index_col=0,
                     file_mtime=_file_mtime(fp_cost),
                 )
@@ -1343,6 +1350,7 @@ def display_costsim_tab(tab_container, data_dir):
             try:
                 df = load_excel_cached(
                     str(fp),
+                    sheet_name=0,
                     index_col=0,
                     file_mtime=_file_mtime(fp),
                 )
