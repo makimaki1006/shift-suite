@@ -1465,23 +1465,30 @@ def display_hireplan_tab(tab_container, data_dir):
                     str(fp),
                     file_mtime=_file_mtime(fp),
                 )
-                if "hire_plan" in xls.sheet_names:
+                if not isinstance(xls, pd.ExcelFile) or "hire_plan" not in xls.sheet_names:
+                    st.info(_("Hiring plan data not available or in invalid format"))
+                    return
+                    
+                try:
                     df_plan = xls.parse("hire_plan")
-                    display_plan_df = df_plan.rename(columns={"role": _("Role"), "hire_need": _("hire_need")})
+                    if not _valid_df(df_plan):
+                        st.info(_("Hiring plan data is empty"))
+                        return
+                        
+                    display_plan_df = df_plan.rename(columns={"role": _("Role"), "hire_fte": _("hire_fte")})
                     st.dataframe(display_plan_df, use_container_width=True, hide_index=True)
-                    if "role" in df_plan and "hire_need" in df_plan:
+                    if "role" in df_plan and "hire_fte" in df_plan:
                         fig_plan = px.bar(
                             df_plan,
                             x="role",
-                            y="hire_need",
-                            labels={"role": _("Role"), "hire_need": _("hire_need")},
-                            color_discrete_sequence=["#1f77b4"],
+                            y="hire_fte",
+                            labels={"role": _("Role"), "hire_fte": _("hire_fte")},
                         )
                         st.plotly_chart(fig_plan, use_container_width=True, key="hireplan_chart")
-                if "meta" in xls.sheet_names:
-                    with st.expander(_("Hiring Plan Parameters")): st.table(xls.parse("meta"))
+                except AttributeError:
+                    st.error(_("Invalid data format in hire_plan.xlsx"))
             except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
-        else: st.info(_("Hire Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
+        else: st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
 def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
     """Render leave analysis results using in-memory DataFrames."""
