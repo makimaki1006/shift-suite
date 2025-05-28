@@ -27,6 +27,12 @@ def main():
         default=1.0,
         help="Multiplier applied to shortage hours when converting to hires",
     )
+    ap.add_argument(
+        "--iqr-multiplier",
+        type=float,
+        default=1.5,
+        help="IQR multiplier used when removing outliers for Need calculation",
+    )
     args = ap.parse_args()
 
     excel = Path(args.excel).expanduser()
@@ -79,7 +85,7 @@ def main():
         ref_end_date_for_need=ref_end,
         need_statistic_method="中央値",
         need_remove_outliers=True,
-        need_iqr_multiplier=1.5,
+        need_iqr_multiplier=args.iqr_multiplier,
         min_method="p25",
         max_method="p75",
     )

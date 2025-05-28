@@ -73,7 +73,8 @@ The GUI caches the uploaded workbook using `load_excelfile_cached()` with
 
    ```bash
    python cli.py <excel.xlsx> <out_dir> [--slot MIN] [--header ROW] [--zip] \
-       [--holidays-global FILE] [--holidays-local FILE] [--safety-factor NUM]
+       [--holidays-global FILE] [--holidays-local FILE] [--safety-factor NUM] \
+       [--iqr-multiplier NUM]
    ```
 
    - `<excel.xlsx>`: path to the source Excel file
@@ -85,6 +86,8 @@ The GUI caches the uploaded workbook using `load_excelfile_cached()` with
    - `--holidays-local`: CSV/JSON with site-specific holidays
    - `--safety-factor`: multiplier applied to shortage hours when automatically
      generating a hire plan (default: 1.0)
+   - `--iqr-multiplier`: IQR multiplier when removing outliers for need
+     calculation (default: 1.5)
 
 4. Run analyses directly on a CSV file using the module entry point:
 
@@ -184,6 +187,8 @@ parameters:
 `tasks.hire_plan.build_hire_plan` (default `1.10`). This same value is passed to
 `h2hire.build_hire_plan` when shortage results are converted automatically.
   The value can also be set via the `--safety-factor` CLI option.
+- `iqr_multiplier` – factor used to detect outliers when computing need
+  (`1.5` by default). The CLI exposes this as `--iqr-multiplier`.
 
 If a `leave_analysis.csv` is also present in the output folder you can call
 `merge_shortage_leave(out_dir)` to create `shortage_leave.xlsx`. This file

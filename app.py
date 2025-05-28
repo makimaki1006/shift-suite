@@ -104,6 +104,7 @@ JP = {
     "Start Date": "開始日", "End Date": "終了日",
     "Statistical Metric for Need": "統計的指標 (Need算出用)",
     "Remove Outliers for Need Calculation": "外れ値を除去してNeedを算出",
+    "IQR multiplier": "IQR倍率",
     "(Optional) Upper Limit Calculation Method": "(オプション) 上限値算出方法",
     "Min-staff method (for Upper)": "最少人数算出法 (上限値用)",
     "Max-staff method (for Upper)": "最大人数算出法 (上限値用)",
@@ -307,6 +308,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.wage_temp_widget = 2200
     st.session_state.hiring_cost_once_widget = 180000
     st.session_state.penalty_per_lack_widget = 4000
+    st.session_state.need_iqr_multiplier_widget = 1.5
 
 
     # ★ 休暇分析用パラメータの初期化
@@ -397,6 +399,14 @@ with st.sidebar:
     st.checkbox(
         _("Remove Outliers for Need Calculation"),
         key="need_remove_outliers_widget", help="IQR法で外れ値を除去してから統計量を計算します"
+    )
+    st.number_input(
+        _("IQR multiplier"),
+        min_value=0.1,
+        value=1.5,
+        step=0.1,
+        key="need_iqr_multiplier_widget",
+        help="外れ値除去に用いるIQRの乗数"
     )
 
     with st.expander(_("(Optional) Upper Limit Calculation Method"), expanded=False):
@@ -588,6 +598,7 @@ if run_button_clicked:
         param_ref_end = st.session_state.need_ref_end_date_widget
         param_need_stat = st.session_state.need_stat_method_widget
         param_need_outlier = st.session_state.need_remove_outliers_widget
+        param_need_iqr_multiplier = st.session_state.need_iqr_multiplier_widget
         param_min_method_upper = st.session_state.min_method_for_upper_widget
         param_max_method_upper = st.session_state.max_method_for_upper_widget
         param_ext_opts = st.session_state.ext_opts_multiselect_widget
@@ -659,7 +670,7 @@ if run_button_clicked:
                 ref_end_date_for_need=param_ref_end,
                 need_statistic_method=param_need_stat,
                 need_remove_outliers=param_need_outlier,
-                need_iqr_multiplier=1.5,
+                need_iqr_multiplier=param_need_iqr_multiplier,
                 min_method=param_min_method_upper,
                 max_method=param_max_method_upper
             )
