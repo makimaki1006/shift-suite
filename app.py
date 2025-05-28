@@ -230,7 +230,7 @@ def _file_mtime(path: Path) -> float:
 def load_excel_cached(
     file_path: str,
     *,
-    sheet_name: str | None = None,
+    sheet_name: str | int | None = 0,
     index_col: int | str | None = None,
     parse_dates=None,
     file_mtime: float | None = None,
@@ -1004,6 +1004,7 @@ def display_heatmap_tab(tab_container, data_dir):
             try:
                 df_heat = load_excel_cached(
                     str(fp),
+                    sheet_name="ALL",
                     index_col=0,
                     file_mtime=_file_mtime(fp),
                 )
@@ -1291,6 +1292,7 @@ def display_fatigue_tab(tab_container, data_dir):
             try:
                 df = load_excel_cached(
                     str(fp),
+                    sheet_name="fatigue",
                     file_mtime=_file_mtime(fp),
                 )
                 display_df = df.rename(columns={"staff": _("Staff"), "fatigue_score": _("Score")})
@@ -1315,6 +1317,7 @@ def display_forecast_tab(tab_container, data_dir):
             try:
                 df_fc = load_excel_cached(
                     str(fp_fc),
+                    sheet_name="forecast",
                     parse_dates=["ds"],
                     file_mtime=_file_mtime(fp_fc),
                 )
@@ -1340,6 +1343,7 @@ def display_fairness_tab(tab_container, data_dir):
             try:
                 df = load_excel_cached(
                     str(fp),
+                    sheet_name="after_summary",
                     file_mtime=_file_mtime(fp),
                 )
                 display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
