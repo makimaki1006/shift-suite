@@ -672,7 +672,7 @@ if run_button_clicked:
             else:
                 st.success("✅ Shortage (不足分析) 完了")
                 try:
-                    build_hire_plan_from_kpi(out_dir_exec)
+                    build_hire_plan_from_kpi(out_dir_exec, safety_factor=param_safety_factor)
                 except Exception as e:
                     log.warning(f"hire_plan generation error: {e}")
     
