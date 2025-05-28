@@ -8,7 +8,8 @@ shift_suite.tasks.forecast  v1.5.0 – 休暇・履歴対応
   4. forecast_need() が生成する out_df に “model” 列を必ず付与
   5. forecast_need() が祝日データを受け取り exogenous 変数として利用
   6. forecast_need() 実行履歴を ``forecast_history.csv`` に追記
-  7. 直近の履歴 MAPE が閾値を超える場合はモデル選択を調整
+  7. 直近の履歴 MAPE が閾値を超える場合はモデル選択と
+     seasonal パラメータを自動調整
 """
 
 from __future__ import annotations
@@ -234,8 +235,15 @@ def forecast_need(
             recent_mape = hist["mape"].tail(5).mean()
             if choose == "auto" and recent_mape > 0.25:
                 log.info("[forecast] recent MAPE high → prefer ARIMA")
+                warnings.warn(
+                    "Recent forecast MAPE above 0.25 – using ARIMA instead of ETS"
+                )
                 choose = "arima"
             if seasonal == "add" and recent_mape > 0.25:
+                log.info("[forecast] recent MAPE high → switch seasonal to 'mul'")
+                warnings.warn(
+                    "Recent forecast MAPE above 0.25 – switching seasonal parameter to 'mul'"
+                )
                 seasonal = "mul"
         except Exception as e:
             log.warning(f"[forecast] history read failed: {e}")
