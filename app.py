@@ -1436,17 +1436,24 @@ def display_costsim_tab(tab_container, data_dir):
                     index_col=0,
                     file_mtime=_file_mtime(fp),
                 )
-                if "Cost_Million" in df:
-                    fig_cost = px.bar(
-                        df.reset_index(),
-                        x=df.index.name or "index",
-                        y="Cost_Million",
-                        labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
-                    )
-                    st.plotly_chart(fig_cost, use_container_width=True, key="costsim_chart")
-                st.dataframe(df, use_container_width=True)
+                if not _valid_df(df):
+                    st.info(_("Cost simulation data not available or empty"))
+                    return
+                
+                try:
+                    if "Cost_Million" in df:
+                        fig_cost = px.bar(
+                            df.reset_index(),
+                            x=df.index.name or "index",
+                            y="Cost_Million",
+                            labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
+                        )
+                        st.plotly_chart(fig_cost, use_container_width=True, key="costsim_chart")
+                    st.dataframe(df, use_container_width=True)
+                except AttributeError:
+                    st.error(_("Invalid data format in cost_benefit.xlsx"))
             except Exception as e: st.error(f"cost_benefit.xlsx 表示エラー: {e}")
-        else: st.info(_("Cost Sim") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
+        else: st.info(_("Cost Simulation") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
 
 def display_hireplan_tab(tab_container, data_dir):
     with tab_container:
