@@ -643,7 +643,12 @@ if run_button_clicked:
                 st.warning("プレビューを表示するシートが選択されていないか、ファイルパスが無効です。")
     
             update_progress_exec_run("Ingest: Reading Excel data...")
-            long_df, wt_df = ingest_excel(excel_path_to_use, shift_sheets=param_selected_sheets, header_row=param_header_row)
+            long_df, wt_df = ingest_excel(
+                excel_path_to_use,
+                shift_sheets=param_selected_sheets,
+                header_row=param_header_row,
+                slot_minutes=param_slot,
+            )
             log.info(f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}")
             st.success(_("Ingest: Excel data read complete."))
     
@@ -780,7 +785,9 @@ if run_button_clicked:
                             run_fairness(long_df, out_dir_exec)
                         elif opt_module_name_exec_run == "Rest Time Analysis":
                             rta = RestTimeAnalyzer()
-                            st.session_state.rest_time_results = rta.analyze(long_df)
+                            st.session_state.rest_time_results = rta.analyze(
+                                long_df, slot_minutes=param_slot
+                            )
                             st.session_state.rest_time_results.to_csv(out_dir_exec / "rest_time.csv", index=False)
                             st.session_state.rest_time_monthly = rta.monthly(st.session_state.rest_time_results)
                             if st.session_state.rest_time_monthly is not None:
