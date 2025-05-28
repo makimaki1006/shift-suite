@@ -1338,17 +1338,24 @@ def display_fatigue_tab(tab_container, data_dir):
                     sheet_name="fatigue",
                     file_mtime=_file_mtime(fp),
                 )
-                display_df = df.rename(columns={"staff": _("Staff"), "fatigue_score": _("Score")})
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
-                if "fatigue_score" in df and "staff" in df:
-                    fig_fatigue = px.bar(
-                        df,
-                        x="staff",
-                        y="fatigue_score",
-                        labels={"staff": _("Staff"), "fatigue_score": _("Score")},
-                        color_discrete_sequence=["#FF8C00"],
-                    )
-                    st.plotly_chart(fig_fatigue, use_container_width=True, key="fatigue_chart")
+                if not _valid_df(df):
+                    st.info(_("Data not available or empty"))
+                    return
+                
+                try:
+                    display_df = df.rename(columns={"staff": _("Staff"), "fatigue_score": _("Score")})
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    if "fatigue_score" in df and "staff" in df:
+                        fig_fatigue = px.bar(
+                            df,
+                            x="staff",
+                            y="fatigue_score",
+                            labels={"staff": _("Staff"), "fatigue_score": _("Score")},
+                            color_discrete_sequence=["#FF8C00"],
+                        )
+                        st.plotly_chart(fig_fatigue, use_container_width=True, key="fatigue_chart")
+                except AttributeError:
+                    st.error(_("Invalid data format in fatigue_score.xlsx"))
             except Exception as e: st.error(f"fatigue_score.xlsx 表示エラー: {e}")
         else: st.info(_("Fatigue") + " (fatigue_score.xlsx) " + _("が見つかりません。"))
 
