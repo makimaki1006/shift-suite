@@ -9,6 +9,7 @@ Typical use
 -----------
 from shift_suite.tasks.h2hire import build_hire_plan
 build_hire_plan(out_dir)   # out_dir contains shortage_role.xlsx
+build_hire_plan(out_dir, safety_factor=1.1)  # adjust shortage hours by 10%
 """
 
 from __future__ import annotations
@@ -29,12 +30,15 @@ def _calc_hire_fte(lack_h: float, monthly_hours_fte: int = MONTHLY_HOURS_FTE) ->
     return int(math.ceil(lack_h / monthly_hours_fte))
 
 
-def build_hire_plan(out_dir: Path,
-                    shortage_excel: str | Path = "shortage_role.xlsx",
-                    out_excel: str | Path = "hire_plan.xlsx",
-                    hourly_wage: int = AVG_HOURLY_WAGE,
-                    recruit_cost: int = RECRUIT_COST_PER_HIRE,
-                    monthly_hours_fte: int = MONTHLY_HOURS_FTE) -> Path:
+def build_hire_plan(
+    out_dir: Path,
+    shortage_excel: str | Path = "shortage_role.xlsx",
+    out_excel: str | Path = "hire_plan.xlsx",
+    hourly_wage: int = AVG_HOURLY_WAGE,
+    recruit_cost: int = RECRUIT_COST_PER_HIRE,
+    monthly_hours_fte: int = MONTHLY_HOURS_FTE,
+    safety_factor: float = 1.0,
+) -> Path:
     """
     Parameters
     ----------
@@ -44,6 +48,7 @@ def build_hire_plan(out_dir: Path,
     hourly_wage    : 自社スタッフの平均時給
     recruit_cost   : 1 人採用に掛かる固定コスト
     monthly_hours_fte : 1 FTE が月あたり勤務する時間
+    safety_factor : 不足時間に乗算する倍率。1.0 で変化なし
 
     Returns
     -------
@@ -59,7 +64,8 @@ def build_hire_plan(out_dir: Path,
         raise ValueError("shortage_role.xlsx に 'role' と 'lack_h' 列が必要です")
 
     df_out = df.copy()
-    df_out["hire_fte"] = df_out["lack_h"].apply(_calc_hire_fte, args=(monthly_hours_fte,))
+    lack_adjusted = df_out["lack_h"] * safety_factor
+    df_out["hire_fte"] = lack_adjusted.apply(_calc_hire_fte, args=(monthly_hours_fte,))
     df_out["est_monthly_pay"] = df_out["hire_fte"] * monthly_hours_fte * hourly_wage
     df_out["est_recruit_cost"] = df_out["hire_fte"] * recruit_cost
 

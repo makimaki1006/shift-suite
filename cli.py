@@ -21,6 +21,12 @@ def main():
     ap.add_argument("--zip", action="store_true")
     ap.add_argument("--holidays-global", help="Global holiday CSV or JSON file")
     ap.add_argument("--holidays-local", help="Local holiday CSV or JSON file")
+    ap.add_argument(
+        "--safety-factor",
+        type=float,
+        default=1.0,
+        help="Multiplier applied to shortage hours when converting to hires",
+    )
     args = ap.parse_args()
 
     excel = Path(args.excel).expanduser()
@@ -83,7 +89,7 @@ def main():
         holidays_local=holiday_dates_local,
     )
     try:
-        build_hire_plan_from_shortage(out)
+        build_hire_plan_from_shortage(out, safety_factor=args.safety_factor)
     except Exception as e:
         print(f"hire_plan generation failed: {e}")
     else:

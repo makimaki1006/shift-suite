@@ -161,8 +161,7 @@ chosen range. Use the **選択をクリア** button to reset the selection.
 
 After `shortage_role.xlsx` is generated, the application automatically runs
 `h2hire.build_hire_plan` to convert shortage hours into required FTE counts.
-This helper ignores the safety factor and simply converts shortage hours to FTE
-hires. The resulting `hire_plan.xlsx` is stored in the same output folder and
+The *Safety factor* slider is also applied here (default `1.0`). The resulting `hire_plan.xlsx` is stored in the same output folder and
 the **Shortage** tab displays these FTE numbers per role.
 
 If you select the optional **Hire plan** module, the application instead calls
@@ -180,8 +179,8 @@ parameters:
 - `hiring_cost_once` – one‑time cost per hire (default `180000`)
 - `penalty_per_lack_h` – penalty per uncovered hour (default `4000`)
 - `safety_factor` – multiplier applied when running
-  `tasks.hire_plan.build_hire_plan` (default `1.10`). This is a factor, not an
-  hour count; the automatically triggered `h2hire.build_hire_plan` ignores it.
+`tasks.hire_plan.build_hire_plan` (default `1.10`). This same value is passed to
+`h2hire.build_hire_plan` when shortage results are converted automatically.
 
 If a `leave_analysis.csv` is also present in the output folder you can call
 `merge_shortage_leave(out_dir)` to create `shortage_leave.xlsx`. This file
