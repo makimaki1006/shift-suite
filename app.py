@@ -1338,17 +1338,24 @@ def display_fatigue_tab(tab_container, data_dir):
                     sheet_name="fatigue",
                     file_mtime=_file_mtime(fp),
                 )
-                display_df = df.rename(columns={"staff": _("Staff"), "fatigue_score": _("Score")})
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
-                if "fatigue_score" in df and "staff" in df:
-                    fig_fatigue = px.bar(
-                        df,
-                        x="staff",
-                        y="fatigue_score",
-                        labels={"staff": _("Staff"), "fatigue_score": _("Score")},
-                        color_discrete_sequence=["#FF8C00"],
-                    )
-                    st.plotly_chart(fig_fatigue, use_container_width=True, key="fatigue_chart")
+                if not _valid_df(df):
+                    st.info(_("Data not available or empty"))
+                    return
+                
+                try:
+                    display_df = df.rename(columns={"staff": _("Staff"), "fatigue_score": _("Score")})
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    if "fatigue_score" in df and "staff" in df:
+                        fig_fatigue = px.bar(
+                            df,
+                            x="staff",
+                            y="fatigue_score",
+                            labels={"staff": _("Staff"), "fatigue_score": _("Score")},
+                            color_discrete_sequence=["#FF8C00"],
+                        )
+                        st.plotly_chart(fig_fatigue, use_container_width=True, key="fatigue_chart")
+                except AttributeError:
+                    st.error(_("Invalid data format in fatigue_score.xlsx"))
             except Exception as e: st.error(f"fatigue_score.xlsx 表示エラー: {e}")
         else: st.info(_("Fatigue") + " (fatigue_score.xlsx) " + _("が見つかりません。"))
 
@@ -1364,17 +1371,24 @@ def display_forecast_tab(tab_container, data_dir):
                     parse_dates=["ds"],
                     file_mtime=_file_mtime(fp_fc),
                 )
-                fig = go.Figure()
-                if "ds" in df_fc and "yhat" in df_fc:
-                    fig.add_trace(go.Scatter(x=df_fc["ds"], y=df_fc["yhat"], mode='lines+markers', name=_("Demand Forecast (yhat)")))
-                fp_demand = data_dir / "demand_series.csv"
-                if fp_demand.exists():
-                    df_actual = pd.read_csv(fp_demand, parse_dates=["ds"])
-                    if "ds" in df_actual and "y" in df_actual:
-                         fig.add_trace(go.Scatter(x=df_actual["ds"], y=df_actual["y"], mode='lines', name=_("Actual (y)"), line=dict(dash='dash')))
-                fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
-                st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
-                with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
+                if not _valid_df(df_fc):
+                    st.info(_("Forecast data not available or empty"))
+                    return
+                
+                try:
+                    fig = go.Figure()
+                    if "ds" in df_fc and "yhat" in df_fc:
+                        fig.add_trace(go.Scatter(x=df_fc["ds"], y=df_fc["yhat"], mode='lines+markers', name=_("Demand Forecast (yhat)")))
+                    fp_demand = data_dir / "demand_series.csv"
+                    if fp_demand.exists():
+                        df_actual = pd.read_csv(fp_demand, parse_dates=["ds"])
+                        if _valid_df(df_actual) and "ds" in df_actual and "y" in df_actual:
+                            fig.add_trace(go.Scatter(x=df_actual["ds"], y=df_actual["y"], mode='lines', name=_("Actual (y)"), line=dict(dash='dash')))
+                    fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
+                    st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
+                    with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
+                except AttributeError:
+                    st.error(_("Invalid data format in forecast.xlsx"))
             except Exception as e: st.error(f"forecast.xlsx 表示エラー: {e}")
         else: st.info(_("Forecast") + " (forecast.xlsx) " + _("が見つかりません。"))
 
@@ -1390,19 +1404,23 @@ def display_fairness_tab(tab_container, data_dir):
                     file_mtime=_file_mtime(fp),
                 )
                 if not _valid_df(df):
-                    st.info("Data not available")
+                    st.info(_("Fairness data not available or empty"))
                     return
-                display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
-                if "staff" in df and "night_ratio" in df:
-                    fig_fair = px.bar(
-                        df,
-                        x="staff",
-                        y="night_ratio",
-                        labels={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"},
-                        color_discrete_sequence=["#FF8C00"],
-                    )
-                    st.plotly_chart(fig_fair, use_container_width=True, key="fairness_chart")
+                
+                try:
+                    display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    if "staff" in df and "night_ratio" in df:
+                        fig_fair = px.bar(
+                            df,
+                            x="staff",
+                            y="night_ratio",
+                            labels={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"},
+                            color_discrete_sequence=["#FF8C00"],
+                        )
+                        st.plotly_chart(fig_fair, use_container_width=True, key="fairness_chart")
+                except AttributeError:
+                    st.error(_("Invalid data format in fairness_after.xlsx"))
             except Exception as e: st.error(f"fairness_after.xlsx 表示エラー: {e}")
         else: st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
@@ -1418,17 +1436,24 @@ def display_costsim_tab(tab_container, data_dir):
                     index_col=0,
                     file_mtime=_file_mtime(fp),
                 )
-                if "Cost_Million" in df:
-                    fig_cost = px.bar(
-                        df.reset_index(),
-                        x=df.index.name or "index",
-                        y="Cost_Million",
-                        labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
-                    )
-                    st.plotly_chart(fig_cost, use_container_width=True, key="costsim_chart")
-                st.dataframe(df, use_container_width=True)
+                if not _valid_df(df):
+                    st.info(_("Cost simulation data not available or empty"))
+                    return
+                
+                try:
+                    if "Cost_Million" in df:
+                        fig_cost = px.bar(
+                            df.reset_index(),
+                            x=df.index.name or "index",
+                            y="Cost_Million",
+                            labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
+                        )
+                        st.plotly_chart(fig_cost, use_container_width=True, key="costsim_chart")
+                    st.dataframe(df, use_container_width=True)
+                except AttributeError:
+                    st.error(_("Invalid data format in cost_benefit.xlsx"))
             except Exception as e: st.error(f"cost_benefit.xlsx 表示エラー: {e}")
-        else: st.info(_("Cost Sim") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
+        else: st.info(_("Cost Simulation") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
 
 def display_hireplan_tab(tab_container, data_dir):
     with tab_container:
@@ -1440,187 +1465,79 @@ def display_hireplan_tab(tab_container, data_dir):
                     str(fp),
                     file_mtime=_file_mtime(fp),
                 )
-                if "hire_plan" in xls.sheet_names:
+                if not isinstance(xls, pd.ExcelFile) or "hire_plan" not in xls.sheet_names:
+                    st.info(_("Hiring plan data not available or in invalid format"))
+                    return
+                    
+                try:
                     df_plan = xls.parse("hire_plan")
-                    display_plan_df = df_plan.rename(columns={"role": _("Role"), "hire_need": _("hire_need")})
+                    if not _valid_df(df_plan):
+                        st.info(_("Hiring plan data is empty"))
+                        return
+                        
+                    display_plan_df = df_plan.rename(columns={"role": _("Role"), "hire_fte": _("hire_fte")})
                     st.dataframe(display_plan_df, use_container_width=True, hide_index=True)
-                    if "role" in df_plan and "hire_need" in df_plan:
+                    if "role" in df_plan and "hire_fte" in df_plan:
                         fig_plan = px.bar(
                             df_plan,
                             x="role",
-                            y="hire_need",
-                            labels={"role": _("Role"), "hire_need": _("hire_need")},
-                            color_discrete_sequence=["#1f77b4"],
+                            y="hire_fte",
+                            labels={"role": _("Role"), "hire_fte": _("hire_fte")},
                         )
                         st.plotly_chart(fig_plan, use_container_width=True, key="hireplan_chart")
-                if "meta" in xls.sheet_names:
-                    with st.expander(_("Hiring Plan Parameters")): st.table(xls.parse("meta"))
+                except AttributeError:
+                    st.error(_("Invalid data format in hire_plan.xlsx"))
             except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
-        else: st.info(_("Hire Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
+        else: st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
-def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
-    """Render leave analysis results using in-memory DataFrames."""
-    results_dict = results_dict or {}
+def display_leave_analysis_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Leave Analysis"))
-        if not results_dict:
+        
+        fp_leave = data_dir / "shortage_leave.xlsx"
+        if not fp_leave.exists():
             st.info(_("No leave analysis results available."))
             return
-
-        daily_df = results_dict.get("daily_leave_df")
-        if isinstance(daily_df, pd.DataFrame) and not daily_df.empty:
-            st.markdown("**日次・職員別取得データ**")
-            st.dataframe(daily_df, use_container_width=True, hide_index=True)
-
-        # 選択した日付をセッション状態で保持する
-        if "leave_selected_dates" not in st.session_state:
-            st.session_state.leave_selected_dates = set()
-
-        def _bar_chart(df: pd.DataFrame, title: str):
-            if "period_unit" in df.columns and "total_leave_days" in df.columns:
-                fig = px.bar(
-                    df,
-                    x="period_unit",
-                    y="total_leave_days",
-                    title=title,
-                    labels={
-                        "period_unit": _("Month"),
-                        "total_leave_days": _("Total Leave Days"),
-                    },
-                )
-                st.plotly_chart(fig, use_container_width=True, key=f"leave_bar_{title}")
-            with st.expander(_("Data")):
-                st.dataframe(df, use_container_width=True, hide_index=True)
-
-        df_req_dow = results_dict.get("summary_dow_requested")
-        if isinstance(df_req_dow, pd.DataFrame) and not df_req_dow.empty:
-            _bar_chart(df_req_dow, "希望休 曜日別")
-
-        df_req_mp = results_dict.get("summary_month_period_requested")
-        if isinstance(df_req_mp, pd.DataFrame) and not df_req_mp.empty:
-            _bar_chart(df_req_mp, "希望休 月内区分別")
-
-        df_req_month = results_dict.get("summary_month_requested")
-        if isinstance(df_req_month, pd.DataFrame) and not df_req_month.empty:
-            _bar_chart(df_req_month, "希望休 月別")
-
-        df_conc = results_dict.get("concentration_requested")
-        if isinstance(df_conc, pd.DataFrame) and not df_conc.empty:
-            df_bar = df_conc
-            selected_dates = set()
-            if not df_bar.empty:
-                fig = px.line(
-                    df_bar,
-                    x="date",
-                    y="leave_applicants_count",
-                    hover_data=["staff_names"],
-                    markers=True,
-                )
-                fig.update_layout(
-                    xaxis_title=_("Date"),
-                    yaxis_title=_("leave_applicants_count"),
-                )
-                fig.add_hline(
-                    y=st.session_state.leave_concentration_threshold_widget,
-                    line_dash="dash",
-                )
-                if plotly_events:
-                    events = plotly_events(
-                        fig, click_event=True, select_event=True
-                    )
-                else:
-                    st.info(
-                        "Install streamlit-plotly-events for interactive selection."
-                    )
-                    events = []
-                selected_dates = {
-                    pd.to_datetime(ev.get("x")).normalize()
-                    for ev in events
-                    if ev.get("x") is not None
-                }
-                if selected_dates:
-                    st.session_state.leave_selected_dates.update(selected_dates)
-
-            final_dates = st.session_state.leave_selected_dates
-            if final_dates:
-                df_selected = df_conc[df_conc["date"].isin(final_dates)]
-                # 表示用テーブル（選択された日付とスタッフ名）
-                df_display = df_selected[["date", "staff_names"]].sort_values("date")
-                st.markdown("**選択日一覧**")
-                st.table(df_display)
-
-                all_names = sorted({name for names in df_selected["staff_names"] for name in names})
-                if all_names:
-                    st.markdown("**選択日のスタッフ:** " + ", ".join(all_names))
-                    counts = {}
-                    for names in df_selected["staff_names"]:
-                        for name in names:
-                            counts[name] = counts.get(name, 0) + 1
-                    ratio_df = (
-                        pd.DataFrame({
-                            "staff": list(counts.keys()),
-                            "ratio": [c / len(final_dates) for c in counts.values()],
-                        })
-                        .sort_values("ratio", ascending=False)
-                    )
-                    fig_ratio_bar = px.bar(
-                        ratio_df,
-                        x="staff",
-                        y="ratio",
-                        title="選択日のスタッフ出現率",
-                        labels={"ratio": "appearance_ratio"},
-                    )
-                    st.plotly_chart(fig_ratio_bar, use_container_width=True, key="leave_ratio_bar_chart")
-                    if st.button("選択をクリア", key="leave_clear_button"):
-                        st.session_state.leave_selected_dates = set()
-            st.markdown("**希望休 集中日判定**")
-            st.dataframe(df_conc, use_container_width=True, hide_index=True)
-
-        df_paid_dow = results_dict.get("summary_dow_paid")
-        if isinstance(df_paid_dow, pd.DataFrame) and not df_paid_dow.empty:
-            _bar_chart(df_paid_dow, "有給 曜日別")
-
-        df_paid_month = results_dict.get("summary_month_paid")
-        if isinstance(df_paid_month, pd.DataFrame) and not df_paid_month.empty:
-            _bar_chart(df_paid_month, "有給 月別")
-
-        df_balance = results_dict.get("staff_balance_daily")
-        if isinstance(df_balance, pd.DataFrame) and not df_balance.empty:
-            st.markdown("**勤務予定人数と希望休取得者数**")
-            fig = px.line(
-                df_balance,
-                x="date",
-                y=["total_staff", "leave_applicants_count", "non_leave_staff"],
-                markers=True,
+            
+        try:
+            leave_results = load_excel_cached(
+                str(fp_leave),
+                sheet_name=None,  # Load all sheets
+                file_mtime=_file_mtime(fp_leave),
             )
-            fig.update_layout(xaxis_title=_("Date"), yaxis_title=_("total_staff"))
-            st.plotly_chart(fig, use_container_width=True, key="leave_balance_chart")
-
-            df_ratio = df_balance[df_balance["leave_applicants_count"] >= st.session_state.leave_concentration_threshold_widget]
-            if isinstance(df_conc, pd.DataFrame):
-                df_ratio = df_ratio.merge(df_conc[["date", "staff_names"]], on="date", how="left")
-            if not df_ratio.empty:
-                fig_ratio = px.line(
-                    df_ratio,
-                    x="date",
-                    y="leave_ratio",
-                    hover_data=["staff_names"],
-                    markers=True,
-                    title="希望休取得率",
-                )
-                fig_ratio.update_layout(
-                    xaxis_title=_("Date"),
-                    yaxis_title=_("leave_ratio"),
-                )
-                st.plotly_chart(fig_ratio, use_container_width=True, key="leave_ratio_line_chart")
-
-            with st.expander(_("Data")):
-                st.dataframe(df_balance, use_container_width=True, hide_index=True)
-
-        df_staff = results_dict.get("staff_leave_list")
-        if isinstance(df_staff, pd.DataFrame) and not df_staff.empty:
-            st.markdown("**職員別休暇リスト**")
-            st.dataframe(df_staff, use_container_width=True, hide_index=True)
+            
+            if not isinstance(leave_results, dict):
+                st.info(_("Leave analysis data not available or in invalid format"))
+                return
+                
+            try:
+                if "daily_leave" in leave_results and _valid_df(leave_results["daily_leave"]):
+                    daily_df = leave_results["daily_leave"]
+                    st.subheader(_("Daily Leave Distribution"))
+                    st.dataframe(daily_df, use_container_width=True)
+                    
+                if "leave_by_staff" in leave_results and _valid_df(leave_results["leave_by_staff"]):
+                    staff_df = leave_results["leave_by_staff"]
+                    st.subheader(_("Leave Days by Staff"))
+                    
+                    if "staff" in staff_df and "total_leave_days" in staff_df:
+                        fig = px.bar(
+                            staff_df,
+                            x="staff",
+                            y="total_leave_days",
+                            labels={"staff": _("Staff"), "total_leave_days": _("Total Leave Days")},
+                            color_discrete_sequence=["#4CAF50"],
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                if "leave_impact" in leave_results and _valid_df(leave_results["leave_impact"]):
+                    impact_df = leave_results["leave_impact"]
+                    st.subheader(_("Leave Impact Analysis"))
+                    st.dataframe(impact_df, use_container_width=True)
+            except AttributeError:
+                st.error(_("Invalid data format in leave analysis results"))
+        except Exception as e:
+            st.error(f"shortage_leave.xlsx 表示エラー: {e}")
 
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
     with tab_container:
