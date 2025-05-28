@@ -1404,19 +1404,23 @@ def display_fairness_tab(tab_container, data_dir):
                     file_mtime=_file_mtime(fp),
                 )
                 if not _valid_df(df):
-                    st.info("Data not available")
+                    st.info(_("Fairness data not available or empty"))
                     return
-                display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
-                if "staff" in df and "night_ratio" in df:
-                    fig_fair = px.bar(
-                        df,
-                        x="staff",
-                        y="night_ratio",
-                        labels={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"},
-                        color_discrete_sequence=["#FF8C00"],
-                    )
-                    st.plotly_chart(fig_fair, use_container_width=True, key="fairness_chart")
+                
+                try:
+                    display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    if "staff" in df and "night_ratio" in df:
+                        fig_fair = px.bar(
+                            df,
+                            x="staff",
+                            y="night_ratio",
+                            labels={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"},
+                            color_discrete_sequence=["#FF8C00"],
+                        )
+                        st.plotly_chart(fig_fair, use_container_width=True, key="fairness_chart")
+                except AttributeError:
+                    st.error(_("Invalid data format in fairness_after.xlsx"))
             except Exception as e: st.error(f"fairness_after.xlsx 表示エラー: {e}")
         else: st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
