@@ -45,9 +45,9 @@ def build_hire_plan(
     out_dir        : 解析出力フォルダ（heat_ALL.xlsx 等がある場所）
     shortage_excel : shortage_role.xlsx のファイル名 or パス
     out_excel      : 出力ファイル名
-    hourly_wage    : 自社スタッフの平均時給
-    recruit_cost   : 1 人採用に掛かる固定コスト
-    monthly_hours_fte : 1 FTE が月あたり勤務する時間
+    hourly_wage    : 自社スタッフの平均時給 (default ``AVG_HOURLY_WAGE``)
+    recruit_cost   : 1 人採用に掛かる固定コスト (default ``RECRUIT_COST_PER_HIRE``)
+    monthly_hours_fte : 1 FTE が月あたり勤務する時間 (default ``MONTHLY_HOURS_FTE``)
     safety_factor : 不足時間に乗算する倍率。1.0 で変化なし
 
     Returns

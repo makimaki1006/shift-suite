@@ -671,10 +671,17 @@ if run_button_clicked:
                 st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
             else:
                 st.success("✅ Shortage (不足分析) 完了")
-                try:
-                    build_hire_plan_from_kpi(out_dir_exec, safety_factor=param_safety_factor)
-                except Exception as e:
-                    log.warning(f"hire_plan generation error: {e}")
+                if "Hire plan" in param_ext_opts:
+                    try:
+                        build_hire_plan_from_kpi(
+                            out_dir_exec,
+                            monthly_hours_fte=param_std_work_hours,
+                            hourly_wage=param_wage_direct,
+                            recruit_cost=param_hiring_cost,
+                            safety_factor=param_safety_factor,
+                        )
+                    except Exception as e:
+                        log.warning(f"hire_plan generation error: {e}")
     
             # ★----- 休暇分析モジュールの実行 -----★
             # "休暇分析" (日本語) が選択されているか確認
