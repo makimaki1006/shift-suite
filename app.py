@@ -227,6 +227,11 @@ def _file_mtime(path: Path) -> float:
         return 0.0
 
 
+def _valid_df(df: pd.DataFrame) -> bool:
+    """Return True if ``df`` is a non-empty ``pd.DataFrame``."""
+    return isinstance(df, pd.DataFrame) and not df.empty
+
+
 @st.cache_data(show_spinner=False)
 def load_excel_cached(
     file_path: str,
@@ -1016,6 +1021,9 @@ def display_heatmap_tab(tab_container, data_dir):
                     index_col=0,
                     file_mtime=_file_mtime(fp),
                 )
+                if not _valid_df(df_heat):
+                    st.info("Data not available")
+                    return
                 mode_opts = {"Raw": _("Raw Count"), "Ratio": _("Ratio (staff ÷ need)")}
                 mode_lbl = st.radio(_("Display Mode"), list(mode_opts.values()), horizontal=True, key="dash_heat_mode_radio")
                 mode_key = [k for k,v in mode_opts.items() if v == mode_lbl][0]
@@ -1072,6 +1080,9 @@ def display_shortage_tab(tab_container, data_dir):
                 )
                 sheet_role = "role_summary" if "role_summary" in xls.sheet_names else xls.sheet_names[0]
                 df_s_role = xls.parse(sheet_role)
+                if not _valid_df(df_s_role):
+                    st.info("Data not available")
+                    return
                 display_role_df = df_s_role.rename(
                     columns={
                         "role": _("Role"),
@@ -1101,6 +1112,9 @@ def display_shortage_tab(tab_container, data_dir):
                             sheet_name="hire_plan",
                             file_mtime=_file_mtime(fp_hire),
                         )
+                        if not _valid_df(df_hire):
+                            st.info("Data not available")
+                            return
                         if {"role", "hire_fte"}.issubset(df_hire.columns):
                             st.markdown(_("Required FTE per Role"))
                             display_hire_df = df_hire[["role", "hire_fte"]].rename(
@@ -1120,6 +1134,9 @@ def display_shortage_tab(tab_container, data_dir):
 
                 if "role_monthly" in xls.sheet_names:
                     df_month = xls.parse("role_monthly")
+                    if not _valid_df(df_month):
+                        st.info("Data not available")
+                        return
                     if not df_month.empty and {"month", "role", "lack_h"}.issubset(df_month.columns):
                         fig_m = px.bar(
                             df_month,
@@ -1151,6 +1168,9 @@ def display_shortage_tab(tab_container, data_dir):
                     index_col=0,
                     file_mtime=_file_mtime(fp_s_time),
                 )
+                if not _valid_df(df_s_time):
+                    st.info("Data not available")
+                    return
                 st.write(_("Shortage by Time (count per day)"))
                 avail_dates = df_s_time.columns.tolist()
                 if avail_dates:
@@ -1181,6 +1201,9 @@ def display_shortage_tab(tab_container, data_dir):
                     index_col=0,
                     file_mtime=_file_mtime(fp_s_ratio),
                 )
+                if not _valid_df(df_ratio):
+                    st.info("Data not available")
+                    return
                 st.write(_("Shortage Ratio by Time"))
                 avail_ratio_dates = df_ratio.columns.tolist()
                 if avail_ratio_dates:
@@ -1212,6 +1235,9 @@ def display_shortage_tab(tab_container, data_dir):
                     index_col=0,
                     file_mtime=_file_mtime(fp_s_freq),
                 )
+                if not _valid_df(df_freq):
+                    st.info("Data not available")
+                    return
                 st.write(_("Shortage Frequency (days)"))
                 fig_freq = px.bar(
                     df_freq.reset_index(),
@@ -1239,6 +1265,9 @@ def display_shortage_tab(tab_container, data_dir):
                     sheet_name="shortage_leave",
                     file_mtime=_file_mtime(fp_s_leave),
                 )
+                if not _valid_df(df_sl):
+                    st.info("Data not available")
+                    return
                 st.write(_("Shortage with Leave"))
                 display_sl = df_sl.rename(columns={
                     "time": _("Time"),
@@ -1263,6 +1292,9 @@ def display_shortage_tab(tab_container, data_dir):
                     index_col=0,
                     file_mtime=_file_mtime(fp_cost),
                 )
+                if not _valid_df(df_cost):
+                    st.info("Data not available")
+                    return
                 st.write(_("Estimated Cost Impact (Million ¥)"))
                 if "Cost_Million" in df_cost:
                     fig_cost = px.bar(
@@ -1285,6 +1317,9 @@ def display_shortage_tab(tab_container, data_dir):
                 )
                 if "alerts" in xls_stats.sheet_names:
                     df_alerts = xls_stats.parse("alerts")
+                    if not _valid_df(df_alerts):
+                        st.info("Data not available")
+                        return
                     if not df_alerts.empty:
                         st.markdown("---")
                         st.subheader(_("Alerts"))
@@ -1354,6 +1389,9 @@ def display_fairness_tab(tab_container, data_dir):
                     sheet_name="after_summary",
                     file_mtime=_file_mtime(fp),
                 )
+                if not _valid_df(df):
+                    st.info("Data not available")
+                    return
                 display_df = df.rename(columns={"staff": _("Staff"), "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio"})
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 if "staff" in df and "night_ratio" in df:
