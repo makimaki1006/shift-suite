@@ -26,6 +26,8 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 - **`forecast`** – Builds demand series and forecasts future staffing needs via
   time‑series models. Each run appends the selected model and MAPE to
   `forecast_history.csv` and holiday dates can be passed as exogenous inputs.
+  Model selection falls back to ARIMA when the recent average MAPE exceeds
+  `mape_threshold` (default 0.25).
 - **`fairness`** – Evaluates fairness in shift allocation across staff members.
 - **`rl`** – Experimental reinforcement‑learning module for generating
   optimised rosters.
@@ -96,7 +98,8 @@ The GUI caches the uploaded workbook using `load_excelfile_cached()` with
    `lowstaff`, `score` and `all`.  The `leave` option mirrors the previous
    behaviour and outputs `leave_analysis.csv`.  When using `lowstaff`, you
    may optionally pass `--threshold` to set the staff-count threshold (either
-   a value or quantile).
+   a value or quantile). Forecasting respects `--mape-threshold`, which
+   adjusts the point at which ARIMA is preferred over ETS.
 
    Example: generate combined scores with
 

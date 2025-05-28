@@ -34,6 +34,12 @@ def main(argv: list[str] | None = None) -> list[Path]:
         default=0.25,
         help="Threshold for low staff load. If 0<value<1, treated as quantile",
     )
+    parser.add_argument(
+        "--mape-threshold",
+        type=float,
+        default=0.25,
+        help="MAPE threshold for forecast model selection",
+    )
     args = parser.parse_args(argv)
 
     loader = ShiftDataLoader(args.csv)

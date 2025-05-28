@@ -117,6 +117,8 @@ JP = {
     "Temporary staff labor cost (¥/h)": "派遣 人件費 (¥/h)",
     "One-time hiring cost (¥/person)": "採用一時コスト (¥/人)",
     "Penalty for shortage (¥/h)": "不足ペナルティ (¥/h)",
+    "Forecast Parameters": "📈 予測パラメータ",
+    "MAPE threshold for model selection": "モデル選択 MAPE 閾値",
     "Upload Excel shift file (*.xlsx)": "Excel シフト表 (*.xlsx) をアップロード",
     "Select shift sheets to analyze (multiple)": "解析するシフトシート（複数可）",
     "Header start row (1-indexed)": "ヘッダー開始行 (1-indexed)",
@@ -307,6 +309,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.wage_temp_widget = 2200
     st.session_state.hiring_cost_once_widget = 180000
     st.session_state.penalty_per_lack_widget = 4000
+    st.session_state.mape_threshold_widget = 0.25
 
 
     # ★ 休暇分析用パラメータの初期化
@@ -469,6 +472,15 @@ with st.sidebar:
         st.number_input(_("One-time hiring cost (¥/person)"), 0, 1000000, key="hiring_cost_once_widget")
         st.number_input(_("Penalty for shortage (¥/h)"), 0, 20000, key="penalty_per_lack_widget")
 
+    with st.expander(_("Forecast Parameters")):
+        st.slider(
+            _("MAPE threshold for model selection"),
+            0.0,
+            1.0,
+            key="mape_threshold_widget",
+            help="この値を超える平均MAPEが直近で観測された場合、ARIMAを優先します。",
+        )
+
 # --- メインコンテンツエリア ---
 st.header("1. ファイルアップロードと設定")
 uploaded_files = st.file_uploader(
@@ -599,6 +611,7 @@ if run_button_clicked:
         param_wage_temp = st.session_state.wage_temp_widget
         param_hiring_cost = st.session_state.hiring_cost_once_widget
         param_penalty_lack = st.session_state.penalty_per_lack_widget
+        param_mape_threshold = st.session_state.mape_threshold_widget
         
         # ★ 休暇分析用パラメータの取得
         param_leave_target_types = st.session_state.leave_analysis_target_types_widget
@@ -840,6 +853,7 @@ if run_button_clicked:
                                         leave_csv=fc_leave if fc_leave.exists() else None,
                                         holidays=(holiday_dates_global_for_run or []) + (holiday_dates_local_for_run or []),
                                         log_csv=out_dir_exec / "forecast_history.csv",
+                                        mape_threshold=param_mape_threshold,
                                     )
                                 else:
                                     st.warning(_("Need forecast") + ": demand_series.csv の生成に失敗しました。")

@@ -188,6 +188,7 @@ def forecast_need(
     leave_csv: Path | None = None,
     holidays: Sequence[dt.date] | None = None,
     log_csv: Path | None = None,
+    mape_threshold: float = 0.25,
 ) -> Path:
     """需要系列 CSV → 1 か月先需要予測 Excel
 
@@ -210,6 +211,8 @@ def forecast_need(
     log_csv : Path | None, optional
         予測実行履歴を追記する CSV パス。未指定時 ``excel_out`` と同じディレクトリの
         ``forecast_history.csv`` を使用
+    mape_threshold : float, default 0.25
+        直近履歴の平均MAPEがこの値を超えた場合、ARIMAを優先
 
     Returns
     -------
@@ -232,10 +235,10 @@ def forecast_need(
         try:
             hist = pd.read_csv(log_csv)
             recent_mape = hist["mape"].tail(5).mean()
-            if choose == "auto" and recent_mape > 0.25:
+            if choose == "auto" and recent_mape > mape_threshold:
                 log.info("[forecast] recent MAPE high → prefer ARIMA")
                 choose = "arima"
-            if seasonal == "add" and recent_mape > 0.25:
+            if seasonal == "add" and recent_mape > mape_threshold:
                 seasonal = "mul"
         except Exception as e:
             log.warning(f"[forecast] history read failed: {e}")
