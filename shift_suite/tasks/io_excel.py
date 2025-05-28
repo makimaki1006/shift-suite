@@ -69,21 +69,27 @@ def _to_hhmm(v: Any) -> str | None:
     logger.debug(f"HH:MM形式への変換失敗: '{v}'")
     return None
 
-def _expand(st: str | None, ed: str | None) -> list[str]:
-    # (v2.7.1案のロジックを流用)
-    if not st or not ed: return []
+def _expand(st: str | None, ed: str | None, slot_minutes: int = SLOT_MINUTES) -> list[str]:
+    """Expand start and end time into time slots spaced by ``slot_minutes``."""
+    if not st or not ed:
+        return []
     try:
         s_time = dt.datetime.strptime(st, "%H:%M")
         e_time = dt.datetime.strptime(ed, "%H:%M")
-    except (ValueError, TypeError): return []
-    if e_time <= s_time: e_time += dt.timedelta(days=1)
+    except (ValueError, TypeError):
+        return []
+    if e_time <= s_time:
+        e_time += dt.timedelta(days=1)
     slots: list[str] = []
     current_time = s_time
-    max_slots = (24 * 60) // SLOT_MINUTES + 1
-    while current_time < e_time and len(slots) < max_slots :
+    max_slots = (24 * 60) // slot_minutes + 1
+    while current_time < e_time and len(slots) < max_slots:
         slots.append(current_time.strftime("%H:%M"))
-        current_time += dt.timedelta(minutes=SLOT_MINUTES)
-    if len(slots) >= max_slots: logger.warning(f"勤務コード {st}-{ed} のスロット展開が24時間を超えるため制限しました。")
+        current_time += dt.timedelta(minutes=slot_minutes)
+    if len(slots) >= max_slots:
+        logger.warning(
+            f"勤務コード {st}-{ed} のスロット展開が24時間を超えるため制限しました。"
+        )
     return slots
 
 def _determine_holiday_type(remarks_str: str) -> str:
@@ -94,8 +100,9 @@ def _determine_holiday_type(remarks_str: str) -> str:
             if keyword in remarks_str: return holiday_name
     return DEFAULT_HOLIDAY_TYPE
 
-def load_shift_patterns(xlsx: Path, sheet_name: str = "勤務区分"
-                       ) -> Tuple[pd.DataFrame, Dict[str, List[str]]]:
+def load_shift_patterns(
+    xlsx: Path, sheet_name: str = "勤務区分", slot_minutes: int = SLOT_MINUTES
+) -> Tuple[pd.DataFrame, Dict[str, List[str]]]:
     # (v2.7.1案のロジックを流用)
     try:
         raw = pd.read_excel(xlsx, sheet_name=sheet_name, dtype=str).fillna("")
@@ -118,7 +125,8 @@ def load_shift_patterns(xlsx: Path, sheet_name: str = "勤務区分"
         ed_original = r.get("end", "")
         st_hm, ed_hm = _to_hhmm(st_original), _to_hhmm(ed_original)
         slots = []
-        if st_hm and ed_hm : slots = _expand(st_hm, ed_hm)
+        if st_hm and ed_hm:
+            slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
         elif st_hm or ed_hm: logger.warning(f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')")
         remarks_val = r.get("remarks", "")
         holiday_type = _determine_holiday_type(str(remarks_val))
@@ -131,9 +139,14 @@ def load_shift_patterns(xlsx: Path, sheet_name: str = "勤務区分"
     logger.info(f"勤務区分シート '{sheet_name}' から {len(code2slots)} 件の勤務パターンを読み込みました。")
     return pd.DataFrame(wt_rows), code2slots
 
-def ingest_excel(excel_path: Path, *, shift_sheets: List[str], header_row: int = 2
-                ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    wt_df, code2slots = load_shift_patterns(excel_path)
+def ingest_excel(
+    excel_path: Path,
+    *,
+    shift_sheets: List[str],
+    header_row: int = 2,
+    slot_minutes: int = SLOT_MINUTES,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    wt_df, code2slots = load_shift_patterns(excel_path, slot_minutes=slot_minutes)
     if wt_df.empty:
         logger.error("勤務区分情報 (wt_df) が空です。処理を続行できません。")
         raise ValueError("勤務区分情報が読み込めませんでした。")
@@ -281,7 +294,7 @@ def ingest_excel(excel_path: Path, *, shift_sheets: List[str], header_row: int =
     
     return final_long_df, wt_df
 
-# (CLI部分は変更なし)
+# --- CLI use -----------------------------------------------------------------
 if __name__ == "__main__":
     import argparse, sys
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s')
@@ -289,10 +302,15 @@ if __name__ == "__main__":
     p.add_argument("xlsx", help="Excel シフト原本 (.xlsx)")
     p.add_argument("--sheets", nargs="+", required=True, help="対象シート名 (「勤務区分」シート以外)")
     p.add_argument("--header", type=int, default=2, help="ヘッダー開始行 (1-indexed)")
+    p.add_argument("--slot", type=int, default=SLOT_MINUTES, help="スロット長 (分)")
     a = p.parse_args()
     try:
-        logger.info(f"Excelファイル: {a.xlsx}, 対象シート: {a.sheets}, ヘッダー行: {a.header}")
-        ld, wt = ingest_excel(Path(a.xlsx), shift_sheets=a.sheets, header_row=a.header)
+        logger.info(
+            f"Excelファイル: {a.xlsx}, 対象シート: {a.sheets}, ヘッダー行: {a.header}, スロット: {a.slot}"
+        )
+        ld, wt = ingest_excel(
+            Path(a.xlsx), shift_sheets=a.sheets, header_row=a.header, slot_minutes=a.slot
+        )
         logger.info("正常に処理が完了しました。")
         if not ld.empty:
             print("--- long_df (最初の5行) ---"); print(ld.head())
