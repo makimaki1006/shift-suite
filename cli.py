@@ -65,6 +65,7 @@ def main():
         excel,
         shift_sheets=shift_sheets,
         header_row=args.header,
+        slot_minutes=args.slot,
     )
 
     ref_start = pd.to_datetime(long["ds"]).dt.date.min()
