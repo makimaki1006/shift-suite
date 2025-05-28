@@ -67,7 +67,9 @@ The GUI caches the uploaded workbook using `load_excelfile_cached()` with
    Follow the on-screen instructions to upload your shift spreadsheet and
    execute the desired analyses. Separate upload fields are provided for
    global and local holiday calendars if you wish to factor them into the
-   shortage analysis and forecasts.
+   shortage analysis and forecasts. Use the **Forecast days** field in the
+   sidebar to specify how many days ahead the Need forecast module should
+   predict (default: 30).
 
 3. To use the CLI, run:
 
