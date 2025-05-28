@@ -189,6 +189,7 @@ JP = {
     "Click button to generate report.": "ボタンをクリックすると、主要な分析結果を含むPowerPointレポートが生成されます（現在はβ版です）。",
     "Holiday file parse error": "休日ファイルの解析エラー",
     "Need forecast": "需要予測",
+    "Forecast days": "予測日数",
     "RL Roster": "強化学習シフト",
     "Estimated Cost Impact (Million ¥)": "想定コスト影響額 (百万円)",
     "zmax mode": "zmax モード",
@@ -307,6 +308,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.wage_temp_widget = 2200
     st.session_state.hiring_cost_once_widget = 180000
     st.session_state.penalty_per_lack_widget = 4000
+    st.session_state.forecast_period_widget = 30
 
 
     # ★ 休暇分析用パラメータの初期化
@@ -469,6 +471,11 @@ with st.sidebar:
         st.number_input(_("One-time hiring cost (¥/person)"), 0, 1000000, key="hiring_cost_once_widget")
         st.number_input(_("Penalty for shortage (¥/h)"), 0, 20000, key="penalty_per_lack_widget")
 
+    st.number_input(
+        _("Forecast days"), 1, 365, key="forecast_period_widget",
+        help="Need forecast モジュールで先読みする日数"
+    )
+
 # --- メインコンテンツエリア ---
 st.header("1. ファイルアップロードと設定")
 uploaded_files = st.file_uploader(
@@ -599,6 +606,7 @@ if run_button_clicked:
         param_wage_temp = st.session_state.wage_temp_widget
         param_hiring_cost = st.session_state.hiring_cost_once_widget
         param_penalty_lack = st.session_state.penalty_per_lack_widget
+        param_forecast_period = st.session_state.forecast_period_widget
         
         # ★ 休暇分析用パラメータの取得
         param_leave_target_types = st.session_state.leave_analysis_target_types_widget
@@ -836,7 +844,7 @@ if run_button_clicked:
                                     forecast_need(
                                         demand_csv_exec_run_fc,
                                         forecast_xls_exec_run_fc,
-                                        periods=30,
+                                        periods=param_forecast_period,
                                         leave_csv=fc_leave if fc_leave.exists() else None,
                                         holidays=(holiday_dates_global_for_run or []) + (holiday_dates_local_for_run or []),
                                         log_csv=out_dir_exec / "forecast_history.csv",
