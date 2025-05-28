@@ -1371,17 +1371,24 @@ def display_forecast_tab(tab_container, data_dir):
                     parse_dates=["ds"],
                     file_mtime=_file_mtime(fp_fc),
                 )
-                fig = go.Figure()
-                if "ds" in df_fc and "yhat" in df_fc:
-                    fig.add_trace(go.Scatter(x=df_fc["ds"], y=df_fc["yhat"], mode='lines+markers', name=_("Demand Forecast (yhat)")))
-                fp_demand = data_dir / "demand_series.csv"
-                if fp_demand.exists():
-                    df_actual = pd.read_csv(fp_demand, parse_dates=["ds"])
-                    if "ds" in df_actual and "y" in df_actual:
-                         fig.add_trace(go.Scatter(x=df_actual["ds"], y=df_actual["y"], mode='lines', name=_("Actual (y)"), line=dict(dash='dash')))
-                fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
-                st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
-                with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
+                if not _valid_df(df_fc):
+                    st.info(_("Forecast data not available or empty"))
+                    return
+                
+                try:
+                    fig = go.Figure()
+                    if "ds" in df_fc and "yhat" in df_fc:
+                        fig.add_trace(go.Scatter(x=df_fc["ds"], y=df_fc["yhat"], mode='lines+markers', name=_("Demand Forecast (yhat)")))
+                    fp_demand = data_dir / "demand_series.csv"
+                    if fp_demand.exists():
+                        df_actual = pd.read_csv(fp_demand, parse_dates=["ds"])
+                        if _valid_df(df_actual) and "ds" in df_actual and "y" in df_actual:
+                            fig.add_trace(go.Scatter(x=df_actual["ds"], y=df_actual["y"], mode='lines', name=_("Actual (y)"), line=dict(dash='dash')))
+                    fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
+                    st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
+                    with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
+                except AttributeError:
+                    st.error(_("Invalid data format in forecast.xlsx"))
             except Exception as e: st.error(f"forecast.xlsx 表示エラー: {e}")
         else: st.info(_("Forecast") + " (forecast.xlsx) " + _("が見つかりません。"))
 
