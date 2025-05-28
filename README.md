@@ -23,9 +23,11 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
   summary spreadsheets.
 - **`build_stats`** – Aggregates KPIs and produces overall and monthly
   statistics.
-- **`forecast`** – Builds demand series and forecasts future staffing needs via
-  time‑series models. Each run appends the selected model and MAPE to
-  `forecast_history.csv` and holiday dates can be passed as exogenous inputs.
+ - **`forecast`** – Builds demand series and forecasts future staffing needs via
+   time‑series models. Each run appends the selected model and MAPE to
+   `forecast_history.csv` and holiday dates can be passed as exogenous inputs.
+   If the average MAPE of the last few runs exceeds 0.25, the function
+   automatically switches to an ARIMA model and uses multiplicative seasonality.
 - **`fairness`** – Evaluates fairness in shift allocation across staff members.
 - **`rl`** – Experimental reinforcement‑learning module for generating
   optimised rosters.
