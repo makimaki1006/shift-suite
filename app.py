@@ -89,6 +89,12 @@ if not log.handlers:
         tasks_log.addHandler(handler)
         tasks_log.setLevel(logging.DEBUG)
 
+# ── Utility: log error to terminal and show in Streamlit ──
+def log_and_display_error(msg: str, exc: Exception) -> None:
+    """Log an error and also show it in the Streamlit interface."""
+    log.error(f"{msg}: {exc}", exc_info=True)
+    st.error(f"{msg}: {exc}")
+
 # ── 日本語ラベル辞書 & _() ───────────────────────────────────────────────────
 JP = {
     "Overview": "概要", "Heatmap": "ヒートマップ", "Shortage": "不足分析",
@@ -538,9 +544,9 @@ if uploaded_files:
                         st.warning(_("No analysis target sheets found"))
                     st.session_state._force_update_multiselect_flag = True
                 except Exception as e_get_sheet:
-                    st.error(_("Error getting sheet names from Excel") + f": {e_get_sheet}")
+                    log_and_display_error(_("Error getting sheet names from Excel"), e_get_sheet)
             except Exception as e_save_file_process:
-                st.error(_("Error saving Excel file") + f": {e_save_file_process}")
+                log_and_display_error(_("Error saving Excel file"), e_save_file_process)
 
 # 「解析実行」ボタン
 run_button_disabled_status = not st.session_state.uploaded_files_info or \
@@ -584,7 +590,7 @@ if run_button_clicked:
 
         excel_path_to_use = Path(file_info["path"])
         if st.session_state.work_root_path_str is None or not excel_path_to_use.exists():
-            st.error("Excelファイルが正しくアップロードされていません。ファイルを再アップロードしてください。")
+            log_and_display_error("Excelファイルが正しくアップロードされていません。ファイルを再アップロードしてください。", FileNotFoundError(excel_path_to_use))
             st.stop()
 
         work_root_exec = excel_path_to_use.parent
@@ -781,8 +787,7 @@ if run_button_clicked:
                     else:
                         st.warning(f"{_('Leave Analysis')}: 前提となる long_df が存在しないか空のため、処理をスキップしました。")
                 except Exception as e_leave:
-                    st.error(f"{_('Leave Analysis')} の処理中にエラーが発生しました: {e_leave}")
-                    log.error(f"休暇分析エラー: {e_leave}", exc_info=True)
+                    log_and_display_error(f"{_('Leave Analysis')} の処理中にエラーが発生しました", e_leave)
             # ★----- 休暇分析モジュールの実行ここまで -----★
     
             # 他の追加モジュールの実行
@@ -901,10 +906,10 @@ if run_button_clicked:
                             analyze_cost_benefit(out_dir_exec, param_wage_direct, param_wage_temp, param_hiring_cost, param_penalty_lack)
                         st.success(f"✅ {_(opt_module_name_exec_run)} 完了")
                     except FileNotFoundError as fe_opt_exec_run_loop:
-                        st.error(f"{_(opt_module_name_exec_run)} の処理中にエラー (ファイル未検出): {fe_opt_exec_run_loop}")
+                        log_and_display_error(f"{_(opt_module_name_exec_run)} の処理中にエラー (ファイル未検出)", fe_opt_exec_run_loop)
                         log.error(f"{opt_module_name_exec_run} 処理エラー (FileNotFoundError): {fe_opt_exec_run_loop}", exc_info=True)
                     except Exception as e_opt_exec_run_loop:
-                        st.error(f"{_(opt_module_name_exec_run)} の処理中にエラーが発生しました: {e_opt_exec_run_loop}")
+                        log_and_display_error(f"{_(opt_module_name_exec_run)} の処理中にエラーが発生しました", e_opt_exec_run_loop)
                         log.error(f"{opt_module_name_exec_run} 処理エラー: {e_opt_exec_run_loop}", exc_info=True)
     
             progress_bar_val.progress(100)
@@ -913,15 +918,15 @@ if run_button_clicked:
             st.success(_("All processes complete!"))
             st.session_state.analysis_done = True
         except ValueError as ve_exec_run_main:
-            st.error(_("Error during analysis (ValueError)") + f": {ve_exec_run_main}")
+            log_and_display_error(_("Error during analysis (ValueError)"), ve_exec_run_main)
             log.error(f"解析エラー (ValueError): {ve_exec_run_main}", exc_info=True)
             st.session_state.analysis_done = False
         except FileNotFoundError as fe_exec_run_main:
-            st.error(_("Required file not found") + f": {fe_exec_run_main}")
+            log_and_display_error(_("Required file not found"), fe_exec_run_main)
             log.error(f"ファイル未検出エラー: {fe_exec_run_main}", exc_info=True)
             st.session_state.analysis_done = False
         except Exception as e_exec_run_main:
-            st.error(_("Unexpected error occurred") + f": {e_exec_run_main}")
+            log_and_display_error(_("Unexpected error occurred"), e_exec_run_main)
             log.error(f"予期せぬエラー: {e_exec_run_main}", exc_info=True)
             st.session_state.analysis_done = False
         finally:
@@ -942,7 +947,7 @@ if run_button_clicked:
                 else: # ZIP Download
                     zip_base_name_exec_main_run = f"ShiftSuite_Analysis_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
                     if st.session_state.work_root_path_str is None:
-                        st.error("一時作業ディレクトリが見つかりません。ZIPファイルの作成に失敗しました。")
+                        log_and_display_error("一時作業ディレクトリが見つかりません。ZIPファイルの作成に失敗しました。", FileNotFoundError("work_root"))
                     else:
                         work_root_for_zip_dl_exec_main_run = Path(st.session_state.work_root_path_str)
                         zip_path_obj_to_download_exec_main_run = work_root_for_zip_dl_exec_main_run / f"{zip_base_name_exec_main_run}.zip"
@@ -956,7 +961,7 @@ if run_button_clicked:
                                                    file_name=f"{zip_base_name_exec_main_run}.zip", mime="application/zip", use_container_width=True)
                             log.info(f"ZIPファイルを作成し、ダウンロードボタンを表示しました: {zip_path_obj_to_download_exec_main_run}")
                         except Exception as e_zip_final_exec_run_main_ex_v3:
-                            st.error(_("Error creating ZIP file") + f": {e_zip_final_exec_run_main_ex_v3}")
+                            log_and_display_error(_("Error creating ZIP file"), e_zip_final_exec_run_main_ex_v3)
                             log.error(f"ZIP作成エラー (最終段階): {e_zip_final_exec_run_main_ex_v3}", exc_info=True)
         else:
             log.warning(f"解析は完了しましたが、出力ディレクトリ '{out_dir_to_save_exec_main_run}' が見つかりません。")
@@ -1066,7 +1071,8 @@ def display_heatmap_tab(tab_container, data_dir):
                         st.warning("Ratio表示に必要な'staff'列、'need'列、または日付データが見つかりません。")
                         fig = go.Figure()
                 st.plotly_chart(fig, use_container_width=True, key="heatmap_chart")
-            except Exception as e: st.error(f"ヒートマップ表示エラー: {e}")
+            except Exception as e:
+                log_and_display_error("ヒートマップ表示エラー", e)
         else: st.info(_("Heatmap") + " (heat_ALL.xlsx) " + _("が見つかりません。"))
 
 def display_shortage_tab(tab_container, data_dir):
@@ -1131,7 +1137,7 @@ def display_shortage_tab(tab_container, data_dir):
                             )
                             st.plotly_chart(fig_hire, use_container_width=True, key="short_hire_chart")
                     except Exception as e:
-                        st.error(f"hire_plan.xlsx 表示エラー: {e}")
+                        log_and_display_error("hire_plan.xlsx 表示エラー", e)
 
                 if "role_monthly" in xls.sheet_names:
                     df_month = xls.parse("role_monthly")
@@ -1156,7 +1162,7 @@ def display_shortage_tab(tab_container, data_dir):
                         with st.expander(_("Monthly shortage data")):
                             st.dataframe(df_month, use_container_width=True, hide_index=True)
             except Exception as e:
-                st.error(f"shortage_role.xlsx 表示エラー: {e}")
+                log_and_display_error("shortage_role.xlsx 表示エラー", e)
         else:
             st.info(_("Shortage") + " (shortage_role.xlsx) " + _("が見つかりません。"))
         st.markdown("---")
@@ -1190,7 +1196,8 @@ def display_shortage_tab(tab_container, data_dir):
                         st.plotly_chart(fig_time, use_container_width=True, key="short_time_chart")
                 else: st.info(_("No date columns in shortage data."))
                 with st.expander(_("Display all time-slot shortage data")): st.dataframe(df_s_time, use_container_width=True)
-            except Exception as e: st.error(f"shortage_time.xlsx 表示エラー: {e}")
+            except Exception as e:
+                log_and_display_error("shortage_time.xlsx 表示エラー", e)
         else: st.info(_("Shortage") + " (shortage_time.xlsx) " + _("が見つかりません。"))
 
         fp_s_ratio = data_dir / "shortage_ratio.xlsx"
@@ -1223,7 +1230,7 @@ def display_shortage_tab(tab_container, data_dir):
                 with st.expander(_("Display all ratio data")):
                     st.dataframe(df_ratio, use_container_width=True)
             except Exception as e:
-                st.error(f"shortage_ratio.xlsx 表示エラー: {e}")
+                log_and_display_error("shortage_ratio.xlsx 表示エラー", e)
         else:
             st.info(_("Shortage") + " (shortage_ratio.xlsx) " + _("が見つかりません。"))
 
@@ -1254,7 +1261,7 @@ def display_shortage_tab(tab_container, data_dir):
                 with st.expander(_("Data")):
                     st.dataframe(df_freq, use_container_width=True)
             except Exception as e:
-                st.error(f"shortage_freq.xlsx 表示エラー: {e}")
+                log_and_display_error("shortage_freq.xlsx 表示エラー", e)
         else:
             st.info(_("Shortage") + " (shortage_freq.xlsx) " + _("が見つかりません。"))
 
@@ -1279,7 +1286,7 @@ def display_shortage_tab(tab_container, data_dir):
                 })
                 st.dataframe(display_sl, use_container_width=True, hide_index=True)
             except Exception as e:
-                st.error(f"shortage_leave.xlsx 表示エラー: {e}")
+                log_and_display_error("shortage_leave.xlsx 表示エラー", e)
         else:
             st.info(_("Shortage") + " (shortage_leave.xlsx) " + _("が見つかりません。"))
 
@@ -1307,7 +1314,7 @@ def display_shortage_tab(tab_container, data_dir):
                     st.plotly_chart(fig_cost, use_container_width=True, key="short_cost_chart")
                 st.dataframe(df_cost, use_container_width=True)
             except Exception as e:
-                st.error(f"cost_benefit.xlsx 表示エラー: {e}")
+                log_and_display_error("cost_benefit.xlsx 表示エラー", e)
 
         fp_stats = data_dir / "stats.xlsx"
         if fp_stats.exists():
@@ -1326,7 +1333,7 @@ def display_shortage_tab(tab_container, data_dir):
                         st.subheader(_("Alerts"))
                         st.dataframe(df_alerts, use_container_width=True, hide_index=True)
             except Exception as e:
-                st.error(f"stats.xlsx alerts表示エラー: {e}")
+                log_and_display_error("stats.xlsx alerts表示エラー", e)
         
 def display_fatigue_tab(tab_container, data_dir):
     with tab_container:
@@ -1355,9 +1362,10 @@ def display_fatigue_tab(tab_container, data_dir):
                             color_discrete_sequence=["#FF8C00"],
                         )
                         st.plotly_chart(fig_fatigue, use_container_width=True, key="fatigue_chart")
-                except AttributeError:
-                    st.error(_("Invalid data format in fatigue_score.xlsx"))
-            except Exception as e: st.error(f"fatigue_score.xlsx 表示エラー: {e}")
+                except AttributeError as e:
+                    log_and_display_error("Invalid data format in fatigue_score.xlsx", e)
+            except Exception as e:
+                log_and_display_error("fatigue_score.xlsx 表示エラー", e)
         else: st.info(_("Fatigue") + " (fatigue_score.xlsx) " + _("が見つかりません。"))
 
 def display_forecast_tab(tab_container, data_dir):
@@ -1388,9 +1396,10 @@ def display_forecast_tab(tab_container, data_dir):
                     fig.update_layout(title=_("Demand Forecast vs Actual"), xaxis_title=_("Date"), yaxis_title=_("Demand"))
                     st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
                     with st.expander(_("Display forecast data")): st.dataframe(df_fc, use_container_width=True, hide_index=True)
-                except AttributeError:
-                    st.error(_("Invalid data format in forecast.xlsx"))
-            except Exception as e: st.error(f"forecast.xlsx 表示エラー: {e}")
+                except AttributeError as e:
+                    log_and_display_error("Invalid data format in forecast.xlsx", e)
+            except Exception as e:
+                log_and_display_error("forecast.xlsx 表示エラー", e)
         else: st.info(_("Forecast") + " (forecast.xlsx) " + _("が見つかりません。"))
 
 def display_fairness_tab(tab_container, data_dir):
@@ -1420,9 +1429,10 @@ def display_fairness_tab(tab_container, data_dir):
                             color_discrete_sequence=["#FF8C00"],
                         )
                         st.plotly_chart(fig_fair, use_container_width=True, key="fairness_chart")
-                except AttributeError:
-                    st.error(_("Invalid data format in fairness_after.xlsx"))
-            except Exception as e: st.error(f"fairness_after.xlsx 表示エラー: {e}")
+                except AttributeError as e:
+                    log_and_display_error("Invalid data format in fairness_after.xlsx", e)
+            except Exception as e:
+                log_and_display_error("fairness_after.xlsx 表示エラー", e)
         else: st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
 def display_costsim_tab(tab_container, data_dir):
@@ -1451,9 +1461,10 @@ def display_costsim_tab(tab_container, data_dir):
                         )
                         st.plotly_chart(fig_cost, use_container_width=True, key="costsim_chart")
                     st.dataframe(df, use_container_width=True)
-                except AttributeError:
-                    st.error(_("Invalid data format in cost_benefit.xlsx"))
-            except Exception as e: st.error(f"cost_benefit.xlsx 表示エラー: {e}")
+                except AttributeError as e:
+                    log_and_display_error("Invalid data format in cost_benefit.xlsx", e)
+            except Exception as e:
+                log_and_display_error("cost_benefit.xlsx 表示エラー", e)
         else: st.info(_("Cost Simulation") + " (cost_benefit.xlsx) " + _("が見つかりません。"))
 
 def display_hireplan_tab(tab_container, data_dir):
@@ -1486,9 +1497,10 @@ def display_hireplan_tab(tab_container, data_dir):
                             labels={"role": _("Role"), "hire_fte": _("hire_fte")},
                         )
                         st.plotly_chart(fig_plan, use_container_width=True, key="hireplan_chart")
-                except AttributeError:
-                    st.error(_("Invalid data format in hire_plan.xlsx"))
-            except Exception as e: st.error(f"hire_plan.xlsx 表示エラー: {e}")
+                except AttributeError as e:
+                    log_and_display_error("Invalid data format in hire_plan.xlsx", e)
+            except Exception as e:
+                log_and_display_error("hire_plan.xlsx 表示エラー", e)
         else: st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
 def display_leave_analysis_tab(tab_container, data_dir):
@@ -1535,10 +1547,10 @@ def display_leave_analysis_tab(tab_container, data_dir):
                     impact_df = leave_results["leave_impact"]
                     st.subheader(_("Leave Impact Analysis"))
                     st.dataframe(impact_df, use_container_width=True)
-            except AttributeError:
-                st.error(_("Invalid data format in leave analysis results"))
+            except AttributeError as e:
+                log_and_display_error("Invalid data format in leave analysis results", e)
         except Exception as e:
-            st.error(f"shortage_leave.xlsx 表示エラー: {e}")
+            log_and_display_error("shortage_leave.xlsx 表示エラー", e)
 
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
     with tab_container:
@@ -1560,10 +1572,10 @@ def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
                     )
                 Path(ppt_path).unlink(missing_ok=True)
                 st.success(_("PowerPoint report ready."))
-            except ImportError:
-                st.error(_("python-pptx library required for PPT"))
+            except ImportError as e:
+                log_and_display_error("python-pptx library required for PPT", e)
             except Exception as e_ppt_dash:
-                st.error(_("Error generating PowerPoint report") + f": {e_ppt_dash}")
+                log_and_display_error(_("Error generating PowerPoint report"), e_ppt_dash)
         else:
             st.markdown(_("Click button to generate report."))
 # Multi-file results display
@@ -1632,13 +1644,13 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
                 found_heat_all = list(current_dash_tmp_dir.rglob("heat_ALL.xlsx"))
                 if found_heat_all: 
                     extracted_data_dir = found_heat_all[0].parent
-                else: 
-                    st.error(_("heat_ALL.xlsx not found in ZIP"))
+                else:
+                    log_and_display_error(_("heat_ALL.xlsx not found in ZIP"), FileNotFoundError("heat_ALL.xlsx"))
                     log.error(f"ZIP展開後、heat_ALL.xlsx が見つかりません in {current_dash_tmp_dir}")
                     st.stop()
         log.info(f"ダッシュボード表示用のデータディレクトリ: {extracted_data_dir}")
     except Exception as e_zip:
-        st.error(_("Error during ZIP file extraction") + f": {e_zip}")
+        log_and_display_error(_("Error during ZIP file extraction"), e_zip)
         log.error(f"ZIP展開中エラー: {e_zip}", exc_info=True)
         st.stop()
 
