@@ -162,6 +162,7 @@ JP = {
     "Failed to extract ZIP file.": "ZIPファイルの展開に失敗しました。",
     "Uploaded file is not a valid ZIP file.": "アップロードされたファイルは有効なZIPファイルではありません。",
     "Error during ZIP file extraction": "ZIPファイルの展開中にエラーが発生しました",
+    "Invalid path in ZIP file.": "ZIPファイルに不正なパスが含まれていました。",
     "Display Mode": "表示モード", "Raw Count": "人数", "Ratio (staff ÷ need)": "Ratio (staff ÷ need)",
     "Color Scale Max (zmax)": "カラースケール上限 (zmax)",
     "Shortage by Role (hours)": "職種別不足時間 (h)",
@@ -1615,7 +1616,14 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
     extracted_data_dir: Optional[Path] = None
     try:
         with zipfile.ZipFile(io.BytesIO(zip_file_uploaded_dash_final_v3_display_main_dash.read())) as zf:
-            zf.extractall(current_dash_tmp_dir)
+            base_resolved = current_dash_tmp_dir.resolve()
+            for file_name in zf.namelist():
+                dest_path = (current_dash_tmp_dir / file_name).resolve()
+                if not dest_path.is_relative_to(base_resolved):
+                    st.error(_("Invalid path in ZIP file."))
+                    log.warning(f"ZIP展開中に不正なパスを検出: {file_name}")
+                    st.stop()
+                zf.extract(file_name, current_dash_tmp_dir)
             if (current_dash_tmp_dir / "out").exists() and (current_dash_tmp_dir / "out" / "heat_ALL.xlsx").exists():
                 extracted_data_dir = current_dash_tmp_dir / "out"
             elif (current_dash_tmp_dir / "heat_ALL.xlsx").exists():
