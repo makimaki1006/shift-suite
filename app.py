@@ -1680,17 +1680,25 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 else:
                     st.plotly_chart(fig_conc, use_container_width=True, key="leave_conc_chart")
 
-                fig_ratio = px.line(
-                    conc_df,
-                    x="date",
-                    y="leave_ratio",
-                    markers=True,
-                    labels={
-                        "date": _("Date"),
-                        "leave_ratio": _("Leave ratio"),
-                    },
-                )
-                st.plotly_chart(fig_ratio, use_container_width=True, key="leave_ratio_chart")
+                if "leave_ratio" not in conc_df.columns:
+                    sb = results_dict.get("staff_balance_daily")
+                    if isinstance(sb, pd.DataFrame) and {"date", "leave_ratio"}.issubset(sb.columns):
+                        conc_df = conc_df.merge(sb[["date", "leave_ratio"]], on="date", how="left")
+
+                if "leave_ratio" in conc_df.columns:
+                    fig_ratio = px.line(
+                        conc_df,
+                        x="date",
+                        y="leave_ratio",
+                        markers=True,
+                        labels={
+                            "date": _("Date"),
+                            "leave_ratio": _("Leave ratio"),
+                        },
+                    )
+                    st.plotly_chart(fig_ratio, use_container_width=True, key="leave_ratio_chart")
+                else:
+                    st.info(_("Leave ratio not available."))
 
                 if "selected_leave_dates" not in st.session_state:
                     st.session_state.selected_leave_dates = set()
