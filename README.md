@@ -167,13 +167,13 @@ chosen range. Use the **選択をクリア** button to reset the selection.
 
 After `shortage_role.xlsx` is generated, the application automatically runs
 `h2hire.build_hire_plan` to convert shortage hours into required FTE counts.
-The *Safety factor* slider is also applied here (default `1.0`). The resulting `hire_plan.xlsx` is stored in the same output folder and
+The *Safety factor* slider is also applied here (default `0.0`). The resulting `hire_plan.xlsx` is stored in the same output folder and
 the **Shortage** tab displays these FTE numbers per role.
 
 If you select the optional **Hire plan** module, the application instead calls
 `tasks.hire_plan.build_hire_plan`. This function honours the current value of
 the *Safety factor* slider found under **Cost & Hire Parameters** (range
-`0.00–2.00`, default `1.10`).
+`0.00–2.00`, default `0.0`).
 
 The CLI additionally runs a cost/benefit simulation once the hire plan has
 been created. `analyze_cost_benefit(out_dir)` writes `cost_benefit.xlsx`
@@ -185,7 +185,7 @@ parameters:
 - `hiring_cost_once` – one‑time cost per hire (default `180000`)
 - `penalty_per_lack_h` – penalty per uncovered hour (default `4000`)
 - `safety_factor` – multiplier applied when running
-`tasks.hire_plan.build_hire_plan` (default `1.10`). This same value is passed to
+`tasks.hire_plan.build_hire_plan` (default `0.0`). This same value is passed to
 `h2hire.build_hire_plan` when shortage results are converted automatically.
   The value can also be set via the `--safety-factor` CLI option.
 

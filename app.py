@@ -312,7 +312,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.save_mode_selectbox_widget = _("ZIP Download")
 
     st.session_state.std_work_hours_widget = 160
-    st.session_state.safety_factor_widget = 1.10
+    st.session_state.safety_factor_widget = 0.0
     st.session_state.target_coverage_widget = 0.95
     st.session_state.wage_direct_widget = 1500
     st.session_state.wage_temp_widget = 2200
