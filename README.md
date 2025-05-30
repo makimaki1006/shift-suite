@@ -194,3 +194,15 @@ If a `leave_analysis.csv` is also present in the output folder you can call
 combines the per-slot shortage counts with daily leave applicants and adds a
 `net_shortage` column. The Streamlit dashboard automatically visualises this
 table under the **Shortage** tab.
+
+### Uploading ZIP archives
+
+You can inspect past results without rerunning the analyses by uploading a
+compressed ``out`` folder. Use the **Dashboard (Upload ZIP)** section of the GUI
+to drop a ZIP file containing the results. The archive must include at least
+``heat_ALL.xlsx`` and ``leave_analysis.csv`` so the **Leave Analysis** tab can
+render correctly. If ``staff_balance_daily.csv`` or
+``concentration_requested.csv`` are also present they will be loaded directly.
+When these extra files are missing the application reconstructs the
+``staff_balance_daily`` and ``concentration_requested`` tables from
+``leave_analysis.csv`` and ``heat_ALL.xlsx``.
