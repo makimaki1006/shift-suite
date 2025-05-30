@@ -89,11 +89,24 @@ def get_daily_leave_counts(
 
 
 def summarize_leave_by_day_count(
-    daily_leave_df: pd.DataFrame, # get_daily_leave_counts の出力
-    period: Literal['dayofweek', 'month', 'month_period', 'date'] = 'dayofweek',
+    daily_leave_df: pd.DataFrame,  # get_daily_leave_counts の出力
+    period: Literal["dayofweek", "month", "month_period", "date"] = "dayofweek",
 ) -> pd.DataFrame:
-    """
-    日別休暇取得フラグデータを基に、指定された期間ごとの休暇取得「総日数（総回数）」を集計する。
+    """指定した期間単位で休暇取得日数を集計する。
+
+    Parameters
+    ----------
+    daily_leave_df:
+        :func:`get_daily_leave_counts` の出力データフレーム。
+    period:
+        集計単位を ``"dayofweek"``、 ``"month"``、 ``"month_period"``、
+        ``"date"`` から選ぶ。 ``"date"`` を指定した場合は ``date`` 列が返る。
+
+    Returns
+    -------
+    pandas.DataFrame
+        ``period_unit`` (または ``date``)、 ``leave_type``、 ``total_leave_days``、
+        ``num_days_in_period_unit``、 ``avg_leave_days_per_day`` の各列を含む。
     """
     if daily_leave_df.empty or 'leave_day_flag' not in daily_leave_df.columns:
         logger.warning("入力されたdaily_leave_dfが空またはleave_day_flag列がありません。")
@@ -128,7 +141,27 @@ def summarize_leave_by_day_count(
         logger.error(f"未対応の集計期間: {period}")
         return pd.DataFrame()
 
-    summary = df_to_agg.groupby(['period_unit', 'leave_type'], observed=False)['leave_day_flag'].sum().reset_index(name='total_leave_days')
+    summary = (
+        df_to_agg.groupby(["period_unit", "leave_type"], observed=False)[
+            "leave_day_flag"
+        ]
+        .sum()
+        .reset_index(name="total_leave_days")
+    )
+
+    # 各 period_unit 内の日付数を数える
+    unique_dates = (
+        df_to_agg[["period_unit", "date"]]
+        .drop_duplicates()
+        .groupby("period_unit")
+        .size()
+        .reset_index(name="num_days_in_period_unit")
+    )
+
+    summary = summary.merge(unique_dates, on="period_unit", how="left")
+    summary["avg_leave_days_per_day"] = (
+        summary["total_leave_days"] / summary["num_days_in_period_unit"]
+    )
     
     if period == 'date': # 日別の場合、日付でソート
         summary = summary.sort_values(by=['period_unit', 'leave_type']).reset_index(drop=True)
