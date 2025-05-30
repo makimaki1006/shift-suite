@@ -211,6 +211,60 @@ def analyze_leave_concentration(
     return concentration_df[['date', 'leave_applicants_count', 'is_concentrated', 'staff_names']].sort_values(by='date').reset_index(drop=True)
 
 
+def analyze_both_leave_concentration(
+    daily_leave_counts_df: pd.DataFrame,
+    concentration_threshold: int = 3,
+) -> pd.DataFrame:
+    """Evaluate days where both requested and paid leave counts exceed the threshold.
+
+    Parameters
+    ----------
+    daily_leave_counts_df : pd.DataFrame
+        Output from :func:`summarize_leave_by_day_count` with ``period='date'``.
+    concentration_threshold : int, default 3
+        Minimum count for both leave types to mark a day as concentrated.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ``date``, ``requested_count``, ``paid_count`` and ``is_concentrated``.
+    """
+
+    required_cols = {"date", "leave_type", "total_leave_days"}
+    if daily_leave_counts_df.empty or not required_cols.issubset(daily_leave_counts_df.columns):
+        logger.warning("Invalid daily_leave_counts_df for analyze_both_leave_concentration")
+        return pd.DataFrame(
+            columns=["date", "requested_count", "paid_count", "is_concentrated"]
+        )
+
+    pivot = (
+        daily_leave_counts_df.pivot(index="date", columns="leave_type", values="total_leave_days")
+        .fillna(0)
+        .rename(
+            columns={
+                LEAVE_TYPE_REQUESTED: "requested_count",
+                LEAVE_TYPE_PAID: "paid_count",
+            }
+        )
+    )
+
+    for col in ["requested_count", "paid_count"]:
+        if col not in pivot.columns:
+            pivot[col] = 0
+
+    pivot = pivot.reset_index()
+    pivot["is_concentrated"] = (
+        (pivot["requested_count"] >= concentration_threshold)
+        & (pivot["paid_count"] >= concentration_threshold)
+    )
+
+    return (
+        pivot[["date", "requested_count", "paid_count", "is_concentrated"]]
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
+
+
 def get_staff_leave_list(
     long_df: pd.DataFrame,
     target_leave_types: List[str] = [LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID]

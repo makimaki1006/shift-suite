@@ -1,8 +1,10 @@
 import pandas as pd
 from shift_suite.tasks.leave_analyzer import (
     analyze_leave_concentration,
+    analyze_both_leave_concentration,
     summarize_leave_by_day_count,
     LEAVE_TYPE_REQUESTED,
+    LEAVE_TYPE_PAID,
 )
 
 
@@ -14,6 +16,20 @@ def make_sample_daily_leave_df():
         {"date": "2024-06-03", "staff": "Bob", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
         {"date": "2024-06-03", "staff": "Charlie", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
         {"date": "2024-06-04", "staff": "Alice", "leave_type": "有給", "leave_day_flag": 1},
+    ]
+    df = pd.DataFrame(data)
+    df["date"] = pd.to_datetime(df["date"])
+    return df
+
+
+def make_sample_both_leave_df():
+    data = [
+        {"date": "2024-06-01", "staff": "A", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
+        {"date": "2024-06-01", "staff": "B", "leave_type": LEAVE_TYPE_PAID, "leave_day_flag": 1},
+        {"date": "2024-06-02", "staff": "A", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
+        {"date": "2024-06-02", "staff": "B", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
+        {"date": "2024-06-02", "staff": "C", "leave_type": LEAVE_TYPE_PAID, "leave_day_flag": 1},
+        {"date": "2024-06-03", "staff": "D", "leave_type": LEAVE_TYPE_PAID, "leave_day_flag": 1},
     ]
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
@@ -57,4 +73,14 @@ def test_per_date_breakdown_helper_matches_groupby():
     expected = expected[summary_req.columns]
 
     pd.testing.assert_frame_equal(summary_req, expected)
+
+
+def test_analyze_both_leave_concentration():
+    df = make_sample_both_leave_df()
+    summary = summarize_leave_by_day_count(df, period="date")
+    result = analyze_both_leave_concentration(summary, concentration_threshold=1)
+
+    assert list(result["is_concentrated"]) == [True, True, False]
+    assert result["requested_count"].tolist() == [1, 2, 0]
+    assert result["paid_count"].tolist() == [1, 1, 1]
 
