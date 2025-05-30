@@ -1513,6 +1513,98 @@ def display_hireplan_tab(tab_container, data_dir):
                 log_and_display_error("hire_plan.xlsx 表示エラー", e)
         else: st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
+
+def load_leave_results_from_dir(data_dir: Path) -> dict:
+    """Load leave analysis results from ``data_dir``.
+
+    Parameters
+    ----------
+    data_dir : Path
+        Directory containing ``leave_analysis.csv`` and optional CSVs.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys ``daily_summary``, ``staff_balance_daily`` and
+        ``concentration_requested`` when available or reconstructed.
+    """
+
+    results: dict[str, pd.DataFrame] = {}
+
+    fp_daily = data_dir / "leave_analysis.csv"
+    if fp_daily.exists():
+        try:
+            results["daily_summary"] = pd.read_csv(fp_daily, parse_dates=["date"])
+        except Exception as e:
+            log_and_display_error("leave_analysis.csv 表示エラー", e)
+
+    fp_staff_bal = data_dir / "staff_balance_daily.csv"
+    if fp_staff_bal.exists():
+        try:
+            results["staff_balance_daily"] = pd.read_csv(
+                fp_staff_bal, parse_dates=["date"]
+            )
+        except Exception as e:
+            log_and_display_error("staff_balance_daily.csv 表示エラー", e)
+
+    fp_conc = data_dir / "concentration_requested.csv"
+    if fp_conc.exists():
+        try:
+            results["concentration_requested"] = pd.read_csv(
+                fp_conc, parse_dates=["date"]
+            )
+        except Exception as e:
+            log_and_display_error("concentration_requested.csv 表示エラー", e)
+
+    daily_df = results.get("daily_summary")
+    if "staff_balance_daily" not in results and _valid_df(daily_df):
+        heat_fp = data_dir / "heat_ALL.xlsx"
+        if heat_fp.exists():
+            try:
+                heat = pd.read_excel(heat_fp, index_col=0)
+                date_cols = [c for c in heat.columns if c not in SUMMARY5_CONST]
+                total_staff = (
+                    (heat[date_cols] > 0)
+                    .astype(int)
+                    .sum()
+                    .reset_index()
+                    .rename(columns={"index": "date", 0: "total_staff"})
+                )
+                total_staff["date"] = pd.to_datetime(total_staff["date"])
+                req_df = (
+                    daily_df[daily_df["leave_type"] == LEAVE_TYPE_REQUESTED]
+                    .rename(columns={"total_leave_days": "leave_applicants_count"})
+                    [["date", "leave_applicants_count"]]
+                )
+                sb = total_staff.merge(req_df, on="date", how="left")
+                sb["leave_applicants_count"] = sb["leave_applicants_count"].fillna(0).astype(int)
+                sb["non_leave_staff"] = sb["total_staff"] - sb["leave_applicants_count"]
+                sb["leave_ratio"] = sb["leave_applicants_count"] / sb["total_staff"]
+                results["staff_balance_daily"] = sb
+            except Exception as e:
+                log.warning(f"Failed to reconstruct staff_balance_daily: {e}")
+
+    if "concentration_requested" not in results and _valid_df(daily_df):
+        try:
+            conc_df = (
+                daily_df[daily_df["leave_type"] == LEAVE_TYPE_REQUESTED]
+                .rename(columns={"total_leave_days": "leave_applicants_count"})
+                [["date", "leave_applicants_count"]]
+            )
+            if "staff_balance_daily" in results:
+                conc_df = conc_df.merge(
+                    results["staff_balance_daily"][["date", "leave_ratio"]],
+                    on="date",
+                    how="left",
+                )
+            conc_df["is_concentrated"] = conc_df["leave_applicants_count"] >= 3
+            conc_df["staff_names"] = [[] for _ in range(len(conc_df))]
+            results["concentration_requested"] = conc_df
+        except Exception as e:
+            log.warning(f"Failed to reconstruct concentration_requested: {e}")
+
+    return results
+
 def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
     """Display leave analysis results with interactive charts.
 
@@ -1767,13 +1859,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
                 if tab_key == "PPT Report":
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir, key_prefix="zip")
                 elif tab_key == "Leave Analysis":
-                    leave_results_zip = {}
-                    fp_csv_zip = extracted_data_dir / "leave_analysis.csv"
-                    if fp_csv_zip.exists():
-                        try:
-                            leave_results_zip["daily_summary"] = pd.read_csv(fp_csv_zip, parse_dates=["date"])
-                        except Exception as e:
-                            log_and_display_error("leave_analysis.csv 表示エラー", e)
+                    leave_results_zip = load_leave_results_from_dir(extracted_data_dir)
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], leave_results_zip)
                 else:
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
