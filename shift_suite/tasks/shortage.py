@@ -189,6 +189,20 @@ def shortage_and_brief(
                 f"computed lack_h={total_lack_hours_for_role:.1f}, "
                 f"expected lack_h={expected_lack_h:.1f}"
             )
+            try:
+                daily_need_h = (need_df_role.sum() * slot_hours).rename("need_h")
+                daily_staff_h = (role_staff_actual_data_df.sum() * slot_hours).rename("staff_h")
+                daily_lack_h = (role_lack_count_for_specific_role_df.sum() * slot_hours).rename("lack_h")
+                daily_debug_df = (
+                    pd.concat([daily_need_h, daily_staff_h, daily_lack_h], axis=1)
+                    .assign(diff_h=lambda d: d["need_h"] - d["staff_h"])
+                )
+                log.debug(
+                    f"[shortage] daily summary for {role_name_current} (first 7 days):\n"
+                    f"{daily_debug_df.head(7).to_string()}"
+                )
+            except Exception as e_daily:
+                log.debug(f"[shortage] daily debug summary failed for {role_name_current}: {e_daily}")
 
         # 月別不足h集計
         try:
