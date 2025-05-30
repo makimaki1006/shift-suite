@@ -783,6 +783,14 @@ if run_button_clicked:
                                     daily_leave_df.copy(), period='date'
                                 )
                                 st.session_state.leave_analysis_results['daily_summary'] = daily_summary
+                                try:
+                                    both_conc = leave_analyzer.analyze_both_leave_concentration(
+                                        daily_summary.copy(),
+                                        concentration_threshold=param_leave_concentration_threshold,
+                                    )
+                                    st.session_state.leave_analysis_results['concentration_both'] = both_conc
+                                except Exception as e_both:
+                                    log.warning(f"concentration_both generation error: {e_both}")
                                 leave_csv = out_dir_exec / "leave_analysis.csv"
                                 daily_summary.to_csv(leave_csv, index=False)
 
@@ -1603,6 +1611,15 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
         except Exception as e:
             log.warning(f"Failed to reconstruct concentration_requested: {e}")
 
+    if "concentration_both" not in results and _valid_df(daily_df):
+        try:
+            conc_both = leave_analyzer.analyze_both_leave_concentration(
+                daily_df.copy(), concentration_threshold=3
+            )
+            results["concentration_both"] = conc_both
+        except Exception as e:
+            log.warning(f"Failed to reconstruct concentration_both: {e}")
+
     return results
 
 def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
@@ -1650,6 +1667,25 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             )
             st.plotly_chart(fig_bal, use_container_width=True, key="staff_balance_chart")
             st.dataframe(staff_balance, use_container_width=True, hide_index=True)
+
+        conc_both = results_dict.get("concentration_both")
+        if isinstance(conc_both, pd.DataFrame) and not conc_both.empty:
+            st.subheader("Requested + Paid concentration")
+            fig_both = px.line(
+                conc_both,
+                x="date",
+                y=["requested_count", "paid_count"],
+                markers=True,
+                labels={
+                    "date": _("Date"),
+                    "value": _("Count"),
+                    "variable": _("Leave type"),
+                    "requested_count": _("Requested"),
+                    "paid_count": _("Paid"),
+                },
+            )
+            st.plotly_chart(fig_both, use_container_width=True, key="leave_both_chart")
+            st.dataframe(conc_both, use_container_width=True, hide_index=True)
 
         concentration = results_dict.get("concentration_requested")
         if isinstance(concentration, pd.DataFrame) and not concentration.empty:

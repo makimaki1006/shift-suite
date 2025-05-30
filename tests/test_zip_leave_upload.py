@@ -20,8 +20,10 @@ def test_load_leave_results_reconstructs(tmp_path: Path):
     results = app.load_leave_results_from_dir(tmp_path)
     assert "staff_balance_daily" in results
     assert "concentration_requested" in results
+    assert "concentration_both" in results
     assert len(results["staff_balance_daily"]) == 2
     assert list(results["concentration_requested"]["leave_applicants_count"]) == [1, 2]
+    assert list(results["concentration_both"]["paid_count"]) == [0, 0]
 
 
 def test_load_leave_results_reads_optional_files(tmp_path: Path):
@@ -41,3 +43,4 @@ def test_load_leave_results_reads_optional_files(tmp_path: Path):
     results = app.load_leave_results_from_dir(tmp_path)
     assert results["staff_balance_daily"].iloc[0]["total_staff"] == 5
     assert results["concentration_requested"].iloc[0]["leave_applicants_count"] == 1
+    assert "concentration_both" in results
