@@ -249,12 +249,10 @@ def load_excel_cached(
     file_mtime: float | None = None,
 ):
     """Load an Excel file with caching based on file path and mtime."""
-    return pd.read_excel(
-        file_path,
-        sheet_name=sheet_name,
-        index_col=index_col,
-        parse_dates=parse_dates,
-    )
+    kwargs = {"sheet_name": sheet_name, "index_col": index_col}
+    if parse_dates is not None:
+        kwargs["parse_dates"] = parse_dates
+    return pd.read_excel(file_path, **kwargs)
 
 
 @st.cache_resource(show_spinner=False)
