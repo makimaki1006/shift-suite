@@ -50,5 +50,11 @@ def test_per_date_breakdown_helper_matches_groupby():
         .reset_index(drop=True)
     )
 
-    pd.testing.assert_frame_equal(summary_req, helper_df)
+    expected = helper_df.assign(
+        num_days_in_period_unit=1,
+        avg_leave_days_per_day=helper_df["total_leave_days"] / 1,
+    )
+    expected = expected[summary_req.columns]
+
+    pd.testing.assert_frame_equal(summary_req, expected)
 

@@ -144,6 +144,17 @@ date,staff,leave_type,leave_day_flag
 
 The GUI displays the same data interactively under the **Leave Analysis** tab.
 
+`summarize_leave_by_day_count` aggregates these daily flags by a chosen period
+and writes `leave_analysis.csv` when ``period="date"``.  The CSV now contains
+the following columns:
+
+- ``date`` (aggregation unit)
+- ``leave_type``
+- ``total_leave_days``
+- ``num_days_in_period_unit`` – number of unique dates in each period
+- ``avg_leave_days_per_day`` – ``total_leave_days`` divided by
+  ``num_days_in_period_unit``
+
 ### 勤務予定人数と希望休取得者数 chart
 
 Within the **Leave Analysis** tab there is a line chart labelled “勤務予定人数と希望休取得者数”.
