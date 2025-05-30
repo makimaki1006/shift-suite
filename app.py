@@ -1607,7 +1607,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                     if key == "PPT Report":
                         tab_func_map_dash[key](inner_tabs[i], data_dir, key_prefix=fname)
                     elif key == "Leave Analysis":
-                        tab_func_map_dash[key](inner_tabs[i], results.get("leave_analysis_results", {}))
+                        tab_func_map_dash[key](inner_tabs[i], data_dir)
                     else:
                         tab_func_map_dash[key](inner_tabs[i], data_dir)
 
@@ -1679,7 +1679,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
                 if tab_key == "PPT Report":
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir, key_prefix="zip")
                 elif tab_key == "Leave Analysis":
-                    tab_function_map_dash[tab_key](tabs_obj_dash[i], {})
+                    tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
                 else:
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
             else:

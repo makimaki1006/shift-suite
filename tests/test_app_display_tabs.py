@@ -32,3 +32,13 @@ def test_display_fairness_tab_empty(monkeypatch, tmp_path):
     monkeypatch.setattr(app, "_", lambda x: x)
     app.display_fairness_tab(DummyTab(), tmp_path)
     assert "Data not available" in infos[0]
+
+
+def test_display_leave_analysis_tab_handles_zip(monkeypatch, tmp_path):
+    (tmp_path / "shortage_leave.xlsx").touch()
+    monkeypatch.setattr(app, "load_excel_cached", lambda *a, **k: {})
+    dummy_st, infos = make_dummy_st()
+    monkeypatch.setattr(app, "st", dummy_st)
+    monkeypatch.setattr(app, "_", lambda x: x)
+    app.display_leave_analysis_tab(DummyTab(), tmp_path)
+    assert infos == []
