@@ -34,11 +34,11 @@ def test_display_fairness_tab_empty(monkeypatch, tmp_path):
     assert "Data not available" in infos[0]
 
 
-def test_display_leave_analysis_tab_handles_csv(monkeypatch, tmp_path):
+def test_display_leave_analysis_tab_handles_dict(monkeypatch):
     df = pd.DataFrame({"date": ["2024-06-01"], "leave_type": ["requested"], "total_leave_days": [2]})
-    (tmp_path / "leave_analysis.csv").write_text(df.to_csv(index=False))
+    results = {"daily_summary": df}
     dummy_st, infos = make_dummy_st()
     monkeypatch.setattr(app, "st", dummy_st)
     monkeypatch.setattr(app, "_", lambda x: x)
-    app.display_leave_analysis_tab(DummyTab(), tmp_path)
+    app.display_leave_analysis_tab(DummyTab(), results)
     assert infos == []

@@ -1513,32 +1513,129 @@ def display_hireplan_tab(tab_container, data_dir):
                 log_and_display_error("hire_plan.xlsx 表示エラー", e)
         else: st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
-def display_leave_analysis_tab(tab_container, data_dir):
+def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
+    """Display leave analysis results with interactive charts.
+
+    Parameters
+    ----------
+    tab_container : Any
+        Streamlit tab container.
+    results_dict : dict | None
+        In-memory results dictionary produced by ``leave_analyzer``.  If ``None``
+        the function falls back to ``st.session_state.leave_analysis_results``.
+    """
+
     with tab_container:
         st.subheader(_("Leave Analysis"))
-        
-        fp_csv = data_dir / "leave_analysis.csv"
-        leave_df = None
 
-        if fp_csv.exists():
-            try:
-                leave_df = pd.read_csv(fp_csv, parse_dates=["date"])
-            except Exception as e:
-                log_and_display_error("leave_analysis.csv 表示エラー", e)
+        if results_dict is None:
+            results_dict = st.session_state.leave_analysis_results
 
-        if leave_df is None:
-            leave_df = st.session_state.leave_analysis_results.get("daily_summary")
+        leave_df = results_dict.get("daily_summary")
 
-        if leave_df is None or leave_df.empty:
+        if not isinstance(leave_df, pd.DataFrame) or leave_df.empty:
             st.info(_("No leave analysis results available."))
             return
 
         st.dataframe(leave_df, use_container_width=True, hide_index=True)
 
-        staff_balance = st.session_state.leave_analysis_results.get("staff_balance_daily")
+        staff_balance = results_dict.get("staff_balance_daily")
         if isinstance(staff_balance, pd.DataFrame) and not staff_balance.empty:
             st.subheader("勤務予定人数と希望休取得者数")
+            fig_bal = px.line(
+                staff_balance,
+                x="date",
+                y=["total_staff", "leave_applicants_count", "non_leave_staff"],
+                markers=True,
+                labels={
+                    "date": _("Date"),
+                    "value": _("Count"),
+                    "variable": _("Metric"),
+                    "total_staff": _("Total staff"),
+                    "leave_applicants_count": _("Leave applicants"),
+                    "non_leave_staff": _("Non-leave staff"),
+                },
+            )
+            st.plotly_chart(fig_bal, use_container_width=True, key="staff_balance_chart")
             st.dataframe(staff_balance, use_container_width=True, hide_index=True)
+
+        concentration = results_dict.get("concentration_requested")
+        if isinstance(concentration, pd.DataFrame) and not concentration.empty:
+            conc_df = concentration[concentration.get("is_concentrated") == True]
+            if not conc_df.empty:
+                st.subheader(_("Leave concentration graphs"))
+
+                fig_conc = px.line(
+                    conc_df,
+                    x="date",
+                    y="leave_applicants_count",
+                    markers=True,
+                    labels={
+                        "date": _("Date"),
+                        "leave_applicants_count": _("Leave applicants"),
+                    },
+                )
+
+                events = []
+                if plotly_events is not None:
+                    events = plotly_events(
+                        fig_conc,
+                        click_event=True,
+                        select_event=True,
+                        override_height=None,
+                        key="leave_conc_chart",
+                    )
+                else:
+                    st.plotly_chart(fig_conc, use_container_width=True, key="leave_conc_chart")
+
+                fig_ratio = px.line(
+                    conc_df,
+                    x="date",
+                    y="leave_ratio",
+                    markers=True,
+                    labels={
+                        "date": _("Date"),
+                        "leave_ratio": _("Leave ratio"),
+                    },
+                )
+                st.plotly_chart(fig_ratio, use_container_width=True, key="leave_ratio_chart")
+
+                if "selected_leave_dates" not in st.session_state:
+                    st.session_state.selected_leave_dates = set()
+
+                for ev in events:
+                    if isinstance(ev, dict) and "x" in ev:
+                        try:
+                            st.session_state.selected_leave_dates.add(pd.to_datetime(ev["x"]).normalize())
+                        except Exception:
+                            pass
+
+                if st.button("選択をクリア"):
+                    st.session_state.selected_leave_dates = set()
+
+                selected_dates = sorted(st.session_state.selected_leave_dates)
+                if selected_dates:
+                    name_lists = conc_df[conc_df["date"].isin(selected_dates)]["staff_names"]
+                    all_names: list[str] = []
+                    for names in name_lists:
+                        if isinstance(names, list):
+                            all_names.extend(names)
+
+                    if all_names:
+                        st.markdown("**" + _("Selected staff") + ":** " + ", ".join(sorted(set(all_names))))
+                        cnt_df = (
+                            pd.Series(all_names)
+                            .value_counts()
+                            .reset_index()
+                            .rename(columns={"index": "staff", 0: "count"})
+                        )
+                        fig_bar = px.bar(
+                            cnt_df,
+                            x="staff",
+                            y="count",
+                            labels={"staff": _("Staff"), "count": _("Count")},
+                        )
+                        st.plotly_chart(fig_bar, use_container_width=True, key="selected_staff_chart")
 
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
     with tab_container:
@@ -1598,7 +1695,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                     if key == "PPT Report":
                         tab_func_map_dash[key](inner_tabs[i], data_dir, key_prefix=fname)
                     elif key == "Leave Analysis":
-                        tab_func_map_dash[key](inner_tabs[i], data_dir)
+                        tab_func_map_dash[key](inner_tabs[i], results.get("leave_analysis_results"))
                     else:
                         tab_func_map_dash[key](inner_tabs[i], data_dir)
 
@@ -1670,7 +1767,14 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
                 if tab_key == "PPT Report":
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir, key_prefix="zip")
                 elif tab_key == "Leave Analysis":
-                    tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
+                    leave_results_zip = {}
+                    fp_csv_zip = extracted_data_dir / "leave_analysis.csv"
+                    if fp_csv_zip.exists():
+                        try:
+                            leave_results_zip["daily_summary"] = pd.read_csv(fp_csv_zip, parse_dates=["date"])
+                        except Exception as e:
+                            log_and_display_error("leave_analysis.csv 表示エラー", e)
+                    tab_function_map_dash[tab_key](tabs_obj_dash[i], leave_results_zip)
                 else:
                     tab_function_map_dash[tab_key](tabs_obj_dash[i], extracted_data_dir)
             else:
