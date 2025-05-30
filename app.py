@@ -48,7 +48,7 @@ import datetime as dt
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
 from shift_suite.tasks.io_excel import ingest_excel
 from shift_suite.tasks.heatmap import build_heatmap
-from shift_suite.tasks.shortage import shortage_and_brief
+from shift_suite.tasks.shortage import shortage_and_brief, merge_shortage_leave
 from shift_suite.tasks.build_stats import build_stats
 from shift_suite.tasks.anomaly import detect_anomaly
 from shift_suite.tasks.fatigue import train_fatigue
@@ -774,8 +774,23 @@ if run_button_clicked:
                             
                             # 4. 職員別休暇リスト (終日のみ)
                             leave_results_temp['staff_leave_list'] = leave_analyzer.get_staff_leave_list(long_df, target_leave_types=param_leave_target_types)
-                            
+
                             st.session_state.leave_analysis_results.update(leave_results_temp)
+
+                            # Save summary by date for external use
+                            try:
+                                daily_summary = leave_analyzer.summarize_leave_by_day_count(
+                                    daily_leave_df.copy(), period='date'
+                                )
+                                st.session_state.leave_analysis_results['daily_summary'] = daily_summary
+                                leave_csv = out_dir_exec / "leave_analysis.csv"
+                                daily_summary.to_csv(leave_csv, index=False)
+
+                                # Also generate shortage_leave.xlsx for the Shortage tab
+                                merge_shortage_leave(out_dir_exec, leave_csv=leave_csv)
+                            except Exception as e_save:
+                                log.warning(f"leave_analysis.csv 書き出しまたは shortage_leave.xlsx 生成中にエラー: {e_save}")
+
                             st.success(f"✅ {_('Leave Analysis')} 完了")
                         else:
                             st.info(f"{_('Leave Analysis')}: 分析対象となる休暇データが見つかりませんでした。")
@@ -1502,50 +1517,28 @@ def display_leave_analysis_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Leave Analysis"))
         
-        fp_leave = data_dir / "shortage_leave.xlsx"
-        if not fp_leave.exists():
+        fp_csv = data_dir / "leave_analysis.csv"
+        leave_df = None
+
+        if fp_csv.exists():
+            try:
+                leave_df = pd.read_csv(fp_csv, parse_dates=["date"])
+            except Exception as e:
+                log_and_display_error("leave_analysis.csv 表示エラー", e)
+
+        if leave_df is None:
+            leave_df = st.session_state.leave_analysis_results.get("daily_summary")
+
+        if leave_df is None or leave_df.empty:
             st.info(_("No leave analysis results available."))
             return
-            
-        try:
-            leave_results = load_excel_cached(
-                str(fp_leave),
-                sheet_name=None,  # Load all sheets
-                file_mtime=_file_mtime(fp_leave),
-            )
-            
-            if not isinstance(leave_results, dict):
-                st.info(_("Leave analysis data not available or in invalid format"))
-                return
-                
-            try:
-                if "daily_leave" in leave_results and _valid_df(leave_results["daily_leave"]):
-                    daily_df = leave_results["daily_leave"]
-                    st.subheader(_("Daily Leave Distribution"))
-                    st.dataframe(daily_df, use_container_width=True)
-                    
-                if "leave_by_staff" in leave_results and _valid_df(leave_results["leave_by_staff"]):
-                    staff_df = leave_results["leave_by_staff"]
-                    st.subheader(_("Leave Days by Staff"))
-                    
-                    if "staff" in staff_df and "total_leave_days" in staff_df:
-                        fig = px.bar(
-                            staff_df,
-                            x="staff",
-                            y="total_leave_days",
-                            labels={"staff": _("Staff"), "total_leave_days": _("Total Leave Days")},
-                            color_discrete_sequence=["#4CAF50"],
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                    
-                if "leave_impact" in leave_results and _valid_df(leave_results["leave_impact"]):
-                    impact_df = leave_results["leave_impact"]
-                    st.subheader(_("Leave Impact Analysis"))
-                    st.dataframe(impact_df, use_container_width=True)
-            except AttributeError as e:
-                log_and_display_error("Invalid data format in leave analysis results", e)
-        except Exception as e:
-            log_and_display_error("shortage_leave.xlsx 表示エラー", e)
+
+        st.dataframe(leave_df, use_container_width=True, hide_index=True)
+
+        staff_balance = st.session_state.leave_analysis_results.get("staff_balance_daily")
+        if isinstance(staff_balance, pd.DataFrame) and not staff_balance.empty:
+            st.subheader("勤務予定人数と希望休取得者数")
+            st.dataframe(staff_balance, use_container_width=True, hide_index=True)
 
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
     with tab_container:
