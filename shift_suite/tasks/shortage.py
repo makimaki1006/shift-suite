@@ -179,6 +179,16 @@ def shortage_and_brief(
         total_staff_hours_for_role = role_staff_actual_data_df.sum().sum() * slot_hours
         # lack_h は休業日のneed=0を考慮したlackの合計
         total_lack_hours_for_role = role_lack_count_for_specific_role_df.sum().sum() * slot_hours
+        # 計算結果検証用: need_h - staff_h との差分がlack_hと一致するか確認
+        expected_lack_h = max(total_need_hours_for_role - total_staff_hours_for_role, 0)
+        if abs(expected_lack_h - total_lack_hours_for_role) > slot_hours:
+            log.debug(
+                f"[shortage] mismatch for {role_name_current}: "
+                f"need_h={total_need_hours_for_role:.1f}, "
+                f"staff_h={total_staff_hours_for_role:.1f}, "
+                f"computed lack_h={total_lack_hours_for_role:.1f}, "
+                f"expected lack_h={expected_lack_h:.1f}"
+            )
 
         # 月別不足h集計
         try:
