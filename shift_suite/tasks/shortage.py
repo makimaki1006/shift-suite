@@ -1,9 +1,10 @@
 """
-shortage.py – v2.4.1 (休業日対応のデバッグ強化)
+shortage.py – v2.5.0 (過不足分析サポート)
 ────────────────────────────────────────────────────────
 * v2.3.0: SUMMARY5列参照・計算ロジック修正・constants参照
 * v2.4.0: heatmap.meta.json から推定休業日を読み込み、need計算に反映。
 * v2.4.1: 職種別KPIの稼働日数考慮とデバッグログ強化。
+* v2.5.0: excess(過剰) 指標を追加し過不足分析に対応。
 """
 
 from __future__ import annotations
@@ -111,12 +112,68 @@ def shortage_and_brief(
     lack_count_overall_df = (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
     shortage_ratio_df = ((need_df_all - staff_actual_data_all_df) / need_df_all.replace(0, np.nan)).clip(lower=0).fillna(0)
 
-    fp_shortage_time = save_df_xlsx(lack_count_overall_df, out_dir_path / "shortage_time.xlsx", sheet_name="lack_time", index=True)
-    fp_shortage_ratio = save_df_xlsx(shortage_ratio_df, out_dir_path / "shortage_ratio.xlsx", sheet_name="lack_ratio", index=True)
+    fp_shortage_time = save_df_xlsx(
+        lack_count_overall_df,
+        out_dir_path / "shortage_time.xlsx",
+        sheet_name="lack_time",
+        index=True,
+    )
+    fp_shortage_ratio = save_df_xlsx(
+        shortage_ratio_df,
+        out_dir_path / "shortage_ratio.xlsx",
+        sheet_name="lack_ratio",
+        index=True,
+    )
 
     lack_occurrence_df = (lack_count_overall_df > 0).astype(int)
     shortage_freq_df = pd.DataFrame(lack_occurrence_df.sum(axis=1), columns=["shortage_days"])
-    fp_shortage_freq = save_df_xlsx(shortage_freq_df, out_dir_path / "shortage_freq.xlsx", sheet_name="freq_by_time", index=True)
+    fp_shortage_freq = save_df_xlsx(
+        shortage_freq_df,
+        out_dir_path / "shortage_freq.xlsx",
+        sheet_name="freq_by_time",
+        index=True,
+    )
+
+    # ----- excess analysis -----
+    fp_excess_time = fp_excess_ratio = fp_excess_freq = None
+    if "upper" in heat_all_df.columns:
+        upper_series_overall_orig = heat_all_df["upper"].reindex(index=time_labels).fillna(0).clip(lower=0)
+        upper_df_all = pd.DataFrame(
+            np.repeat(upper_series_overall_orig.values[:, np.newaxis], len(staff_actual_data_all_df.columns), axis=1),
+            index=upper_series_overall_orig.index,
+            columns=staff_actual_data_all_df.columns,
+        )
+        if any(holiday_mask_all):
+            for col, is_h in zip(upper_df_all.columns, holiday_mask_all):
+                if is_h:
+                    upper_df_all[col] = 0
+
+        excess_count_overall_df = (staff_actual_data_all_df - upper_df_all).clip(lower=0).fillna(0).astype(int)
+        excess_ratio_df = ((staff_actual_data_all_df - upper_df_all) / upper_df_all.replace(0, np.nan)).clip(lower=0).fillna(0)
+
+        fp_excess_time = save_df_xlsx(
+            excess_count_overall_df,
+            out_dir_path / "excess_time.xlsx",
+            sheet_name="excess_time",
+            index=True,
+        )
+        fp_excess_ratio = save_df_xlsx(
+            excess_ratio_df,
+            out_dir_path / "excess_ratio.xlsx",
+            sheet_name="excess_ratio",
+            index=True,
+        )
+
+        excess_occurrence_df = (excess_count_overall_df > 0).astype(int)
+        excess_freq_df = pd.DataFrame(excess_occurrence_df.sum(axis=1), columns=["excess_days"])
+        fp_excess_freq = save_df_xlsx(
+            excess_freq_df,
+            out_dir_path / "excess_freq.xlsx",
+            sheet_name="freq_by_time",
+            index=True,
+        )
+    else:
+        log.warning("[shortage] heat_ALL.xlsx に 'upper' 列がないため excess 分析をスキップします。")
 
     log.debug(
         "--- shortage_time.xlsx / shortage_ratio.xlsx / shortage_freq.xlsx 計算デバッグ (全体) 終了 ---"
@@ -173,12 +230,34 @@ def shortage_and_brief(
         total_need_slots_for_role_working_days = role_need_per_time_series_orig_for_role.sum() * num_working_days_for_current_role
 
         role_lack_count_for_specific_role_df = (need_df_role - role_staff_actual_data_df).clip(lower=0)
+
+        role_excess_count_for_specific_role_df = None
+        if "upper" in role_heat_current_df.columns:
+            role_upper_per_time_series_orig_for_role = (
+                role_heat_current_df["upper"].reindex(index=time_labels).fillna(0).clip(lower=0)
+            )
+            upper_df_role = pd.DataFrame(
+                np.repeat(role_upper_per_time_series_orig_for_role.values[:, np.newaxis], len(role_staff_actual_data_df.columns), axis=1),
+                index=role_upper_per_time_series_orig_for_role.index,
+                columns=role_staff_actual_data_df.columns,
+            )
+            if any(holiday_mask_role):
+                for c, is_h in zip(upper_df_role.columns, holiday_mask_role):
+                    if is_h:
+                        upper_df_role[c] = 0
+            role_excess_count_for_specific_role_df = (role_staff_actual_data_df - upper_df_role).clip(lower=0)
+        else:
+            log.debug(f"[shortage] '{role_name_current}' ヒートマップに 'upper' 列がないため excess 計算をスキップ")
         
         total_need_hours_for_role = total_need_slots_for_role_working_days * slot_hours
         # staff_h は全日の実績で計算（休業日も実績0として含まれる）
         total_staff_hours_for_role = role_staff_actual_data_df.sum().sum() * slot_hours
         # lack_h は休業日のneed=0を考慮したlackの合計
         total_lack_hours_for_role = role_lack_count_for_specific_role_df.sum().sum() * slot_hours
+        # excess_h は休業日のupper=0を考慮したexcessの合計
+        total_excess_hours_for_role = (
+            role_excess_count_for_specific_role_df.sum().sum() * slot_hours if role_excess_count_for_specific_role_df is not None else 0
+        )
         # 計算結果検証用: need_h - staff_h との差分がlack_hと一致するか確認
         expected_lack_h = max(total_need_hours_for_role - total_staff_hours_for_role, 0)
         if abs(expected_lack_h - total_lack_hours_for_role) > slot_hours:
@@ -204,28 +283,43 @@ def shortage_and_brief(
             except Exception as e_daily:
                 log.debug(f"[shortage] daily debug summary failed for {role_name_current}: {e_daily}")
 
-        # 月別不足h集計
+        # 月別不足h・過剰h集計
         try:
             lack_by_date = role_lack_count_for_specific_role_df.sum()
             lack_by_date.index = pd.to_datetime(lack_by_date.index)
-            lack_month = lack_by_date.groupby(lack_by_date.index.to_period("M")).sum() * slot_hours
+            lack_month = (
+                lack_by_date.groupby(lack_by_date.index.to_period("M")).sum() * slot_hours
+            )
+            excess_month = pd.Series(dtype=float)
+            if role_excess_count_for_specific_role_df is not None:
+                excess_by_date = role_excess_count_for_specific_role_df.sum()
+                excess_by_date.index = pd.to_datetime(excess_by_date.index)
+                excess_month = (
+                    excess_by_date.groupby(excess_by_date.index.to_period("M")).sum() * slot_hours
+                )
+            month_keys: Dict[str, Dict[str, int]] = {}
             for mon, val in lack_month.items():
-                monthly_role_rows.append({
-                    "role": role_name_current,
-                    "month": str(mon),
-                    "lack_h": int(round(val)),
-                })
+                month_keys.setdefault(str(mon), {"role": role_name_current, "month": str(mon), "lack_h": 0, "excess_h": 0})
+                month_keys[str(mon)]["lack_h"] = int(round(val))
+            for mon, val in excess_month.items():
+                month_keys.setdefault(str(mon), {"role": role_name_current, "month": str(mon), "lack_h": 0, "excess_h": 0})
+                month_keys[str(mon)]["excess_h"] = int(round(val))
+            monthly_role_rows.extend(month_keys.values())
         except Exception as e_month:
-            log.debug(f"月別不足集計エラー ({role_name_current}): {e_month}")
+            log.debug(f"月別不足/過剰集計エラー ({role_name_current}): {e_month}")
 
         role_kpi_rows.append({
             "role": role_name_current,
             "need_h": int(round(total_need_hours_for_role)),
             "staff_h": int(round(total_staff_hours_for_role)),
             "lack_h": int(round(total_lack_hours_for_role)),
-            "working_days_considered": num_working_days_for_current_role
+            "excess_h": int(round(total_excess_hours_for_role)),
+            "working_days_considered": num_working_days_for_current_role,
         })
-        log.debug(f"  Role: {role_name_current}, Need(h): {total_need_hours_for_role:.1f} (on {num_working_days_for_current_role} working days), Staff(h): {total_staff_hours_for_role:.1f}, Lack(h): {total_lack_hours_for_role:.1f}")
+        log.debug(
+            f"  Role: {role_name_current}, Need(h): {total_need_hours_for_role:.1f} (on {num_working_days_for_current_role} working days), "
+            f"Staff(h): {total_staff_hours_for_role:.1f}, Lack(h): {total_lack_hours_for_role:.1f}, Excess(h): {total_excess_hours_for_role:.1f}"
+        )
         log.debug(f"--- shortage_role.xlsx 計算デバッグ (職種: {role_name_current}) 終了 ---")
 
     role_summary_df = pd.DataFrame(role_kpi_rows)
@@ -254,13 +348,19 @@ def shortage_and_brief(
         months=sorted(list(set(meta_months_list_shortage))),
         ratio_file="shortage_ratio.xlsx",
         freq_file="shortage_freq.xlsx",
-        estimated_holidays_used=[d.isoformat() for d in sorted(list(estimated_holidays_set))]
+        excess_ratio_file="excess_ratio.xlsx" if fp_excess_ratio else None,
+        excess_freq_file="excess_freq.xlsx" if fp_excess_freq else None,
+        estimated_holidays_used=[d.isoformat() for d in sorted(list(estimated_holidays_set))],
     )
 
     log.info(
         f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
         f"shortage_ratio → {fp_shortage_ratio.name}, "
-        f"shortage_freq → {fp_shortage_freq.name}, shortage_role → {fp_shortage_role.name}"
+        f"shortage_freq → {fp_shortage_freq.name}, "
+        f"shortage_role → {fp_shortage_role.name}, "
+        (f"excess_time → {fp_excess_time.name}, " if fp_excess_time else "") +
+        (f"excess_ratio → {fp_excess_ratio.name}, " if fp_excess_ratio else "") +
+        (f"excess_freq → {fp_excess_freq.name}" if fp_excess_freq else "")
     )
     if fp_shortage_time and fp_shortage_role and fp_shortage_ratio and fp_shortage_freq:
         return fp_shortage_time, fp_shortage_role
