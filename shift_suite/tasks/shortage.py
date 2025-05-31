@@ -87,7 +87,7 @@ def shortage_and_brief(
         fp_s_t_empty = save_df_xlsx(empty_df, out_dir_path / "shortage_time.xlsx", sheet_name="lack_time", index=True)
         fp_s_r_empty = save_df_xlsx(pd.DataFrame(), out_dir_path / "shortage_role.xlsx", sheet_name="role_summary", index=False)
         save_df_xlsx(empty_df, out_dir_path / "shortage_freq.xlsx", sheet_name="freq_by_time", index=True)
-        return fp_s_t_empty, fp_s_r_empty if fp_s_t_empty and fp_s_r_empty else None
+        return (fp_s_t_empty, fp_s_r_empty) if fp_s_t_empty and fp_s_r_empty else None
 
 
     staff_actual_data_all_df = heat_all_df[date_columns_in_heat_all].copy().reindex(index=time_labels).fillna(0)
