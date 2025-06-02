@@ -217,3 +217,17 @@ render correctly. If ``staff_balance_daily.csv`` or
 When these extra files are missing the application reconstructs the
 ``staff_balance_daily`` and ``concentration_requested`` tables from
 ``leave_analysis.csv`` and ``heat_ALL.xlsx``.
+
+### Running tests
+
+Install the dependencies first:
+
+```bash
+./setup.sh  # or pip install -r requirements.txt
+```
+
+Then execute the test suite with:
+
+```bash
+pytest -q
+```
