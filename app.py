@@ -253,6 +253,9 @@ JP = {
     "Monthly Excess Hours by Employment": "雇用形態別月次過剰時間",
     "hire_fte": "必要FTE",
     "hire_need": "必要採用人数",
+    "Total Staff": "総スタッフ数",
+    "Avg. Night Ratio": "平均夜勤比率",
+    "Alerts Count": "アラート件数",
     "No leave analysis results available.": "休暇分析の結果がありません。",
     "Results for {fname}": "{fname} の結果",
     "Data": "データ",
@@ -1454,9 +1457,44 @@ def display_overview_tab(tab_container, data_dir):
                     jain_display = f"{float(jain_row['value'].iloc[0]):.3f}"
             except Exception:
                 pass
-        c1, c2 = st.columns(2)
+
+        staff_count = 0
+        avg_night_ratio = 0.0
+        staff_stats_fp = data_dir / "staff_stats.xlsx"
+        if staff_stats_fp.exists():
+            try:
+                df_staff = load_excel_cached(
+                    str(staff_stats_fp),
+                    sheet_name="by_staff",
+                    file_mtime=_file_mtime(staff_stats_fp),
+                )
+                staff_count = len(df_staff)
+                if "night_ratio" in df_staff.columns and not df_staff["night_ratio"].empty:
+                    avg_night_ratio = float(df_staff["night_ratio"].mean())
+            except Exception:
+                pass
+
+        alerts_count = 0
+        stats_fp = data_dir / "stats.xlsx"
+        if stats_fp.exists():
+            try:
+                xls_stats = load_excelfile_cached(
+                    str(stats_fp),
+                    file_mtime=_file_mtime(stats_fp),
+                )
+                if "alerts" in xls_stats.sheet_names:
+                    df_alerts = xls_stats.parse("alerts")
+                    if _valid_df(df_alerts):
+                        alerts_count = len(df_alerts)
+            except Exception:
+                pass
+
+        c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric(_("不足時間(h)"), f"{lack_h:.1f}")
         c2.metric("夜勤 Jain指数", jain_display)
+        c3.metric(_("Total Staff"), staff_count)
+        c4.metric(_("Avg. Night Ratio"), f"{avg_night_ratio:.3f}")
+        c5.metric(_("Alerts Count"), alerts_count)
 
 
 def display_heatmap_tab(tab_container, data_dir):
