@@ -3,7 +3,8 @@
 The root of this repository contains utilities for analysing Excel shift schedules. When modifying code or documentation, follow these rules.
 
 ## Programmatic checks
-Run the following commands from the repository root after your changes:
+Run the following commands from the repository root after your changes.
+Install dependencies via `./setup.sh` or `pip install -r requirements.txt` before running them if needed:
 
 ```bash
 ruff check .
