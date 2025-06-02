@@ -73,6 +73,10 @@ The GUI caches the uploaded workbook using `load_excelfile_cached()` with
    sidebar to specify how many days ahead the Need forecast module should
    predict (default: 30).
 
+   The shift sheets should list columns in the order **氏名**, **職種**,
+   **雇用形態** followed by the date columns. The employment type must be one
+   of ``正社員``, ``パート``, ``派遣``, ``スポット`` or ``その他``.
+
 3. To use the CLI, run:
 
    ```bash

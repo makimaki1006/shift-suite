@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime as dt, re, logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
+from .constants import EMPLOYMENT_TYPES
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ SHEET_COL_ALIAS = {
     "氏名": "staff", "名前": "staff", "staff": "staff", "name": "staff",
     "従業員": "staff", "member": "staff",
     "職種": "role",  "部署": "role",  "役職": "role", "role": "role",
+    "雇用形態": "employment_type", "雇用": "employment_type",
 }
 DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}
 
@@ -165,15 +167,24 @@ def ingest_excel(
             logger.warning(f"シート '{sheet_name_actual}' の読み込みに失敗しました: {e}")
             continue
 
-        df_sheet.columns = [SHEET_COL_ALIAS.get(_normalize(str(c)), _normalize(str(c))) for c in df_sheet.columns]
+        df_sheet.columns = [
+            SHEET_COL_ALIAS.get(_normalize(str(c)), _normalize(str(c)))
+            for c in df_sheet.columns
+        ]
+
+        if "employment_type" not in df_sheet.columns:
+            df_sheet["employment_type"] = "その他"
 
         if not {"staff", "role"}.issubset(df_sheet.columns):
             logger.error(f"シート '{sheet_name_actual}' に ‘staff’ (氏名) または ‘role’ (職種) 列が見つかりません。")
             raise ValueError(f"シート '{sheet_name_actual}' に ‘staff’ (氏名) または ‘role’ (職種) 列が見つかりません。")
 
         date_cols_candidate = [
-            c for c in df_sheet.columns
-            if c not in ("staff", "role") and not str(c).startswith("Unnamed:")
+            c
+            for c in df_sheet.columns
+            if c
+            not in ("staff", "role", "employment_type")
+            and not str(c).startswith("Unnamed:")
         ]
         if not date_cols_candidate:
             logger.warning(f"シート '{sheet_name_actual}' に日付データ列が見つかりませんでした。")
@@ -183,6 +194,8 @@ def ingest_excel(
         for _, row_data in df_sheet.iterrows():
             staff = _normalize(row_data.get("staff", ""))
             role  = _normalize(row_data.get("role", ""))
+            emp_type_raw = _normalize(row_data.get("employment_type", ""))
+            emp_type = emp_type_raw if emp_type_raw in EMPLOYMENT_TYPES else "その他"
 
             if staff in DOW_TOKENS or role in DOW_TOKENS or (staff == "" and role == ""):
                 continue
@@ -260,9 +273,12 @@ def ingest_excel(
                     record_datetime_for_zero_slot = dt.datetime.combine(date_val_parsed_dt_date, dt.time(0,0))
                     records.append({
                         "ds": record_datetime_for_zero_slot,
-                        "staff": staff, "role":  role, "code":  code_val,
+                        "staff": staff,
+                        "role": role,
+                        "employment_type": emp_type,
+                        "code": code_val,
                         "holiday_type": holiday_type_for_record,
-                        "parsed_slots_count": parsed_slots_count_for_record
+                        "parsed_slots_count": parsed_slots_count_for_record,
                     })
                     continue
 
@@ -271,9 +287,12 @@ def ingest_excel(
                         record_datetime = dt.datetime.combine(date_val_parsed_dt_date, dt.datetime.strptime(t_slot_val, "%H:%M").time())
                         records.append({
                             "ds": record_datetime,
-                            "staff": staff, "role":  role, "code":  code_val,
+                            "staff": staff,
+                            "role": role,
+                            "employment_type": emp_type,
+                            "code": code_val,
                             "holiday_type": holiday_type_for_record,
-                            "parsed_slots_count": parsed_slots_count_for_record
+                            "parsed_slots_count": parsed_slots_count_for_record,
                         })
                     except ValueError as e_time:
                         logger.error(f"時刻スロット '{t_slot_val}' のパース中にエラー (スタッフ: {staff}, 日付: {date_val_parsed_dt_date}, コード: {code_val}): {e_time}")
