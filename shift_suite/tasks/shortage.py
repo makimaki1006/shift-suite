@@ -529,11 +529,198 @@ def shortage_and_brief(
         monthly_role_df["month"].tolist() if not monthly_role_df.empty else []
     )
 
+    # ── Employment shortage analysis ────────────────────────────────────────
+    emp_kpi_rows: List[Dict[str, Any]] = []
+    monthly_emp_rows: List[Dict[str, Any]] = []
+    processed_emp_names_list = []
+
+    for fp_emp_heatmap_item in out_dir_path.glob("heat_emp_*.xlsx"):
+        emp_name_current = fp_emp_heatmap_item.stem.replace("heat_emp_", "")
+        processed_emp_names_list.append(emp_name_current)
+        log.debug(
+            f"--- shortage_employment.xlsx 計算デバッグ (雇用形態: {emp_name_current}) ---"
+        )
+        try:
+            emp_heat_current_df = pd.read_excel(fp_emp_heatmap_item, index_col=0)
+        except Exception as e_emp_heat:
+            log.warning(
+                f"[shortage] 雇用形態別ヒートマップ '{fp_emp_heatmap_item.name}' の読み込みエラー: {e_emp_heat}"
+            )
+            emp_kpi_rows.append(
+                {
+                    "employment": emp_name_current,
+                    "need_h": 0,
+                    "staff_h": 0,
+                    "lack_h": 0,
+                    "working_days_considered": 0,
+                    "note": "heatmap read error",
+                }
+            )
+            continue
+
+        if "need" not in emp_heat_current_df.columns:
+            log.warning(
+                f"[shortage] 雇用形態 '{emp_name_current}' のヒートマップに 'need' 列が不足。KPI計算スキップ。"
+            )
+            emp_kpi_rows.append(
+                {
+                    "employment": emp_name_current,
+                    "need_h": 0,
+                    "staff_h": 0,
+                    "lack_h": 0,
+                    "working_days_considered": 0,
+                    "note": "missing need column",
+                }
+            )
+            continue
+
+        emp_need_series = (
+            emp_heat_current_df["need"].reindex(index=time_labels).fillna(0).clip(lower=0)
+        )
+        emp_date_columns = [
+            str(c)
+            for c in emp_heat_current_df.columns
+            if c not in SUMMARY5 and _parse_as_date(str(c)) is not None
+        ]
+        if not emp_date_columns:
+            log.warning(
+                f"[shortage] 雇用形態 '{emp_name_current}' のヒートマップに日付列がありません。KPI計算をスキップします。"
+            )
+            emp_kpi_rows.append(
+                {
+                    "employment": emp_name_current,
+                    "need_h": 0,
+                    "staff_h": 0,
+                    "lack_h": 0,
+                    "working_days_considered": 0,
+                    "note": "no date columns",
+                }
+            )
+            continue
+
+        emp_staff_df = (
+            emp_heat_current_df[emp_date_columns].copy().reindex(index=time_labels).fillna(0)
+        )
+        parsed_emp_dates = [_parse_as_date(c) for c in emp_staff_df.columns]
+        holiday_mask_emp = [d in estimated_holidays_set if d else False for d in parsed_emp_dates]
+        need_df_emp = pd.DataFrame(
+            np.repeat(emp_need_series.values[:, np.newaxis], len(emp_staff_df.columns), axis=1),
+            index=emp_need_series.index,
+            columns=emp_staff_df.columns,
+        )
+        if any(holiday_mask_emp):
+            for c, is_h in zip(need_df_emp.columns, holiday_mask_emp):
+                if is_h:
+                    need_df_emp[c] = 0
+
+        working_cols_emp = [
+            c
+            for c, is_h in zip(emp_staff_df.columns, holiday_mask_emp)
+            if not is_h and _parse_as_date(c)
+        ]
+        num_working_days_for_current_emp = len(working_cols_emp)
+
+        lack_count_emp_df = (need_df_emp - emp_staff_df).clip(lower=0)
+        excess_count_emp_df = (emp_staff_df - need_df_emp).clip(lower=0)
+
+        total_need_hours_for_emp = need_df_emp.sum().sum() * slot_hours
+        total_staff_hours_for_emp = emp_staff_df.sum().sum() * slot_hours
+        total_lack_hours_for_emp = lack_count_emp_df.sum().sum() * slot_hours
+        total_excess_hours_for_emp = (
+            excess_count_emp_df.sum().sum() * slot_hours
+            if not excess_count_emp_df.empty
+            else 0
+        )
+
+        try:
+            lack_by_date = lack_count_emp_df.sum()
+            lack_by_date.index = pd.to_datetime(lack_by_date.index)
+            lack_month = (
+                lack_by_date.groupby(lack_by_date.index.to_period("M")).sum() * slot_hours
+            )
+            excess_month = pd.Series(dtype=float)
+            if not excess_count_emp_df.empty:
+                excess_by_date = excess_count_emp_df.sum()
+                excess_by_date.index = pd.to_datetime(excess_by_date.index)
+                excess_month = (
+                    excess_by_date.groupby(excess_by_date.index.to_period("M")).sum() * slot_hours
+                )
+            month_keys: Dict[str, Dict[str, int]] = {}
+            for mon, val in lack_month.items():
+                month_keys.setdefault(
+                    str(mon),
+                    {
+                        "employment": emp_name_current,
+                        "month": str(mon),
+                        "lack_h": 0,
+                        "excess_h": 0,
+                    },
+                )
+                month_keys[str(mon)]["lack_h"] = int(round(val))
+            for mon, val in excess_month.items():
+                month_keys.setdefault(
+                    str(mon),
+                    {
+                        "employment": emp_name_current,
+                        "month": str(mon),
+                        "lack_h": 0,
+                        "excess_h": 0,
+                    },
+                )
+                month_keys[str(mon)]["excess_h"] = int(round(val))
+            monthly_emp_rows.extend(month_keys.values())
+        except Exception as e_month_emp:
+            log.debug(f"月別不足/過剰集計エラー ({emp_name_current}): {e_month_emp}")
+
+        emp_kpi_rows.append(
+            {
+                "employment": emp_name_current,
+                "need_h": int(round(total_need_hours_for_emp)),
+                "staff_h": int(round(total_staff_hours_for_emp)),
+                "lack_h": int(round(total_lack_hours_for_emp)),
+                "excess_h": int(round(total_excess_hours_for_emp)),
+                "working_days_considered": num_working_days_for_current_emp,
+            }
+        )
+        log.debug(
+            f"  Employment: {emp_name_current}, Need(h): {total_need_hours_for_emp:.1f} (on {num_working_days_for_current_emp} working days), "
+            f"Staff(h): {total_staff_hours_for_emp:.1f}, Lack(h): {total_lack_hours_for_emp:.1f}, Excess(h): {total_excess_hours_for_emp:.1f}"
+        )
+        log.debug(
+            f"--- shortage_employment.xlsx 計算デバッグ (雇用形態: {emp_name_current}) 終了 ---"
+        )
+
+    emp_summary_df = pd.DataFrame(emp_kpi_rows)
+    if not emp_summary_df.empty:
+        emp_summary_df = emp_summary_df.sort_values(
+            "lack_h", ascending=False, na_position="last"
+        ).reset_index(drop=True)
+
+    monthly_emp_df = pd.DataFrame(monthly_emp_rows)
+    if not monthly_emp_df.empty:
+        monthly_emp_df = monthly_emp_df.sort_values(["month", "employment"]).reset_index(drop=True)
+
+    fp_shortage_emp = out_dir_path / "shortage_employment.xlsx"
+    with pd.ExcelWriter(fp_shortage_emp, engine="openpyxl") as ew:
+        emp_summary_df.to_excel(ew, sheet_name="employment_summary", index=False)
+        if not monthly_emp_df.empty:
+            monthly_emp_df.to_excel(ew, sheet_name="employment_monthly", index=False)
+
+    meta_employments_list_shortage = (
+        emp_summary_df["employment"].tolist()
+        if not emp_summary_df.empty
+        else processed_emp_names_list
+    )
+    meta_months_list_shortage.extend(
+        monthly_emp_df["month"].tolist() if not monthly_emp_df.empty else []
+    )
+
     write_meta(
         out_dir_path / "shortage.meta.json",
         slot=slot,
         dates=sorted(list(set(meta_dates_list_shortage))),
         roles=sorted(list(set(meta_roles_list_shortage))),
+        employments=sorted(list(set(meta_employments_list_shortage))),
         months=sorted(list(set(meta_months_list_shortage))),
         ratio_file="shortage_ratio.xlsx",
         freq_file="shortage_freq.xlsx",
@@ -548,7 +735,8 @@ def shortage_and_brief(
         f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
         f"shortage_ratio → {fp_shortage_ratio.name}, "
         f"shortage_freq → {fp_shortage_freq.name}, "
-        f"shortage_role → {fp_shortage_role.name}, "(
+        f"shortage_role → {fp_shortage_role.name}, "
+        f"shortage_employment → {fp_shortage_emp.name}, "(
             f"excess_time → {fp_excess_time.name}, " if fp_excess_time else ""
         )
         + (f"excess_ratio → {fp_excess_ratio.name}, " if fp_excess_ratio else "")
