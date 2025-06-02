@@ -1,6 +1,7 @@
 """shift_suite.risk_pay – pay とシフト乖離の単純計算（暫定ロジック）"""
 from __future__ import annotations
-import pandas as pd, logging
+import pandas as pd
+import logging
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -12,7 +13,8 @@ def risk_pay(out_dir: Path, slot: int, pay_csv: Path | None):
     """
     sh_p = out_dir / 'shortage_role.xlsx'
     if not sh_p.exists():
-        log.warning("risk_pay: shortage_role.xlsx missing – skipped"); return
+        log.warning("risk_pay: shortage_role.xlsx missing – skipped")
+        return
     lack = pd.read_excel(sh_p).rename(columns=str)
     if pay_csv and Path(pay_csv).exists():
         pay = pd.read_csv(pay_csv)
