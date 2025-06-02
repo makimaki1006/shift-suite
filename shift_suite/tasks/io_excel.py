@@ -49,6 +49,8 @@ SHEET_COL_ALIAS = {
     "部署": "role",
     "役職": "role",
     "role": "role",
+    "雇用形態": "employment",
+    "employment": "employment",
 }
 DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}
 
@@ -242,7 +244,9 @@ def ingest_excel(
         date_cols_candidate = [
             c
             for c in df_sheet.columns
-            if c not in ("staff", "role") and not str(c).startswith("Unnamed:")
+            if c
+            not in ("staff", "role", "employment")
+            and not str(c).startswith("Unnamed:")
         ]
         if not date_cols_candidate:
             logger.warning(
@@ -256,6 +260,7 @@ def ingest_excel(
         for _, row_data in df_sheet.iterrows():
             staff = _normalize(row_data.get("staff", ""))
             role = _normalize(row_data.get("role", ""))
+            employment = _normalize(row_data.get("employment", ""))
 
             if (
                 staff in DOW_TOKENS
@@ -392,6 +397,7 @@ def ingest_excel(
                             "ds": record_datetime_for_zero_slot,
                             "staff": staff,
                             "role": role,
+                            "employment": employment,
                             "code": code_val,
                             "holiday_type": holiday_type_for_record,
                             "parsed_slots_count": parsed_slots_count_for_record,
@@ -410,6 +416,7 @@ def ingest_excel(
                                 "ds": record_datetime,
                                 "staff": staff,
                                 "role": role,
+                                "employment": employment,
                                 "code": code_val,
                                 "holiday_type": holiday_type_for_record,
                                 "parsed_slots_count": parsed_slots_count_for_record,
