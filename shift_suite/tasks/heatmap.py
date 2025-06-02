@@ -102,26 +102,50 @@ def calculate_pattern_based_need(
     for day_of_week_idx in range(7): 
         dow_cols_to_agg = [col_dt for col_dt in filtered_slot_df_dow.columns if col_dt.weekday() == day_of_week_idx]
         if not dow_cols_to_agg:
-            log.debug(f"  曜日 {day_of_week_idx}: 該当データなし。Needは0とします。")
-            dow_need_df_calculated[day_of_week_idx] = 0; continue
+            log.debug(
+                f"  曜日 {day_of_week_idx}: 該当データなし。Needは0とします。"
+            )
+            dow_need_df_calculated[day_of_week_idx] = 0
+            continue
         data_for_dow_calc = filtered_slot_df_dow[dow_cols_to_agg]
         for time_slot_val, row_series_data in data_for_dow_calc.iterrows():
             values_at_slot_current = row_series_data.dropna().astype(float).tolist()
-            if not values_at_slot_current: dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = 0; continue
+            if not values_at_slot_current:
+                dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = 0
+                continue
             values_for_stat_calc = values_at_slot_current
             if remove_outliers and len(values_at_slot_current) >= 4:
-                q1_val = np.percentile(values_at_slot_current, 25); q3_val = np.percentile(values_at_slot_current, 75)
-                iqr_val = q3_val - q1_val; lower_bound_val = q1_val - iqr_multiplier * iqr_val; upper_bound_val = q3_val + iqr_multiplier * iqr_val
-                values_filtered_outlier = [x_val for x_val in values_at_slot_current if lower_bound_val <= x_val <= upper_bound_val]
-                if not values_filtered_outlier: log.debug(f"  曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: 外れ値除去後データなし。元のリストで計算します。")
-                else: values_for_stat_calc = values_filtered_outlier
+                q1_val = np.percentile(values_at_slot_current, 25)
+                q3_val = np.percentile(values_at_slot_current, 75)
+                iqr_val = q3_val - q1_val
+                lower_bound_val = q1_val - iqr_multiplier * iqr_val
+                upper_bound_val = q3_val + iqr_multiplier * iqr_val
+                values_filtered_outlier = [
+                    x_val
+                    for x_val in values_at_slot_current
+                    if lower_bound_val <= x_val <= upper_bound_val
+                ]
+                if not values_filtered_outlier:
+                    log.debug(
+                        f"  曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: 外れ値除去後データなし。元のリストで計算します。"
+                    )
+                else:
+                    values_for_stat_calc = values_filtered_outlier
             need_calculated_val = 0.0
             if values_for_stat_calc:
-                if statistic_method == "10パーセンタイル": need_calculated_val = np.percentile(values_for_stat_calc, 10)
-                elif statistic_method == "25パーセンタイル": need_calculated_val = np.percentile(values_for_stat_calc, 25)
-                elif statistic_method == "中央値": need_calculated_val = np.median(values_for_stat_calc)
-                elif statistic_method == "平均値": need_calculated_val = np.mean(values_for_stat_calc)
-                else: log.warning(f"不明な統計的指標: {statistic_method}。中央値を使用します。"); need_calculated_val = np.median(values_for_stat_calc)
+                if statistic_method == "10パーセンタイル":
+                    need_calculated_val = np.percentile(values_for_stat_calc, 10)
+                elif statistic_method == "25パーセンタイル":
+                    need_calculated_val = np.percentile(values_for_stat_calc, 25)
+                elif statistic_method == "中央値":
+                    need_calculated_val = np.median(values_for_stat_calc)
+                elif statistic_method == "平均値":
+                    need_calculated_val = np.mean(values_for_stat_calc)
+                else:
+                    log.warning(
+                        f"不明な統計的指標: {statistic_method}。中央値を使用します。"
+                    )
+                    need_calculated_val = np.median(values_for_stat_calc)
             dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = math.ceil(need_calculated_val) if not pd.isna(need_calculated_val) else 0
             log.debug(f"  曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: 元データ長 {len(row_series_data.dropna())} -> 外れ値除去後 {len(values_for_stat_calc)} -> Need {dow_need_df_calculated.loc[time_slot_val, day_of_week_idx]}")
     
