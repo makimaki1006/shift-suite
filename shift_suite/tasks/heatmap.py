@@ -621,8 +621,127 @@ def build_heatmap(
                 exc_info=True,
             )
 
+    # ── Employment heatmaps ───────────────────────────────────────────────
+    employment_col_name = "employment"
+    unique_employments_list_final_loop = (
+        sorted(list(set(df_for_heatmap_actuals[employment_col_name])))
+        if employment_col_name in df_for_heatmap_actuals.columns
+        else []
+    )
+    log.info(
+        f"[heatmap.build_heatmap] 雇用形態別ヒートマップ作成開始。対象: {unique_employments_list_final_loop}"
+    )
+    for emp_item_final_loop in unique_employments_list_final_loop:
+        emp_safe_name_final_loop = safe_sheet(str(emp_item_final_loop))
+        log.debug(f"雇用形態 '{emp_item_final_loop}' 開始...")
+        df_emp_subset = df_for_heatmap_actuals[
+            df_for_heatmap_actuals[employment_col_name] == emp_item_final_loop
+        ]
+        pivot_data_emp_actual = pd.DataFrame(index=time_index_labels)
+        if not df_emp_subset.empty:
+            pivot_data_emp_actual = (
+                df_emp_subset.drop_duplicates(
+                    subset=["date_lbl", "time", staff_col_name]
+                )
+                .pivot_table(
+                    index="time",
+                    columns="date_lbl",
+                    values=staff_col_name,
+                    aggfunc="nunique",
+                    fill_value=0,
+                )
+                .reindex(index=time_index_labels, fill_value=0)
+            )
+        pivot_data_emp_final = pivot_data_emp_actual.reindex(
+            columns=all_date_labels_in_period_str, fill_value=0
+        )
+        if not pivot_data_emp_final.columns.empty:
+            try:
+                cols_to_sort_e = pd.Series(pivot_data_emp_final.columns).astype(str)
+                valid_date_cols_e = cols_to_sort_e[
+                    cols_to_sort_e.str.match(r"^\d{4}-\d{2}-\d{2}$")
+                ]
+                if not valid_date_cols_e.empty:
+                    sorted_cols_e = sorted(
+                        valid_date_cols_e,
+                        key=lambda d: dt.datetime.strptime(d, "%Y-%m-%d").date(),
+                    )
+                    other_cols_e = [
+                        c
+                        for c in pivot_data_emp_final.columns
+                        if c not in valid_date_cols_e.tolist()
+                    ]
+                    pivot_data_emp_final = pivot_data_emp_final[
+                        sorted_cols_e + other_cols_e
+                    ]
+            except Exception as e_sort_e:
+                log.warning(f"雇用形態 '{emp_item_final_loop}' 日付ソート失敗: {e_sort_e}")
+
+        need_e_series = (
+            derive_min_staff(pivot_data_emp_actual, min_method)
+            if not pivot_data_emp_actual.empty
+            else pd.Series(0, index=time_index_labels)
+        )
+        upper_e_series = (
+            derive_max_staff(pivot_data_emp_actual, max_method)
+            if not pivot_data_emp_actual.empty
+            else pd.Series(0, index=time_index_labels)
+        )
+        staff_e_series = (
+            pivot_data_emp_final.drop(columns=SUMMARY5, errors="ignore")
+            .sum(axis=1)
+            .round()
+        )
+        lack_e_series = (need_e_series - staff_e_series).clip(lower=0)
+        excess_e_series = (staff_e_series - upper_e_series).clip(lower=0)
+
+        pivot_to_excel_emp = pivot_data_emp_final.copy()
+        for col, data in zip(
+            SUMMARY5,
+            [
+                need_e_series,
+                upper_e_series,
+                staff_e_series,
+                lack_e_series,
+                excess_e_series,
+            ],
+        ):
+            pivot_to_excel_emp[col] = data
+
+        fp_emp = out_dir_path / f"heat_emp_{emp_safe_name_final_loop}.xlsx"
+        try:
+            with pd.ExcelWriter(fp_emp, engine="openpyxl") as writer_emp:
+                pivot_to_excel_emp.to_excel(
+                    writer_emp, sheet_name=emp_safe_name_final_loop, index=True
+                )
+                ws_emp = writer_emp.sheets[emp_safe_name_final_loop]
+                date_cols_emp_excel = pivot_to_excel_emp.drop(
+                    columns=SUMMARY5, errors="ignore"
+                ).columns
+                if not date_cols_emp_excel.empty:
+                    _apply_conditional_formatting_to_worksheet(
+                        ws_emp, date_cols_emp_excel
+                    )
+                    _apply_holiday_column_styling(
+                        ws_emp,
+                        date_cols_emp_excel,
+                        estimated_holidays_set,
+                        _parse_as_date,
+                    )
+            log.info(f"雇用形態 '{emp_item_final_loop}' ヒートマップ作成完了。")
+        except Exception as e_emp_write:
+            log.error(
+                f"heat_emp_{emp_safe_name_final_loop}.xlsx 作成エラー: {e_emp_write}",
+                exc_info=True,
+            )
+
     all_unique_roles_from_orig_long_df_meta = (
         sorted(list(set(long_df["role"]))) if "role" in long_df.columns else []
+    )
+    all_unique_employments_from_orig_long_df_meta = (
+        sorted(list(set(long_df["employment"])))
+        if "employment" in long_df.columns
+        else []
     )
     dow_need_pattern_output = (
         dow_need_pattern_df.reset_index()
@@ -641,6 +760,7 @@ def build_heatmap(
         estimated_holidays=[
             d.isoformat() for d in sorted(list(estimated_holidays_set))
         ],
+        employments=all_unique_employments_from_orig_long_df_meta,
         dow_need_pattern=dow_need_pattern_output,
         need_calculation_params={
             "ref_start_date": ref_start_date_for_need.isoformat(),

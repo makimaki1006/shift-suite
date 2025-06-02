@@ -193,6 +193,7 @@ JP = {
     "Ratio (staff ÷ need)": "Ratio (staff ÷ need)",
     "Color Scale Max (zmax)": "カラースケール上限 (zmax)",
     "Shortage by Role (hours)": "職種別不足時間 (h)",
+    "Shortage by Employment (hours)": "雇用形態別不足時間 (h)",
     "Shortage by Time (count per day)": "時間帯別不足人数 (日別)",
     "Shortage Frequency (days)": "不足発生頻度 (日数)",
     "Shortage with Leave": "不足と休暇数",
@@ -209,6 +210,7 @@ JP = {
     "Hiring Plan (Needed FTE)": "採用計画 (必要採用人数)",
     "Hiring Plan Parameters": "採用計画パラメータ",
     "Required FTE per Role": "職種別必要FTE数",
+    "Monthly Shortage Hours by Employment": "雇用形態別月次不足時間",
     "Generate PowerPoint Report (β)": "📊 PowerPointレポート生成 (β版)",
     "Generating PowerPoint report...": "PowerPointレポートを生成中です... 少々お待ちください。",
     "PowerPoint report ready.": "PowerPointレポートの準備ができました。",
@@ -229,6 +231,7 @@ JP = {
     "Month": "月",
     "Time": "時間帯",
     "Role": "職種",
+    "Employment": "雇用形態",
     "Shortage Hours": "不足時間(h)",
     "Total Leave Days": "総休暇日数",
     "Staff": "スタッフ",
@@ -1703,6 +1706,66 @@ def display_shortage_tab(tab_container, data_dir):
                 log_and_display_error("shortage_role.xlsx 表示エラー", e)
         else:
             st.info(_("Shortage") + " (shortage_role.xlsx) " + _("が見つかりません。"))
+
+        fp_s_emp = data_dir / "shortage_employment.xlsx"
+        if fp_s_emp.exists():
+            try:
+                xls_emp = load_excelfile_cached(
+                    str(fp_s_emp),
+                    file_mtime=_file_mtime(fp_s_emp),
+                )
+                sheet_emp = (
+                    "employment_summary"
+                    if "employment_summary" in xls_emp.sheet_names
+                    else xls_emp.sheet_names[0]
+                )
+                df_s_emp = xls_emp.parse(sheet_emp)
+                if _valid_df(df_s_emp):
+                    display_emp_df = df_s_emp.rename(
+                        columns={
+                            "employment": _("Employment"),
+                            "need_h": _("Need Hours"),
+                            "staff_h": _("Staff Hours"),
+                            "lack_h": _("Shortage Hours"),
+                            "working_days_considered": _("Working Days"),
+                            "note": _("Note"),
+                        }
+                    )
+                    st.dataframe(display_emp_df, use_container_width=True, hide_index=True)
+                    if "employment" in df_s_emp and "lack_h" in df_s_emp:
+                        fig_emp = px.bar(
+                            df_s_emp,
+                            x="employment",
+                            y="lack_h",
+                            labels={"employment": _("Employment"), "lack_h": _("Shortage Hours")},
+                            color_discrete_sequence=["#2ca02c"],
+                        )
+                        st.plotly_chart(
+                            fig_emp, use_container_width=True, key="short_emp_chart"
+                        )
+                if "employment_monthly" in xls_emp.sheet_names:
+                    df_emp_month = xls_emp.parse("employment_monthly")
+                    if _valid_df(df_emp_month) and {"month", "employment", "lack_h"}.issubset(df_emp_month.columns):
+                        fig_emp_m = px.bar(
+                            df_emp_month,
+                            x="month",
+                            y="lack_h",
+                            color="employment",
+                            barmode="stack",
+                            title=_("Monthly Shortage Hours by Employment"),
+                            labels={
+                                "month": _("Month"),
+                                "lack_h": _("Shortage Hours"),
+                                "employment": _("Employment"),
+                            },
+                        )
+                        st.plotly_chart(fig_emp_m, use_container_width=True, key="short_emp_month_chart")
+                        with st.expander(_("Monthly shortage data")):
+                            st.dataframe(df_emp_month, use_container_width=True, hide_index=True)
+            except Exception as e:
+                log_and_display_error("shortage_employment.xlsx 表示エラー", e)
+        else:
+            st.info(_("Shortage") + " (shortage_employment.xlsx) " + _("が見つかりません。"))
         st.markdown("---")
         fp_s_time = data_dir / "shortage_time.xlsx"
         if fp_s_time.exists():
