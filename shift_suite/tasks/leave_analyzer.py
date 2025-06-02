@@ -2,7 +2,7 @@
 from __future__ import annotations
 import pandas as pd
 import datetime as dt
-from typing import List, Dict, Any, Literal, Union # Union を追加
+from typing import List, Literal, Union  # Union を追加
 import logging
 
 logger = logging.getLogger(__name__)
@@ -129,9 +129,12 @@ def summarize_leave_by_day_count(
         df_to_agg['period_unit'] = df_to_agg['date'].dt.to_period('M').astype(str)
     elif period == 'month_period':
         def get_month_period(day_val: int) -> str:
-            if day_val <= 10: return '月初(1-10日)'
-            elif day_val <= 20: return '月中(11-20日)'
-            else: return '月末(21-末日)'
+            if day_val <= 10:
+                return '月初(1-10日)'
+            elif day_val <= 20:
+                return '月中(11-20日)'
+            else:
+                return '月末(21-末日)'
         df_to_agg['period_unit'] = df_to_agg['date'].dt.day.apply(get_month_period)
         month_periods_order = ['月初(1-10日)', '月中(11-20日)', '月末(21-末日)']
         df_to_agg['period_unit'] = pd.Categorical(df_to_agg['period_unit'], categories=month_periods_order, ordered=True)
