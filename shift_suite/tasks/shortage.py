@@ -746,13 +746,14 @@ def shortage_and_brief(
     )
 
     log.info(
-        f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
-        f"shortage_ratio → {fp_shortage_ratio.name}, "
-        f"shortage_freq → {fp_shortage_freq.name}, "
-        f"shortage_role → {fp_shortage_role.name}, "
-        f"shortage_employment → {fp_shortage_emp.name}, "(
-            f"excess_time → {fp_excess_time.name}, " if fp_excess_time else ""
+        (
+            f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
+            f"shortage_ratio → {fp_shortage_ratio.name}, "
+            f"shortage_freq → {fp_shortage_freq.name}, "
+            f"shortage_role → {fp_shortage_role.name}, "
+            f"shortage_employment → {fp_shortage_emp.name}, "
         )
+        + (f"excess_time → {fp_excess_time.name}, " if fp_excess_time else "")
         + (f"excess_ratio → {fp_excess_ratio.name}, " if fp_excess_ratio else "")
         + (f"excess_freq → {fp_excess_freq.name}" if fp_excess_freq else "")
     )
