@@ -87,8 +87,13 @@ The GUI caches the uploaded workbook using `load_excelfile_cached()` with
    - `--zip`: optionally compress the output directory
    - `--holidays-global`: CSV/JSON with nationally observed holidays
    - `--holidays-local`: CSV/JSON with site-specific holidays
+
    - `--safety-factor`: multiplier applied to shortage hours when automatically
      generating a hire plan (default: 1.0)
+
+   Each shift sheet should include columns for staff name, role and employment
+   type. The employment type must be one of `正社員`, `パート`, `派遣`, `スポット`
+   or `その他`.
 
 4. Run analyses directly on a CSV file using the module entry point:
 
