@@ -380,8 +380,10 @@ with st.sidebar:
         if st.session_state.get("_intended_need_ref_end_date"):
             st.session_state.need_ref_end_date_widget = st.session_state._intended_need_ref_end_date
         st.session_state._force_update_need_ref_dates_flag = False
-        if "_intended_need_ref_start_date" in st.session_state: del st.session_state["_intended_need_ref_start_date"]
-        if "_intended_need_ref_end_date" in st.session_state: del st.session_state["_intended_need_ref_end_date"]
+        if "_intended_need_ref_start_date" in st.session_state:
+            del st.session_state["_intended_need_ref_start_date"]
+        if "_intended_need_ref_end_date" in st.session_state:
+            del st.session_state["_intended_need_ref_end_date"]
 
     c1_need_ui, c2_need_ui = st.columns(2)
     with c1_need_ui:
@@ -413,8 +415,14 @@ with st.sidebar:
 
     with st.expander(_("(Optional) Upper Limit Calculation Method"), expanded=False):
         current_min_method_upper_idx_val = 0
-        try: current_min_method_upper_idx_val = st.session_state.min_method_for_upper_options_widget.index(st.session_state.min_method_for_upper_widget)
-        except (ValueError, AttributeError): current_min_method_upper_idx_val = 1
+        try:
+            current_min_method_upper_idx_val = (
+                st.session_state.min_method_for_upper_options_widget.index(
+                    st.session_state.min_method_for_upper_widget
+                )
+            )
+        except (ValueError, AttributeError):
+            current_min_method_upper_idx_val = 1
         st.selectbox(
             _("Min-staff method (for Upper)"), options=st.session_state.min_method_for_upper_options_widget,
             index=current_min_method_upper_idx_val, key="min_method_for_upper_widget",
