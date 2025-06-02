@@ -575,7 +575,10 @@ def shortage_and_brief(
             continue
 
         emp_need_series = (
-            emp_heat_current_df["need"].reindex(index=time_labels).fillna(0).clip(lower=0)
+            emp_heat_current_df["need"]
+            .reindex(index=time_labels)
+            .fillna(0)
+            .clip(lower=0)
         )
         emp_date_columns = [
             str(c)
@@ -599,12 +602,19 @@ def shortage_and_brief(
             continue
 
         emp_staff_df = (
-            emp_heat_current_df[emp_date_columns].copy().reindex(index=time_labels).fillna(0)
+            emp_heat_current_df[emp_date_columns]
+            .copy()
+            .reindex(index=time_labels)
+            .fillna(0)
         )
         parsed_emp_dates = [_parse_as_date(c) for c in emp_staff_df.columns]
-        holiday_mask_emp = [d in estimated_holidays_set if d else False for d in parsed_emp_dates]
+        holiday_mask_emp = [
+            d in estimated_holidays_set if d else False for d in parsed_emp_dates
+        ]
         need_df_emp = pd.DataFrame(
-            np.repeat(emp_need_series.values[:, np.newaxis], len(emp_staff_df.columns), axis=1),
+            np.repeat(
+                emp_need_series.values[:, np.newaxis], len(emp_staff_df.columns), axis=1
+            ),
             index=emp_need_series.index,
             columns=emp_staff_df.columns,
         )
@@ -636,14 +646,16 @@ def shortage_and_brief(
             lack_by_date = lack_count_emp_df.sum()
             lack_by_date.index = pd.to_datetime(lack_by_date.index)
             lack_month = (
-                lack_by_date.groupby(lack_by_date.index.to_period("M")).sum() * slot_hours
+                lack_by_date.groupby(lack_by_date.index.to_period("M")).sum()
+                * slot_hours
             )
             excess_month = pd.Series(dtype=float)
             if not excess_count_emp_df.empty:
                 excess_by_date = excess_count_emp_df.sum()
                 excess_by_date.index = pd.to_datetime(excess_by_date.index)
                 excess_month = (
-                    excess_by_date.groupby(excess_by_date.index.to_period("M")).sum() * slot_hours
+                    excess_by_date.groupby(excess_by_date.index.to_period("M")).sum()
+                    * slot_hours
                 )
             month_keys: Dict[str, Dict[str, int]] = {}
             for mon, val in lack_month.items():
@@ -698,7 +710,9 @@ def shortage_and_brief(
 
     monthly_emp_df = pd.DataFrame(monthly_emp_rows)
     if not monthly_emp_df.empty:
-        monthly_emp_df = monthly_emp_df.sort_values(["month", "employment"]).reset_index(drop=True)
+        monthly_emp_df = monthly_emp_df.sort_values(
+            ["month", "employment"]
+        ).reset_index(drop=True)
 
     fp_shortage_emp = out_dir_path / "shortage_employment.xlsx"
     with pd.ExcelWriter(fp_shortage_emp, engine="openpyxl") as ew:

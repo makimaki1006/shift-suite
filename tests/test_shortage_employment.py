@@ -19,4 +19,3 @@ def test_shortage_employment_output(tmp_path: Path) -> None:
     assert fp.exists()
     df = pd.read_excel(fp, sheet_name="employment_summary")
     assert "employment" in df.columns
-
