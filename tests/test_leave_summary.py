@@ -1,13 +1,33 @@
 import pandas as pd
-from shift_suite.tasks.leave_analyzer import summarize_leave_by_day_count, LEAVE_TYPE_REQUESTED
+from shift_suite.tasks.leave_analyzer import (
+    summarize_leave_by_day_count,
+    LEAVE_TYPE_REQUESTED,
+)
 
 
 def test_summary_contains_new_columns():
-    df = pd.DataFrame([
-        {"date": "2024-06-01", "staff": "A", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
-        {"date": "2024-06-01", "staff": "B", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
-        {"date": "2024-06-02", "staff": "A", "leave_type": LEAVE_TYPE_REQUESTED, "leave_day_flag": 1},
-    ])
+    df = pd.DataFrame(
+        [
+            {
+                "date": "2024-06-01",
+                "staff": "A",
+                "leave_type": LEAVE_TYPE_REQUESTED,
+                "leave_day_flag": 1,
+            },
+            {
+                "date": "2024-06-01",
+                "staff": "B",
+                "leave_type": LEAVE_TYPE_REQUESTED,
+                "leave_day_flag": 1,
+            },
+            {
+                "date": "2024-06-02",
+                "staff": "A",
+                "leave_type": LEAVE_TYPE_REQUESTED,
+                "leave_day_flag": 1,
+            },
+        ]
+    )
     df["date"] = pd.to_datetime(df["date"])
 
     summary = summarize_leave_by_day_count(df, period="dayofweek")

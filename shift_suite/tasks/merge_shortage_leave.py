@@ -1,5 +1,4 @@
-"""Utilities to merge shortage data with leave analysis.
-"""
+"""Utilities to merge shortage data with leave analysis."""
 
 from __future__ import annotations
 
@@ -50,7 +49,9 @@ def merge_shortage_leave(
 
     leave_df = pd.read_csv(leave_fp, parse_dates=["date"])
     leave_sum = (
-        leave_df.groupby("date")["total_leave_days"].sum().reset_index()
+        leave_df.groupby("date")["total_leave_days"]
+        .sum()
+        .reset_index()
         .rename(columns={"total_leave_days": "leave_applicants"})
     )
 

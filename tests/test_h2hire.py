@@ -9,7 +9,12 @@ def test_build_hire_plan_safety_factor(tmp_path: Path):
     df.to_excel(shortage_fp, index=False)
 
     out_default = build_hire_plan(tmp_path, monthly_hours_fte=100)
-    out_factor1 = build_hire_plan(tmp_path, out_excel="hire_plan_sf1.xlsx", monthly_hours_fte=100, safety_factor=1.0)
+    out_factor1 = build_hire_plan(
+        tmp_path,
+        out_excel="hire_plan_sf1.xlsx",
+        monthly_hours_fte=100,
+        safety_factor=1.0,
+    )
     df_default = pd.read_excel(out_default)
     df_factor1 = pd.read_excel(out_factor1)
     pd.testing.assert_frame_equal(df_default, df_factor1)

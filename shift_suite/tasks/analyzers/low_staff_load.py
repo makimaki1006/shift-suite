@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+
 class LowStaffLoadAnalyzer:
     """Analyze how often staff work on low-staffed days."""
 
@@ -44,6 +45,8 @@ class LowStaffLoadAnalyzer:
         total_days = work_df.groupby("staff")["date"].nunique()
 
         result = pd.DataFrame({"staff": total_days.index})
-        result["low_staff_days"] = low_counts.reindex(result["staff"], fill_value=0).astype(int)
+        result["low_staff_days"] = low_counts.reindex(
+            result["staff"], fill_value=0
+        ).astype(int)
         result["ratio"] = (result["low_staff_days"] / total_days.values).fillna(0)
         return result.sort_values("ratio", ascending=False).reset_index(drop=True)

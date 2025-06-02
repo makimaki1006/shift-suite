@@ -20,9 +20,10 @@ import pandas as pd
 
 # ──────────────────────────────────────────────────────────────────────────────
 # User-tunable constants
-MONTHLY_HOURS_FTE = 160          # 月あたり 1 FTE が賄える労働時間
+MONTHLY_HOURS_FTE = 160  # 月あたり 1 FTE が賄える労働時間
 RECRUIT_COST_PER_HIRE = 200_000  # 1 人あたり採用コスト (求人広告・紹介料など)
-AVG_HOURLY_WAGE = 1_300          # 想定・自社スタッフ平均時給（円）
+AVG_HOURLY_WAGE = 1_300  # 想定・自社スタッフ平均時給（円）
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 def _calc_hire_fte(lack_h: float, monthly_hours_fte: int = MONTHLY_HOURS_FTE) -> int:
@@ -76,6 +77,7 @@ def build_hire_plan(
 
 if __name__ == "__main__":  # CLI テスト用
     import argparse
+
     p = argparse.ArgumentParser()
     p.add_argument("out_dir", type=Path, help="解析 out フォルダ")
     args = p.parse_args()

@@ -2,7 +2,6 @@
 """
 プロジェクト全体で使用する共通の定数を定義します。
 """
-import datetime as dt # ★念のため dt もインポートしておく (将来的な定数追加用)
 
 # ヒートマップや各種集計で使用される集計列のリスト
 SUMMARY5 = ["need", "upper", "staff", "lack", "excess"]

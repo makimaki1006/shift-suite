@@ -21,7 +21,12 @@ from .utils import log, save_df_xlsx, write_meta
 class RosterEnv(gym.Env):
     """Simple environment for roster generation."""
 
-    def __init__(self, demand: np.ndarray, shortage: np.ndarray | None = None, max_staff: int | None = None) -> None:
+    def __init__(
+        self,
+        demand: np.ndarray,
+        shortage: np.ndarray | None = None,
+        max_staff: int | None = None,
+    ) -> None:
         super().__init__()
         self.demand = demand.astype(float)
         self.shortage = shortage if shortage is not None else np.zeros_like(self.demand)
@@ -34,7 +39,9 @@ class RosterEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         self._idx = 0
-        obs = np.array([self.demand[self._idx], self.shortage[self._idx]], dtype=np.float32)
+        obs = np.array(
+            [self.demand[self._idx], self.shortage[self._idx]], dtype=np.float32
+        )
         return obs, {}
 
     def step(self, action):
@@ -47,8 +54,11 @@ class RosterEnv(gym.Env):
         if done:
             obs = np.array([0.0, 0.0], dtype=np.float32)
         else:
-            obs = np.array([self.demand[self._idx], self.shortage[self._idx]], dtype=np.float32)
+            obs = np.array(
+                [self.demand[self._idx], self.shortage[self._idx]], dtype=np.float32
+            )
         return obs, reward, done, False, {}
+
 
 # ═════════════════ Main ═════════════════
 def learn_roster(
@@ -78,7 +88,9 @@ def learn_roster(
         demand = df["need"].values
     elif "y" in df.columns:
         demand = df["y"].values
-        warnings.warn("[rl] `need` 列が無かったため `y` 列を使用しました（forecast 由来）")
+        warnings.warn(
+            "[rl] `need` 列が無かったため `y` 列を使用しました（forecast 由来）"
+        )
     else:
         log.warning("[rl] 需要列 (`need` または `y`) が見つからず学習をスキップ")
         return None
@@ -87,7 +99,11 @@ def learn_roster(
     forecast = None
     fc_dates = None
     if forecast_csv and Path(forecast_csv).exists():
-        df_fc = pd.read_excel(forecast_csv) if str(forecast_csv).endswith(".xlsx") else pd.read_csv(forecast_csv)
+        df_fc = (
+            pd.read_excel(forecast_csv)
+            if str(forecast_csv).endswith(".xlsx")
+            else pd.read_csv(forecast_csv)
+        )
         if "yhat" in df_fc.columns:
             forecast = df_fc["yhat"].values.astype(float)
         elif "forecast" in df_fc.columns:
@@ -101,15 +117,25 @@ def learn_roster(
     # --- 過去の不足パターン ---------------------------
     shortage_hist = np.zeros_like(demand, dtype=float)
     if shortage_csv and Path(shortage_csv).exists():
-        df_sh = pd.read_excel(shortage_csv) if str(shortage_csv).endswith(".xlsx") else pd.read_csv(shortage_csv)
-        col = "shortage" if "shortage" in df_sh.columns else ("lack_h" if "lack_h" in df_sh.columns else None)
+        df_sh = (
+            pd.read_excel(shortage_csv)
+            if str(shortage_csv).endswith(".xlsx")
+            else pd.read_csv(shortage_csv)
+        )
+        col = (
+            "shortage"
+            if "shortage" in df_sh.columns
+            else ("lack_h" if "lack_h" in df_sh.columns else None)
+        )
         if col:
             shortage_hist = df_sh[col].values.astype(float)[: len(demand)]
 
     if len(shortage_hist) < len(forecast):
         # Padding prevents index errors when the forecast extends beyond
         # the available shortage history.
-        shortage_hist = np.pad(shortage_hist, (0, len(forecast) - len(shortage_hist)), constant_values=0)
+        shortage_hist = np.pad(
+            shortage_hist, (0, len(forecast) - len(shortage_hist)), constant_values=0
+        )
 
     if len(demand) < 2 or demand.sum() == 0:
         log.warning("[rl] 需要データが不足しているため学習をスキップ")

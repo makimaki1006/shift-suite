@@ -2,11 +2,14 @@ import types
 import pandas as pd
 from shift_suite import app
 
+
 class DummyTab:
     def __enter__(self):
         return self
+
     def __exit__(self, exc_type, exc, tb):
         return False
+
 
 def make_dummy_st():
     messages = []
@@ -19,7 +22,9 @@ def make_dummy_st():
         selectbox=lambda *a, **k: None,
         warning=lambda *a, **k: None,
         info=lambda msg: messages.append(msg),
-        columns=lambda *a, **k: [types.SimpleNamespace(metric=lambda *aa, **kk: None) for _ in range(a[0])],
+        columns=lambda *a, **k: [
+            types.SimpleNamespace(metric=lambda *aa, **kk: None) for _ in range(a[0])
+        ],
     )
     return dummy, messages
 
@@ -35,7 +40,9 @@ def test_display_fairness_tab_empty(monkeypatch, tmp_path):
 
 
 def test_display_leave_analysis_tab_handles_dict(monkeypatch):
-    df = pd.DataFrame({"date": ["2024-06-01"], "leave_type": ["requested"], "total_leave_days": [2]})
+    df = pd.DataFrame(
+        {"date": ["2024-06-01"], "leave_type": ["requested"], "total_leave_days": [2]}
+    )
     results = {"daily_summary": df}
     dummy_st, infos = make_dummy_st()
     monkeypatch.setattr(app, "st", dummy_st)

@@ -49,7 +49,9 @@ def analyze_cost_benefit(
     hire_fp = out_dir / "hire_plan.xlsx"
 
     if not (kpi_fp.exists() and hire_fp.exists()):
-        raise FileNotFoundError("必要な KPI / hire_plan ファイルが out フォルダに見つかりません")
+        raise FileNotFoundError(
+            "必要な KPI / hire_plan ファイルが out フォルダに見つかりません"
+        )
 
     lack = pd.read_excel(kpi_fp)
     plan = pd.read_excel(hire_fp, sheet_name="hire_plan")
@@ -78,9 +80,7 @@ def analyze_cost_benefit(
     lack_half = lack_h_total / 2
     hire_half = hire_headcount / 2
     cost_hybrid = (
-        hire_half * hiring_cost_once
-        + lack_half * wage_direct
-        + lack_half * wage_temp
+        hire_half * hiring_cost_once + lack_half * wage_direct + lack_half * wage_temp
     )
     scenarios["Hybrid50"] = cost_hybrid
 

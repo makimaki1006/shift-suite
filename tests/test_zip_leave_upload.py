@@ -10,11 +10,13 @@ def _sample_heatmap(path: Path) -> None:
 
 def test_load_leave_results_reconstructs(tmp_path: Path):
     _sample_heatmap(tmp_path)
-    leave_df = pd.DataFrame({
-        "date": ["2024-06-01", "2024-06-02"],
-        "leave_type": [app.LEAVE_TYPE_REQUESTED, app.LEAVE_TYPE_REQUESTED],
-        "total_leave_days": [1, 2],
-    })
+    leave_df = pd.DataFrame(
+        {
+            "date": ["2024-06-01", "2024-06-02"],
+            "leave_type": [app.LEAVE_TYPE_REQUESTED, app.LEAVE_TYPE_REQUESTED],
+            "total_leave_days": [1, 2],
+        }
+    )
     leave_df.to_csv(tmp_path / "leave_analysis.csv", index=False)
 
     results = app.load_leave_results_from_dir(tmp_path)
@@ -28,11 +30,13 @@ def test_load_leave_results_reconstructs(tmp_path: Path):
 
 def test_load_leave_results_reads_optional_files(tmp_path: Path):
     _sample_heatmap(tmp_path)
-    leave_df = pd.DataFrame({
-        "date": ["2024-06-01"],
-        "leave_type": [app.LEAVE_TYPE_REQUESTED],
-        "total_leave_days": [1],
-    })
+    leave_df = pd.DataFrame(
+        {
+            "date": ["2024-06-01"],
+            "leave_type": [app.LEAVE_TYPE_REQUESTED],
+            "total_leave_days": [1],
+        }
+    )
     leave_df.to_csv(tmp_path / "leave_analysis.csv", index=False)
 
     staff_df = pd.DataFrame({"date": ["2024-06-01"], "total_staff": [5]})
