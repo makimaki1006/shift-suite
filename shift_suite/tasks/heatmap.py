@@ -675,7 +675,9 @@ def build_heatmap(
                         sorted_cols_e + other_cols_e
                     ]
             except Exception as e_sort_e:
-                log.warning(f"雇用形態 '{emp_item_final_loop}' 日付ソート失敗: {e_sort_e}")
+                log.warning(
+                    f"雇用形態 '{emp_item_final_loop}' 日付ソート失敗: {e_sort_e}"
+                )
 
         need_e_series = (
             derive_min_staff(pivot_data_emp_actual, min_method)

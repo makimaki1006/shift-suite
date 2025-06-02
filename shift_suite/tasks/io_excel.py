@@ -244,8 +244,7 @@ def ingest_excel(
         date_cols_candidate = [
             c
             for c in df_sheet.columns
-            if c
-            not in ("staff", "role", "employment")
+            if c not in ("staff", "role", "employment")
             and not str(c).startswith("Unnamed:")
         ]
         if not date_cols_candidate:

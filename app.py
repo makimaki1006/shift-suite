@@ -1731,13 +1731,18 @@ def display_shortage_tab(tab_container, data_dir):
                             "note": _("Note"),
                         }
                     )
-                    st.dataframe(display_emp_df, use_container_width=True, hide_index=True)
+                    st.dataframe(
+                        display_emp_df, use_container_width=True, hide_index=True
+                    )
                     if "employment" in df_s_emp and "lack_h" in df_s_emp:
                         fig_emp = px.bar(
                             df_s_emp,
                             x="employment",
                             y="lack_h",
-                            labels={"employment": _("Employment"), "lack_h": _("Shortage Hours")},
+                            labels={
+                                "employment": _("Employment"),
+                                "lack_h": _("Shortage Hours"),
+                            },
                             color_discrete_sequence=["#2ca02c"],
                         )
                         st.plotly_chart(
@@ -1745,7 +1750,11 @@ def display_shortage_tab(tab_container, data_dir):
                         )
                 if "employment_monthly" in xls_emp.sheet_names:
                     df_emp_month = xls_emp.parse("employment_monthly")
-                    if _valid_df(df_emp_month) and {"month", "employment", "lack_h"}.issubset(df_emp_month.columns):
+                    if _valid_df(df_emp_month) and {
+                        "month",
+                        "employment",
+                        "lack_h",
+                    }.issubset(df_emp_month.columns):
                         fig_emp_m = px.bar(
                             df_emp_month,
                             x="month",
@@ -1759,13 +1768,21 @@ def display_shortage_tab(tab_container, data_dir):
                                 "employment": _("Employment"),
                             },
                         )
-                        st.plotly_chart(fig_emp_m, use_container_width=True, key="short_emp_month_chart")
+                        st.plotly_chart(
+                            fig_emp_m,
+                            use_container_width=True,
+                            key="short_emp_month_chart",
+                        )
                         with st.expander(_("Monthly shortage data")):
-                            st.dataframe(df_emp_month, use_container_width=True, hide_index=True)
+                            st.dataframe(
+                                df_emp_month, use_container_width=True, hide_index=True
+                            )
             except Exception as e:
                 log_and_display_error("shortage_employment.xlsx 表示エラー", e)
         else:
-            st.info(_("Shortage") + " (shortage_employment.xlsx) " + _("が見つかりません。"))
+            st.info(
+                _("Shortage") + " (shortage_employment.xlsx) " + _("が見つかりません。")
+            )
         st.markdown("---")
         fp_s_time = data_dir / "shortage_time.xlsx"
         if fp_s_time.exists():
