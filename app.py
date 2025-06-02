@@ -241,6 +241,16 @@ JP = {
     "Staff Hours": "実働時間(h)",
     "Working Days": "稼働日数",
     "Note": "備考",
+    "Excess Hours": "過剰時間(h)",
+    "Excess by Role (hours)": "職種別過剰時間 (h)",
+    "Excess by Employment (hours)": "雇用形態別過剰時間 (h)",
+    "Excess by Time (count per day)": "時間帯別過剰人数 (日別)",
+    "Excess Ratio by Time": "過剰比率 (時間帯別)",
+    "Excess Frequency (days)": "過剰発生頻度 (日数)",
+    "No date columns in excess data.": "過剰データに日付列がありません。",
+    "Display all time-slot excess data": "全時間帯別過剰データ表示",
+    "Monthly Excess Hours by Role": "職種別月次過剰時間",
+    "Monthly Excess Hours by Employment": "雇用形態別月次過剰時間",
     "hire_fte": "必要FTE",
     "hire_need": "必要採用人数",
     "No leave analysis results available.": "休暇分析の結果がありません。",
@@ -1621,6 +1631,7 @@ def display_shortage_tab(tab_container, data_dir):
                         "need_h": _("Need Hours"),
                         "staff_h": _("Staff Hours"),
                         "lack_h": _("Shortage Hours"),
+                        "excess_h": _("Excess Hours"),
                         "working_days_considered": _("Working Days"),
                         "note": _("Note"),
                     }
@@ -1636,6 +1647,17 @@ def display_shortage_tab(tab_container, data_dir):
                     )
                     st.plotly_chart(
                         fig_role, use_container_width=True, key="short_role_chart"
+                    )
+                if "role" in df_s_role and "excess_h" in df_s_role:
+                    fig_role_ex = px.bar(
+                        df_s_role,
+                        x="role",
+                        y="excess_h",
+                        labels={"role": _("Role"), "excess_h": _("Excess Hours")},
+                        color_discrete_sequence=["#00BFFF"],
+                    )
+                    st.plotly_chart(
+                        fig_role_ex, use_container_width=True, key="excess_role_chart"
                     )
 
                 fp_hire = data_dir / "hire_plan.xlsx"
@@ -1727,6 +1749,7 @@ def display_shortage_tab(tab_container, data_dir):
                             "need_h": _("Need Hours"),
                             "staff_h": _("Staff Hours"),
                             "lack_h": _("Shortage Hours"),
+                            "excess_h": _("Excess Hours"),
                             "working_days_considered": _("Working Days"),
                             "note": _("Note"),
                         }
@@ -1747,6 +1770,20 @@ def display_shortage_tab(tab_container, data_dir):
                         )
                         st.plotly_chart(
                             fig_emp, use_container_width=True, key="short_emp_chart"
+                        )
+                    if "employment" in df_s_emp and "excess_h" in df_s_emp:
+                        fig_emp_ex = px.bar(
+                            df_s_emp,
+                            x="employment",
+                            y="excess_h",
+                            labels={
+                                "employment": _("Employment"),
+                                "excess_h": _("Excess Hours"),
+                            },
+                            color_discrete_sequence=["#00BFFF"],
+                        )
+                        st.plotly_chart(
+                            fig_emp_ex, use_container_width=True, key="excess_emp_chart"
                         )
                 if "employment_monthly" in xls_emp.sheet_names:
                     df_emp_month = xls_emp.parse("employment_monthly")
@@ -1827,6 +1864,49 @@ def display_shortage_tab(tab_container, data_dir):
         else:
             st.info(_("Shortage") + " (shortage_time.xlsx) " + _("が見つかりません。"))
 
+        fp_e_time = data_dir / "excess_time.xlsx"
+        if fp_e_time.exists():
+            try:
+                df_e_time = load_excel_cached(
+                    str(fp_e_time),
+                    sheet_name="excess_time",
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_e_time),
+                )
+                if not _valid_df(df_e_time):
+                    st.info("Data not available")
+                    return
+                st.write(_("Excess by Time (count per day)"))
+                avail_e_dates = df_e_time.columns.tolist()
+                if avail_e_dates:
+                    sel_e_date = st.selectbox(
+                        _("Select date to display"),
+                        avail_e_dates,
+                        key="excess_time_date",
+                    )
+                    if sel_e_date:
+                        fig_e_time = px.bar(
+                            df_e_time[sel_e_date].reset_index(),
+                            x=df_e_time.index.name or "index",
+                            y=sel_e_date,
+                            labels={
+                                df_e_time.index.name or "index": _("Time"),
+                                sel_e_date: _("Excess Hours"),
+                            },
+                            color_discrete_sequence=["#00BFFF"],
+                        )
+                        st.plotly_chart(
+                            fig_e_time, use_container_width=True, key="excess_time_chart"
+                        )
+                else:
+                    st.info(_("No date columns in excess data."))
+                with st.expander(_("Display all time-slot excess data")):
+                    st.dataframe(df_e_time, use_container_width=True)
+            except Exception as e:
+                log_and_display_error("excess_time.xlsx 表示エラー", e)
+        else:
+            st.info(_("Excess by Time (count per day)") + " (excess_time.xlsx) " + _("が見つかりません。"))
+
         fp_s_ratio = data_dir / "shortage_ratio.xlsx"
         if fp_s_ratio.exists():
             try:
@@ -1870,6 +1950,49 @@ def display_shortage_tab(tab_container, data_dir):
         else:
             st.info(_("Shortage") + " (shortage_ratio.xlsx) " + _("が見つかりません。"))
 
+        fp_e_ratio = data_dir / "excess_ratio.xlsx"
+        if fp_e_ratio.exists():
+            try:
+                df_e_ratio = load_excel_cached(
+                    str(fp_e_ratio),
+                    sheet_name="excess_ratio",
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_e_ratio),
+                )
+                if not _valid_df(df_e_ratio):
+                    st.info("Data not available")
+                    return
+                st.write(_("Excess Ratio by Time"))
+                avail_er_dates = df_e_ratio.columns.tolist()
+                if avail_er_dates:
+                    sel_er_date = st.selectbox(
+                        _("Select date for ratio"),
+                        avail_er_dates,
+                        key="excess_ratio_date",
+                    )
+                    if sel_er_date:
+                        fig_er = px.bar(
+                            df_e_ratio[sel_er_date].reset_index(),
+                            x=df_e_ratio.index.name or "index",
+                            y=sel_er_date,
+                            labels={
+                                df_e_ratio.index.name or "index": _("Time"),
+                                sel_er_date: _("Excess Hours"),
+                            },
+                            color_discrete_sequence=["#00BFFF"],
+                        )
+                        st.plotly_chart(
+                            fig_er, use_container_width=True, key="excess_ratio_chart"
+                        )
+                else:
+                    st.info(_("No date columns in excess data."))
+                with st.expander(_("Display all ratio data")):
+                    st.dataframe(df_e_ratio, use_container_width=True)
+            except Exception as e:
+                log_and_display_error("excess_ratio.xlsx 表示エラー", e)
+        else:
+            st.info(_("Excess Ratio by Time") + " (excess_ratio.xlsx) " + _("が見つかりません。"))
+
         fp_s_freq = data_dir / "shortage_freq.xlsx"
         if fp_s_freq.exists():
             try:
@@ -1902,6 +2025,39 @@ def display_shortage_tab(tab_container, data_dir):
                 log_and_display_error("shortage_freq.xlsx 表示エラー", e)
         else:
             st.info(_("Shortage") + " (shortage_freq.xlsx) " + _("が見つかりません。"))
+
+        fp_e_freq = data_dir / "excess_freq.xlsx"
+        if fp_e_freq.exists():
+            try:
+                df_e_freq = load_excel_cached(
+                    str(fp_e_freq),
+                    sheet_name="freq_by_time",
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_e_freq),
+                )
+                if not _valid_df(df_e_freq):
+                    st.info("Data not available")
+                    return
+                st.write(_("Excess Frequency (days)"))
+                fig_efreq = px.bar(
+                    df_e_freq.reset_index(),
+                    x=df_e_freq.index.name or "index",
+                    y="excess_days",
+                    labels={
+                        df_e_freq.index.name or "index": _("Time"),
+                        "excess_days": _("Excess Frequency (days)"),
+                    },
+                    color_discrete_sequence=["#00BFFF"],
+                )
+                st.plotly_chart(
+                    fig_efreq, use_container_width=True, key="excess_freq_chart"
+                )
+                with st.expander(_("Data")):
+                    st.dataframe(df_e_freq, use_container_width=True)
+            except Exception as e:
+                log_and_display_error("excess_freq.xlsx 表示エラー", e)
+        else:
+            st.info(_("Excess Frequency (days)") + " (excess_freq.xlsx) " + _("が見つかりません。"))
 
         fp_s_leave = data_dir / "shortage_leave.xlsx"
         if fp_s_leave.exists():
