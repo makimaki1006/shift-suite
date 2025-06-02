@@ -7,7 +7,7 @@
 from __future__ import annotations
 import pandas as pd
 from pathlib import Path
-import json, datetime as dt
+import json
 from .utils import log, derive_min_staff
 
 def _meta(p: Path) -> dict:
