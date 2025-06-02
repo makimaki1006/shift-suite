@@ -1,11 +1,14 @@
 """cli.py – コマンドライン一括実行"""
-import argparse, shutil
+
+import argparse
+import shutil
 from pathlib import Path
 import pandas as pd
 from shift_suite import ingest_excel, build_heatmap, shortage_and_brief, summary
 from shift_suite.h2hire import build_hire_plan as build_hire_plan_from_shortage
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.utils import safe_make_archive
+
 
 def main():
     ap = argparse.ArgumentParser("shift‑suite CLI")
@@ -30,17 +33,23 @@ def main():
     args = ap.parse_args()
 
     excel = Path(args.excel).expanduser()
-    out   = Path(args.out).expanduser()
+    out = Path(args.out).expanduser()
     holiday_dates_global = None
     holiday_dates_local = None
+
     def _read_holiday_file(fp: Path):
         if fp.suffix.lower() == ".json":
             import json
+
             with open(fp, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            return [pd.to_datetime(d).date() for d in data] if isinstance(data, list) else None
+            return (
+                [pd.to_datetime(d).date() for d in data]
+                if isinstance(data, list)
+                else None
+            )
         df_h = pd.read_csv(fp, header=None)
-        return [pd.to_datetime(x).date() for x in df_h.iloc[:,0].dropna().unique()]
+        return [pd.to_datetime(x).date() for x in df_h.iloc[:, 0].dropna().unique()]
 
     if args.holidays_global:
         fp_hg = Path(args.holidays_global).expanduser()
@@ -104,6 +113,7 @@ def main():
         safe_make_archive(out, out.with_suffix(".zip"))
 
     print("✔ CLI done →", out)
+
 
 if __name__ == "__main__":
     main()

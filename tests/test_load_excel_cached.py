@@ -21,4 +21,3 @@ def test_load_excel_cached_without_parse_dates(monkeypatch, tmp_path: Path):
 
     assert "parse_dates" not in captured_kwargs
     pd.testing.assert_frame_equal(result, real_read_excel(fp))
-

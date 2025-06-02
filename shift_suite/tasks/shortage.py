@@ -20,6 +20,7 @@ import numpy as np
 from .utils import gen_labels, log, save_df_xlsx, write_meta, _parse_as_date
 from .constants import SUMMARY5
 
+
 def shortage_and_brief(
     out_dir: Path | str,
     slot: int,
@@ -53,7 +54,7 @@ def shortage_and_brief(
             estimated_holidays_set.update(src)
     heatmap_meta_path = out_dir_path / "heatmap.meta.json"
     try:
-        with open(heatmap_meta_path, 'r', encoding='utf-8') as f:
+        with open(heatmap_meta_path, "r", encoding="utf-8") as f:
             heatmap_meta_data = json.load(f)
         holiday_date_strings = heatmap_meta_data.get("estimated_holidays", [])
         if holiday_date_strings:
@@ -61,13 +62,22 @@ def shortage_and_brief(
                 try:
                     estimated_holidays_set.add(dt.date.fromisoformat(date_str_val))
                 except ValueError:
-                    log.warning(f"[shortage] heatmap.meta.json 内の休業日 '{date_str_val}' のISO日付パースに失敗しました。")
+                    log.warning(
+                        f"[shortage] heatmap.meta.json 内の休業日 '{date_str_val}' のISO日付パースに失敗しました。"
+                    )
         if estimated_holidays_set:
-            log.info(f"[shortage] 読み込んだ推定休業日 ({len(estimated_holidays_set)}日): {sorted(list(estimated_holidays_set))}")
+            log.info(
+                f"[shortage] 読み込んだ推定休業日 ({len(estimated_holidays_set)}日): {sorted(list(estimated_holidays_set))}"
+            )
         else:
-            log.info("[shortage] heatmap.meta.json に有効な推定休業日の情報はありませんでした。")
+            log.info(
+                "[shortage] heatmap.meta.json に有効な推定休業日の情報はありませんでした。"
+            )
     except Exception as e:
-        log.error(f"[shortage] {heatmap_meta_path} の処理中にエラー: {e}。休業日考慮なしで処理を続行します。", exc_info=True)
+        log.error(
+            f"[shortage] {heatmap_meta_path} の処理中にエラー: {e}。休業日考慮なしで処理を続行します。",
+            exc_info=True,
+        )
 
     fp_all_heatmap = out_dir_path / "heat_ALL.xlsx"
     if not fp_all_heatmap.exists():
@@ -79,38 +89,75 @@ def shortage_and_brief(
         log.error(f"[shortage] heat_ALL.xlsx の読み込み中にエラー: {e}", exc_info=True)
         return None
 
-    date_columns_in_heat_all = [str(col) for col in heat_all_df.columns if col not in SUMMARY5 and _parse_as_date(str(col)) is not None]
+    date_columns_in_heat_all = [
+        str(col)
+        for col in heat_all_df.columns
+        if col not in SUMMARY5 and _parse_as_date(str(col)) is not None
+    ]
     if not date_columns_in_heat_all:
         log.warning("[shortage] heat_ALL.xlsx に日付データ列が見つかりませんでした。")
         # 空のExcelを生成して返す
         empty_df = pd.DataFrame(index=time_labels)
-        fp_s_t_empty = save_df_xlsx(empty_df, out_dir_path / "shortage_time.xlsx", sheet_name="lack_time", index=True)
-        fp_s_r_empty = save_df_xlsx(pd.DataFrame(), out_dir_path / "shortage_role.xlsx", sheet_name="role_summary", index=False)
-        save_df_xlsx(empty_df, out_dir_path / "shortage_freq.xlsx", sheet_name="freq_by_time", index=True)
+        fp_s_t_empty = save_df_xlsx(
+            empty_df,
+            out_dir_path / "shortage_time.xlsx",
+            sheet_name="lack_time",
+            index=True,
+        )
+        fp_s_r_empty = save_df_xlsx(
+            pd.DataFrame(),
+            out_dir_path / "shortage_role.xlsx",
+            sheet_name="role_summary",
+            index=False,
+        )
+        save_df_xlsx(
+            empty_df,
+            out_dir_path / "shortage_freq.xlsx",
+            sheet_name="freq_by_time",
+            index=True,
+        )
         return (fp_s_t_empty, fp_s_r_empty) if fp_s_t_empty and fp_s_r_empty else None
 
+    staff_actual_data_all_df = (
+        heat_all_df[date_columns_in_heat_all]
+        .copy()
+        .reindex(index=time_labels)
+        .fillna(0)
+    )
 
-    staff_actual_data_all_df = heat_all_df[date_columns_in_heat_all].copy().reindex(index=time_labels).fillna(0)
-
-    if 'need' not in heat_all_df.columns:
+    if "need" not in heat_all_df.columns:
         log.error("[shortage] heat_ALL.xlsx に 'need' 列 (集計列) が見つかりません。")
         return None
-    need_series_per_time_overall_orig = heat_all_df['need'].reindex(index=time_labels).fillna(0).clip(lower=0)
+    need_series_per_time_overall_orig = (
+        heat_all_df["need"].reindex(index=time_labels).fillna(0).clip(lower=0)
+    )
 
     parsed_date_list_all = [_parse_as_date(c) for c in staff_actual_data_all_df.columns]
-    holiday_mask_all = [d in estimated_holidays_set if d else False for d in parsed_date_list_all]
+    holiday_mask_all = [
+        d in estimated_holidays_set if d else False for d in parsed_date_list_all
+    ]
     need_df_all = pd.DataFrame(
-        np.repeat(need_series_per_time_overall_orig.values[:, np.newaxis], len(staff_actual_data_all_df.columns), axis=1),
+        np.repeat(
+            need_series_per_time_overall_orig.values[:, np.newaxis],
+            len(staff_actual_data_all_df.columns),
+            axis=1,
+        ),
         index=need_series_per_time_overall_orig.index,
-        columns=staff_actual_data_all_df.columns
+        columns=staff_actual_data_all_df.columns,
     )
     if any(holiday_mask_all):
         for col, is_h in zip(need_df_all.columns, holiday_mask_all):
             if is_h:
                 need_df_all[col] = 0
 
-    lack_count_overall_df = (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
-    shortage_ratio_df = ((need_df_all - staff_actual_data_all_df) / need_df_all.replace(0, np.nan)).clip(lower=0).fillna(0)
+    lack_count_overall_df = (
+        (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
+    )
+    shortage_ratio_df = (
+        ((need_df_all - staff_actual_data_all_df) / need_df_all.replace(0, np.nan))
+        .clip(lower=0)
+        .fillna(0)
+    )
 
     fp_shortage_time = save_df_xlsx(
         lack_count_overall_df,
@@ -126,7 +173,9 @@ def shortage_and_brief(
     )
 
     lack_occurrence_df = (lack_count_overall_df > 0).astype(int)
-    shortage_freq_df = pd.DataFrame(lack_occurrence_df.sum(axis=1), columns=["shortage_days"])
+    shortage_freq_df = pd.DataFrame(
+        lack_occurrence_df.sum(axis=1), columns=["shortage_days"]
+    )
     fp_shortage_freq = save_df_xlsx(
         shortage_freq_df,
         out_dir_path / "shortage_freq.xlsx",
@@ -137,9 +186,15 @@ def shortage_and_brief(
     # ----- excess analysis -----
     fp_excess_time = fp_excess_ratio = fp_excess_freq = None
     if "upper" in heat_all_df.columns:
-        upper_series_overall_orig = heat_all_df["upper"].reindex(index=time_labels).fillna(0).clip(lower=0)
+        upper_series_overall_orig = (
+            heat_all_df["upper"].reindex(index=time_labels).fillna(0).clip(lower=0)
+        )
         upper_df_all = pd.DataFrame(
-            np.repeat(upper_series_overall_orig.values[:, np.newaxis], len(staff_actual_data_all_df.columns), axis=1),
+            np.repeat(
+                upper_series_overall_orig.values[:, np.newaxis],
+                len(staff_actual_data_all_df.columns),
+                axis=1,
+            ),
             index=upper_series_overall_orig.index,
             columns=staff_actual_data_all_df.columns,
         )
@@ -148,8 +203,20 @@ def shortage_and_brief(
                 if is_h:
                     upper_df_all[col] = 0
 
-        excess_count_overall_df = (staff_actual_data_all_df - upper_df_all).clip(lower=0).fillna(0).astype(int)
-        excess_ratio_df = ((staff_actual_data_all_df - upper_df_all) / upper_df_all.replace(0, np.nan)).clip(lower=0).fillna(0)
+        excess_count_overall_df = (
+            (staff_actual_data_all_df - upper_df_all)
+            .clip(lower=0)
+            .fillna(0)
+            .astype(int)
+        )
+        excess_ratio_df = (
+            (
+                (staff_actual_data_all_df - upper_df_all)
+                / upper_df_all.replace(0, np.nan)
+            )
+            .clip(lower=0)
+            .fillna(0)
+        )
 
         fp_excess_time = save_df_xlsx(
             excess_count_overall_df,
@@ -165,7 +232,9 @@ def shortage_and_brief(
         )
 
         excess_occurrence_df = (excess_count_overall_df > 0).astype(int)
-        excess_freq_df = pd.DataFrame(excess_occurrence_df.sum(axis=1), columns=["excess_days"])
+        excess_freq_df = pd.DataFrame(
+            excess_occurrence_df.sum(axis=1), columns=["excess_days"]
+        )
         fp_excess_freq = save_df_xlsx(
             excess_freq_df,
             out_dir_path / "excess_freq.xlsx",
@@ -173,7 +242,9 @@ def shortage_and_brief(
             index=True,
         )
     else:
-        log.warning("[shortage] heat_ALL.xlsx に 'upper' 列がないため excess 分析をスキップします。")
+        log.warning(
+            "[shortage] heat_ALL.xlsx に 'upper' 列がないため excess 分析をスキップします。"
+        )
 
     log.debug(
         "--- shortage_time.xlsx / shortage_ratio.xlsx / shortage_freq.xlsx 計算デバッグ (全体) 終了 ---"
@@ -186,58 +257,131 @@ def shortage_and_brief(
     for fp_role_heatmap_item in out_dir_path.glob("heat_*.xlsx"):
         if fp_role_heatmap_item.name == "heat_ALL.xlsx":
             continue
-        
+
         role_name_current = fp_role_heatmap_item.stem.replace("heat_", "")
         processed_role_names_list.append(role_name_current)
-        log.debug(f"--- shortage_role.xlsx 計算デバッグ (職種: {role_name_current}) ---")
-        
+        log.debug(
+            f"--- shortage_role.xlsx 計算デバッグ (職種: {role_name_current}) ---"
+        )
+
         try:
             role_heat_current_df = pd.read_excel(fp_role_heatmap_item, index_col=0)
         except Exception as e_role_heat:
-            log.warning(f"[shortage] 職種別ヒートマップ '{fp_role_heatmap_item.name}' の読み込みエラー: {e_role_heat}")
-            role_kpi_rows.append({"role": role_name_current, "need_h": 0, "staff_h": 0, "lack_h": 0, "working_days_considered":0, "note": "heatmap read error"})
+            log.warning(
+                f"[shortage] 職種別ヒートマップ '{fp_role_heatmap_item.name}' の読み込みエラー: {e_role_heat}"
+            )
+            role_kpi_rows.append(
+                {
+                    "role": role_name_current,
+                    "need_h": 0,
+                    "staff_h": 0,
+                    "lack_h": 0,
+                    "working_days_considered": 0,
+                    "note": "heatmap read error",
+                }
+            )
             continue
 
-        if 'need' not in role_heat_current_df.columns:
-            log.warning(f"[shortage] 職種 '{role_name_current}' のヒートマップに 'need' 列が不足。KPI計算スキップ。")
-            role_kpi_rows.append({"role": role_name_current, "need_h": 0, "staff_h": 0, "lack_h": 0, "working_days_considered":0, "note": "missing need column"})
+        if "need" not in role_heat_current_df.columns:
+            log.warning(
+                f"[shortage] 職種 '{role_name_current}' のヒートマップに 'need' 列が不足。KPI計算スキップ。"
+            )
+            role_kpi_rows.append(
+                {
+                    "role": role_name_current,
+                    "need_h": 0,
+                    "staff_h": 0,
+                    "lack_h": 0,
+                    "working_days_considered": 0,
+                    "note": "missing need column",
+                }
+            )
             continue
-        role_need_per_time_series_orig_for_role = role_heat_current_df['need'].reindex(index=time_labels).fillna(0).clip(lower=0)
+        role_need_per_time_series_orig_for_role = (
+            role_heat_current_df["need"]
+            .reindex(index=time_labels)
+            .fillna(0)
+            .clip(lower=0)
+        )
 
-        role_date_columns_list = [str(col) for col in role_heat_current_df.columns if col not in SUMMARY5 and _parse_as_date(str(col)) is not None]
+        role_date_columns_list = [
+            str(col)
+            for col in role_heat_current_df.columns
+            if col not in SUMMARY5 and _parse_as_date(str(col)) is not None
+        ]
         if not role_date_columns_list:
-            log.warning(f"[shortage] 職種 '{role_name_current}' のヒートマップに日付列がありません。KPI計算をスキップします。")
-            role_kpi_rows.append({"role": role_name_current, "need_h": 0, "staff_h": 0, "lack_h": 0, "working_days_considered":0, "note": "no date columns"})
+            log.warning(
+                f"[shortage] 職種 '{role_name_current}' のヒートマップに日付列がありません。KPI計算をスキップします。"
+            )
+            role_kpi_rows.append(
+                {
+                    "role": role_name_current,
+                    "need_h": 0,
+                    "staff_h": 0,
+                    "lack_h": 0,
+                    "working_days_considered": 0,
+                    "note": "no date columns",
+                }
+            )
             continue
-        
-        role_staff_actual_data_df = role_heat_current_df[role_date_columns_list].copy().reindex(index=time_labels).fillna(0)
 
-        parsed_role_dates = [_parse_as_date(c) for c in role_staff_actual_data_df.columns]
-        holiday_mask_role = [d in estimated_holidays_set if d else False for d in parsed_role_dates]
+        role_staff_actual_data_df = (
+            role_heat_current_df[role_date_columns_list]
+            .copy()
+            .reindex(index=time_labels)
+            .fillna(0)
+        )
+
+        parsed_role_dates = [
+            _parse_as_date(c) for c in role_staff_actual_data_df.columns
+        ]
+        holiday_mask_role = [
+            d in estimated_holidays_set if d else False for d in parsed_role_dates
+        ]
 
         need_df_role = pd.DataFrame(
-            np.repeat(role_need_per_time_series_orig_for_role.values[:, np.newaxis], len(role_staff_actual_data_df.columns), axis=1),
+            np.repeat(
+                role_need_per_time_series_orig_for_role.values[:, np.newaxis],
+                len(role_staff_actual_data_df.columns),
+                axis=1,
+            ),
             index=role_need_per_time_series_orig_for_role.index,
-            columns=role_staff_actual_data_df.columns
+            columns=role_staff_actual_data_df.columns,
         )
         if any(holiday_mask_role):
             for c, is_h in zip(need_df_role.columns, holiday_mask_role):
                 if is_h:
                     need_df_role[c] = 0
 
-        working_cols_role = [c for c, is_h in zip(role_staff_actual_data_df.columns, holiday_mask_role) if not is_h and _parse_as_date(c)]
+        working_cols_role = [
+            c
+            for c, is_h in zip(role_staff_actual_data_df.columns, holiday_mask_role)
+            if not is_h and _parse_as_date(c)
+        ]
         num_working_days_for_current_role = len(working_cols_role)
-        total_need_slots_for_role_working_days = role_need_per_time_series_orig_for_role.sum() * num_working_days_for_current_role
+        total_need_slots_for_role_working_days = (
+            role_need_per_time_series_orig_for_role.sum()
+            * num_working_days_for_current_role
+        )
 
-        role_lack_count_for_specific_role_df = (need_df_role - role_staff_actual_data_df).clip(lower=0)
+        role_lack_count_for_specific_role_df = (
+            need_df_role - role_staff_actual_data_df
+        ).clip(lower=0)
 
         role_excess_count_for_specific_role_df = None
         if "upper" in role_heat_current_df.columns:
             role_upper_per_time_series_orig_for_role = (
-                role_heat_current_df["upper"].reindex(index=time_labels).fillna(0).clip(lower=0)
+                role_heat_current_df["upper"]
+                .reindex(index=time_labels)
+                .fillna(0)
+                .clip(lower=0)
             )
             upper_df_role = pd.DataFrame(
-                np.repeat(role_upper_per_time_series_orig_for_role.values[:, np.newaxis], len(role_staff_actual_data_df.columns), axis=1),
+                np.repeat(
+                    role_upper_per_time_series_orig_for_role.values[:, np.newaxis],
+                    len(role_staff_actual_data_df.columns),
+                    axis=1,
+                ),
                 index=role_upper_per_time_series_orig_for_role.index,
                 columns=role_staff_actual_data_df.columns,
             )
@@ -245,18 +389,26 @@ def shortage_and_brief(
                 for c, is_h in zip(upper_df_role.columns, holiday_mask_role):
                     if is_h:
                         upper_df_role[c] = 0
-            role_excess_count_for_specific_role_df = (role_staff_actual_data_df - upper_df_role).clip(lower=0)
+            role_excess_count_for_specific_role_df = (
+                role_staff_actual_data_df - upper_df_role
+            ).clip(lower=0)
         else:
-            log.debug(f"[shortage] '{role_name_current}' ヒートマップに 'upper' 列がないため excess 計算をスキップ")
-        
+            log.debug(
+                f"[shortage] '{role_name_current}' ヒートマップに 'upper' 列がないため excess 計算をスキップ"
+            )
+
         total_need_hours_for_role = total_need_slots_for_role_working_days * slot_hours
         # staff_h は全日の実績で計算（休業日も実績0として含まれる）
         total_staff_hours_for_role = role_staff_actual_data_df.sum().sum() * slot_hours
         # lack_h は休業日のneed=0を考慮したlackの合計
-        total_lack_hours_for_role = role_lack_count_for_specific_role_df.sum().sum() * slot_hours
+        total_lack_hours_for_role = (
+            role_lack_count_for_specific_role_df.sum().sum() * slot_hours
+        )
         # excess_h は休業日のupper=0を考慮したexcessの合計
         total_excess_hours_for_role = (
-            role_excess_count_for_specific_role_df.sum().sum() * slot_hours if role_excess_count_for_specific_role_df is not None else 0
+            role_excess_count_for_specific_role_df.sum().sum() * slot_hours
+            if role_excess_count_for_specific_role_df is not None
+            else 0
         )
         # 計算結果検証用: need_h - staff_h との差分がlack_hと一致するか確認
         expected_lack_h = max(total_need_hours_for_role - total_staff_hours_for_role, 0)
@@ -270,65 +422,96 @@ def shortage_and_brief(
             )
             try:
                 daily_need_h = (need_df_role.sum() * slot_hours).rename("need_h")
-                daily_staff_h = (role_staff_actual_data_df.sum() * slot_hours).rename("staff_h")
-                daily_lack_h = (role_lack_count_for_specific_role_df.sum() * slot_hours).rename("lack_h")
-                daily_debug_df = (
-                    pd.concat([daily_need_h, daily_staff_h, daily_lack_h], axis=1)
-                    .assign(diff_h=lambda d: d["need_h"] - d["staff_h"])
+                daily_staff_h = (role_staff_actual_data_df.sum() * slot_hours).rename(
+                    "staff_h"
                 )
+                daily_lack_h = (
+                    role_lack_count_for_specific_role_df.sum() * slot_hours
+                ).rename("lack_h")
+                daily_debug_df = pd.concat(
+                    [daily_need_h, daily_staff_h, daily_lack_h], axis=1
+                ).assign(diff_h=lambda d: d["need_h"] - d["staff_h"])
                 log.debug(
                     f"[shortage] daily summary for {role_name_current} (first 7 days):\n"
                     f"{daily_debug_df.head(7).to_string()}"
                 )
             except Exception as e_daily:
-                log.debug(f"[shortage] daily debug summary failed for {role_name_current}: {e_daily}")
+                log.debug(
+                    f"[shortage] daily debug summary failed for {role_name_current}: {e_daily}"
+                )
 
         # 月別不足h・過剰h集計
         try:
             lack_by_date = role_lack_count_for_specific_role_df.sum()
             lack_by_date.index = pd.to_datetime(lack_by_date.index)
             lack_month = (
-                lack_by_date.groupby(lack_by_date.index.to_period("M")).sum() * slot_hours
+                lack_by_date.groupby(lack_by_date.index.to_period("M")).sum()
+                * slot_hours
             )
             excess_month = pd.Series(dtype=float)
             if role_excess_count_for_specific_role_df is not None:
                 excess_by_date = role_excess_count_for_specific_role_df.sum()
                 excess_by_date.index = pd.to_datetime(excess_by_date.index)
                 excess_month = (
-                    excess_by_date.groupby(excess_by_date.index.to_period("M")).sum() * slot_hours
+                    excess_by_date.groupby(excess_by_date.index.to_period("M")).sum()
+                    * slot_hours
                 )
             month_keys: Dict[str, Dict[str, int]] = {}
             for mon, val in lack_month.items():
-                month_keys.setdefault(str(mon), {"role": role_name_current, "month": str(mon), "lack_h": 0, "excess_h": 0})
+                month_keys.setdefault(
+                    str(mon),
+                    {
+                        "role": role_name_current,
+                        "month": str(mon),
+                        "lack_h": 0,
+                        "excess_h": 0,
+                    },
+                )
                 month_keys[str(mon)]["lack_h"] = int(round(val))
             for mon, val in excess_month.items():
-                month_keys.setdefault(str(mon), {"role": role_name_current, "month": str(mon), "lack_h": 0, "excess_h": 0})
+                month_keys.setdefault(
+                    str(mon),
+                    {
+                        "role": role_name_current,
+                        "month": str(mon),
+                        "lack_h": 0,
+                        "excess_h": 0,
+                    },
+                )
                 month_keys[str(mon)]["excess_h"] = int(round(val))
             monthly_role_rows.extend(month_keys.values())
         except Exception as e_month:
             log.debug(f"月別不足/過剰集計エラー ({role_name_current}): {e_month}")
 
-        role_kpi_rows.append({
-            "role": role_name_current,
-            "need_h": int(round(total_need_hours_for_role)),
-            "staff_h": int(round(total_staff_hours_for_role)),
-            "lack_h": int(round(total_lack_hours_for_role)),
-            "excess_h": int(round(total_excess_hours_for_role)),
-            "working_days_considered": num_working_days_for_current_role,
-        })
+        role_kpi_rows.append(
+            {
+                "role": role_name_current,
+                "need_h": int(round(total_need_hours_for_role)),
+                "staff_h": int(round(total_staff_hours_for_role)),
+                "lack_h": int(round(total_lack_hours_for_role)),
+                "excess_h": int(round(total_excess_hours_for_role)),
+                "working_days_considered": num_working_days_for_current_role,
+            }
+        )
         log.debug(
             f"  Role: {role_name_current}, Need(h): {total_need_hours_for_role:.1f} (on {num_working_days_for_current_role} working days), "
             f"Staff(h): {total_staff_hours_for_role:.1f}, Lack(h): {total_lack_hours_for_role:.1f}, Excess(h): {total_excess_hours_for_role:.1f}"
         )
-        log.debug(f"--- shortage_role.xlsx 計算デバッグ (職種: {role_name_current}) 終了 ---")
+        log.debug(
+            f"--- shortage_role.xlsx 計算デバッグ (職種: {role_name_current}) 終了 ---"
+        )
 
     role_summary_df = pd.DataFrame(role_kpi_rows)
     if not role_summary_df.empty:
-        role_summary_df = role_summary_df.sort_values("lack_h", ascending=False, na_position="last").reset_index(drop=True)
+        role_summary_df = role_summary_df.sort_values(
+            "lack_h", ascending=False, na_position="last"
+        ).reset_index(drop=True)
 
     monthly_role_df = pd.DataFrame(monthly_role_rows)
     if not monthly_role_df.empty:
-        monthly_role_df = monthly_role_df.sort_values(["month", "role"]).reset_index(drop=True)
+        monthly_role_df = monthly_role_df.sort_values(["month", "role"]).reset_index(
+            drop=True
+        )
 
     fp_shortage_role = out_dir_path / "shortage_role.xlsx"
     with pd.ExcelWriter(fp_shortage_role, engine="openpyxl") as ew:
@@ -337,8 +520,14 @@ def shortage_and_brief(
             monthly_role_df.to_excel(ew, sheet_name="role_monthly", index=False)
 
     meta_dates_list_shortage = date_columns_in_heat_all
-    meta_roles_list_shortage = role_summary_df["role"].tolist() if not role_summary_df.empty else processed_role_names_list
-    meta_months_list_shortage = monthly_role_df["month"].tolist() if not monthly_role_df.empty else []
+    meta_roles_list_shortage = (
+        role_summary_df["role"].tolist()
+        if not role_summary_df.empty
+        else processed_role_names_list
+    )
+    meta_months_list_shortage = (
+        monthly_role_df["month"].tolist() if not monthly_role_df.empty else []
+    )
 
     write_meta(
         out_dir_path / "shortage.meta.json",
@@ -350,17 +539,20 @@ def shortage_and_brief(
         freq_file="shortage_freq.xlsx",
         excess_ratio_file="excess_ratio.xlsx" if fp_excess_ratio else None,
         excess_freq_file="excess_freq.xlsx" if fp_excess_freq else None,
-        estimated_holidays_used=[d.isoformat() for d in sorted(list(estimated_holidays_set))],
+        estimated_holidays_used=[
+            d.isoformat() for d in sorted(list(estimated_holidays_set))
+        ],
     )
 
     log.info(
         f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
         f"shortage_ratio → {fp_shortage_ratio.name}, "
         f"shortage_freq → {fp_shortage_freq.name}, "
-        f"shortage_role → {fp_shortage_role.name}, "
-        (f"excess_time → {fp_excess_time.name}, " if fp_excess_time else "") +
-        (f"excess_ratio → {fp_excess_ratio.name}, " if fp_excess_ratio else "") +
-        (f"excess_freq → {fp_excess_freq.name}" if fp_excess_freq else "")
+        f"shortage_role → {fp_shortage_role.name}, "(
+            f"excess_time → {fp_excess_time.name}, " if fp_excess_time else ""
+        )
+        + (f"excess_ratio → {fp_excess_ratio.name}, " if fp_excess_ratio else "")
+        + (f"excess_freq → {fp_excess_freq.name}" if fp_excess_freq else "")
     )
     if fp_shortage_time and fp_shortage_role and fp_shortage_ratio and fp_shortage_freq:
         return fp_shortage_time, fp_shortage_role
@@ -416,10 +608,15 @@ def merge_shortage_leave(
         try:
             leave_df = pd.read_csv(leave_fp, parse_dates=["date"])
             leave_sum = (
-                leave_df.groupby("date")["total_leave_days"].sum().astype(int).reset_index()
+                leave_df.groupby("date")["total_leave_days"]
+                .sum()
+                .astype(int)
+                .reset_index()
             )
             long_df = long_df.merge(leave_sum, on="date", how="left")
-            long_df.rename(columns={"total_leave_days": "leave_applicants"}, inplace=True)
+            long_df.rename(
+                columns={"total_leave_days": "leave_applicants"}, inplace=True
+            )
         except Exception as e:
             log.warning(f"[shortage] leave_csv load failed: {e}")
             long_df["leave_applicants"] = 0
@@ -427,9 +624,9 @@ def merge_shortage_leave(
         long_df["leave_applicants"] = 0
 
     long_df["leave_applicants"] = long_df["leave_applicants"].fillna(0).astype(int)
-    long_df["net_shortage"] = (long_df["lack"] - long_df["leave_applicants"]).clip(lower=0)
+    long_df["net_shortage"] = (long_df["lack"] - long_df["leave_applicants"]).clip(
+        lower=0
+    )
 
     out_fp = save_df_xlsx(long_df, out_dir_path / out_excel, index=False)
     return out_fp
-
-

@@ -1,4 +1,5 @@
 """Generate a simple PowerPoint summary of analysis results."""
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ JP = {
 
 def _(text: str) -> str:
     return JP.get(text, text)
+
 
 log = logging.getLogger(__name__)
 

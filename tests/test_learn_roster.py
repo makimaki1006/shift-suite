@@ -42,17 +42,21 @@ def test_learn_roster_generates_excel(tmp_path, monkeypatch):
 
     from shift_suite.tasks.rl import learn_roster
 
-    demand_df = pd.DataFrame({
-        "ds": pd.date_range("2024-01-01", periods=3),
-        "need": [1, 2, 3],
-    })
+    demand_df = pd.DataFrame(
+        {
+            "ds": pd.date_range("2024-01-01", periods=3),
+            "need": [1, 2, 3],
+        }
+    )
     demand_csv = tmp_path / "demand.csv"
     demand_df.to_csv(demand_csv, index=False)
 
-    forecast_df = pd.DataFrame({
-        "ds": pd.date_range("2024-01-04", periods=5),
-        "forecast": [2] * 5,
-    })
+    forecast_df = pd.DataFrame(
+        {
+            "ds": pd.date_range("2024-01-04", periods=5),
+            "forecast": [2] * 5,
+        }
+    )
     forecast_csv = tmp_path / "forecast.csv"
     forecast_df.to_csv(forecast_csv, index=False)
 
@@ -101,17 +105,21 @@ def test_learn_roster_model_load_failure(tmp_path, monkeypatch):
 
     from shift_suite.tasks.rl import learn_roster
 
-    demand_df = pd.DataFrame({
-        "ds": pd.date_range("2024-01-01", periods=2),
-        "need": [1, 2],
-    })
+    demand_df = pd.DataFrame(
+        {
+            "ds": pd.date_range("2024-01-01", periods=2),
+            "need": [1, 2],
+        }
+    )
     demand_csv = tmp_path / "demand.csv"
     demand_df.to_csv(demand_csv, index=False)
 
-    forecast_df = pd.DataFrame({
-        "ds": pd.date_range("2024-01-03", periods=3),
-        "forecast": [2] * 3,
-    })
+    forecast_df = pd.DataFrame(
+        {
+            "ds": pd.date_range("2024-01-03", periods=3),
+            "forecast": [2] * 3,
+        }
+    )
     forecast_csv = tmp_path / "forecast.csv"
     forecast_df.to_csv(forecast_csv, index=False)
 

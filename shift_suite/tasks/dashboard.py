@@ -36,7 +36,13 @@ def employee_overview(score_df: pd.DataFrame):
 
 def department_overview(score_df: pd.DataFrame, long_df: pd.DataFrame):
     """Return a bar chart of average score per role."""
-    if score_df is None or score_df.empty or long_df is None or long_df.empty or "role" not in long_df.columns:
+    if (
+        score_df is None
+        or score_df.empty
+        or long_df is None
+        or long_df.empty
+        or "role" not in long_df.columns
+    ):
         return px.bar(title="No data")
     mapping = long_df[["staff", "role"]].drop_duplicates()
     merged = mapping.merge(score_df, on="staff", how="left")

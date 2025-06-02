@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+
 class WorkPatternAnalyzer:
     """Analyse frequency of shift codes and return monthly summaries.
 
@@ -42,7 +43,9 @@ class WorkPatternAnalyzer:
             return pd.DataFrame()
 
         work_df["month"] = pd.to_datetime(work_df["ds"]).dt.to_period("M")
-        counts = work_df.groupby(["staff", "month", "code"]).size().unstack(fill_value=0)
+        counts = (
+            work_df.groupby(["staff", "month", "code"]).size().unstack(fill_value=0)
+        )
 
         totals = counts.sum(axis=1)
         ratios = counts.div(totals.replace(0, pd.NA), axis=0).fillna(0)

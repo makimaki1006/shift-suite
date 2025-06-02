@@ -35,4 +35,3 @@ def test_merge_shortage_leave(tmp_path: Path):
 
     calc_net = (result["lack"] - result["leave_applicants"]).clip(lower=0)
     assert result["net_shortage"].equals(calc_net)
-

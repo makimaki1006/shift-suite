@@ -6,11 +6,14 @@ from shift_suite.tasks.utils import gen_labels
 
 def _create_heatmap_with_upper(out_dir: Path) -> None:
     labels = gen_labels(30)[:2]
-    df = pd.DataFrame({
-        "need": [1, 1],
-        "upper": [2, 2],
-        "2024-06-01": [3, 0],
-    }, index=labels)
+    df = pd.DataFrame(
+        {
+            "need": [1, 1],
+            "upper": [2, 2],
+            "2024-06-01": [3, 0],
+        },
+        index=labels,
+    )
     df.to_excel(out_dir / "heat_ALL.xlsx")
 
 

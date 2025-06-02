@@ -45,6 +45,7 @@ _EXCEL_EPOCH = dt.date(1899, 12, 30)
 _COL_RE = re.compile(r"\s*(\d{1,2})[/-](\d{1,2})")  # 3/1  03-01
 _SUMMARY_COLS = {"need", "upper", "staff", "lack", "excess"}
 
+
 # ────────────────── ヘルパ ──────────────────
 def _excel_serial_to_date(num: int | float) -> Optional[dt.date]:
     """Excel シリアル値 → date。失敗時 None"""
@@ -157,16 +158,16 @@ def build_demand_series(
     if leave_csv and Path(leave_csv).exists():
         try:
             leave_df = pd.read_csv(leave_csv, parse_dates=["date"])
-            pivot = (
-                leave_df.pivot_table(
-                    index="date",
-                    columns="leave_type",
-                    values="total_leave_days",
-                    aggfunc="sum",
-                    fill_value=0,
-                )
+            pivot = leave_df.pivot_table(
+                index="date",
+                columns="leave_type",
+                values="total_leave_days",
+                aggfunc="sum",
+                fill_value=0,
             )
-            pivot = pivot.add_prefix("leave_").reset_index().rename(columns={"date": "ds"})
+            pivot = (
+                pivot.add_prefix("leave_").reset_index().rename(columns={"date": "ds"})
+            )
             df = df.merge(pivot, on="ds", how="left").fillna(0)
         except Exception as e:
             log.warning(f"[forecast] leave_csv load failed: {e}")
@@ -251,16 +252,16 @@ def forecast_need(
     if leave_csv and Path(leave_csv).exists():
         try:
             leave_df = pd.read_csv(leave_csv, parse_dates=["date"])
-            pivot = (
-                leave_df.pivot_table(
-                    index="date",
-                    columns="leave_type",
-                    values="total_leave_days",
-                    aggfunc="sum",
-                    fill_value=0,
-                )
+            pivot = leave_df.pivot_table(
+                index="date",
+                columns="leave_type",
+                values="total_leave_days",
+                aggfunc="sum",
+                fill_value=0,
             )
-            pivot = pivot.add_prefix("leave_").reset_index().rename(columns={"date": "ds"})
+            pivot = (
+                pivot.add_prefix("leave_").reset_index().rename(columns={"date": "ds"})
+            )
             df = df.merge(pivot, on="ds", how="left").fillna(0)
         except Exception as e:
             log.warning(f"[forecast] leave_csv load failed: {e}")
@@ -309,13 +310,13 @@ def forecast_need(
                 error_action="ignore",
             )
         future_exog = (
-            pd.DataFrame([df[exog_cols].iloc[-1]] * periods)
-            if exog_cols
-            else None
+            pd.DataFrame([df[exog_cols].iloc[-1]] * periods) if exog_cols else None
         )
         if future_exog is not None:
             if "holiday" in exog_cols:
-                future_exog["holiday"] = [1 if d.date() in holiday_set else 0 for d in future_dates]
+                future_exog["holiday"] = [
+                    1 if d.date() in holiday_set else 0 for d in future_dates
+                ]
         arima_fc = arima_mod.predict(n_periods=periods, exogenous=future_exog)
         try:
             train_y = getattr(arima_mod, "y", arima_mod.arima_res_.data.endog)
@@ -351,11 +352,13 @@ def forecast_need(
         created=str(dt.datetime.now()),
     )
     try:
-        hist_row = pd.DataFrame({
-            "timestamp": [dt.datetime.now().isoformat()],
-            "model": [sel],
-            "mape": [float(np.round(sel_mape, 6))],
-        })
+        hist_row = pd.DataFrame(
+            {
+                "timestamp": [dt.datetime.now().isoformat()],
+                "model": [sel],
+                "mape": [float(np.round(sel_mape, 6))],
+            }
+        )
         hist_row.to_csv(log_csv, mode="a", index=False, header=not log_csv.exists())
     except Exception as e:
         log.warning(f"[forecast] failed to update history: {e}")
