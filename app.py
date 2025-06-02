@@ -1393,7 +1393,7 @@ if run_button_clicked:
                             )
         else:
             log.warning(
-                f"解析は完了しましたが、出力ディレクトリ '{out_dir_to_save_exec_main_run}' が見つかりません。"
+                f"解析は完了しましたが、出力ディレクトリ '{st.session_state.out_dir_path_str}' が見つかりません。"
             )
 
         st.session_state.analysis_results[file_name] = {
