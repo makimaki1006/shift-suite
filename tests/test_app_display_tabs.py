@@ -13,6 +13,14 @@ class DummyTab:
 
 def make_dummy_st():
     messages = []
+    metric_calls = []
+
+    def columns(n, **k):
+        return [
+            types.SimpleNamespace(metric=lambda *aa, **kk: metric_calls.append((aa, kk)))
+            for _ in range(n)
+        ]
+
     dummy = types.SimpleNamespace(
         subheader=lambda *a, **k: None,
         dataframe=lambda *a, **k: None,
@@ -22,17 +30,15 @@ def make_dummy_st():
         selectbox=lambda *a, **k: None,
         warning=lambda *a, **k: None,
         info=lambda msg: messages.append(msg),
-        columns=lambda *a, **k: [
-            types.SimpleNamespace(metric=lambda *aa, **kk: None) for _ in range(a[0])
-        ],
+        columns=columns,
     )
-    return dummy, messages
+    return dummy, messages, metric_calls
 
 
 def test_display_fairness_tab_empty(monkeypatch, tmp_path):
     (tmp_path / "fairness_after.xlsx").touch()
     monkeypatch.setattr(app, "load_excel_cached", lambda *a, **k: pd.DataFrame())
-    dummy_st, infos = make_dummy_st()
+    dummy_st, infos, _ = make_dummy_st()
     monkeypatch.setattr(app, "st", dummy_st)
     monkeypatch.setattr(app, "_", lambda x: x)
     app.display_fairness_tab(DummyTab(), tmp_path)
@@ -44,8 +50,42 @@ def test_display_leave_analysis_tab_handles_dict(monkeypatch):
         {"date": ["2024-06-01"], "leave_type": ["requested"], "total_leave_days": [2]}
     )
     results = {"daily_summary": df}
-    dummy_st, infos = make_dummy_st()
+    dummy_st, infos, _ = make_dummy_st()
     monkeypatch.setattr(app, "st", dummy_st)
     monkeypatch.setattr(app, "_", lambda x: x)
     app.display_leave_analysis_tab(DummyTab(), results)
     assert infos == []
+
+
+def test_display_overview_tab_metrics(monkeypatch, tmp_path):
+    df_shortage = pd.DataFrame({"lack_h": [5, 3]})
+    df_meta = pd.DataFrame({"metric": ["jain_index"], "value": [0.8]})
+    df_staff = pd.DataFrame({"night_ratio": [0.2, 0.3]})
+    df_alerts = pd.DataFrame({"category": ["c"], "value": [1]})
+
+    def fake_load_excel_cached(path, *a, **k):
+        if "shortage_role.xlsx" in path:
+            return df_shortage
+        if "fairness_before.xlsx" in path:
+            return df_meta
+        if "staff_stats.xlsx" in path:
+            return df_staff
+        return pd.DataFrame()
+
+    class DummyXLS:
+        sheet_names = ["alerts"]
+
+        def parse(self, name):
+            assert name == "alerts"
+            return df_alerts
+
+    monkeypatch.setattr(app, "load_excel_cached", fake_load_excel_cached)
+    monkeypatch.setattr(app, "load_excelfile_cached", lambda *a, **k: DummyXLS())
+
+    dummy_st, infos, metrics = make_dummy_st()
+    monkeypatch.setattr(app, "st", dummy_st)
+    monkeypatch.setattr(app, "_", lambda x: x)
+
+    app.display_overview_tab(DummyTab(), tmp_path)
+    assert infos == []
+    assert len(metrics) == 5
