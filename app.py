@@ -1469,7 +1469,10 @@ def display_overview_tab(tab_container, data_dir):
                     file_mtime=_file_mtime(staff_stats_fp),
                 )
                 staff_count = len(df_staff)
-                if "night_ratio" in df_staff.columns and not df_staff["night_ratio"].empty:
+                if (
+                    "night_ratio" in df_staff.columns
+                    and not df_staff["night_ratio"].empty
+                ):
                     avg_night_ratio = float(df_staff["night_ratio"].mean())
             except Exception:
                 pass
@@ -1934,7 +1937,9 @@ def display_shortage_tab(tab_container, data_dir):
                             color_discrete_sequence=["#00BFFF"],
                         )
                         st.plotly_chart(
-                            fig_e_time, use_container_width=True, key="excess_time_chart"
+                            fig_e_time,
+                            use_container_width=True,
+                            key="excess_time_chart",
                         )
                 else:
                     st.info(_("No date columns in excess data."))
@@ -1943,7 +1948,11 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("excess_time.xlsx 表示エラー", e)
         else:
-            st.info(_("Excess by Time (count per day)") + " (excess_time.xlsx) " + _("が見つかりません。"))
+            st.info(
+                _("Excess by Time (count per day)")
+                + " (excess_time.xlsx) "
+                + _("が見つかりません。")
+            )
 
         fp_s_ratio = data_dir / "shortage_ratio.xlsx"
         if fp_s_ratio.exists():
@@ -2029,7 +2038,11 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("excess_ratio.xlsx 表示エラー", e)
         else:
-            st.info(_("Excess Ratio by Time") + " (excess_ratio.xlsx) " + _("が見つかりません。"))
+            st.info(
+                _("Excess Ratio by Time")
+                + " (excess_ratio.xlsx) "
+                + _("が見つかりません。")
+            )
 
         fp_s_freq = data_dir / "shortage_freq.xlsx"
         if fp_s_freq.exists():
@@ -2095,7 +2108,11 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("excess_freq.xlsx 表示エラー", e)
         else:
-            st.info(_("Excess Frequency (days)") + " (excess_freq.xlsx) " + _("が見つかりません。"))
+            st.info(
+                _("Excess Frequency (days)")
+                + " (excess_freq.xlsx) "
+                + _("が見つかりません。")
+            )
 
         fp_s_leave = data_dir / "shortage_leave.xlsx"
         if fp_s_leave.exists():

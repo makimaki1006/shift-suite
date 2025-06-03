@@ -17,7 +17,9 @@ def make_dummy_st():
 
     def columns(n, **k):
         return [
-            types.SimpleNamespace(metric=lambda *aa, **kk: metric_calls.append((aa, kk)))
+            types.SimpleNamespace(
+                metric=lambda *aa, **kk: metric_calls.append((aa, kk))
+            )
             for _ in range(n)
         ]
 
