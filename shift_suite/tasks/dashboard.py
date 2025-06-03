@@ -79,3 +79,57 @@ def work_pattern_heatmap(df: pd.DataFrame):
         labels={"x": _("Shift Code"), "y": _("Staff"), "color": _("Ratio")},
     )
     return fig
+
+
+def shortage_heatmap(lack_ratio_df: pd.DataFrame):
+    """Return heatmap visualising shortage ratio for all dates."""
+    if lack_ratio_df is None or lack_ratio_df.empty:
+        return px.imshow(pd.DataFrame(), aspect="auto")
+
+    fig = px.imshow(
+        lack_ratio_df,
+        aspect="auto",
+        color_continuous_scale="Reds",
+        labels={"x": _("Date"), "y": _("Time"), "color": _("Shortage Ratio")},
+    )
+    return fig
+
+
+def fatigue_distribution(fatigue_df: pd.DataFrame):
+    """Return histogram of fatigue scores."""
+    if (
+        fatigue_df is None
+        or fatigue_df.empty
+        or "fatigue_score" not in fatigue_df.columns
+    ):
+        return px.histogram(pd.DataFrame(), nbins=10)
+
+    fig = px.histogram(
+        fatigue_df,
+        x="fatigue_score",
+        nbins=20,
+        labels={"fatigue_score": _("Score")},
+        title="Fatigue Score Distribution",
+    )
+    fig.update_layout(yaxis_title="Count")
+    return fig
+
+
+def fairness_histogram(summary_df: pd.DataFrame):
+    """Return histogram of night shift ratios."""
+    if (
+        summary_df is None
+        or summary_df.empty
+        or "night_ratio" not in summary_df.columns
+    ):
+        return px.histogram(pd.DataFrame(), nbins=10)
+
+    fig = px.histogram(
+        summary_df,
+        x="night_ratio",
+        nbins=20,
+        labels={"night_ratio": _("Ratio")},
+        title="Night Shift Ratio Distribution",
+    )
+    fig.update_layout(yaxis_title="Count")
+    return fig
