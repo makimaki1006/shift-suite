@@ -2,6 +2,7 @@ import pandas as pd
 from shift_suite.tasks.leave_analyzer import (
     analyze_leave_concentration,
     analyze_both_leave_concentration,
+    staff_concentration_share,
     summarize_leave_by_day_count,
     LEAVE_TYPE_REQUESTED,
     LEAVE_TYPE_PAID,
@@ -151,3 +152,21 @@ def test_analyze_both_leave_concentration():
     assert list(result["is_concentrated"]) == [True, True, False]
     assert result["requested_count"].tolist() == [1, 2, 0]
     assert result["paid_count"].tolist() == [1, 1, 1]
+
+
+def test_staff_concentration_share():
+    daily_df = make_sample_daily_leave_df()
+    summary = summarize_leave_by_day_count(daily_df, period="date")
+    conc = analyze_leave_concentration(
+        summary, concentration_threshold=2, daily_leave_df=daily_df
+    )
+
+    share = staff_concentration_share(conc)
+
+    expected = {
+        "staff": ["Bob", "Alice", "Charlie"],
+        "concentrated_day_count": [2, 1, 1],
+        "share": [1.0, 0.5, 0.5],
+    }
+    for key in expected:
+        assert share[key].tolist() == expected[key]

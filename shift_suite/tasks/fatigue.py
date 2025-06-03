@@ -1,24 +1,50 @@
-"""shift_suite.fatigue – 疲労リスクスコアリング (LightGBM 回帰)"""
+"""shift_suite.fatigue – 疲労リスクスコアリング."""
 
 from __future__ import annotations
 import pandas as pd
 from pathlib import Path
-from lightgbm import LGBMRegressor
 from .utils import save_df_xlsx, log
 
 
 def _features(long_df: pd.DataFrame) -> pd.DataFrame:
     df = long_df.copy()
     df["is_night"] = df["code"].str.contains("夜", na=False)
-    # 特徴量エンジニアリングの際、スタッフ識別列を "name" から "staff" に変更
-    feats = df.groupby("staff").agg(  # "name" から "staff" に変更
-        total_shift=("code", "size"), night=("is_night", "sum")
+    df["is_work"] = df.get("parsed_slots_count", 0) > 0
+    df["date"] = pd.to_datetime(df["ds"]).dt.date
+
+    basic = df.groupby("staff").agg(
+        total_days=("date", "nunique"),
+        night_days=("is_night", "sum"),
     )
-    # total_shiftが0の場合のZeroDivisionErrorを避ける
-    feats["night_ratio"] = (
-        (feats["night"] / feats["total_shift"].replace(0, pd.NA)).fillna(0).round(3)
-    )
-    return feats[["night_ratio"]]
+    basic["night_ratio"] = (
+        (basic["night_days"] / basic["total_days"].replace(0, pd.NA))
+    ).fillna(0).round(3)
+
+    consec_metrics = []
+    for staff, grp in df[df["is_work"]].groupby("staff"):
+        dates = sorted(grp["date"].unique())
+        if not dates:
+            consec_metrics.append({
+                "staff": staff,
+                "consec3_ratio": 0.0,
+                "consec4_ratio": 0.0,
+                "consec5_ratio": 0.0,
+            })
+            continue
+        dates_series = pd.Series(pd.to_datetime(dates))
+        groups = dates_series.diff().dt.days.ne(1).cumsum()
+        lengths = dates_series.groupby(groups).transform("size")
+        total = len(dates_series)
+        consec_metrics.append({
+            "staff": staff,
+            "consec3_ratio": (lengths >= 3).sum() / total,
+            "consec4_ratio": (lengths >= 4).sum() / total,
+            "consec5_ratio": (lengths >= 5).sum() / total,
+        })
+
+    consec_df = pd.DataFrame(consec_metrics).set_index("staff")
+    feats = basic.join(consec_df, how="left").fillna(0)
+    return feats[["night_ratio", "consec3_ratio", "consec4_ratio", "consec5_ratio"]]
 
 
 def train_fatigue(long_df: pd.DataFrame, out_dir: Path):
@@ -42,25 +68,13 @@ def train_fatigue(long_df: pd.DataFrame, out_dir: Path):
         save_df_xlsx(empty_fatigue_df, out_dir / "fatigue_score.xlsx", "fatigue")
         return None
 
-    y = (X["night_ratio"] * 100).clip(0, 100)  # 疲労 = 夜勤比率×100
-
-    # データが少ない場合や、yのバリエーションがない場合にLGBMがエラーを出すことがあるため、最小限の行数チェック
-    if len(X) < 2 or len(y.unique()) < 2:
-        log.warning(
-            f"[fatigue] 学習データが不足しているか、目的変数のバリエーションがありません (Xの行数: {len(X)}, yのユニーク数: {len(y.unique())})。疲労スコアは0として記録します。"
-        )
-        X["fatigue_score"] = 0.0
-    else:
-        try:
-            model = LGBMRegressor(random_state=0, verbosity=-1).fit(
-                X, y
-            )  # verbosity=-1で警告を抑制
-            X["fatigue_score"] = model.predict(X).clip(0, 100).round(2)
-        except Exception as e:
-            log.error(
-                f"[fatigue] LGBMRegressorの学習または予測中にエラーが発生しました: {e}。疲労スコアは0として記録します。"
-            )
-            X["fatigue_score"] = 0.0
+    X["fatigue_score"] = (
+        0.6 * X["night_ratio"]
+        + 0.2 * X["consec3_ratio"]
+        + 0.15 * X["consec4_ratio"]
+        + 0.05 * X["consec5_ratio"]
+    ) * 100
+    X["fatigue_score"] = X["fatigue_score"].clip(0, 100).round(2)
 
     # fatigue_score列のみを保存
     fatigue_output_df = X[["fatigue_score"]].copy()
