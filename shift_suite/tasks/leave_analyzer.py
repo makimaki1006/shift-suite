@@ -1,7 +1,7 @@
 # shift_suite/tasks/leave_analyzer.py
 from __future__ import annotations
 import pandas as pd
-from typing import List, Literal, Union  # Union を追加
+from typing import Dict, List, Literal, Union  # Union を追加
 import logging
 
 logger = logging.getLogger(__name__)
@@ -335,6 +335,34 @@ def analyze_both_leave_concentration(
         .sort_values("date")
         .reset_index(drop=True)
     )
+
+
+def staff_concentration_share(concentration_df: pd.DataFrame) -> pd.DataFrame:
+    """Calculate share of staff appearing on concentrated leave days."""
+    if concentration_df.empty or not {"is_concentrated", "staff_names"}.issubset(
+        concentration_df.columns
+    ):
+        return pd.DataFrame(columns=["staff", "concentrated_day_count", "share"])
+
+    focused = concentration_df[concentration_df["is_concentrated"]]
+    if focused.empty:
+        return pd.DataFrame(columns=["staff", "concentrated_day_count", "share"])
+
+    total_days = len(focused)
+    counts: Dict[str, int] = {}
+    for names in focused["staff_names"]:
+        for name in names:
+            counts[name] = counts.get(name, 0) + 1
+
+    result = (
+        pd.DataFrame(
+            [(k, v, v / total_days) for k, v in counts.items()],
+            columns=["staff", "concentrated_day_count", "share"],
+        )
+        .sort_values("share", ascending=False)
+        .reset_index(drop=True)
+    )
+    return result
 
 
 def get_staff_leave_list(
