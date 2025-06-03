@@ -478,19 +478,19 @@ if __name__ == "__main__":
         )
         logger.info("正常に処理が完了しました。")
         if not ld.empty:
-            print("--- long_df (最初の5行) ---")
-            print(ld.head())
-            print(f"long_df columns: {ld.columns.tolist()}")
-            print(f"long_df dtypes:\n{ld.dtypes}")
+            logger.info("--- long_df (最初の5行) ---")
+            logger.info(ld.head())
+            logger.info(f"long_df columns: {ld.columns.tolist()}")
+            logger.info(f"long_df dtypes:\n{ld.dtypes}")
         else:
-            print("--- long_df は空です ---")
+            logger.info("--- long_df は空です ---")
         if not wt.empty:
-            print("--- wt_df (最初の5行) ---")
-            print(wt.head())
-            print(f"wt_df columns: {wt.columns.tolist()}")
-            print(f"wt_df dtypes:\n{wt.dtypes}")
+            logger.info("--- wt_df (最初の5行) ---")
+            logger.info(wt.head())
+            logger.info(f"wt_df columns: {wt.columns.tolist()}")
+            logger.info(f"wt_df dtypes:\n{wt.dtypes}")
         else:
-            print("--- wt_df は空です ---")
+            logger.info("--- wt_df は空です ---")
     except ValueError as e:
         logger.error(f"処理中にエラーが発生しました: {e}")
     except FileNotFoundError as e:

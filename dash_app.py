@@ -16,7 +16,10 @@ import pandas as pd
 import plotly.express as px
 from dash import dcc, html, Input, Output, callback
 import numpy as np  # ★ 追加: np.nan のため
+import logging
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
+
+logger = logging.getLogger(__name__)
 
 # ────────────────── 1. 定数 & ヘルパ ──────────────────
 DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out"  # ★ .resolve() を追加
@@ -68,7 +71,7 @@ try:
             if "lack_h" in df_sr:
                 kpi_lack_h = float(df_sr["lack_h"].sum())
         except Exception as e:
-            print(f"shortage_role.xlsx 読込エラー: {e}")
+            logger.error("shortage_role.xlsx 読込エラー: %s", e)
     if (DATA_DIR / "fairness_before.xlsx").exists():
         try:
             df_fb = pd.read_excel(
@@ -78,11 +81,12 @@ try:
             if not row.empty:
                 jain_index_val = float(row["value"].iloc[0])
         except Exception as e:
-            print(f"fairness_before.xlsx 読込エラー: {e}")
+            logger.error("fairness_before.xlsx 読込エラー: %s", e)
 
 except FileNotFoundError:
-    print(
-        f"エラー: {DATA_DIR / 'heat_ALL.xlsx'} が見つかりません。先にstreamlit app.pyで解析を実行してください。"
+    logger.error(
+        "エラー: %s が見つかりません。先にstreamlit app.pyで解析を実行してください。",
+        DATA_DIR / "heat_ALL.xlsx",
     )
     # Dashアプリ起動前に終了させるか、エラーメッセージを表示するコンポーネントを返す
     heat_all_df = pd.DataFrame()  # 空のDFで初期化
@@ -93,7 +97,7 @@ except FileNotFoundError:
     shortage_ratio_df = pd.DataFrame()
     # ... (他のDFも空で初期化)
 except Exception as e:
-    print(f"データロード中に予期せぬエラーが発生しました: {e}")
+    logger.error("データロード中に予期せぬエラーが発生しました: %s", e)
     heat_all_df = pd.DataFrame()
     heat_staff_data = pd.DataFrame()
     ratio_calculated_df = pd.DataFrame()
