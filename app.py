@@ -2667,7 +2667,8 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
 
         concentration = results_dict.get("concentration_requested")
         if isinstance(concentration, pd.DataFrame) and not concentration.empty:
-            conc_df = concentration[concentration.get("is_concentrated")]
+            conc_df = concentration.copy()
+            focused_df = conc_df[conc_df.get("is_concentrated")]
             if not conc_df.empty:
                 st.subheader(_("Leave concentration graphs"))
 
@@ -2681,6 +2682,14 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         "leave_applicants_count": _("Leave applicants"),
                     },
                 )
+                if not focused_df.empty:
+                    fig_conc.add_scatter(
+                        x=focused_df["date"],
+                        y=focused_df["leave_applicants_count"],
+                        mode="markers",
+                        marker=dict(color="red", size=10, symbol="diamond"),
+                        name=_("Exceeds threshold"),
+                    )
 
                 events = []
                 if plotly_events is not None:
@@ -2705,6 +2714,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         conc_df = conc_df.merge(
                             sb[["date", "leave_ratio"]], on="date", how="left"
                         )
+                        focused_df = conc_df[conc_df.get("is_concentrated")]
 
                 if "leave_ratio" in conc_df.columns:
                     fig_ratio = px.line(
@@ -2717,6 +2727,14 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                             "leave_ratio": _("Leave ratio"),
                         },
                     )
+                    if not focused_df.empty:
+                        fig_ratio.add_scatter(
+                            x=focused_df["date"],
+                            y=focused_df["leave_ratio"],
+                            mode="markers",
+                            marker=dict(color="red", size=10, symbol="diamond"),
+                            name=_("Exceeds threshold"),
+                        )
                     st.plotly_chart(
                         fig_ratio, use_container_width=True, key="leave_ratio_chart"
                     )
@@ -2726,14 +2744,18 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 if "selected_leave_dates" not in st.session_state:
                     st.session_state.selected_leave_dates = set()
 
+                focused_dates = set(
+                    pd.to_datetime(focused_df["date"]).dt.normalize().tolist()
+                )
+
                 for ev in events:
                     if isinstance(ev, dict) and "x" in ev:
                         try:
-                            st.session_state.selected_leave_dates.add(
-                                pd.to_datetime(ev["x"]).normalize()
-                            )
+                            date_val = pd.to_datetime(ev["x"]).normalize()
                         except Exception:
-                            pass
+                            continue
+                        if date_val in focused_dates:
+                            st.session_state.selected_leave_dates.add(date_val)
 
                 if st.button("選択をクリア"):
                     st.session_state.selected_leave_dates = set()
