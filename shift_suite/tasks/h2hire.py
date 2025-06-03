@@ -34,6 +34,7 @@ def _calc_hire_fte(lack_h: float, monthly_hours_fte: int = MONTHLY_HOURS_FTE) ->
 
 logger = logging.getLogger(__name__)
 
+
 def build_hire_plan(
     out_dir: Path,
     shortage_excel: str | Path = "shortage_role.xlsx",

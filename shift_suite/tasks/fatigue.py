@@ -17,30 +17,34 @@ def _features(long_df: pd.DataFrame) -> pd.DataFrame:
         night_days=("is_night", "sum"),
     )
     basic["night_ratio"] = (
-        (basic["night_days"] / basic["total_days"].replace(0, pd.NA))
-    ).fillna(0).round(3)
+        (basic["night_days"] / basic["total_days"].replace(0, pd.NA)).fillna(0).round(3)
+    )
 
     consec_metrics = []
     for staff, grp in df[df["is_work"]].groupby("staff"):
         dates = sorted(grp["date"].unique())
         if not dates:
-            consec_metrics.append({
-                "staff": staff,
-                "consec3_ratio": 0.0,
-                "consec4_ratio": 0.0,
-                "consec5_ratio": 0.0,
-            })
+            consec_metrics.append(
+                {
+                    "staff": staff,
+                    "consec3_ratio": 0.0,
+                    "consec4_ratio": 0.0,
+                    "consec5_ratio": 0.0,
+                }
+            )
             continue
         dates_series = pd.Series(pd.to_datetime(dates))
         groups = dates_series.diff().dt.days.ne(1).cumsum()
         lengths = dates_series.groupby(groups).transform("size")
         total = len(dates_series)
-        consec_metrics.append({
-            "staff": staff,
-            "consec3_ratio": (lengths >= 3).sum() / total,
-            "consec4_ratio": (lengths >= 4).sum() / total,
-            "consec5_ratio": (lengths >= 5).sum() / total,
-        })
+        consec_metrics.append(
+            {
+                "staff": staff,
+                "consec3_ratio": (lengths >= 3).sum() / total,
+                "consec4_ratio": (lengths >= 4).sum() / total,
+                "consec5_ratio": (lengths >= 5).sum() / total,
+            }
+        )
 
     consec_df = pd.DataFrame(consec_metrics).set_index("staff")
     feats = basic.join(consec_df, how="left").fillna(0)

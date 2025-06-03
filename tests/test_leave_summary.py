@@ -51,10 +51,26 @@ def test_summary_contains_new_columns():
 def test_leave_ratio_by_period_and_weekday():
     df = pd.DataFrame(
         [
-            {"date": "2024-06-01", "leave_type": LEAVE_TYPE_REQUESTED, "total_leave_days": 1},
-            {"date": "2024-06-11", "leave_type": LEAVE_TYPE_REQUESTED, "total_leave_days": 1},
-            {"date": "2024-06-02", "leave_type": LEAVE_TYPE_PAID, "total_leave_days": 1},
-            {"date": "2024-06-21", "leave_type": LEAVE_TYPE_PAID, "total_leave_days": 1},
+            {
+                "date": "2024-06-01",
+                "leave_type": LEAVE_TYPE_REQUESTED,
+                "total_leave_days": 1,
+            },
+            {
+                "date": "2024-06-11",
+                "leave_type": LEAVE_TYPE_REQUESTED,
+                "total_leave_days": 1,
+            },
+            {
+                "date": "2024-06-02",
+                "leave_type": LEAVE_TYPE_PAID,
+                "total_leave_days": 1,
+            },
+            {
+                "date": "2024-06-21",
+                "leave_type": LEAVE_TYPE_PAID,
+                "total_leave_days": 1,
+            },
         ]
     )
     df["date"] = pd.to_datetime(df["date"])
