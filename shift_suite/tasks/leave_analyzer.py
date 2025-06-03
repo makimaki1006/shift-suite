@@ -403,6 +403,46 @@ def get_staff_leave_list(
     return staff_leave_list_df
 
 
+def leave_ratio_by_period_and_weekday(daily_summary_df: pd.DataFrame) -> pd.DataFrame:
+    """Return leave ratios by month period and weekday for each leave type."""
+    required_cols = {"date", "leave_type", "total_leave_days"}
+    if daily_summary_df.empty or not required_cols.issubset(daily_summary_df.columns):
+        return pd.DataFrame(columns=["month_period", "dayofweek", "leave_type", "leave_ratio"])
+
+    df = daily_summary_df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+
+    def get_month_period(day_val: int) -> str:
+        if day_val <= 10:
+            return "月初(1-10日)"
+        if day_val <= 20:
+            return "月中(11-20日)"
+        return "月末(21-末日)"
+
+    df["month_period"] = df["date"].dt.day.apply(get_month_period)
+    month_order = ["月初(1-10日)", "月中(11-20日)", "月末(21-末日)"]
+    df["month_period"] = pd.Categorical(df["month_period"], categories=month_order, ordered=True)
+
+    day_name_map = {
+        "Monday": "月曜日",
+        "Tuesday": "火曜日",
+        "Wednesday": "水曜日",
+        "Thursday": "木曜日",
+        "Friday": "金曜日",
+        "Saturday": "土曜日",
+        "Sunday": "日曜日",
+    }
+    dow_order = [day_name_map[d] for d in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]]
+    df["dayofweek"] = pd.Categorical(df["date"].dt.day_name().map(day_name_map), categories=dow_order, ordered=True)
+
+    grouped = (
+        df.groupby(["month_period", "dayofweek", "leave_type"], observed=False)["total_leave_days"].sum().reset_index()
+    )
+    total_per_type = grouped.groupby("leave_type")["total_leave_days"].transform("sum")
+    grouped["leave_ratio"] = (grouped["total_leave_days"] / total_per_type).fillna(0)
+    return grouped.sort_values(["month_period", "dayofweek", "leave_type"]).reset_index(drop=True)
+
+
 # --- CLI実行のためのダミーコード (app.pyから呼び出す際は不要) ---
 if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
