@@ -62,6 +62,7 @@ from shift_suite.tasks.h2hire import build_hire_plan as build_hire_plan_from_kpi
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks import leave_analyzer  # ★ 新規インポート
+from shift_suite.tasks import dashboard
 from shift_suite.tasks.leave_analyzer import (
     LEAVE_TYPE_REQUESTED,
     LEAVE_TYPE_PAID,
@@ -2009,6 +2010,12 @@ def display_shortage_tab(tab_container, data_dir):
                     st.info(_("No date columns in shortage ratio."))
                 with st.expander(_("Display all ratio data")):
                     st.dataframe(df_ratio, use_container_width=True)
+                fig_ratio_heat = dashboard.shortage_heatmap(df_ratio)
+                st.plotly_chart(
+                    fig_ratio_heat,
+                    use_container_width=True,
+                    key="short_ratio_heatmap",
+                )
             except Exception as e:
                 log_and_display_error("shortage_ratio.xlsx 表示エラー", e)
         else:
@@ -2239,6 +2246,12 @@ def display_fatigue_tab(tab_container, data_dir):
                         st.plotly_chart(
                             fig_fatigue, use_container_width=True, key="fatigue_chart"
                         )
+                        fig_fatigue_hist = dashboard.fatigue_distribution(df)
+                        st.plotly_chart(
+                            fig_fatigue_hist,
+                            use_container_width=True,
+                            key="fatigue_hist",
+                        )
                 except AttributeError as e:
                     log_and_display_error(
                         "Invalid data format in fatigue_score.xlsx", e
@@ -2349,6 +2362,12 @@ def display_fairness_tab(tab_container, data_dir):
                         )
                         st.plotly_chart(
                             fig_fair, use_container_width=True, key="fairness_chart"
+                        )
+                        fig_hist = dashboard.fairness_histogram(df)
+                        st.plotly_chart(
+                            fig_hist,
+                            use_container_width=True,
+                            key="fairness_hist",
                         )
                 except AttributeError as e:
                     log_and_display_error(
