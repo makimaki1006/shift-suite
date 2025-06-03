@@ -222,7 +222,10 @@ def derive_max_staff(heat: DataFrame | Series, method: str = "mean+1s") -> Serie
     # (既存のロジックのままとします)
     if isinstance(heat, Series):
         if method == "mean+1s":
-            return pd.Series([heat.mean() + heat.std().fillna(0)]).round()
+            std_val = heat.std()
+            if pd.isna(std_val):
+                std_val = 0
+            return pd.Series([heat.mean() + std_val]).round()
         if method == "p75":
             return pd.Series([heat.quantile(0.75)]).round()
         raise ValueError(f"Unknown max_method: {method}")
