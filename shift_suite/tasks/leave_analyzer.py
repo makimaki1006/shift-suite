@@ -477,7 +477,7 @@ if __name__ == "__main__":
 
     logger.info("--- get_daily_leave_counts ---")
     daily_counts = get_daily_leave_counts(sample_long_df)
-    print(daily_counts)
+    logger.info(daily_counts)
     # 期待される出力例 (P有は有給日数にはカウントされない):
     #          date   staff leave_type  leave_day_flag
     # 0  2023-01-01  田中花子         有給               1
@@ -493,7 +493,7 @@ if __name__ == "__main__":
     summary_dow_req = summarize_leave_by_day_count(
         requested_leave_daily, period="dayofweek"
     )
-    print(summary_dow_req)
+    logger.info(summary_dow_req)
     # 期待される出力例 (日本語曜日):
     #   period_unit leave_type  total_leave_days  num_days_in_period_unit  avg_leave_days_per_day
     # 0        月曜日       希望休                   2                        2                     1.0
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     summary_month_period_paid = summarize_leave_by_day_count(
         paid_leave_daily, period="month_period"
     )
-    print(summary_month_period_paid)
+    logger.info(summary_month_period_paid)
     # 期待される出力例:
     #     period_unit leave_type  total_leave_days  num_days_in_period_unit  avg_leave_days_per_day
     # 0  月初(1-10日)         有給                   1                        1                     1.0
@@ -517,7 +517,7 @@ if __name__ == "__main__":
     concentration = analyze_leave_concentration(
         daily_requested_summary, concentration_threshold=2
     )
-    print(concentration)
+    logger.info(concentration)
     # 期待される出力例 (2023-01-01 が集中日になるはずだが、get_daily_leave_countsの仕様変更でstaffでnuniqueするので、
     # このサンプルでは集中日は出ない。もし日別の総件数なら出る)
     # → get_daily_leave_counts は staff ごとのフラグなので、analyze_leave_concentration に渡す前に
@@ -537,7 +537,7 @@ if __name__ == "__main__":
     concentration_adj = analyze_leave_concentration(
         daily_applicants_requested, concentration_threshold=1
     )
-    print(concentration_adj[concentration_adj["is_concentrated"]])
+    logger.info(concentration_adj[concentration_adj["is_concentrated"]])
     #          date  leave_applicants_count  is_concentrated
     # 0 2023-01-01                       1             True # 山田
     # 1 2023-01-02                       1             True # 鈴木
@@ -548,7 +548,7 @@ if __name__ == "__main__":
     staff_leaves = get_staff_leave_list(
         sample_long_df, target_leave_types=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID]
     )
-    print(staff_leaves[staff_leaves["staff"] == "山田太郎"])
+    logger.info(staff_leaves[staff_leaves["staff"] == "山田太郎"])
     # 期待される出力例 (P有の有給部分は終日ではないためリストされない):
     #          staff role leave_type  leave_date
     # 1  山田太郎    A       希望休  2023-01-01

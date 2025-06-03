@@ -15,6 +15,7 @@ build_hire_plan(out_dir, safety_factor=1.1)  # adjust shortage hours by 10%
 from __future__ import annotations
 import math
 from pathlib import Path
+import logging
 import pandas as pd
 
 
@@ -30,6 +31,8 @@ def _calc_hire_fte(lack_h: float, monthly_hours_fte: int = MONTHLY_HOURS_FTE) ->
     """不足時間(時間)から必要 FTE 人数を整数で返す（切り上げ）"""
     return int(math.ceil(lack_h / monthly_hours_fte))
 
+
+logger = logging.getLogger(__name__)
 
 def build_hire_plan(
     out_dir: Path,
@@ -82,4 +85,4 @@ if __name__ == "__main__":  # CLI テスト用
     p.add_argument("out_dir", type=Path, help="解析 out フォルダ")
     args = p.parse_args()
     fp = build_hire_plan(args.out_dir)
-    print(f"✅ hire_plan saved: {fp.relative_to(Path.cwd())}")
+    logger.info("✅ hire_plan saved: %s", fp.relative_to(Path.cwd()))
