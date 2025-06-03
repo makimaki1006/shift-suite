@@ -1058,8 +1058,10 @@ if run_button_clicked:
                                 st.session_state.leave_analysis_results[
                                     "daily_summary"
                                 ] = daily_summary
-                                ratio_df = leave_analyzer.leave_ratio_by_period_and_weekday(
-                                    daily_summary.copy()
+                                ratio_df = (
+                                    leave_analyzer.leave_ratio_by_period_and_weekday(
+                                        daily_summary.copy()
+                                    )
                                 )
                                 st.session_state.leave_analysis_results[
                                     "leave_ratio_breakdown"
@@ -1070,7 +1072,9 @@ if run_button_clicked:
                                         index=False,
                                     )
                                 except Exception as e_ratio:
-                                    log.warning(f"leave_ratio_breakdown.csv write error: {e_ratio}")
+                                    log.warning(
+                                        f"leave_ratio_breakdown.csv write error: {e_ratio}"
+                                    )
                                 try:
                                     both_conc = leave_analyzer.analyze_both_leave_concentration(
                                         daily_summary.copy(),
@@ -2550,7 +2554,9 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
 
     if "leave_ratio_breakdown" not in results and _valid_df(daily_df):
         try:
-            results["leave_ratio_breakdown"] = leave_analyzer.leave_ratio_by_period_and_weekday(daily_df)
+            results["leave_ratio_breakdown"] = (
+                leave_analyzer.leave_ratio_by_period_and_weekday(daily_df)
+            )
         except Exception as e:
             log.warning(f"Failed to reconstruct leave_ratio_breakdown: {e}")
 
@@ -2615,8 +2621,16 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 color="leave_type",
                 facet_col="month_period",
                 category_orders={
-                    "dayofweek": ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"],
-                    "month_period": ["月初(1-10日)", "月中(11-20日)", "月末(21-末日)"]
+                    "dayofweek": [
+                        "月曜日",
+                        "火曜日",
+                        "水曜日",
+                        "木曜日",
+                        "金曜日",
+                        "土曜日",
+                        "日曜日",
+                    ],
+                    "month_period": ["月初(1-10日)", "月中(11-20日)", "月末(21-末日)"],
                 },
                 labels={
                     "dayofweek": _("Day"),
@@ -2625,7 +2639,11 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     "month_period": _("Month period"),
                 },
             )
-            st.plotly_chart(fig_ratio_break, use_container_width=True, key="leave_ratio_breakdown_chart")
+            st.plotly_chart(
+                fig_ratio_break,
+                use_container_width=True,
+                key="leave_ratio_breakdown_chart",
+            )
             st.dataframe(ratio_break, use_container_width=True, hide_index=True)
 
         conc_both = results_dict.get("concentration_both")

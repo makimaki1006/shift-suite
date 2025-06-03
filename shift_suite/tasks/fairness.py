@@ -165,24 +165,36 @@ def run_fairness(
         return
 
     # ★修正箇所: 疲労分析と同様に code 列を優先的に使用して夜勤を判定
-    use_code = "code" in df_for_fairness.columns and df_for_fairness["code"].astype(str).str.contains("夜", na=False).any()
+    use_code = (
+        "code" in df_for_fairness.columns
+        and df_for_fairness["code"].astype(str).str.contains("夜", na=False).any()
+    )
 
     if use_code:
         logger.info("[fairness] 'code' 列から夜勤判定を行います。")
         if "parsed_slots_count" in df_for_fairness.columns:
-            working_slots_df = df_for_fairness[df_for_fairness["parsed_slots_count"] > 0].copy()
+            working_slots_df = df_for_fairness[
+                df_for_fairness["parsed_slots_count"] > 0
+            ].copy()
         else:
             working_slots_df = df_for_fairness.copy()
 
         if not working_slots_df.empty:
-            working_slots_df["is_night_shift"] = working_slots_df["code"].astype(str).str.contains("夜", na=False).astype(int)
+            working_slots_df["is_night_shift"] = (
+                working_slots_df["code"]
+                .astype(str)
+                .str.contains("夜", na=False)
+                .astype(int)
+            )
             df_for_fairness = df_for_fairness.merge(
                 working_slots_df[["is_night_shift"]],
                 left_index=True,
                 right_index=True,
                 how="left",
             ).fillna({"is_night_shift": 0})
-            df_for_fairness["is_night_shift"] = df_for_fairness["is_night_shift"].astype(int)
+            df_for_fairness["is_night_shift"] = df_for_fairness[
+                "is_night_shift"
+            ].astype(int)
         else:
             df_for_fairness["is_night_shift"] = 0
     elif "parsed_slots_count" not in df_for_fairness.columns:
@@ -191,7 +203,9 @@ def run_fairness(
         )
         df_for_fairness["is_night_shift"] = 0
     else:
-        working_slots_df = df_for_fairness[df_for_fairness["parsed_slots_count"] > 0].copy()
+        working_slots_df = df_for_fairness[
+            df_for_fairness["parsed_slots_count"] > 0
+        ].copy()
         if not working_slots_df.empty:
             time_series_working = _extract_time_series(working_slots_df)
             logger.info(
@@ -206,7 +220,9 @@ def run_fairness(
                 right_index=True,
                 how="left",
             ).fillna({"is_night_shift": 0})
-            df_for_fairness["is_night_shift"] = df_for_fairness["is_night_shift"].astype(int)
+            df_for_fairness["is_night_shift"] = df_for_fairness[
+                "is_night_shift"
+            ].astype(int)
         else:
             logger.info(
                 "[fairness] parsed_slots_count > 0 の勤務記録がないため、夜勤シフトはありません。"
