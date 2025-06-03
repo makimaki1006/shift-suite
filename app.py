@@ -2691,11 +2691,10 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             if not conc_df.empty:
                 st.subheader(_("Leave concentration graphs"))
 
-                fig_conc = px.line(
+                fig_conc = px.bar(
                     conc_df,
                     x="date",
                     y="leave_applicants_count",
-                    markers=True,
                     labels={
                         "date": _("Date"),
                         "leave_applicants_count": _("Leave applicants"),
