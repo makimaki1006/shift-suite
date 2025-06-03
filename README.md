@@ -174,6 +174,10 @@ concentration threshold. Hovering over the points reveals the staff names who
 requested leave. A second chart plots the share of requesting staff
 (`leave_applicants_count ÷ total_staff`) for those days.
 
+Another bar chart visualises the distribution of requested and paid leave by
+month period (early/mid/late) and weekday. The underlying data is written to
+`leave_ratio_breakdown.csv`.
+
 You can click or lasso points on this chart to select specific dates. Multiple
 dates accumulate across clicks, and the selected staff members are listed below,
 together with a bar chart showing how frequently each person appears within the

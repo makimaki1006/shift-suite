@@ -1058,6 +1058,19 @@ if run_button_clicked:
                                 st.session_state.leave_analysis_results[
                                     "daily_summary"
                                 ] = daily_summary
+                                ratio_df = leave_analyzer.leave_ratio_by_period_and_weekday(
+                                    daily_summary.copy()
+                                )
+                                st.session_state.leave_analysis_results[
+                                    "leave_ratio_breakdown"
+                                ] = ratio_df
+                                try:
+                                    ratio_df.to_csv(
+                                        out_dir_exec / "leave_ratio_breakdown.csv",
+                                        index=False,
+                                    )
+                                except Exception as e_ratio:
+                                    log.warning(f"leave_ratio_breakdown.csv write error: {e_ratio}")
                                 try:
                                     both_conc = leave_analyzer.analyze_both_leave_concentration(
                                         daily_summary.copy(),
@@ -2472,6 +2485,13 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
         except Exception as e:
             log_and_display_error("concentration_requested.csv 表示エラー", e)
 
+    fp_ratio = data_dir / "leave_ratio_breakdown.csv"
+    if fp_ratio.exists():
+        try:
+            results["leave_ratio_breakdown"] = pd.read_csv(fp_ratio)
+        except Exception as e:
+            log_and_display_error("leave_ratio_breakdown.csv 表示エラー", e)
+
     daily_df = results.get("daily_summary")
     if "staff_balance_daily" not in results and _valid_df(daily_df):
         heat_fp = data_dir / "heat_ALL.xlsx"
@@ -2528,6 +2548,12 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
         except Exception as e:
             log.warning(f"Failed to reconstruct concentration_both: {e}")
 
+    if "leave_ratio_breakdown" not in results and _valid_df(daily_df):
+        try:
+            results["leave_ratio_breakdown"] = leave_analyzer.leave_ratio_by_period_and_weekday(daily_df)
+        except Exception as e:
+            log.warning(f"Failed to reconstruct leave_ratio_breakdown: {e}")
+
     return results
 
 
@@ -2578,6 +2604,29 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 fig_bal, use_container_width=True, key="staff_balance_chart"
             )
             st.dataframe(staff_balance, use_container_width=True, hide_index=True)
+
+        ratio_break = results_dict.get("leave_ratio_breakdown")
+        if isinstance(ratio_break, pd.DataFrame) and not ratio_break.empty:
+            st.subheader("月初・月中・月末 各曜日の休暇割合")
+            fig_ratio_break = px.bar(
+                ratio_break,
+                x="dayofweek",
+                y="leave_ratio",
+                color="leave_type",
+                facet_col="month_period",
+                category_orders={
+                    "dayofweek": ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"],
+                    "month_period": ["月初(1-10日)", "月中(11-20日)", "月末(21-末日)"]
+                },
+                labels={
+                    "dayofweek": _("Day"),
+                    "leave_ratio": _("Ratio"),
+                    "leave_type": _("Leave type"),
+                    "month_period": _("Month period"),
+                },
+            )
+            st.plotly_chart(fig_ratio_break, use_container_width=True, key="leave_ratio_breakdown_chart")
+            st.dataframe(ratio_break, use_container_width=True, hide_index=True)
 
         conc_both = results_dict.get("concentration_both")
         if isinstance(conc_both, pd.DataFrame) and not conc_both.empty:
