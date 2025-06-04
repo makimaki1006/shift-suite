@@ -19,6 +19,7 @@ import numpy as np  # ★ 追加: np.nan のため
 import logging
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.i18n import translate as _
+from shift_suite.tasks.dashboard import load_leave_results_from_dir
 
 # --- 日本語ラベル辞書は resources/strings_ja.json で管理 ---
 
@@ -26,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 # ────────────────── 1. 定数 & ヘルパ ──────────────────
 DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out"  # ★ .resolve() を追加
+
+leave_results: dict[str, pd.DataFrame] = {}
 
 
 def drop_summary_cols(df: pd.DataFrame) -> pd.DataFrame:
@@ -86,6 +89,8 @@ try:
         except Exception as e:
             logger.error("fairness_before.xlsx 読込エラー: %s", e)
 
+    leave_results = load_leave_results_from_dir(DATA_DIR)
+
 except FileNotFoundError:
     logger.error(
         "エラー: %s が見つかりません。先にstreamlit app.pyで解析を実行してください。",
@@ -98,6 +103,7 @@ except FileNotFoundError:
     RAW_ZMAX_DEFAULT_CALC = 10.0
     shortage_time_df = pd.DataFrame()
     shortage_ratio_df = pd.DataFrame()
+    leave_results = {}
     # ... (他のDFも空で初期化)
 except Exception as e:
     logger.error("データロード中に予期せぬエラーが発生しました: %s", e)
@@ -107,6 +113,7 @@ except Exception as e:
     RAW_ZMAX_DEFAULT_CALC = 10.0
     shortage_time_df = pd.DataFrame()
     shortage_ratio_df = pd.DataFrame()
+    leave_results = {}
 
 
 # ────────────────── 3. Dash App ──────────────────
@@ -122,6 +129,7 @@ NAV = html.Div(
         ),  # ★ class変更 (Bootstrap風)
         dcc.Link(_("Heatmap"), href="/heat", className="nav-link me-2"),
         dcc.Link(_("Shortage"), href="/short", className="nav-link me-2"),
+        dcc.Link(_("Leave"), href="/leave", className="nav-link me-2"),
         # ... (他のナビゲーションリンクも同様に)
     ],
     className="d-flex flex-wrap p-2 bg-light border-bottom",  # ★ Bootstrapクラス追加
@@ -290,6 +298,65 @@ def page_shortage():
     )
 
 
+def page_leave():
+    leave_df = leave_results.get("daily_summary") if isinstance(leave_results, dict) else None
+    if not isinstance(leave_df, pd.DataFrame) or leave_df.empty:
+        return html.Div([
+            html.H4(_("Leave analysis data not found"))
+        ])
+
+    children = [html.H3(_("Leave Analysis"))]
+
+    staff_balance = leave_results.get("staff_balance_daily")
+    if isinstance(staff_balance, pd.DataFrame) and not staff_balance.empty:
+        fig_bal = px.line(
+            staff_balance,
+            x="date",
+            y=["total_staff", "leave_applicants_count", "non_leave_staff"],
+            markers=True,
+            labels={
+                "date": _("Date"),
+                "value": _("Count"),
+                "variable": _("Metric"),
+                "total_staff": _("Total staff"),
+                "leave_applicants_count": _("Leave applicants"),
+                "non_leave_staff": _("Non-leave staff"),
+            },
+        )
+        children.append(dcc.Graph(figure=fig_bal))
+
+    ratio_break = leave_results.get("leave_ratio_breakdown")
+    if isinstance(ratio_break, pd.DataFrame) and not ratio_break.empty:
+        fig_ratio_break = px.bar(
+            ratio_break,
+            x="dayofweek",
+            y="leave_ratio",
+            color="leave_type",
+            facet_col="month_period",
+            category_orders={
+                "dayofweek": [
+                    "月曜日",
+                    "火曜日",
+                    "水曜日",
+                    "木曜日",
+                    "金曜日",
+                    "土曜日",
+                    "日曜日",
+                ],
+                "month_period": ["月初(1-10日)", "月中(11-20日)", "月末(21-末日)"],
+            },
+            labels={
+                "dayofweek": _("Day"),
+                "leave_ratio": _("Ratio"),
+                "leave_type": _("Leave type"),
+                "month_period": _("Month period"),
+            },
+        )
+        children.append(dcc.Graph(figure=fig_ratio_break))
+
+    return html.Div(children)
+
+
 # ...
 
 
@@ -302,6 +369,8 @@ def router(path):
         return page_heat()
     if path == "/short":
         return page_shortage()
+    if path == "/leave":
+        return page_leave()
     # ... (他のルート)
     return page_overview()
 
