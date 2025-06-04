@@ -9,21 +9,7 @@ from pathlib import Path
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches
-
-JP = {
-    "Staff": "スタッフ",
-    "Score": "スコア",
-    "Role": "職種",
-    "Month": "月",
-    "Shortage Hours": "不足時間(h)",
-    "Total Leave Days": "総休暇日数",
-    "Shortage by Role": "職種別不足",
-    "Cost Benefit Scenarios": "コスト便益シナリオ",
-}
-
-
-def _(text: str) -> str:
-    return JP.get(text, text)
+from shift_suite.i18n import translate as _
 
 
 log = logging.getLogger(__name__)

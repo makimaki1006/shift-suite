@@ -18,31 +18,9 @@ from dash import dcc, html, Input, Output, callback
 import numpy as np  # ★ 追加: np.nan のため
 import logging
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
+from shift_suite.i18n import translate as _
 
-# --- 簡易日本語ラベル辞書 -----------------------------------------------
-JP = {
-    "Overview": "概要",
-    "Heatmap": "ヒートマップ",
-    "Shortage": "不足分析",
-    "Heatmap Data Not Found": "ヒートマップデータが見つかりません",
-    "Please run the analysis via the Streamlit app first and ensure 'out/heat_ALL.xlsx' exists.": "Streamlit app.py を先に実行し 'out/heat_ALL.xlsx' を生成してください。",
-    "Shortage Ratio Data Not Found": "不足率データが見つかりません",
-    "Run analysis via the Streamlit app to generate shortage_ratio.xlsx": "Streamlit app で解析を実行し shortage_ratio.xlsx を生成してください",
-    "Shortage Ratio Heatmap": "不足率ヒートマップ",
-    "Time Slot Shortage Ratio": "時間帯別不足率",
-    "Date": "日付",
-    "Time": "時間帯",
-    "Shortage Ratio": "不足率",
-    "Manual": "手動",
-    "90th %tile": "90パーセンタイル",
-    "95th %tile": "95パーセンタイル",
-    "99th %tile": "99パーセンタイル",
-}
-
-
-def _(text: str) -> str:
-    """Translate ``text`` using ``JP`` dictionary."""
-    return JP.get(text, text)
+# --- 日本語ラベル辞書は resources/strings_ja.json で管理 ---
 
 logger = logging.getLogger(__name__)
 

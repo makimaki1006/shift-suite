@@ -2,27 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import plotly.express as px
-
-JP = {
-    "Staff": "スタッフ",
-    "Score": "スコア",
-    "Role": "職種",
-    "Month": "月",
-    "Shortage Hours": "不足時間(h)",
-    "Total Leave Days": "総休暇日数",
-    "Shift Code": "勤務区分",
-    "Ratio": "比率",
-    "Combined Score by Staff": "スタッフ別総合スコア",
-    "Average Score by Role": "職種別平均スコア",
-    "No data": "データなし",
-    "Fatigue Score Distribution": "疲労スコア分布",
-    "Night Shift Ratio Distribution": "夜勤比率分布",
-    "Count": "件数",
-}
-
-
-def _(text: str) -> str:
-    return JP.get(text, text)
+from shift_suite.i18n import translate as _
 
 
 def employee_overview(score_df: pd.DataFrame):
