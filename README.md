@@ -245,6 +245,12 @@ Then execute the test suite with:
 pytest -q
 ```
 
+To generate a coverage report, install ``pytest-cov`` and run:
+
+```bash
+pytest --cov=shift_suite --cov-report=term-missing
+```
+
 ### Linting
 
 Check code style with [ruff](https://docs.astral.sh/ruff/):
