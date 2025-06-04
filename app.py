@@ -2338,32 +2338,30 @@ def display_fairness_tab(tab_container, data_dir):
                     return
 
                 try:
-                    display_df = df.rename(
-                        columns={
-                            "staff": _("Staff"),
-                            "night_ratio": _("Night Shift Ratio")
-                            if "Night Shift Ratio" in JP
-                            else "night_ratio",
-                        }
-                    )
+                    rename_map = {
+                        "staff": _("Staff"),
+                        "night_ratio": _("Night Shift Ratio") if "Night Shift Ratio" in JP else "night_ratio",
+                    }
+                    if "fairness_score" in df.columns:
+                        rename_map["fairness_score"] = _("Fairness Score")
+                    display_df = df.rename(columns=rename_map)
                     st.dataframe(display_df, use_container_width=True, hide_index=True)
-                    if "staff" in df and "night_ratio" in df:
+                    metric_col = "fairness_score" if "fairness_score" in df.columns else "night_ratio"
+                    if "staff" in df and metric_col in df:
                         fig_fair = px.bar(
                             df,
                             x="staff",
-                            y="night_ratio",
+                            y=metric_col,
                             labels={
                                 "staff": _("Staff"),
-                                "night_ratio": _("Night Shift Ratio")
-                                if "Night Shift Ratio" in JP
-                                else "night_ratio",
+                                metric_col: _("Fairness Score") if metric_col == "fairness_score" else _("Night Shift Ratio"),
                             },
                             color_discrete_sequence=["#FF8C00"],
                         )
                         st.plotly_chart(
                             fig_fair, use_container_width=True, key="fairness_chart"
                         )
-                        fig_hist = dashboard.fairness_histogram(df)
+                        fig_hist = dashboard.fairness_histogram(df, metric=metric_col)
                         st.plotly_chart(
                             fig_hist,
                             use_container_width=True,
