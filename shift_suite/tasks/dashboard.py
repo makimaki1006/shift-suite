@@ -12,6 +12,12 @@ JP = {
     "Total Leave Days": "総休暇日数",
     "Shift Code": "勤務区分",
     "Ratio": "比率",
+    "Combined Score by Staff": "スタッフ別総合スコア",
+    "Average Score by Role": "職種別平均スコア",
+    "No data": "データなし",
+    "Fatigue Score Distribution": "疲労スコア分布",
+    "Night Shift Ratio Distribution": "夜勤比率分布",
+    "Count": "件数",
 }
 
 
@@ -22,12 +28,12 @@ def _(text: str) -> str:
 def employee_overview(score_df: pd.DataFrame):
     """Return a bar chart of final scores per staff."""
     if score_df is None or score_df.empty:
-        return px.bar(title="No data")
+        return px.bar(title=_("No data"))
     fig = px.bar(
         score_df,
         x="staff",
         y="final_score",
-        title="Combined Score by Staff",
+        title=_("Combined Score by Staff"),
         labels={"staff": _("Staff"), "final_score": _("Score")},
     )
     fig.update_layout(xaxis_title=_("Staff"), yaxis_title=_("Score"))
@@ -43,7 +49,7 @@ def department_overview(score_df: pd.DataFrame, long_df: pd.DataFrame):
         or long_df.empty
         or "role" not in long_df.columns
     ):
-        return px.bar(title="No data")
+        return px.bar(title=_("No data"))
     mapping = long_df[["staff", "role"]].drop_duplicates()
     merged = mapping.merge(score_df, on="staff", how="left")
     dept = merged.groupby("role")["final_score"].mean().reset_index()
@@ -51,7 +57,7 @@ def department_overview(score_df: pd.DataFrame, long_df: pd.DataFrame):
         dept,
         x="role",
         y="final_score",
-        title="Average Score by Role",
+        title=_("Average Score by Role"),
         labels={"role": _("Role"), "final_score": _("Score")},
     )
     fig.update_layout(xaxis_title=_("Role"), yaxis_title=_("Score"))
@@ -109,9 +115,9 @@ def fatigue_distribution(fatigue_df: pd.DataFrame):
         x="fatigue_score",
         nbins=20,
         labels={"fatigue_score": _("Score")},
-        title="Fatigue Score Distribution",
+        title=_("Fatigue Score Distribution"),
     )
-    fig.update_layout(yaxis_title="Count")
+    fig.update_layout(yaxis_title=_("Count"))
     return fig
 
 
@@ -125,7 +131,7 @@ def fairness_histogram(summary_df: pd.DataFrame, metric: str = "night_ratio"):
         x=metric,
         nbins=20,
         labels={metric: _("Ratio") if metric == "night_ratio" else _(metric)},
-        title="Night Shift Ratio Distribution" if metric == "night_ratio" else f"{metric} Distribution",
+        title=_("Night Shift Ratio Distribution") if metric == "night_ratio" else f"{metric} Distribution",
     )
-    fig.update_layout(yaxis_title="Count")
+    fig.update_layout(yaxis_title=_("Count"))
     return fig
