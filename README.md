@@ -244,3 +244,11 @@ Then execute the test suite with:
 ```bash
 pytest -q
 ```
+
+### Linting
+
+Check code style with [ruff](https://docs.astral.sh/ruff/):
+
+```bash
+ruff check .
+```
