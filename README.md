@@ -216,6 +216,9 @@ combines the per-slot shortage counts with daily leave applicants and adds a
 `net_shortage` column. The Streamlit dashboard automatically visualises this
 table under the **Shortage** tab.
 
+For a step-by-step explanation of how shortage and excess numbers are
+calculated, see [docs/shortage_excess_example.md](docs/shortage_excess_example.md).
+
 ### Uploading ZIP archives
 
 You can inspect past results without rerunning the analyses by uploading a
