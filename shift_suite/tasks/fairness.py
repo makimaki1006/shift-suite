@@ -302,6 +302,19 @@ def run_fairness(
 
         jain_index_val = calculate_jain_index(summary_df["night_ratio"])
 
+    # ---- per-staff fairness score ----
+    mean_ratio = float(summary_df["night_ratio"].mean()) if not summary_df.empty else 0.0
+    if mean_ratio == 0:
+        summary_df["fairness_score"] = (summary_df["night_ratio"] == 0).astype(float)
+    else:
+        summary_df["fairness_score"] = 1 - (summary_df["night_ratio"] - mean_ratio).abs() / mean_ratio
+    summary_df["fairness_score"] = summary_df["fairness_score"].clip(0, 1).round(3)
+
+    jain_night_ratio = calculate_jain_index(summary_df["night_ratio"])
+    jain_night_slots = calculate_jain_index(summary_df["night_slots"])
+    jain_total_slots = calculate_jain_index(summary_df["total_slots"])
+    jain_index_val = jain_night_ratio
+
     summary_df.attrs["jain_index"] = (
         jain_index_val  # summary_df に属性としてJain指数を保持
     )
@@ -310,27 +323,35 @@ def run_fairness(
 
     # ExcelWriter を使用して複数のシートを同じファイルに書き込む
     try:
-        with pd.ExcelWriter(
-            before_fp_path, engine="openpyxl"
-        ) as wb_before:  # ★ 変数名変更
+        with pd.ExcelWriter(before_fp_path, engine="openpyxl") as wb_before:
             summary_df.to_excel(wb_before, sheet_name="before_summary", index=False)
             meta_df_before = pd.DataFrame(
-                {"metric": ["jain_index"], "value": [jain_index_val]}
-            )  # ★ 変数名変更
+                {
+                    "metric": [
+                        "jain_night_ratio",
+                        "jain_night_slots",
+                        "jain_total_slots",
+                    ],
+                    "value": [jain_night_ratio, jain_night_slots, jain_total_slots],
+                }
+            )
             meta_df_before.to_excel(wb_before, sheet_name="meta_summary", index=False)
         logger.info(
             f"[fairness] fairness_before.xlsx 保存 (Jain: {jain_index_val:.3f})"
         )
 
-        with pd.ExcelWriter(
-            after_fp_path, engine="openpyxl"
-        ) as wa_after:  # ★ 変数名変更
-            summary_df.to_excel(
-                wa_after, sheet_name="after_summary", index=False
-            )  # afterも同じ内容で良いか確認 (現状は同じ)
+        with pd.ExcelWriter(after_fp_path, engine="openpyxl") as wa_after:
+            summary_df.to_excel(wa_after, sheet_name="after_summary", index=False)
             meta_df_after = pd.DataFrame(
-                {"metric": ["jain_index"], "value": [jain_index_val]}
-            )  # ★ 変数名変更
+                {
+                    "metric": [
+                        "jain_night_ratio",
+                        "jain_night_slots",
+                        "jain_total_slots",
+                    ],
+                    "value": [jain_night_ratio, jain_night_slots, jain_total_slots],
+                }
+            )
             meta_df_after.to_excel(wa_after, sheet_name="meta_summary", index=False)
         logger.info(f"[fairness] fairness_after.xlsx 保存 (Jain: {jain_index_val:.3f})")
     except Exception as e:

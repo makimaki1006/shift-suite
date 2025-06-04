@@ -18,3 +18,9 @@ def test_fairness_histogram_returns_fig():
     df = pd.DataFrame({"staff": ["A", "B"], "night_ratio": [0.1, 0.2]})
     fig = dashboard.fairness_histogram(df)
     assert hasattr(fig, "data")
+
+
+def test_fairness_histogram_custom_metric():
+    df = pd.DataFrame({"staff": ["A", "B"], "fairness_score": [0.9, 0.8]})
+    fig = dashboard.fairness_histogram(df, metric="fairness_score")
+    assert hasattr(fig, "data")

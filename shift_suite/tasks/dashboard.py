@@ -115,21 +115,17 @@ def fatigue_distribution(fatigue_df: pd.DataFrame):
     return fig
 
 
-def fairness_histogram(summary_df: pd.DataFrame):
-    """Return histogram of night shift ratios."""
-    if (
-        summary_df is None
-        or summary_df.empty
-        or "night_ratio" not in summary_df.columns
-    ):
+def fairness_histogram(summary_df: pd.DataFrame, metric: str = "night_ratio"):
+    """Return histogram of fairness metric values."""
+    if summary_df is None or summary_df.empty or metric not in summary_df.columns:
         return px.histogram(pd.DataFrame(), nbins=10)
 
     fig = px.histogram(
         summary_df,
-        x="night_ratio",
+        x=metric,
         nbins=20,
-        labels={"night_ratio": _("Ratio")},
-        title="Night Shift Ratio Distribution",
+        labels={metric: _("Ratio") if metric == "night_ratio" else _(metric)},
+        title="Night Shift Ratio Distribution" if metric == "night_ratio" else f"{metric} Distribution",
     )
     fig.update_layout(yaxis_title="Count")
     return fig
