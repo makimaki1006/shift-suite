@@ -21,6 +21,8 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
+from shift_suite.config import get as get_config
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -186,7 +188,7 @@ def forecast_need(
     *,
     choose: str = "auto",  # "auto" | "arima" | "ets"
     seasonal: str = "add",
-    periods: int = 30,
+    periods: int | None = None,
     leave_csv: Path | None = None,
     holidays: Sequence[dt.date] | None = None,
     log_csv: Path | None = None,
@@ -203,8 +205,9 @@ def forecast_need(
         モデル選択方法
     seasonal : str, default "add"
         ETS モデルの季節成分タイプ
-    periods : int, default 30
-        予測期間（日数）
+    periods : int | None, default None
+        予測期間（日数）。``None`` の場合は ``config.json`` の
+        ``forecast_period_days`` 値（既定 30 日）を使用
     leave_csv : Path | None, optional
         ``leave_analysis.csv`` を与えると休暇取得数を説明変数として利用
     holidays : Sequence[datetime.date] | None, optional
@@ -220,6 +223,9 @@ def forecast_need(
     """
     log.info("[forecast] forecast_need start")
     df = pd.read_csv(demand_csv, parse_dates=["ds"])
+
+    if periods is None:
+        periods = int(get_config("forecast_period_days", 30))
 
     log_csv = Path(log_csv) if log_csv else excel_out.parent / "forecast_history.csv"
 

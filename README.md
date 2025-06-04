@@ -252,3 +252,14 @@ Check code style with [ruff](https://docs.astral.sh/ruff/):
 ```bash
 ruff check .
 ```
+
+### Configuration and localisation
+
+Runtime settings and translation strings are stored in separate files under
+`shift_suite/`:
+
+- `config.json` – default values such as the forecast period.
+- `resources/strings_ja.json` – Japanese UI labels.
+
+Modify these files to tweak behaviour or update translations without touching
+the Python source.
