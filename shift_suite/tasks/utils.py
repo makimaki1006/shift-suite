@@ -48,9 +48,7 @@ log = logging.getLogger("shift_suite")
 
 
 # ────────────────── 2. Excel 日付ユーティリティ ──────────────────
-def excel_date(
-    excel_serial,
-) -> dt.date | None:  # ★ datetime → dt.date に変更 (日付のみ返すため)
+def excel_date(excel_serial: Any) -> dt.date | None:
     """Excel 1900 シリアル or pandas.Timestamp 等 → date"""  # ★ docstring変更
     if excel_serial in (None, "", np.nan):
         return None
@@ -65,7 +63,7 @@ def excel_date(
         return None
 
 
-def to_hhmm(x) -> str | None:
+def to_hhmm(x: Any) -> str | None:
     """8.5 → '08:30' / '23:45' → '23:45' / Excel シリアルなど柔軟変換"""
     if x in (None, "", np.nan):
         return None

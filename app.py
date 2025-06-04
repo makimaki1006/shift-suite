@@ -28,7 +28,7 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Optional
+from typing import IO, Optional, Sequence
 
 import pandas as pd
 import streamlit as st
@@ -286,9 +286,9 @@ def load_excel_cached(
     *,
     sheet_name: str | int | None = 0,
     index_col: int | str | None = None,
-    parse_dates=None,
+    parse_dates: Sequence[int | str] | bool | None = None,
     file_mtime: float | None = None,
-):
+) -> pd.DataFrame:
     """Load an Excel file with caching based on file path and mtime."""
     kwargs = {"sheet_name": sheet_name, "index_col": index_col}
     if parse_dates is not None:
@@ -297,7 +297,7 @@ def load_excel_cached(
 
 
 @st.cache_resource(show_spinner=False)
-def load_excelfile_cached(file_path: str, *, file_mtime: float | None = None):
+def load_excelfile_cached(file_path: str, *, file_mtime: float | None = None) -> pd.ExcelFile:
     """Load ``pd.ExcelFile`` with caching so repeated reads are fast.
 
     ``pd.ExcelFile`` objects are not picklable so we cache the handle as a
@@ -720,7 +720,8 @@ if run_button_clicked:
     holiday_dates_global_for_run = None
     holiday_dates_local_for_run = None
 
-    def _read_holiday_upload(uploaded_file):
+    def _read_holiday_upload(uploaded_file: IO[str | bytes]) -> list[dt.date]:
+        """Return dates from an uploaded CSV or JSON file."""
         if uploaded_file.name.lower().endswith(".json"):
             import json
 
