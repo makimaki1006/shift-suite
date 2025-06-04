@@ -19,6 +19,31 @@ import numpy as np  # ★ 追加: np.nan のため
 import logging
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 
+# --- 簡易日本語ラベル辞書 -----------------------------------------------
+JP = {
+    "Overview": "概要",
+    "Heatmap": "ヒートマップ",
+    "Shortage": "不足分析",
+    "Heatmap Data Not Found": "ヒートマップデータが見つかりません",
+    "Please run the analysis via the Streamlit app first and ensure 'out/heat_ALL.xlsx' exists.": "Streamlit app.py を先に実行し 'out/heat_ALL.xlsx' を生成してください。",
+    "Shortage Ratio Data Not Found": "不足率データが見つかりません",
+    "Run analysis via the Streamlit app to generate shortage_ratio.xlsx": "Streamlit app で解析を実行し shortage_ratio.xlsx を生成してください",
+    "Shortage Ratio Heatmap": "不足率ヒートマップ",
+    "Time Slot Shortage Ratio": "時間帯別不足率",
+    "Date": "日付",
+    "Time": "時間帯",
+    "Shortage Ratio": "不足率",
+    "Manual": "手動",
+    "90th %tile": "90パーセンタイル",
+    "95th %tile": "95パーセンタイル",
+    "99th %tile": "99パーセンタイル",
+}
+
+
+def _(text: str) -> str:
+    """Translate ``text`` using ``JP`` dictionary."""
+    return JP.get(text, text)
+
 logger = logging.getLogger(__name__)
 
 # ────────────────── 1. 定数 & ヘルパ ──────────────────
@@ -115,10 +140,10 @@ server = app.server
 NAV = html.Div(
     [
         dcc.Link(
-            "Overview", href="/", className="nav-link me-2"
+            _("Overview"), href="/", className="nav-link me-2"
         ),  # ★ class変更 (Bootstrap風)
-        dcc.Link("Heatmap", href="/heat", className="nav-link me-2"),
-        dcc.Link("Shortage", href="/short", className="nav-link me-2"),
+        dcc.Link(_("Heatmap"), href="/heat", className="nav-link me-2"),
+        dcc.Link(_("Shortage"), href="/short", className="nav-link me-2"),
         # ... (他のナビゲーションリンクも同様に)
     ],
     className="d-flex flex-wrap p-2 bg-light border-bottom",  # ★ Bootstrapクラス追加
@@ -160,16 +185,18 @@ def page_overview():
         )
     if not cards:
         cards.append(html.Div("KPIデータがありません", className="p-3"))
-    return html.Div([html.H3("Overview"), html.Div(cards, className="d-flex")])
+    return html.Div([html.H3(_("Overview")), html.Div(cards, className="d-flex")])
 
 
 def page_heat():
     if heat_staff_data.empty:  # ★ データロード失敗時の表示
         return html.Div(
             [
-                html.H4("Heatmap Data Not Found"),
+                html.H4(_("Heatmap Data Not Found")),
                 html.P(
-                    "Please run the analysis via the Streamlit app first and ensure 'out/heat_ALL.xlsx' exists."
+                    _(
+                        "Please run the analysis via the Streamlit app first and ensure 'out/heat_ALL.xlsx' exists."
+                    )
                 ),
             ]
         )
@@ -191,10 +218,10 @@ def page_heat():
                     dcc.Dropdown(
                         id="hm-zmax-mode",
                         options=[
-                            {"label": "Manual", "value": "manual"},
-                            {"label": "90th %tile", "value": "p90"},
-                            {"label": "95th %tile", "value": "p95"},
-                            {"label": "99th %tile", "value": "p99"},
+                            {"label": _("Manual"), "value": "manual"},
+                            {"label": _("90th %tile"), "value": "p90"},
+                            {"label": _("95th %tile"), "value": "p95"},
+                            {"label": _("99th %tile"), "value": "p99"},
                         ],
                         value="manual",
                         clearable=False,
@@ -243,16 +270,18 @@ def page_shortage():
     if shortage_ratio_df.empty:
         return html.Div(
             [
-                html.H4("Shortage Ratio Data Not Found"),
+                html.H4(_("Shortage Ratio Data Not Found")),
                 html.P(
-                    "Run analysis via the Streamlit app to generate shortage_ratio.xlsx"
+                    _(
+                        "Run analysis via the Streamlit app to generate shortage_ratio.xlsx"
+                    )
                 ),
             ]
         )
 
     return html.Div(
         [
-            html.H3("Shortage Ratio Heatmap"),
+            html.H3(_("Shortage Ratio Heatmap")),
             dcc.Graph(
                 id="shortage-ratio-heatmap",
                 figure=px.imshow(
@@ -261,11 +290,11 @@ def page_shortage():
                     color_continuous_scale=px.colors.sequential.OrRd,
                     zmin=0,
                     zmax=1,
-                    labels=dict(x="Date", y="Time", color="Shortage Ratio"),
+                    labels=dict(x=_("Date"), y=_("Time"), color=_("Shortage Ratio")),
                 ),
             ),
             html.Hr(),
-            html.H4("Time Slot Shortage Ratio"),
+            html.H4(_("Time Slot Shortage Ratio")),
             dcc.Dropdown(
                 id="shortage-ratio-date-dropdown",
                 options=[
