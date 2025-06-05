@@ -554,24 +554,24 @@ with st.sidebar:
         )
 
         if _("Leave Analysis") in st.session_state.ext_opts_multiselect_widget:
-            with st.expander("📊 " + _("Leave Analysis") + " 設定", expanded=True):
-                st.multiselect(
-                    "分析対象の休暇タイプ",
-                    options=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID],
-                    key="leave_analysis_target_types_widget",
-                    help="分析する休暇の種類を選択します。",
+            st.markdown("### 📊 " + _("Leave Analysis") + " 設定")
+            st.multiselect(
+                "分析対象の休暇タイプ",
+                options=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID],
+                key="leave_analysis_target_types_widget",
+                help="分析する休暇の種類を選択します。",
+            )
+            if (
+                LEAVE_TYPE_REQUESTED
+                in st.session_state.leave_analysis_target_types_widget
+            ):
+                st.number_input(
+                    "希望休 集中度判定閾値 (人)",
+                    min_value=1,
+                    step=1,
+                    key="leave_concentration_threshold_widget",
+                    help="同日にこの人数以上の希望休があった場合に『集中』とみなします。",
                 )
-                if (
-                    LEAVE_TYPE_REQUESTED
-                    in st.session_state.leave_analysis_target_types_widget
-                ):
-                    st.number_input(
-                        "希望休 集中度判定閾値 (人)",
-                        min_value=1,
-                        step=1,
-                        key="leave_concentration_threshold_widget",
-                        help="同日にこの人数以上の希望休があった場合に『集中』とみなします。",
-                    )
 
     current_save_mode_idx_val = 0
     try:
