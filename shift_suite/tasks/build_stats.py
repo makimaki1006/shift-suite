@@ -14,7 +14,6 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import sys
-import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Set
 
@@ -45,12 +44,12 @@ def _check_files_exist(out_dir: Path, required: Iterable[str]) -> List[str]:
     return missing
 
 
-def build_stats(out_dir: str | Path) -> None:
+def build_stats(out_dir: str | Path, *, holidays: Iterable[dt.date] | None = None) -> None:
     out_dir_path = Path(out_dir)
     stats_fp = out_dir_path / "stats.xlsx"
     log.info(f"=== build_stats start (out_dir={out_dir_path}) ===")
 
-    required_files = ["heat_ALL.xlsx", "heatmap.meta.json"]
+    required_files = ["heat_ALL.xlsx"]
     missing = _check_files_exist(out_dir_path, required_files)
     if missing:
         log.error(
@@ -64,35 +63,7 @@ def build_stats(out_dir: str | Path) -> None:
             log.error(f"エラーログ用 stats.xlsx の書き出し失敗: {e_write_err}")
         return
 
-    estimated_holidays_set: Set[dt.date] = set()
-    heatmap_meta_path = out_dir_path / "heatmap.meta.json"
-    try:
-        with open(heatmap_meta_path, "r", encoding="utf-8") as f:
-            heatmap_meta = json.load(f)
-        holiday_date_strs = heatmap_meta.get("estimated_holidays", [])
-        if holiday_date_strs:
-            for date_str in holiday_date_strs:
-                try:
-                    estimated_holidays_set.add(
-                        dt.date.fromisoformat(date_str)
-                    )  # ★ ISOフォーマットからdateオブジェクトへ
-                except ValueError:
-                    log.warning(
-                        f"heatmap.meta.json 内の休業日 '{date_str}' のISO日付パースに失敗しました。"
-                    )
-        if estimated_holidays_set:
-            log.info(
-                f"読み込んだ推定休業日 ({len(estimated_holidays_set)}日): {sorted(list(estimated_holidays_set))}"
-            )
-        else:
-            log.info(
-                "heatmap.meta.json に有効な推定休業日の情報はありませんでした。"
-            )
-    except Exception as e:
-        log.error(
-            f"{heatmap_meta_path} の処理中にエラー: {e}。休業日考慮なしで処理を続行します。",
-            exc_info=True,
-        )
+    estimated_holidays_set: Set[dt.date] = set(holidays or [])
 
     try:
         heat_all_df = pd.read_excel(out_dir_path / "heat_ALL.xlsx", index_col=0)

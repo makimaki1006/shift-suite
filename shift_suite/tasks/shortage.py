@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Set, Iterable
-import json
 import datetime as dt
 
 import pandas as pd
@@ -25,8 +24,6 @@ def shortage_and_brief(
     out_dir: Path | str,
     slot: int,
     *,
-    holidays_global: Iterable[dt.date] | None = None,
-    holidays_local: Iterable[dt.date] | None = None,
     holidays: Iterable[dt.date] | None = None,
 ) -> Tuple[Path, Path] | None:
     """Run shortage analysis and KPI summary.
@@ -37,47 +34,14 @@ def shortage_and_brief(
         Output directory containing heatmap files.
     slot:
         Slot size in minutes.
-    holidays_global:
-        Dates for globally observed holidays.
-    holidays_local:
-        Additional local or facility specific holidays.
     holidays:
-        Legacy single holiday list; combined with the above.
+        Dates considered as facility holidays.
     """
     out_dir_path = Path(out_dir)
     time_labels = gen_labels(slot)
     slot_hours = slot / 60.0
 
-    estimated_holidays_set: Set[dt.date] = set()
-    for src in (holidays_global, holidays_local, holidays):
-        if src:
-            estimated_holidays_set.update(src)
-    heatmap_meta_path = out_dir_path / "heatmap.meta.json"
-    try:
-        with open(heatmap_meta_path, "r", encoding="utf-8") as f:
-            heatmap_meta_data = json.load(f)
-        holiday_date_strings = heatmap_meta_data.get("estimated_holidays", [])
-        if holiday_date_strings:
-            for date_str_val in holiday_date_strings:
-                try:
-                    estimated_holidays_set.add(dt.date.fromisoformat(date_str_val))
-                except ValueError:
-                    log.warning(
-                        f"[shortage] heatmap.meta.json 内の休業日 '{date_str_val}' のISO日付パースに失敗しました。"
-                    )
-        if estimated_holidays_set:
-            log.info(
-                f"[shortage] 読み込んだ推定休業日 ({len(estimated_holidays_set)}日): {sorted(list(estimated_holidays_set))}"
-            )
-        else:
-            log.info(
-                "[shortage] heatmap.meta.json に有効な推定休業日の情報はありませんでした。"
-            )
-    except Exception as e:
-        log.error(
-            f"[shortage] {heatmap_meta_path} の処理中にエラー: {e}。休業日考慮なしで処理を続行します。",
-            exc_info=True,
-        )
+    estimated_holidays_set: Set[dt.date] = set(holidays or [])
 
     fp_all_heatmap = out_dir_path / "heat_ALL.xlsx"
     if not fp_all_heatmap.exists():

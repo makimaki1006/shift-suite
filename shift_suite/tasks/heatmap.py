@@ -117,6 +117,8 @@ def calculate_pattern_based_need(
     remove_outliers: bool,
     iqr_multiplier: float = 1.5,
     slot_minutes_for_empty: int = 30,
+    *,
+    holidays: set[dt.date] | None = None,
 ) -> pd.DataFrame:
     # ★修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
     log.info(
@@ -138,11 +140,17 @@ def calculate_pattern_based_need(
     # 呼び出し元(build_heatmap)で列名をdt.dateオブジェクトに変換済みのものを渡すように修正
     df_for_calc = actual_staff_by_slot_and_date.copy()
 
+    holidays_set = set(holidays or [])
+
     # 参照期間でデータをフィルタリング (列名がdt.dateオブジェクトであることを前提)
     cols_to_process_dow = [
         col_date
         for col_date in df_for_calc.columns
-        if isinstance(col_date, dt.date) and ref_start_date <= col_date <= ref_end_date
+        if (
+            isinstance(col_date, dt.date)
+            and ref_start_date <= col_date <= ref_end_date
+            and col_date not in holidays_set
+        )
     ]
 
     if not cols_to_process_dow:
@@ -230,7 +238,10 @@ def build_heatmap(
     need_iqr_multiplier: float,
     min_method: str = "p25",
     max_method: str = "p75",
+    holidays: set[dt.date] | None = None,
 ) -> None:
+    holidays_set = set(holidays or [])
+
     if long_df.empty:
         log.warning("[heatmap.build_heatmap] 入力DataFrame (long_df) が空です。")
         return
@@ -253,7 +264,7 @@ def build_heatmap(
             roles=[],
             dates=[],
             summary_columns=SUMMARY5,
-            estimated_holidays=[],
+            estimated_holidays=[d.isoformat() for d in sorted(list(holidays or set()))],
         )
         return
     estimated_holidays_set: Set[dt.date] = set()
@@ -348,9 +359,7 @@ def build_heatmap(
             roles=all_unique_roles_val,
             dates=[],
             summary_columns=SUMMARY5,
-            estimated_holidays=[
-                d.isoformat() for d in sorted(list(estimated_holidays_set))
-            ],
+            estimated_holidays=[d.isoformat() for d in sorted(list(holidays or set()))],
         )
         return
 
@@ -417,6 +426,7 @@ def build_heatmap(
         need_remove_outliers,
         need_iqr_multiplier,
         slot_minutes_for_empty=slot_minutes,
+        holidays=holidays_set,
     )
 
     pivot_data_all_final = pd.DataFrame(
@@ -432,7 +442,7 @@ def build_heatmap(
                 date_str_col_map
             ]
         current_date_obj_map = dt.datetime.strptime(date_str_col_map, "%Y-%m-%d").date()
-        if current_date_obj_map in estimated_holidays_set:
+        if current_date_obj_map in holidays_set:
             need_all_final_for_summary[date_str_col_map] = 0
         else:
             day_of_week_map = current_date_obj_map.weekday()
@@ -497,7 +507,7 @@ def build_heatmap(
                 _apply_holiday_column_styling(
                     ws_all_sheet_obj,
                     pd.Index(actual_date_columns_for_styling),
-                    estimated_holidays_set,
+                    holidays_set,
                     _parse_as_date,
                 )
         log.info("[heatmap.build_heatmap] 全体ヒートマップ (heat_ALL.xlsx) 作成完了。")
@@ -611,7 +621,7 @@ def build_heatmap(
                     _apply_holiday_column_styling(
                         ws_role,
                         date_cols_role_excel,
-                        estimated_holidays_set,
+                        holidays_set,
                         _parse_as_date,
                     )
             log.info(f"職種 '{role_item_final_loop}' ヒートマップ作成完了。")
@@ -727,7 +737,7 @@ def build_heatmap(
                     _apply_holiday_column_styling(
                         ws_emp,
                         date_cols_emp_excel,
-                        estimated_holidays_set,
+                        holidays_set,
                         _parse_as_date,
                     )
             log.info(f"雇用形態 '{emp_item_final_loop}' ヒートマップ作成完了。")
@@ -759,9 +769,7 @@ def build_heatmap(
         roles=all_unique_roles_from_orig_long_df_meta,
         dates=all_date_labels_in_period_str,
         summary_columns=SUMMARY5,
-        estimated_holidays=[
-            d.isoformat() for d in sorted(list(estimated_holidays_set))
-        ],
+        estimated_holidays=[d.isoformat() for d in sorted(list(holidays or set()))],
         employments=all_unique_employments_from_orig_long_df_meta,
         dow_need_pattern=dow_need_pattern_output,
         need_calculation_params={

@@ -847,8 +847,8 @@ if run_button_clicked:
             shortage_result_exec_run = shortage_and_brief(
                 out_dir_exec,
                 param_slot,
-                holidays_global=holiday_dates_global_for_run,
-                holidays_local=holiday_dates_local_for_run,
+                holidays=(holiday_dates_global_for_run or [])
+                + (holiday_dates_local_for_run or []),
             )
             if shortage_result_exec_run is None:
                 st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
@@ -1091,7 +1091,11 @@ if run_button_clicked:
                     st.info(f"{_(opt_module_name_exec_run)} 処理中…")
                     try:
                         if opt_module_name_exec_run == "Stats":
-                            build_stats(out_dir_exec)
+                            build_stats(
+                                out_dir_exec,
+                                holidays=(holiday_dates_global_for_run or [])
+                                + (holiday_dates_local_for_run or []),
+                            )
                         elif opt_module_name_exec_run == "Anomaly":
                             detect_anomaly(out_dir_exec)
                         elif opt_module_name_exec_run == "Fatigue":
