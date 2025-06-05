@@ -24,7 +24,6 @@ from __future__ import annotations
 import datetime
 import io
 import logging
-import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -79,21 +78,10 @@ from shift_suite.tasks.analyzers import (
 )
 
 # ── ロガー設定 ─────────────────────────────────
-log = logging.getLogger("shift_suite_app")
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    log.addHandler(handler)
+from shift_suite.logger_config import configure_logging
 
-    from shift_suite.tasks.utils import log as tasks_log
-
-    if not tasks_log.handlers:
-        tasks_log.addHandler(handler)
-        tasks_log.setLevel(logging.DEBUG)
+configure_logging()
+log = logging.getLogger(__name__)
 
 
 # ── Utility: log error to terminal and show in Streamlit ──
