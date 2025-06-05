@@ -552,6 +552,11 @@ with st.sidebar:
 
     st.divider()
     with st.expander("追加分析モジュール"):
+        if "ext_opts_multiselect_widget" not in st.session_state:
+            st.session_state.ext_opts_multiselect_widget = (
+                st.session_state.get("available_ext_opts_widget", [])
+            )
+
         st.multiselect(
             _("Extra modules"),
             st.session_state.available_ext_opts_widget,
