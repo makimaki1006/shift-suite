@@ -28,6 +28,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import IO, Optional, Sequence
+import re
 
 import pandas as pd
 import streamlit as st
@@ -45,7 +46,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
 import datetime as dt
 
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
-from shift_suite.tasks.io_excel import ingest_excel
+from shift_suite.tasks.io_excel import ingest_excel, SHEET_COL_ALIAS, _normalize
 from shift_suite.tasks.heatmap import build_heatmap
 from shift_suite.tasks.shortage import shortage_and_brief, merge_shortage_leave
 from shift_suite.tasks.build_stats import build_stats
@@ -105,6 +106,162 @@ def _file_mtime(path: Path) -> float:
 def _valid_df(df: pd.DataFrame) -> bool:
     """Return True if ``df`` is a non-empty ``pd.DataFrame``."""
     return isinstance(df, pd.DataFrame) and not df.empty
+
+
+def excel_cell_to_row_col(cell: str) -> tuple[int, int] | None:
+    """Convert Excel style cell like 'A1' to 0-based row/column indexes."""
+    m = re.match(r"^([A-Za-z]+)(\d+)$", cell.strip())
+    if not m:
+        return None
+    col_txt, row_txt = m.groups()
+    col = 0
+    for ch in col_txt.upper():
+        col = col * 26 + (ord(ch) - 64)
+    return int(row_txt) - 1, col - 1
+
+
+def run_import_wizard() -> None:
+    """Show step-by-step wizard for Excel ingest."""
+    step = st.session_state.get("wizard_step", 1)
+    st.header("📥 Excel Import Wizard")
+
+    if step == 1:
+        uploaded = st.file_uploader("Excel file", type=["xlsx"], key="wiz_upload")
+        if uploaded is not None:
+            if st.session_state.get("wizard_file_size") != uploaded.size:
+                tmp = tempfile.mkdtemp(prefix="ShiftSuiteWizard_")
+                path = Path(tmp) / uploaded.name
+                with open(path, "wb") as f:
+                    f.write(uploaded.getbuffer())
+                st.session_state.wizard_excel_path = str(path)
+                st.session_state.wizard_file_size = uploaded.size
+                xls = pd.ExcelFile(path)
+                st.session_state.wizard_sheet_names = xls.sheet_names
+        if st.session_state.wizard_excel_path:
+            master = st.selectbox(
+                "勤務区分シート", st.session_state.wizard_sheet_names, key="wiz_master"
+            )
+            opts = [s for s in st.session_state.wizard_sheet_names if s != master]
+            st.multiselect("シフト実績シート", opts, key="wiz_shift_sheets")
+            if st.button("Next", disabled=not st.session_state.get("wiz_shift_sheets")):
+                st.session_state.shift_sheets_multiselect_widget = (
+                    st.session_state.wiz_shift_sheets[:]
+                )
+                st.session_state.candidate_sheet_list_for_ui = (
+                    st.session_state.wiz_shift_sheets[:]
+                )
+                st.session_state.uploaded_files_info = {
+                    uploaded.name: {
+                        "path": st.session_state.wizard_excel_path,
+                        "size": uploaded.size,
+                    }
+                }
+                st.session_state.year_month_cell_input_widget = "A1"
+                st.session_state.header_row_input_widget = 2
+                st.session_state.wizard_step = 2
+                st.rerun()
+        return
+
+    if step == 2:
+        for sheet in st.session_state.shift_sheets_multiselect_widget:
+            st.subheader(sheet)
+            ym = st.text_input(
+                "年月情報セル位置", value="A1", key=f"ym_{sheet}", help="例: A1"
+            )
+            hdr = st.number_input(
+                "列名ヘッダー行番号", 1, 20, value=2, key=f"hdr_{sheet}"
+            )
+            st.number_input(
+                "データ開始行番号", 1, 200, value=hdr + 1, key=f"data_{sheet}"
+            )
+            df_prev = pd.read_excel(
+                st.session_state.wizard_excel_path,
+                sheet_name=sheet,
+                header=int(hdr) - 1,
+                nrows=10,
+            )
+            st.dataframe(df_prev, use_container_width=True)
+            rc = excel_cell_to_row_col(ym)
+            ym_text = "N/A"
+            if rc is not None:
+                r, c = rc
+                try:
+                    cell_df = pd.read_excel(
+                        st.session_state.wizard_excel_path,
+                        sheet_name=sheet,
+                        header=None,
+                        skiprows=r,
+                        nrows=1,
+                        usecols=[c],
+                        dtype=str,
+                    )
+                    ym_text = str(cell_df.iloc[0, 0])
+                except Exception:
+                    pass
+            st.caption(f"抽出年月: {ym_text}")
+            st.caption(f"認識列名: {df_prev.columns.tolist()}")
+        if st.button("Next", key="wiz_next2"):
+            first = st.session_state.shift_sheets_multiselect_widget[0]
+            st.session_state.year_month_cell_input_widget = st.session_state[f"ym_{first}"]
+            st.session_state.header_row_input_widget = st.session_state[f"hdr_{first}"]
+            st.session_state.wizard_step = 3
+            st.rerun()
+        return
+
+    if step == 3:
+        first = st.session_state.shift_sheets_multiselect_widget[0]
+        hdr = st.session_state[f"hdr_{first}"]
+        df_cols = pd.read_excel(
+            st.session_state.wizard_excel_path,
+            sheet_name=first,
+            header=int(hdr) - 1,
+            nrows=1,
+        )
+        cols = list(df_cols.columns)
+        guessed: dict[str, str] = {}
+        for c in cols:
+            canon = SHEET_COL_ALIAS.get(_normalize(str(c)))
+            if canon and canon not in guessed:
+                guessed[canon] = c
+        st.selectbox(
+            "氏名列", cols, index=cols.index(guessed.get("staff", cols[0])), key="map_staff"
+        )
+        st.selectbox(
+            "職種列", cols, index=cols.index(guessed.get("role", cols[0])), key="map_role"
+        )
+        st.selectbox(
+            "雇用形態列", cols, index=cols.index(guessed.get("employment", cols[0])), key="map_emp"
+        )
+        date_cols = [c for c in cols if re.search(r"\d", str(c))]
+        if date_cols:
+            st.caption(f"最初の日付列候補: {date_cols[0]}")
+        if st.button("Next", key="wiz_next3"):
+            st.session_state.wizard_mapping = {
+                "staff": st.session_state.map_staff,
+                "role": st.session_state.map_role,
+                "employment": st.session_state.map_emp,
+            }
+            st.session_state.wizard_step = 4
+            st.rerun()
+        return
+
+    if step == 4:
+        st.write("### 設定内容確認")
+        st.write("実績シート:", st.session_state.shift_sheets_multiselect_widget)
+        st.write("年月セル:", st.session_state.year_month_cell_input_widget)
+        st.write("ヘッダー行:", st.session_state.header_row_input_widget)
+        st.write("列マッピング:", st.session_state.wizard_mapping)
+        if st.button("取り込み開始", key="wiz_ingest"):
+            long_df, _ = ingest_excel(
+                Path(st.session_state.wizard_excel_path),
+                shift_sheets=st.session_state.shift_sheets_multiselect_widget,
+                header_row=int(st.session_state.header_row_input_widget),
+                slot_minutes=int(st.session_state.slot_input_widget),
+                year_month_cell_location=st.session_state.year_month_cell_input_widget,
+            )
+            st.session_state.analysis_results = {"preview": long_df.head()}
+            st.success("取り込み完了")
+            st.dataframe(long_df.head(), use_container_width=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -244,6 +401,11 @@ if "app_initialized" not in st.session_state:
     st.session_state.uploaded_files_info = {}
     st.session_state.file_options = {}
     st.session_state.analysis_results = {}
+    st.session_state.wizard_step = 1
+    st.session_state.wizard_excel_path = None
+    st.session_state.wizard_sheet_names = []
+    st.session_state.wizard_shift_sheets = []
+    st.session_state.wizard_mapping = {}
     log.info("セッションステートを初期化しました。")
 
 # --- サイドバーのUI要素 ---
@@ -464,14 +626,7 @@ with st.sidebar:
         )
 
 # --- メインコンテンツエリア ---
-st.header("1. ファイルアップロードと設定")
-uploaded_files = st.file_uploader(
-    _("Upload Excel shift file (*.xlsx)"),
-    type=["xlsx"],
-    key="excel_uploader_main_content_area_key",
-    help="勤務実績と勤務区分が記載されたExcelファイルをアップロードしてください。",
-    accept_multiple_files=True,
-)
+run_import_wizard()
 holiday_file_global_uploaded = st.file_uploader(
     _("Global holiday file (CSV or JSON)"),
     type=["csv", "json"],
@@ -485,56 +640,6 @@ holiday_file_local_uploaded = st.file_uploader(
     help="施設固有の休業日 (YYYY-MM-DD)",
 )
 
-if uploaded_files:
-    for uploaded_file in uploaded_files:
-        saved_info = st.session_state.uploaded_files_info.get(uploaded_file.name)
-        if saved_info is None or saved_info.get("size") != uploaded_file.size:
-            if (
-                st.session_state.work_root_path_str is None
-                or not Path(st.session_state.work_root_path_str).exists()
-            ):
-                st.session_state.work_root_path_str = tempfile.mkdtemp(
-                    prefix="ShiftSuite_"
-                )
-                log.info(
-                    f"新しい一時ディレクトリを作成しました: {st.session_state.work_root_path_str}"
-                )
-
-            st.session_state.analysis_done = False
-            work_root_on_upload = Path(st.session_state.work_root_path_str)
-            excel_path_for_processing = work_root_on_upload / uploaded_file.name
-
-            try:
-                with open(excel_path_for_processing, "wb") as f_wb:
-                    f_wb.write(uploaded_file.getbuffer())
-                log.info(
-                    f"アップロードされたExcelファイルを保存しました: {excel_path_for_processing}"
-                )
-                st.session_state.uploaded_files_info[uploaded_file.name] = {
-                    "path": str(excel_path_for_processing),
-                    "size": uploaded_file.size,
-                }
-
-                # --- NEW: シート名リストを取得してUIを更新 ---
-                try:
-                    xls = pd.ExcelFile(excel_path_for_processing)
-                    candidate_sheets = [
-                        s for s in xls.sheet_names if master_sheet_keyword not in s
-                    ]
-                    if not candidate_sheets:
-                        st.warning(_("No analysis target sheets found"))
-                    st.session_state.candidate_sheet_list_for_ui = (
-                        candidate_sheets or []
-                    )
-                    st.session_state._force_update_multiselect_flag = True
-                except Exception as e_get_sheet:
-                    log_and_display_error(
-                        _("Error getting sheet names from Excel"), e_get_sheet
-                    )
-            except Exception as e_save_file_process:
-                log_and_display_error(_("Error saving Excel file"), e_save_file_process)
-
-# 「解析実行」ボタン
 run_button_disabled_status = (
     not st.session_state.uploaded_files_info
     or not st.session_state.get("shift_sheets_multiselect_widget", [])
