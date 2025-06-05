@@ -287,3 +287,7 @@ Runtime settings and translation strings are stored in separate files under
 
 Modify these files to tweak behaviour or update translations without touching
 the Python source.
+
+### Troubleshooting
+
+When launching the GUI, Streamlit will raise `StreamlitAPIException: Expanders may not be nested inside other expanders` if an `st.expander` is created within another expander.  The code avoids this by replacing the inner expander for **Leave Analysis** with a simple Markdown heading.  If you encounter this error, check that your local copy reflects this structure or remove the nested expander.
