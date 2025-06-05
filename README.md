@@ -91,6 +91,17 @@ The GUI caches the uploaded workbook using `load_excelfile_cached()` with
    sidebar to specify how many days ahead the Need forecast module should
    predict (default: 30).
 
+   You can skip the file uploader by setting the environment variable
+   `SHIFT_SUITE_DEFAULT_EXCEL` to the path of your workbook before launching
+   the GUI:
+
+   ```bash
+   SHIFT_SUITE_DEFAULT_EXCEL=./shifts.xlsx streamlit run app.py
+   ```
+
+   The wizard will pre-load this file so you can immediately select the
+   relevant sheets.
+
 3. To use the CLI, run:
 
    ```bash
@@ -291,3 +302,11 @@ the Python source.
 ### Troubleshooting
 
 When launching the GUI, Streamlit will raise `StreamlitAPIException: Expanders may not be nested inside other expanders` if an `st.expander` is created within another expander.  The code avoids this by replacing the inner expander for **Leave Analysis** with a simple Markdown heading.  If you encounter this error, check that your local copy reflects this structure or remove the nested expander.
+
+If you see repeated messages like `Examining the path of torch.classes raised` on
+Windows, set `STREAMLIT_WATCHER_TYPE=poll` before running the app to disable the
+default file watcher:
+
+```bash
+STREAMLIT_WATCHER_TYPE=poll streamlit run app.py
+```
