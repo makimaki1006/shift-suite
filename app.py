@@ -212,7 +212,9 @@ def run_import_wizard() -> None:
 
     if step == 3:
         first = st.session_state.shift_sheets_multiselect_widget[0]
-        hdr = st.session_state[f"hdr_{first}"]
+        hdr = st.session_state.get(
+            f"hdr_{first}", st.session_state.get("header_row_input_widget", 2)
+        )
         df_cols = pd.read_excel(
             st.session_state.wizard_excel_path,
             sheet_name=first,
