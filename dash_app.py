@@ -23,7 +23,7 @@ from shift_suite.tasks.dashboard import load_leave_results_from_dir
 
 # --- 日本語ラベル辞書は resources/strings_ja.json で管理 ---
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # ────────────────── 1. 定数 & ヘルパ ──────────────────
 DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out"  # ★ .resolve() を追加
@@ -77,7 +77,7 @@ try:
             if "lack_h" in df_sr:
                 kpi_lack_h = float(df_sr["lack_h"].sum())
         except Exception as e:
-            logger.error("shortage_role.xlsx 読込エラー: %s", e)
+            log.error("shortage_role.xlsx 読込エラー: %s", e)
     if (DATA_DIR / "fairness_before.xlsx").exists():
         try:
             df_fb = pd.read_excel(
@@ -87,12 +87,12 @@ try:
             if not row.empty:
                 jain_index_val = float(row["value"].iloc[0])
         except Exception as e:
-            logger.error("fairness_before.xlsx 読込エラー: %s", e)
+            log.error("fairness_before.xlsx 読込エラー: %s", e)
 
     leave_results = load_leave_results_from_dir(DATA_DIR)
 
 except FileNotFoundError:
-    logger.error(
+    log.error(
         "エラー: %s が見つかりません。先にstreamlit app.pyで解析を実行してください。",
         DATA_DIR / "heat_ALL.xlsx",
     )
@@ -106,7 +106,7 @@ except FileNotFoundError:
     leave_results = {}
     # ... (他のDFも空で初期化)
 except Exception as e:
-    logger.error("データロード中に予期せぬエラーが発生しました: %s", e)
+    log.error("データロード中に予期せぬエラーが発生しました: %s", e)
     heat_all_df = pd.DataFrame()
     heat_staff_data = pd.DataFrame()
     ratio_calculated_df = pd.DataFrame()

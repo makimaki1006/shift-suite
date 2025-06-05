@@ -15,7 +15,7 @@ import pandas as pd
 from ..logger_config import configure_logging
 
 configure_logging()
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 SLOT_MINUTES = 30
@@ -80,7 +80,7 @@ def _to_hhmm(v: Any) -> str | None:
                 dt_obj = dt.datetime(1899, 12, 30) + dt.timedelta(days=float(v))
                 return dt_obj.strftime("%H:%M")
         except Exception as e:
-            logger.debug(f"Excelシリアル値からの時刻変換エラー: 値='{v}', エラー='{e}'")
+            log.debug(f"Excelシリアル値からの時刻変換エラー: 値='{v}', エラー='{e}'")
             return None
     s = str(v).strip()
     if re.fullmatch(r"\d{1,2}:\d{2}:\d{2}", s):
@@ -90,7 +90,7 @@ def _to_hhmm(v: Any) -> str | None:
             return dt.datetime.strptime(s, "%H:%M").strftime("%H:%M")
         except ValueError:
             return None
-    logger.debug(f"HH:MM形式への変換失敗: '{v}'")
+    log.debug(f"HH:MM形式への変換失敗: '{v}'")
     return None
 
 
@@ -114,7 +114,7 @@ def _expand(
         slots.append(current_time.strftime("%H:%M"))
         current_time += dt.timedelta(minutes=slot_minutes)
     if len(slots) >= max_slots:
-        logger.warning(
+        log.warning(
             f"勤務コード {st}-{ed} のスロット展開が24時間を超えるため制限しました。"
         )
     return slots
@@ -138,13 +138,13 @@ def load_shift_patterns(
     try:
         raw = pd.read_excel(xlsx, sheet_name=sheet_name, dtype=str).fillna("")
     except FileNotFoundError as e:
-        logger.error("Excel file not found: %s", e)
+        log.error("Excel file not found: %s", e)
         raise
     except pd.errors.EmptyDataError as e:
-        logger.error("勤務区分シート '%s' が空です: %s", sheet_name, e)
+        log.error("勤務区分シート '%s' が空です: %s", sheet_name, e)
         raise ValueError(f"勤務区分シート '{sheet_name}' が空です") from e
     except Exception as e:
-        logger.error(f"勤務区分シート '{sheet_name}' が読めません: {e}")
+        log.error(f"勤務区分シート '{sheet_name}' が読めません: {e}")
         raise ValueError(f"勤務区分シート '{sheet_name}' が読めません: {e}") from e
     raw.rename(
         columns={c: COL_ALIASES.get(str(c), str(c)) for c in raw.columns}, inplace=True
@@ -152,7 +152,7 @@ def load_shift_patterns(
     required_cols = {"code", "start", "end"}
     if not required_cols.issubset(raw.columns):
         missing = required_cols - set(raw.columns)
-        logger.error(f"勤務区分シート '{sheet_name}' に必須列 {missing} がありません")
+        log.error(f"勤務区分シート '{sheet_name}' に必須列 {missing} がありません")
         raise ValueError(
             f"勤務区分シート '{sheet_name}' に必須列 {missing} がありません"
         )
@@ -160,7 +160,7 @@ def load_shift_patterns(
     for r_idx, r in raw.iterrows():
         code = _normalize(r.get("code", ""))
         if not code:
-            logger.warning(
+            log.warning(
                 f"勤務区分シート '{sheet_name}' の {r_idx + 2}行目: 勤務コードが空のためスキップします。"
             )
             continue
@@ -171,7 +171,7 @@ def load_shift_patterns(
         if st_hm and ed_hm:
             slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
         elif st_hm or ed_hm:
-            logger.warning(
+            log.warning(
                 f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')"
             )
         remarks_val = r.get("remarks", "")
@@ -189,7 +189,7 @@ def load_shift_patterns(
             }
         )
         code2slots[code] = slots
-    logger.info(
+    log.info(
         f"勤務区分シート '{sheet_name}' から {len(code2slots)} 件の勤務パターンを読み込みました。"
     )
     return pd.DataFrame(wt_rows), code2slots
@@ -204,7 +204,7 @@ def ingest_excel(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     wt_df, code2slots = load_shift_patterns(excel_path, slot_minutes=slot_minutes)
     if wt_df.empty:
-        logger.error("勤務区分情報 (wt_df) が空です。処理を続行できません。")
+        log.error("勤務区分情報 (wt_df) が空です。処理を続行できません。")
         raise ValueError("勤務区分情報が読み込めませんでした。")
 
     records: list[dict] = []
@@ -218,17 +218,17 @@ def ingest_excel(
                 header=header_row - 1,
                 dtype=str,
             ).fillna("")
-            logger.info(
+            log.info(
                 f"シート '{sheet_name_actual}' を読み込みました。Shape: {df_sheet.shape}"
             )
         except FileNotFoundError as e:
-            logger.error("Excel file not found while reading sheet '%s': %s", sheet_name_actual, e)
+            log.error("Excel file not found while reading sheet '%s': %s", sheet_name_actual, e)
             raise
         except pd.errors.EmptyDataError as e:
-            logger.warning("シート '%s' が空です: %s", sheet_name_actual, e)
+            log.warning("シート '%s' が空です: %s", sheet_name_actual, e)
             continue
         except Exception as e:
-            logger.warning(
+            log.warning(
                 f"シート '{sheet_name_actual}' の読み込みに失敗しました: {e}"
             )
             continue
@@ -239,7 +239,7 @@ def ingest_excel(
         ]
 
         if not {"staff", "role"}.issubset(df_sheet.columns):
-            logger.error(
+            log.error(
                 f"シート '{sheet_name_actual}' に ‘staff’ (氏名) または ‘role’ (職種) 列が見つかりません。"
             )
             raise ValueError(
@@ -253,11 +253,11 @@ def ingest_excel(
             and not str(c).startswith("Unnamed:")
         ]
         if not date_cols_candidate:
-            logger.warning(
+            log.warning(
                 f"シート '{sheet_name_actual}' に日付データ列が見つかりませんでした。"
             )
             continue
-        logger.debug(
+        log.debug(
             f"シート '{sheet_name_actual}' の日付列候補: {date_cols_candidate}"
         )
 
@@ -283,7 +283,7 @@ def ingest_excel(
                     continue
                 if code_val not in code2slots:
                     if code_val not in unknown_codes:
-                        logger.warning(
+                        log.warning(
                             f"シート '{sheet_name_actual}', スタッフ '{staff}', 日付列 '{col_name_original_str}' で未知の勤務コード '{code_val}' が見つかりました。"
                         )
                         unknown_codes.add(code_val)
@@ -300,7 +300,7 @@ def ingest_excel(
                     date_val_parsed_dt_date = (
                         pd.to_datetime(col_name_original_str).normalize().date()
                     )
-                    logger.debug(
+                    log.debug(
                         f"日付パース (Timestamp直接): {col_name_original_str} -> {date_val_parsed_dt_date}"
                     )
                 # 文字列として読み込まれた列名をパースする
@@ -321,7 +321,7 @@ def ingest_excel(
                                 dt.datetime(1899, 12, 30)
                                 + dt.timedelta(days=serial_val)
                             ).date()
-                            logger.debug(
+                            log.debug(
                                 f"日付パース (シリアル風文字列): '{col_to_parse}' -> {date_val_parsed_dt_date}"
                             )
                     except ValueError:  # 数値に変換できない場合は次のステップへ
@@ -337,7 +337,7 @@ def ingest_excel(
                                     .normalize()
                                     .date()
                                 )
-                                logger.debug(
+                                log.debug(
                                     f"日付パース (YYYY-MM-DD風): '{col_to_parse}' -> '{date_str_to_try}' -> {date_val_parsed_dt_date}"
                                 )
                             except (ValueError, TypeError, pd.errors.ParserError):
@@ -355,7 +355,7 @@ def ingest_excel(
                                     date_val_parsed_dt_date = dt.datetime.strptime(
                                         col_to_parse.split(" ")[0], fmt
                                     ).date()
-                                    logger.debug(
+                                    log.debug(
                                         f"日付パース (strptime fmt='{fmt}'): '{col_to_parse}' -> {date_val_parsed_dt_date}"
                                     )
                                     parsed_successfully = True
@@ -363,14 +363,14 @@ def ingest_excel(
                                 except ValueError:
                                     continue
                             if not parsed_successfully:
-                                logger.debug(
+                                log.debug(
                                     f"日付列パース最終失敗: 元列名='{col_name_original_str}', 試行文字列='{col_to_parse}'"
                                 )
                 # --- 日付パース処理ここまで ---
 
                 if date_val_parsed_dt_date is None:
                     if not col_name_original_str.startswith("Unnamed:"):
-                        logger.warning(
+                        log.warning(
                             f"シート '{sheet_name_actual}' の日付列パースに失敗しました (最終結果None): 元の列名='{col_name_original_str}'"
                         )
                     continue
@@ -427,23 +427,23 @@ def ingest_excel(
                             }
                         )
                     except ValueError as e_time:
-                        logger.error(
+                        log.error(
                             f"時刻スロット '{t_slot_val}' のパース中にエラー (スタッフ: {staff}, 日付: {date_val_parsed_dt_date}, コード: {code_val}): {e_time}"
                         )
                         continue
 
     if unknown_codes:
-        logger.warning(
+        log.warning(
             f"処理中に以下の未知の勤務コードが見つかりました (これらは無視されます): {sorted(list(unknown_codes))}"
         )
 
     if not records:
-        logger.error(
+        log.error(
             "処理対象となる有効なシフトレコードが1件も見つかりませんでした。入力Excelの実績シートの列名（日付形式）、勤務区分、ヘッダー行の設定を確認してください。"
         )
         raise ValueError("有効なシフトレコードが生成されませんでした。")
 
-    logger.info(f"合計 {len(records)} 件の長形式レコードを生成しました。")
+    log.info(f"合計 {len(records)} 件の長形式レコードを生成しました。")
     final_long_df = pd.DataFrame(records)
     if not final_long_df.empty:
         final_long_df["ds"] = pd.to_datetime(final_long_df["ds"])
@@ -469,7 +469,7 @@ if __name__ == "__main__":
     p.add_argument("--slot", type=int, default=SLOT_MINUTES, help="スロット長 (分)")
     a = p.parse_args()
     try:
-        logger.info(
+        log.info(
             f"Excelファイル: {a.xlsx}, 対象シート: {a.sheets}, ヘッダー行: {a.header}, スロット: {a.slot}"
         )
         ld, wt = ingest_excel(
@@ -478,24 +478,24 @@ if __name__ == "__main__":
             header_row=a.header,
             slot_minutes=a.slot,
         )
-        logger.info("正常に処理が完了しました。")
+        log.info("正常に処理が完了しました。")
         if not ld.empty:
-            logger.info("--- long_df (最初の5行) ---")
-            logger.info(ld.head())
-            logger.info(f"long_df columns: {ld.columns.tolist()}")
-            logger.info(f"long_df dtypes:\n{ld.dtypes}")
+            log.info("--- long_df (最初の5行) ---")
+            log.info(ld.head())
+            log.info(f"long_df columns: {ld.columns.tolist()}")
+            log.info(f"long_df dtypes:\n{ld.dtypes}")
         else:
-            logger.info("--- long_df は空です ---")
+            log.info("--- long_df は空です ---")
         if not wt.empty:
-            logger.info("--- wt_df (最初の5行) ---")
-            logger.info(wt.head())
-            logger.info(f"wt_df columns: {wt.columns.tolist()}")
-            logger.info(f"wt_df dtypes:\n{wt.dtypes}")
+            log.info("--- wt_df (最初の5行) ---")
+            log.info(wt.head())
+            log.info(f"wt_df columns: {wt.columns.tolist()}")
+            log.info(f"wt_df dtypes:\n{wt.dtypes}")
         else:
-            logger.info("--- wt_df は空です ---")
+            log.info("--- wt_df は空です ---")
     except ValueError as e:
-        logger.error(f"処理中にエラーが発生しました: {e}")
+        log.error(f"処理中にエラーが発生しました: {e}")
     except FileNotFoundError as e:
-        logger.error(f"ファイルが見つかりません: {e}")
+        log.error(f"ファイルが見つかりません: {e}")
     except Exception as e:
-        logger.error(f"予期せぬエラーが発生しました: {e}", exc_info=True)
+        log.error(f"予期せぬエラーが発生しました: {e}", exc_info=True)
