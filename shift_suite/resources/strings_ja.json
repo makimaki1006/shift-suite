@@ -183,4 +183,18 @@
   "Max shortage": "最大不足発生日時",
   "Shortage by role caption": "各職種の不足時間を示します。値が大きい職種に注目してください。",
   "Shortage by time caption": "時間帯ごとの不足状況を示します。ピーク時間帯を確認してください。"
+  "Over/Short Log": "過不足日誌",
+  "Reason Category": "理由カテゴリ",
+  "Related Staff": "関連スタッフ",
+  "Memo": "メモ",
+  "Save log": "過不足日誌保存",
+  "Append": "追記",
+  "Overwrite": "上書き",
+  "Reason stats": "理由別過不足集計",
+  "Sudden absence": "急な欠勤（病欠等）",
+  "Planned leave": "予定休暇（有給・希望休）",
+  "Training/Meeting": "研修・会議",
+  "Resident response": "入居者対応（状態変化、緊急時）",
+  "Hiring delay": "採用遅延",
+  "Other": "その他",
 }
