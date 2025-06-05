@@ -230,9 +230,11 @@ def run_import_wizard() -> None:
             except Exception as e:  # noqa: BLE001
                 log_and_display_error("Excel\u30d5\u30a1\u30a4\u30eb\u306e\u81ea\u52d5\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f", e)
             else:
-                st.session_state.wizard_excel_path = str(Path(default_excel))
-                st.session_state.wizard_file_size = Path(default_excel).stat().st_size
+                default_path = Path(default_excel)
+                st.session_state.wizard_excel_path = str(default_path)
+                st.session_state.wizard_file_size = default_path.stat().st_size
                 st.session_state.wizard_sheet_names = xls.sheet_names
+                st.session_state.work_root_path_str = str(default_path.parent)
 
         uploaded = st.file_uploader("Excel file", type=["xlsx"], key="wiz_upload")
         if uploaded is not None:
@@ -243,6 +245,7 @@ def run_import_wizard() -> None:
                     f.write(uploaded.getbuffer())
                 st.session_state.wizard_excel_path = str(path)
                 st.session_state.wizard_file_size = uploaded.size
+                st.session_state.work_root_path_str = str(tmp)
                 xls = pd.ExcelFile(path)
                 st.session_state.wizard_sheet_names = xls.sheet_names
         if st.session_state.wizard_excel_path:
@@ -875,6 +878,7 @@ if run_button_clicked:
             st.stop()
 
         work_root_exec = excel_path_to_use.parent
+        st.session_state.work_root_path_str = str(work_root_exec)
         st.session_state.out_dir_path_str = str(work_root_exec / "out")
         out_dir_exec = Path(st.session_state.out_dir_path_str)
         out_dir_exec.mkdir(parents=True, exist_ok=True)
