@@ -89,6 +89,9 @@ def _patch_streamlit_watcher() -> None:
     except Exception:
         return
 
+    if not hasattr(_lsw, "extract_paths"):
+        return
+
     if getattr(_lsw.extract_paths, "_patched", False):
         return
 
