@@ -35,16 +35,11 @@ from pandas import DataFrame, Series
 
 # ★追加箇所: constants から SUMMARY5 をインポート ( _parse_as_date で使用)
 from .constants import SUMMARY5
-
+from ..logger_config import configure_logging
 
 # ────────────────── 1. ロガー ──────────────────
-# (ロガー設定は既存のままとします)
-logging.basicConfig(
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.DEBUG,
-)
-log = logging.getLogger("shift_suite")
+configure_logging()
+log = logging.getLogger(__name__)
 
 
 # ────────────────── 2. Excel 日付ユーティリティ ──────────────────

@@ -12,16 +12,10 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Any
 import pandas as pd
 
+from ..logger_config import configure_logging
+
+configure_logging()
 logger = logging.getLogger(__name__)
-if not logger.handlers:
-    ch = logging.StreamHandler()
-    # ★ フォーマットにモジュール名と関数名、行番号を追加してデバッグしやすくする
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
-    )
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    logger.setLevel(logging.INFO)  # 通常はINFO、デバッグ時はDEBUGに変更
 
 
 SLOT_MINUTES = 30
@@ -143,9 +137,15 @@ def load_shift_patterns(
     # (v2.7.1案のロジックを流用)
     try:
         raw = pd.read_excel(xlsx, sheet_name=sheet_name, dtype=str).fillna("")
+    except FileNotFoundError as e:
+        logger.error("Excel file not found: %s", e)
+        raise
+    except pd.errors.EmptyDataError as e:
+        logger.error("勤務区分シート '%s' が空です: %s", sheet_name, e)
+        raise ValueError(f"勤務区分シート '{sheet_name}' が空です") from e
     except Exception as e:
         logger.error(f"勤務区分シート '{sheet_name}' が読めません: {e}")
-        raise ValueError(f"勤務区分シート '{sheet_name}' が読めません: {e}")
+        raise ValueError(f"勤務区分シート '{sheet_name}' が読めません: {e}") from e
     raw.rename(
         columns={c: COL_ALIASES.get(str(c), str(c)) for c in raw.columns}, inplace=True
     )
@@ -212,7 +212,6 @@ def ingest_excel(
 
     for sheet_name_actual in shift_sheets:
         try:
-            # ★修正箇所: dtype=str を指定して、列名を文字列として確実に読み込む (v2.6.3と同様)
             df_sheet = pd.read_excel(
                 excel_path,
                 sheet_name=sheet_name_actual,
@@ -222,6 +221,12 @@ def ingest_excel(
             logger.info(
                 f"シート '{sheet_name_actual}' を読み込みました。Shape: {df_sheet.shape}"
             )
+        except FileNotFoundError as e:
+            logger.error("Excel file not found while reading sheet '%s': %s", sheet_name_actual, e)
+            raise
+        except pd.errors.EmptyDataError as e:
+            logger.warning("シート '%s' が空です: %s", sheet_name_actual, e)
+            continue
         except Exception as e:
             logger.warning(
                 f"シート '{sheet_name_actual}' の読み込みに失敗しました: {e}"
@@ -451,10 +456,7 @@ def ingest_excel(
 if __name__ == "__main__":
     import argparse
 
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s",
-    )
+    configure_logging(level=logging.DEBUG)
     p = argparse.ArgumentParser(description="Shift Excel → long_df / wt_df")
     p.add_argument("xlsx", help="Excel シフト原本 (.xlsx)")
     p.add_argument(

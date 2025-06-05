@@ -10,6 +10,11 @@ import pkgutil
 import sys
 import importlib
 
+# Configure package-wide logging
+from .logger_config import configure_logging
+
+configure_logging()
+
 # ────────────────────────────────────────────── tasks 全読み込み
 _tasks_dir = Path(__file__).with_name("tasks")
 for modinfo in pkgutil.iter_modules([str(_tasks_dir)]):
