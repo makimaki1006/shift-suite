@@ -249,58 +249,66 @@ if "app_initialized" not in st.session_state:
 with st.sidebar:
     st.header("🛠️ 解析設定")
 
-    st.number_input(
-        _("Slot (min)"), 5, 120, key="slot_input_widget", help="分析の時間間隔（分）"
-    )
-
-    st.subheader("📄 シート選択とヘッダー")
-
-    if st.session_state.get("_force_update_multiselect_flag", False):
-        new_options = st.session_state.candidate_sheet_list_for_ui
-        current_selection = st.session_state.get("shift_sheets_multiselect_widget", [])
-        valid_selection = [s for s in current_selection if s in new_options]
-        if not valid_selection and new_options:
-            st.session_state.shift_sheets_multiselect_widget = new_options[:]
-        elif valid_selection:
-            st.session_state.shift_sheets_multiselect_widget = valid_selection
-        else:
-            st.session_state.shift_sheets_multiselect_widget = []
-        st.session_state._force_update_multiselect_flag = False
-
-    st.multiselect(
-        _("Select shift sheets to analyze (multiple)"),
-        options=st.session_state.candidate_sheet_list_for_ui,
-        default=st.session_state.shift_sheets_multiselect_widget,
-        key="shift_sheets_multiselect_widget",
-    )
-    st.number_input(
-        _("Header start row (1-indexed)"), 1, 20, key="header_row_input_widget"
-    )
-
-    st.subheader(_("Need Calculation Settings (Day of Week Pattern)"))
-
-    if st.session_state.get("_force_update_need_ref_dates_flag", False):
-        if st.session_state.get("_intended_need_ref_start_date"):
-            st.session_state.need_ref_start_date_widget = (
-                st.session_state._intended_need_ref_start_date
-            )
-        if st.session_state.get("_intended_need_ref_end_date"):
-            st.session_state.need_ref_end_date_widget = (
-                st.session_state._intended_need_ref_end_date
-            )
-        st.session_state._force_update_need_ref_dates_flag = False
-        if "_intended_need_ref_start_date" in st.session_state:
-            del st.session_state["_intended_need_ref_start_date"]
-        if "_intended_need_ref_end_date" in st.session_state:
-            del st.session_state["_intended_need_ref_end_date"]
-
-    c1_need_ui, c2_need_ui = st.columns(2)
-    with c1_need_ui:
-        st.date_input(
-            _("Start Date"),
-            key="need_ref_start_date_widget",
-            help="Need算出の参照期間の開始日",
+    with st.expander("基本設定", expanded=True):
+        st.number_input(
+            _("Slot (min)"),
+            5,
+            120,
+            key="slot_input_widget",
+            help="分析の時間間隔（分）",
         )
+
+    with st.expander("📄 シート選択とヘッダー", expanded=True):
+        if st.session_state.get("_force_update_multiselect_flag", False):
+            new_options = st.session_state.candidate_sheet_list_for_ui
+            current_selection = st.session_state.get("shift_sheets_multiselect_widget", [])
+            valid_selection = [s for s in current_selection if s in new_options]
+            if not valid_selection and new_options:
+                st.session_state.shift_sheets_multiselect_widget = new_options[:]
+            elif valid_selection:
+                st.session_state.shift_sheets_multiselect_widget = valid_selection
+            else:
+                st.session_state.shift_sheets_multiselect_widget = []
+            st.session_state._force_update_multiselect_flag = False
+
+        st.multiselect(
+            _("Select shift sheets to analyze (multiple)"),
+            options=st.session_state.candidate_sheet_list_for_ui,
+            default=st.session_state.shift_sheets_multiselect_widget,
+            key="shift_sheets_multiselect_widget",
+            help="解析対象とするシートを選択します。",
+        )
+        st.number_input(
+            _("Header start row (1-indexed)"),
+            1,
+            20,
+            key="header_row_input_widget",
+            help="データヘッダーが開始するExcel行番号",
+        )
+
+    with st.expander(_("Need Calculation Settings (Day of Week Pattern)")):
+        if st.session_state.get("_force_update_need_ref_dates_flag", False):
+            if st.session_state.get("_intended_need_ref_start_date"):
+                st.session_state.need_ref_start_date_widget = (
+                    st.session_state._intended_need_ref_start_date
+                )
+            if st.session_state.get("_intended_need_ref_end_date"):
+                st.session_state.need_ref_end_date_widget = (
+                    st.session_state._intended_need_ref_end_date
+                )
+            st.session_state._force_update_need_ref_dates_flag = False
+            if "_intended_need_ref_start_date" in st.session_state:
+                del st.session_state["_intended_need_ref_start_date"]
+            if "_intended_need_ref_end_date" in st.session_state:
+                del st.session_state["_intended_need_ref_end_date"]
+
+        c1_need_ui, c2_need_ui = st.columns(2)
+        with c1_need_ui:
+            st.date_input(
+                _("Start Date"),
+                key="need_ref_start_date_widget",
+                help="Need算出の参照期間の開始日",
+            )
     with c2_need_ui:
         st.date_input(
             _("End Date"),
@@ -366,40 +374,34 @@ with st.sidebar:
         )
 
     st.divider()
-    st.subheader("追加分析モジュール")
+    with st.expander("追加分析モジュール"):
+        st.multiselect(
+            _("Extra modules"),
+            st.session_state.available_ext_opts_widget,
+            default=st.session_state.ext_opts_multiselect_widget,
+            key="ext_opts_multiselect_widget",
+            help="実行する追加の分析モジュールを選択します。",
+        )
 
-    st.multiselect(
-        _("Extra modules"),
-        st.session_state.available_ext_opts_widget,
-        default=st.session_state.ext_opts_multiselect_widget,  # 初期値はセッションステートから
-        key="ext_opts_multiselect_widget",
-        help="実行する追加の分析モジュールを選択します。",
-    )
-
-    # ★ 休暇分析が選択されている場合のみ、関連パラメータ設定UIを表示
-    if _("Leave Analysis") in st.session_state.ext_opts_multiselect_widget:
-        with st.expander("📊 " + _("Leave Analysis") + " 設定", expanded=True):
-            st.multiselect(
-                "分析対象の休暇タイプ",
-                options=[
-                    LEAVE_TYPE_REQUESTED,
-                    LEAVE_TYPE_PAID,
-                ],  # 将来的に 'その他休暇' なども追加可能
-                key="leave_analysis_target_types_widget",
-                help="分析する休暇の種類を選択します。",
-            )
-            # 希望休が分析対象に含まれている場合のみ閾値設定を表示
-            if (
-                LEAVE_TYPE_REQUESTED
-                in st.session_state.leave_analysis_target_types_widget
-            ):
-                st.number_input(
-                    "希望休 集中度判定閾値 (人)",
-                    min_value=1,
-                    step=1,
-                    key="leave_concentration_threshold_widget",
-                    help="同日にこの人数以上の希望休があった場合に「集中」とみなします。",
+        if _("Leave Analysis") in st.session_state.ext_opts_multiselect_widget:
+            with st.expander("📊 " + _("Leave Analysis") + " 設定", expanded=True):
+                st.multiselect(
+                    "分析対象の休暇タイプ",
+                    options=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID],
+                    key="leave_analysis_target_types_widget",
+                    help="分析する休暇の種類を選択します。",
                 )
+                if (
+                    LEAVE_TYPE_REQUESTED
+                    in st.session_state.leave_analysis_target_types_widget
+                ):
+                    st.number_input(
+                        "希望休 集中度判定閾値 (人)",
+                        min_value=1,
+                        step=1,
+                        key="leave_concentration_threshold_widget",
+                        help="同日にこの人数以上の希望休があった場合に『集中』とみなします。",
+                    )
 
     current_save_mode_idx_val = 0
     try:
@@ -446,13 +448,14 @@ with st.sidebar:
             _("Penalty for shortage (¥/h)"), 0, 20000, key="penalty_per_lack_widget"
         )
 
-    st.number_input(
-        _("Forecast days"),
-        1,
-        365,
-        key="forecast_period_widget",
-        help="Need forecast モジュールで先読みする日数",
-    )
+    with st.expander("上級設定"):
+        st.number_input(
+            _("Forecast days"),
+            1,
+            365,
+            key="forecast_period_widget",
+            help="Need forecast モジュールで先読みする日数",
+        )
 
 # --- メインコンテンツエリア ---
 st.header("1. ファイルアップロードと設定")
@@ -518,7 +521,6 @@ if uploaded_files:
                         candidate_sheets or []
                     )
                     st.session_state._force_update_multiselect_flag = True
-                    st.rerun()
                 except Exception as e_get_sheet:
                     log_and_display_error(
                         _("Error getting sheet names from Excel"), e_get_sheet
@@ -538,6 +540,28 @@ run_button_clicked = st.button(
     type="primary",
     disabled=run_button_disabled_status,
 )
+
+if (
+    st.session_state.get("shift_sheets_multiselect_widget")
+    and st.session_state.uploaded_files_info
+):
+    try:
+        first_file_path = next(iter(st.session_state.uploaded_files_info.values()))[
+            "path"
+        ]
+        preview_df_sidebar = pd.read_excel(
+            first_file_path,
+            sheet_name=st.session_state.shift_sheets_multiselect_widget[0],
+            nrows=5,
+            header=None,
+        )
+        st.caption(
+            _("Preview")
+            + f": {st.session_state.shift_sheets_multiselect_widget[0]} (first 5 rows)"
+        )
+        st.dataframe(preview_df_sidebar, use_container_width=True)
+    except Exception as e_prev:
+        st.warning(_("Error during preview display") + f": {e_prev}")
 
 # ─────────────────────────────  app.py  (Part 2 / 3)  ──────────────────────────
 if run_button_clicked:
@@ -630,6 +654,7 @@ if run_button_clicked:
         st.session_state.attendance_results = None
         st.session_state.combined_score_results = None
         st.session_state.low_staff_load_results = None
+        progress_status = st.empty()
         progress_text_area = st.empty()
         progress_bar_val = st.progress(0)
         total_steps_exec_run = 3 + len(param_ext_opts)
@@ -646,6 +671,7 @@ if run_button_clicked:
                 progress_text_area.info(
                     f"⚙️ {st.session_state.current_step_for_progress}/{total_steps_exec_run} - {_(step_name_key_exec)}"
                 )
+                progress_status.write(_(step_name_key_exec))
             except Exception as e_prog_exec_run:
                 log.warning(f"進捗表示の更新中にエラー: {e_prog_exec_run}")
 
@@ -1185,12 +1211,24 @@ if run_button_clicked:
                 progress_bar_val.empty()
             if "progress_text_area" in locals() and progress_text_area is not None:
                 progress_text_area.empty()
+            if "progress_status" in locals() and progress_status is not None:
+                progress_status.empty()
 
         if st.session_state.analysis_done and st.session_state.out_dir_path_str:
             out_dir_to_save_exec_main_run = Path(st.session_state.out_dir_path_str)
             if out_dir_to_save_exec_main_run.exists():
                 st.markdown("---")
                 st.header("3. " + _("Save Analysis Results"))
+                with st.expander(_("Run Parameters")):
+                    st.json(
+                        {
+                            "sheets": param_selected_sheets,
+                            "slot": param_slot,
+                            "need_ref": f"{param_ref_start} ~ {param_ref_end}",
+                            "stat": param_need_stat,
+                            "ext_modules": param_ext_opts,
+                        }
+                    )
                 current_save_mode_exec_main_run = (
                     st.session_state.save_mode_selectbox_widget
                 )
@@ -1523,6 +1561,13 @@ def display_shortage_tab(tab_container, data_dir):
                         "note": _("Note"),
                     }
                 )
+                total_lack = float(df_s_role.get("lack_h", pd.Series()).sum())
+                if total_lack:
+                    c1, c2 = st.columns(2)
+                    c1.metric(_("Total Shortage Hours"), f"{total_lack:.1f}")
+                    if "role" in df_s_role and "lack_h" in df_s_role:
+                        top_role = df_s_role.loc[df_s_role["lack_h"].idxmax(), "role"]
+                        c2.metric(_("Most lacking role"), str(top_role))
                 st.dataframe(display_role_df, use_container_width=True, hide_index=True)
                 if "role" in df_s_role and "lack_h" in df_s_role:
                     fig_role = px.bar(
