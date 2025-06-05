@@ -139,10 +139,24 @@ log_environment_info()
 
 
 # ── Utility: log error to terminal and show in Streamlit ──
-def log_and_display_error(msg: str, exc: Exception) -> None:
-    """Log an error and also show it in the Streamlit interface."""
-    log.error(f"{msg}: {exc}", exc_info=True)
-    st.error(f"{msg}: {exc}")
+def log_and_display_error(msg: str, exc: Exception | None) -> None:
+    """Log an error and also show it in the Streamlit interface.
+
+    Parameters
+    ----------
+    msg : str
+        User-facing error message.
+    exc : Exception | None
+        Exception instance, if available. ``None`` is allowed to avoid
+        displaying ``NoneType: None`` when an exception object is absent.
+    """
+
+    if exc is not None:
+        log.error(f"{msg}: {exc}", exc_info=True)
+        st.error(f"{msg}: {exc}")
+    else:
+        log.error(msg)
+        st.error(msg)
 
 
 def log_and_display_error_enhanced(step: str, msg: str, exc: Exception) -> None:
