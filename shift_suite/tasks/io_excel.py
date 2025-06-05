@@ -138,6 +138,7 @@ def load_shift_patterns(
     xlsx: Path, sheet_name: str = "勤務区分", slot_minutes: int = SLOT_MINUTES
 ) -> Tuple[pd.DataFrame, Dict[str, List[str]]]:
     # (v2.7.1案のロジックを流用)
+    log.info(f"勤務区分シート読み込み開始: {sheet_name}")
     try:
         raw = pd.read_excel(xlsx, sheet_name=sheet_name, dtype=str).fillna("")
     except FileNotFoundError as e:
@@ -152,6 +153,9 @@ def load_shift_patterns(
     raw.rename(
         columns={c: COL_ALIASES.get(str(c), str(c)) for c in raw.columns}, inplace=True
     )
+    log.info(f"読み込んだ生データ: shape={raw.shape}")
+    log.debug(f"列名: {raw.columns.tolist()}")
+    log.debug(f"最初の5行:\n{raw.head()}")
     required_cols = {"code", "start", "end"}
     if not required_cols.issubset(raw.columns):
         missing = required_cols - set(raw.columns)
@@ -170,9 +174,14 @@ def load_shift_patterns(
         st_original = r.get("start", "")
         ed_original = r.get("end", "")
         st_hm, ed_hm = _to_hhmm(st_original), _to_hhmm(ed_original)
+        log.debug(
+            f"処理中の勤務コード: 行{r_idx + 2}, code='{code}', start='{st_original}', end='{ed_original}'"
+        )
+        log.debug(f"時刻変換結果: {st_original} → {st_hm}, {ed_original} → {ed_hm}")
         slots = []
         if st_hm and ed_hm:
             slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
+            log.debug(f"スロット展開: {code} → {len(slots)}個のスロット: {slots}")
         elif st_hm or ed_hm:
             log.warning(
                 f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')"
@@ -241,6 +250,7 @@ def ingest_excel(
     month_val: int | None = None
     if year_month_cell_location:
         try:
+            log.info(f"年月セル読み込み試行: セル位置={year_month_cell_location}")
             rc = _excel_cell_to_row_col(year_month_cell_location)
             if rc is None:
                 raise ValueError(f"Invalid cell: {year_month_cell_location}")
@@ -255,25 +265,27 @@ def ingest_excel(
                 dtype=str,
             )
             ym_raw = str(ym_df.iloc[0, 0])
+            log.debug(f"読み込んだ年月セルの生データ: '{ym_raw}'")
             m = re.search(r"(\d{4})年(\d{1,2})月", ym_raw)
             if not m:
                 raise ValueError(f"'{ym_raw}' does not match YYYY年MM月 format")
             year_val, month_val = int(m.group(1)), int(m.group(2))
+            log.info(f"解析結果: 年={year_val}, 月={month_val}")
         except Exception as e:
             log.error(f"年月セル '{year_month_cell_location}' の読み込み失敗: {e}")
             raise ValueError("年月セルの取得に失敗しました") from e
 
     for sheet_name_actual in shift_sheets:
         try:
+            log.info(f"シート処理開始: {sheet_name_actual}")
             df_sheet = pd.read_excel(
                 excel_path,
                 sheet_name=sheet_name_actual,
                 header=header_row - 1,
                 dtype=str,
             ).fillna("")
-            log.info(
-                f"シート '{sheet_name_actual}' を読み込みました。Shape: {df_sheet.shape}"
-            )
+            log.info(f"シート shape: {df_sheet.shape}")
+            log.debug(f"列名マッピング前: {df_sheet.columns.tolist()}")
         except FileNotFoundError as e:
             log.error("Excel file not found while reading sheet '%s': %s", sheet_name_actual, e)
             raise
@@ -290,6 +302,7 @@ def ingest_excel(
             SHEET_COL_ALIAS.get(_normalize(str(c)), _normalize(str(c)))
             for c in df_sheet.columns
         ]
+        log.debug(f"列名マッピング後: {df_sheet.columns.tolist()}")
 
         if not {"staff", "role"}.issubset(df_sheet.columns):
             log.error(
@@ -310,8 +323,8 @@ def ingest_excel(
                 f"シート '{sheet_name_actual}' に日付データ列が見つかりませんでした。"
             )
             continue
-        log.debug(
-            f"シート '{sheet_name_actual}' の日付列候補: {date_cols_candidate}"
+        log.info(
+            f"日付列候補: {len(date_cols_candidate)}個 - {date_cols_candidate}"
         )
 
         date_col_map: Dict[str, dt.date] = {}
@@ -322,7 +335,7 @@ def ingest_excel(
                 if parsed_dt:
                     date_col_map[str(c)] = parsed_dt
                     continue
-            parsed_dt = _parse_as_date(str(c))
+                parsed_dt = _parse_as_date(str(c))
             if parsed_dt:
                 date_col_map[str(c)] = parsed_dt
             else:
@@ -330,6 +343,10 @@ def ingest_excel(
                     log.warning(
                         f"シート '{sheet_name_actual}' の日付列パースに失敗しました: 元の列名='{c}'"
                     )
+
+        log.debug(f"日付列マッピング結果: {len(date_col_map)}個成功")
+        for col, date in date_col_map.items():
+            log.debug(f"  {col} → {date}")
 
         for _, row_data in df_sheet.iterrows():
             staff = _normalize(row_data.get("staff", ""))

@@ -94,6 +94,24 @@ def log_and_display_error(msg: str, exc: Exception) -> None:
     st.error(f"{msg}: {exc}")
 
 
+def log_and_display_error_enhanced(step: str, msg: str, exc: Exception) -> None:
+    """Show user friendly error messages with technical details in logs."""
+    log.error(f"[{step}] {msg}: {exc}", exc_info=True)
+
+    user_messages = {
+        "年月セル読み込み": "年月情報セルの読み込みに失敗しました。セル位置を確認してください。",
+        "勤務区分読み込み": "勤務区分シートの読み込みに失敗しました。シート名と形式を確認してください。",
+        "時刻変換": "勤務区分の時刻データ変換に失敗しました。開始・終了時刻の形式を確認してください。",
+        "シート読み込み": "実績シートの読み込みに失敗しました。シート名と列構造を確認してください。",
+        "日付列解析": "日付列の解析に失敗しました。日付の形式を確認してください。",
+    }
+
+    user_msg = user_messages.get(step, f"{step}の処理に失敗しました。")
+    st.error(f"❌ {user_msg}")
+    with st.expander("技術的な詳細情報"):
+        st.code(f"エラータイプ: {type(exc).__name__}\nメッセージ: {str(exc)}")
+
+
 # ── 日本語ラベル辞書は resources/strings_ja.json で管理 ──
 
 
