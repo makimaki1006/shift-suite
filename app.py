@@ -25,6 +25,11 @@ import datetime
 import io
 import logging
 import os
+
+# Streamlit's watchdog can print repeated errors on Windows
+# unless STREAMLIT_WATCHER_TYPE is set to "poll".
+os.environ.setdefault("STREAMLIT_WATCHER_TYPE", "poll")
+
 import re
 import tempfile
 import zipfile
