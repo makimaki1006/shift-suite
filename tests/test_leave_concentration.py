@@ -1,11 +1,12 @@
 import pandas as pd
+
 from shift_suite.tasks.leave_analyzer import (
-    analyze_leave_concentration,
+    LEAVE_TYPE_PAID,
+    LEAVE_TYPE_REQUESTED,
     analyze_both_leave_concentration,
+    analyze_leave_concentration,
     staff_concentration_share,
     summarize_leave_by_day_count,
-    LEAVE_TYPE_REQUESTED,
-    LEAVE_TYPE_PAID,
 )
 
 

@@ -1,5 +1,7 @@
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 from shift_suite.tasks.report_generator import generate_summary_report
 
 

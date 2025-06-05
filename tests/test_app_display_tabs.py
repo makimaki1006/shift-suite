@@ -1,5 +1,7 @@
 import types
+
 import pandas as pd
+
 from shift_suite import app
 
 

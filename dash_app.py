@@ -9,16 +9,18 @@ v2025-05-16 (カラースキーム変更)
 """
 
 from __future__ import annotations
+
+import logging
 import pathlib
 
 import dash
+import numpy as np  # ★ 追加: np.nan のため
 import pandas as pd
 import plotly.express as px
-from dash import dcc, html, Input, Output, callback
-import numpy as np  # ★ 追加: np.nan のため
-import logging
-from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
+from dash import Input, Output, callback, dcc, html
+
 from shift_suite.i18n import translate as _
+from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks.dashboard import load_leave_results_from_dir
 
 # --- 日本語ラベル辞書は resources/strings_ja.json で管理 ---

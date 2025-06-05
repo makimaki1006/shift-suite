@@ -24,17 +24,17 @@ from __future__ import annotations
 import datetime
 import io
 import logging
+import re
 import tempfile
 import zipfile
 from pathlib import Path
 from typing import IO, Optional, Sequence
-import re
 
 import pandas as pd
-import streamlit as st
-from streamlit.runtime import exists as st_runtime_exists
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
+from streamlit.runtime import exists as st_runtime_exists
 
 try:
     from streamlit_plotly_events import plotly_events
@@ -45,41 +45,44 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency
     )
 import datetime as dt
 
-# ── Shift-Suite task modules ─────────────────────────────────────────────────
-from shift_suite.tasks.io_excel import ingest_excel, SHEET_COL_ALIAS, _normalize
-from shift_suite.tasks.heatmap import build_heatmap
-from shift_suite.tasks.shortage import shortage_and_brief, merge_shortage_leave
-from shift_suite.tasks.build_stats import build_stats
-from shift_suite.tasks.anomaly import detect_anomaly
-from shift_suite.tasks.fatigue import train_fatigue
-from shift_suite.tasks.cluster import cluster_staff
-from shift_suite.tasks.skill_nmf import build_skill_matrix
-from shift_suite.tasks.fairness import run_fairness
-from shift_suite.tasks.forecast import build_demand_series, forecast_need
-from shift_suite.tasks.rl import learn_roster
-from shift_suite.tasks.hire_plan import build_hire_plan
-from shift_suite.tasks.h2hire import build_hire_plan as build_hire_plan_from_kpi
-from shift_suite.tasks.cost_benefit import analyze_cost_benefit
-from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
-from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
-from shift_suite.tasks import leave_analyzer  # ★ 新規インポート
-from shift_suite.tasks import dashboard
-from shift_suite.tasks import over_shortage_log
 from shift_suite.i18n import translate as _
-from shift_suite.tasks.leave_analyzer import (
-    LEAVE_TYPE_REQUESTED,
-    LEAVE_TYPE_PAID,
+from shift_suite.logger_config import configure_logging
+from shift_suite.tasks import (
+    dashboard,
+    leave_analyzer,  # ★ 新規インポート
+    over_shortage_log,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
-    RestTimeAnalyzer,
-    WorkPatternAnalyzer,
     AttendanceBehaviorAnalyzer,
     CombinedScoreCalculator,
     LowStaffLoadAnalyzer,
+    RestTimeAnalyzer,
+    WorkPatternAnalyzer,
 )
-from shift_suite.logger_config import configure_logging
+from shift_suite.tasks.anomaly import detect_anomaly
+from shift_suite.tasks.build_stats import build_stats
+from shift_suite.tasks.cluster import cluster_staff
+from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
+from shift_suite.tasks.cost_benefit import analyze_cost_benefit
+from shift_suite.tasks.fairness import run_fairness
+from shift_suite.tasks.fatigue import train_fatigue
+from shift_suite.tasks.forecast import build_demand_series, forecast_need
+from shift_suite.tasks.h2hire import build_hire_plan as build_hire_plan_from_kpi
+from shift_suite.tasks.heatmap import build_heatmap
+from shift_suite.tasks.hire_plan import build_hire_plan
+
+# ── Shift-Suite task modules ─────────────────────────────────────────────────
+from shift_suite.tasks.io_excel import SHEET_COL_ALIAS, _normalize, ingest_excel
+from shift_suite.tasks.leave_analyzer import (
+    LEAVE_TYPE_PAID,
+    LEAVE_TYPE_REQUESTED,
+)
+from shift_suite.tasks.rl import learn_roster
+from shift_suite.tasks.shortage import merge_shortage_leave, shortage_and_brief
+from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
+from shift_suite.tasks.skill_nmf import build_skill_matrix
 
 
 def _patch_streamlit_watcher() -> None:
@@ -111,6 +114,7 @@ def _patch_streamlit_watcher() -> None:
     _safe_extract_paths._patched = True  # type: ignore[attr-defined]
     _lsw.extract_paths = _safe_extract_paths
 
+
 # ── ロガー設定 ─────────────────────────────────
 configure_logging()
 _patch_streamlit_watcher()
@@ -122,6 +126,7 @@ def log_environment_info() -> None:
     import os
     import platform
     import sys
+
     log.info("Python: %s", sys.version.replace("\n", " "))
     log.info("Platform: %s", platform.platform())
     log.info("Working dir: %s", Path.cwd())
