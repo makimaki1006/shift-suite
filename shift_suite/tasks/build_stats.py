@@ -17,8 +17,9 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Set
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from .constants import SUMMARY5
 from .utils import _parse_as_date
 

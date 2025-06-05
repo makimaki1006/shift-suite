@@ -1,20 +1,20 @@
 from __future__ import annotations
 
+import logging
 from argparse import ArgumentParser
 from pathlib import Path
-import logging
+
 import pandas as pd
 
-from .data_loader import ShiftDataLoader
 from .analyzers import (
-    LeaveAnalyzer,
-    RestTimeAnalyzer,
-    WorkPatternAnalyzer,
     AttendanceBehaviorAnalyzer,
     CombinedScoreCalculator,
+    LeaveAnalyzer,
     LowStaffLoadAnalyzer,
+    RestTimeAnalyzer,
+    WorkPatternAnalyzer,
 )
-
+from .data_loader import ShiftDataLoader
 
 log = logging.getLogger(__name__)
 

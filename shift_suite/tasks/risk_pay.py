@@ -1,9 +1,11 @@
 """shift_suite.risk_pay – pay とシフト乖離の単純計算（暫定ロジック）"""
 
 from __future__ import annotations
-import pandas as pd
+
 import logging
 from pathlib import Path
+
+import pandas as pd
 
 log = logging.getLogger(__name__)
 

@@ -8,11 +8,12 @@ shift_suite.summary  v0.3.1 (KeyError: 'name' 対応)
 
 from __future__ import annotations
 
-import pandas as pd
-import numpy as np
 from pathlib import Path
-from .utils import log
 
+import numpy as np
+import pandas as pd
+
+from .utils import log
 
 __all__ = ["make_summary", "build_staff_stats"]
 

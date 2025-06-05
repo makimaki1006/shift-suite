@@ -4,11 +4,11 @@ shift_suite 初期化
   * 旧来の `shift_suite.heatmap` などの名前もそのまま生かす
 """
 
-from importlib import import_module
-from pathlib import Path
+import importlib
 import pkgutil
 import sys
-import importlib
+from importlib import import_module
+from pathlib import Path
 
 # Configure package-wide logging
 from .logger_config import configure_logging

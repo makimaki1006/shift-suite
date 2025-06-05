@@ -14,6 +14,7 @@ shift_suite.tasks.utils  v1.2.0 – UTF-8 write_meta 版
 
 from __future__ import annotations
 
+import datetime as dt  # ★ dt エイリアスも明示的にインポート (他モジュールとの互換性のため)
 import json
 import logging
 import math
@@ -25,17 +26,17 @@ from datetime import (
     datetime,
     timedelta,
 )  # ★ dt エイリアスではなく datetime, timedelta を直接使用
-import datetime as dt  # ★ dt エイリアスも明示的にインポート (他モジュールとの互換性のため)
 from pathlib import Path
-from typing import Sequence, Any  # ★ Any を追加
+from typing import Any, Sequence  # ★ Any を追加
 
 import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
 
+from ..logger_config import configure_logging
+
 # ★追加箇所: constants から SUMMARY5 をインポート ( _parse_as_date で使用)
 from .constants import SUMMARY5
-from ..logger_config import configure_logging
 
 # ────────────────── 1. ロガー ──────────────────
 configure_logging()

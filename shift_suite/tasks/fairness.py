@@ -1,10 +1,12 @@
 # shift_suite/tasks/fairness.py (修正案 v0.9)
 
 from __future__ import annotations
+
 import datetime as dt
 import logging
 from pathlib import Path
 from typing import Optional, Sequence
+
 import pandas as pd
 
 log = logging.getLogger(__name__)

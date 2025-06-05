@@ -13,11 +13,12 @@ build_hire_plan(out_dir, safety_factor=1.1)  # adjust shortage hours by 10%
 """
 
 from __future__ import annotations
+
+import logging
 import math
 from pathlib import Path
-import logging
-import pandas as pd
 
+import pandas as pd
 
 # ──────────────────────────────────────────────────────────────────────────────
 # User-tunable constants

@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
+
 from shift_suite.i18n import translate as _
-from .constants import SUMMARY5 as SUMMARY5_CONST
+
 from . import leave_analyzer
+from .constants import SUMMARY5 as SUMMARY5_CONST
 
 
 def employee_overview(score_df: pd.DataFrame):

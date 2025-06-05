@@ -7,8 +7,8 @@ from typing import Set, Tuple
 
 import pandas as pd
 from pandas import DataFrame
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.model_selection import train_test_split
 
 from .leave_analyzer import LEAVE_TYPE_PAID, LEAVE_TYPE_REQUESTED
 from .utils import _parse_as_date

@@ -9,15 +9,15 @@ shortage.py – v2.5.0 (過不足分析サポート)
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Tuple, List, Dict, Any, Set, Iterable
 import datetime as dt
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Set, Tuple
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-from .utils import gen_labels, log, save_df_xlsx, write_meta, _parse_as_date
 from .constants import SUMMARY5
+from .utils import _parse_as_date, gen_labels, log, save_df_xlsx, write_meta
 
 
 def shortage_and_brief(
