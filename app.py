@@ -79,11 +79,38 @@ from shift_suite.tasks.analyzers import (
     CombinedScoreCalculator,
     LowStaffLoadAnalyzer,
 )
-
-# ── ロガー設定 ─────────────────────────────────
 from shift_suite.logger_config import configure_logging
 
+
+def _patch_streamlit_watcher() -> None:
+    """Patch Streamlit's module watcher to ignore failing modules."""
+    try:
+        from streamlit.watcher import local_sources_watcher as _lsw  # type: ignore
+    except Exception:
+        return
+
+    if getattr(_lsw.extract_paths, "_patched", False):
+        return
+
+    _orig = _lsw.extract_paths
+
+    def _safe_extract_paths(module):
+        try:
+            return _orig(module)
+        except Exception as e:  # pragma: no cover - optional
+            logging.getLogger(__name__).debug(
+                "streamlit watcher skipped %s due to %s",
+                getattr(module, "__name__", repr(module)),
+                e,
+            )
+            return []
+
+    _safe_extract_paths._patched = True  # type: ignore[attr-defined]
+    _lsw.extract_paths = _safe_extract_paths
+
+# ── ロガー設定 ─────────────────────────────────
 configure_logging()
+_patch_streamlit_watcher()
 log = logging.getLogger(__name__)
 
 
