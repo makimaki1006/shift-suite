@@ -210,6 +210,18 @@ def _parse_day_with_year_month(col_name: str, year: int, month: int) -> dt.date 
         return None
 
 
+def _excel_cell_to_row_col(cell: str) -> tuple[int, int] | None:
+    """Convert Excel style cell like 'A1' to 0-based row/column indexes."""
+    m = re.match(r"^([A-Za-z]+)(\d+)$", cell.strip())
+    if not m:
+        return None
+    col_txt, row_txt = m.groups()
+    col = 0
+    for ch in col_txt.upper():
+        col = col * 26 + (ord(ch) - 64)
+    return int(row_txt) - 1, col - 1
+
+
 def ingest_excel(
     excel_path: Path,
     *,
@@ -229,12 +241,17 @@ def ingest_excel(
     month_val: int | None = None
     if year_month_cell_location:
         try:
+            rc = _excel_cell_to_row_col(year_month_cell_location)
+            if rc is None:
+                raise ValueError(f"Invalid cell: {year_month_cell_location}")
+            row, col = rc
             ym_df = pd.read_excel(
                 excel_path,
                 sheet_name=shift_sheets[0],
                 header=None,
-                usecols=year_month_cell_location,
+                skiprows=row,
                 nrows=1,
+                usecols=[col],
                 dtype=str,
             )
             ym_raw = str(ym_df.iloc[0, 0])
