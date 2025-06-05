@@ -98,8 +98,7 @@ def main():
     shortage_and_brief(
         out,
         args.slot,
-        holidays_global=holiday_dates_global,
-        holidays_local=holiday_dates_local,
+        holidays=(holiday_dates_global or []) + (holiday_dates_local or []),
     )
     try:
         build_hire_plan_from_shortage(out, safety_factor=args.safety_factor)
