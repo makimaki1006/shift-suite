@@ -176,5 +176,11 @@
   "Night Shift Ratio Distribution": "夜勤比率分布",
   "Count": "件数",
   "Shortage by Role": "職種別不足",
-  "Cost Benefit Scenarios": "コスト便益シナリオ"
+  "Cost Benefit Scenarios": "コスト便益シナリオ",
+  "Total Shortage Hours": "総不足時間(h)",
+  "Most lacking role": "最も不足している職種",
+  "Top shortage role {n}": "不足職種トップ{n}",
+  "Max shortage": "最大不足発生日時",
+  "Shortage by role caption": "各職種の不足時間を示します。値が大きい職種に注目してください。",
+  "Shortage by time caption": "時間帯ごとの不足状況を示します。ピーク時間帯を確認してください。"
 }

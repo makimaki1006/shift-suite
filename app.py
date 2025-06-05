@@ -1676,11 +1676,15 @@ def display_shortage_tab(tab_container, data_dir):
                 )
                 total_lack = float(df_s_role.get("lack_h", pd.Series()).sum())
                 if total_lack:
-                    c1, c2 = st.columns(2)
-                    c1.metric(_("Total Shortage Hours"), f"{total_lack:.1f}")
-                    if "role" in df_s_role and "lack_h" in df_s_role:
-                        top_role = df_s_role.loc[df_s_role["lack_h"].idxmax(), "role"]
-                        c2.metric(_("Most lacking role"), str(top_role))
+                    cols = st.columns(4)
+                    cols[0].metric(_("Total Shortage Hours"), f"{total_lack:.1f}")
+                    if {"role", "lack_h"}.issubset(df_s_role.columns):
+                        top_roles = df_s_role.nlargest(3, "lack_h")[["role", "lack_h"]]
+                        for i, row in enumerate(top_roles.itertuples(index=False), start=1):
+                            cols[i].metric(
+                                _("Top shortage role {n}").format(n=i),
+                                f"{row.role}: {row.lack_h:.1f}h",
+                            )
                 st.dataframe(display_role_df, use_container_width=True, hide_index=True)
                 if "role" in df_s_role and "lack_h" in df_s_role:
                     fig_role = px.bar(
@@ -1693,6 +1697,7 @@ def display_shortage_tab(tab_container, data_dir):
                     st.plotly_chart(
                         fig_role, use_container_width=True, key="short_role_chart"
                     )
+                    st.caption(_("Shortage by role caption"))
                 if "role" in df_s_role and "excess_h" in df_s_role:
                     fig_role_ex = px.bar(
                         df_s_role,
@@ -1900,6 +1905,7 @@ def display_shortage_tab(tab_container, data_dir):
                         st.plotly_chart(
                             fig_time, use_container_width=True, key="short_time_chart"
                         )
+                        st.caption(_("Shortage by time caption"))
                 else:
                     st.info(_("No date columns in shortage data."))
                 with st.expander(_("Display all time-slot shortage data")):
