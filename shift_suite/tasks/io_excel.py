@@ -238,7 +238,13 @@ def ingest_excel(
     header_row: int = 2,
     slot_minutes: int = SLOT_MINUTES,
     year_month_cell_location: str | None = None,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, set[str]]:
+    """Parse shift Excel file and return long format dataframe.
+
+    Returns a tuple of ``(long_df, wt_df, unknown_codes)`` where
+    ``unknown_codes`` contains any shift codes found in the sheets that are not
+    defined in the pattern sheet.
+    """
     wt_df, code2slots = load_shift_patterns(excel_path, slot_minutes=slot_minutes)
     if wt_df.empty:
         log.error("勤務区分情報 (wt_df) が空です。処理を続行できません。")
@@ -461,7 +467,7 @@ def ingest_excel(
         final_long_df["ds"] = pd.to_datetime(final_long_df["ds"])
         final_long_df = final_long_df.sort_values("ds").reset_index(drop=True)
 
-    return final_long_df, wt_df
+    return final_long_df, wt_df, unknown_codes
 
 
 # --- CLI use -----------------------------------------------------------------
@@ -485,13 +491,17 @@ if __name__ == "__main__":
         log.info(
             f"Excelファイル: {a.xlsx}, 対象シート: {a.sheets}, ヘッダー行: {a.header}, スロット: {a.slot}"
         )
-        ld, wt = ingest_excel(
+        ld, wt, unknown_codes = ingest_excel(
             Path(a.xlsx),
             shift_sheets=a.sheets,
             header_row=a.header,
             slot_minutes=a.slot,
             year_month_cell_location=a.ymcell,
         )
+        if unknown_codes:
+            log.warning(
+                "Unknown shift codes found: %s", sorted(unknown_codes)
+            )
         log.info("正常に処理が完了しました。")
         if not ld.empty:
             log.info("--- long_df (最初の5行) ---")
