@@ -183,7 +183,7 @@
   "Top shortage role {n}": "不足職種トップ{n}",
   "Max shortage": "最大不足発生日時",
   "Shortage by role caption": "各職種の不足時間を示します。値が大きい職種に注目してください。",
-  "Shortage by time caption": "時間帯ごとの不足状況を示します。ピーク時間帯を確認してください。"
+  "Shortage by time caption": "時間帯ごとの不足状況を示します。ピーク時間帯を確認してください。",
   "Over/Short Log": "過不足日誌",
   "Reason Category": "理由カテゴリ",
   "Related Staff": "関連スタッフ",
@@ -202,5 +202,6 @@
   "Train factor model": "要因分析モデルを学習",
   "Select date for factor analysis": "要因分析対象日付を選択",
   "Select time slot for factor analysis": "要因分析対象時間帯を選択",
-  "Top factors": "主要因トップ"
+  "Top factors": "主要因トップ",
+  "Use the Excel Import Wizard to select sheets": "Excel インポートウィザードでシートを選択してください"
 }
