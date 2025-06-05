@@ -101,6 +101,42 @@ def safe_sheet(name: str, *, for_path: bool = False) -> str:
     return out or "sheet"
 
 
+def safe_read_excel(fp: Path | str, **kwargs: Any) -> DataFrame:
+    """Read an Excel file with basic error handling.
+
+    Parameters
+    ----------
+    fp : Path | str
+        Excel file path.
+    **kwargs : Any
+        Options forwarded to ``pd.read_excel``.
+
+    Returns
+    -------
+    DataFrame
+        Loaded DataFrame.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    ValueError
+        For empty files or other read errors.
+    """
+    path = Path(fp)
+    if not path.exists():
+        log.error("Excel file not found: %s", path)
+        raise FileNotFoundError(path)
+    try:
+        return pd.read_excel(path, **kwargs)
+    except pd.errors.EmptyDataError as e:
+        log.error("Excel file '%s' is empty: %s", path, e)
+        raise ValueError(f"Excel file '{path}' is empty") from e
+    except Exception as e:  # noqa: BLE001
+        log.error("Failed to read Excel file '%s': %s", path, e)
+        raise ValueError(f"Failed to read Excel file '{path}': {e}") from e
+
+
 # ────────────────── 4. DataFrame 保存 ──────────────────
 def save_df_xlsx(
     df: DataFrame,
@@ -326,6 +362,7 @@ __all__: Sequence[str] = [
     "to_hhmm",
     "gen_labels",
     "safe_sheet",
+    "safe_read_excel",
     "save_df_xlsx",
     "write_meta",
     "safe_make_archive",

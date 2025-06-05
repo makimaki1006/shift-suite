@@ -5,13 +5,17 @@ from pathlib import Path
 
 import pandas as pd
 
+from .utils import log, safe_read_excel
+
 
 def _read_excel(fp: Path, sheet: str) -> pd.DataFrame:
-    if fp.exists():
-        try:
-            return pd.read_excel(fp, sheet_name=sheet)
-        except Exception:
-            return pd.DataFrame()
+    """Return ``pd.DataFrame`` from *fp* ``sheet`` or an empty frame on error."""
+    try:
+        return safe_read_excel(fp, sheet_name=sheet)
+    except FileNotFoundError:
+        log.warning("Excel file not found: %s", fp)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Failed reading %s [%s]: %s", fp, sheet, e)
     return pd.DataFrame()
 
 

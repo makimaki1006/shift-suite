@@ -53,6 +53,7 @@ from shift_suite.tasks import (
     leave_analyzer,  # ★ 新規インポート
     over_shortage_log,
 )
+from shift_suite.tasks.utils import safe_read_excel
 
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
@@ -399,7 +400,7 @@ def load_excel_cached(
     kwargs = {"sheet_name": sheet_name, "index_col": index_col}
     if parse_dates is not None:
         kwargs["parse_dates"] = parse_dates
-    return pd.read_excel(file_path, **kwargs)
+    return safe_read_excel(file_path, **kwargs)
 
 
 @st.cache_resource(show_spinner=False)
@@ -411,7 +412,15 @@ def load_excelfile_cached(
     ``pd.ExcelFile`` objects are not picklable so we cache the handle as a
     resource rather than using ``st.cache_data``.
     """
-    return pd.ExcelFile(file_path)
+    path = Path(file_path)
+    if not path.exists():
+        log.error("Excel file not found: %s", path)
+        raise FileNotFoundError(path)
+    try:
+        return pd.ExcelFile(path)
+    except Exception as e:  # noqa: BLE001
+        log.error("Failed to open Excel file '%s': %s", path, e)
+        raise
 
 
 st.set_page_config(
