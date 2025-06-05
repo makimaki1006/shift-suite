@@ -3021,7 +3021,16 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
         with tab_obj:
             results = st.session_state.analysis_results[fname]
             st.subheader(_("Results for {fname}").format(fname=fname))
-            data_dir = Path(results["out_dir_path_str"])
+            out_dir_path = results.get("out_dir_path_str")
+            if not out_dir_path:
+                st.error(
+                    _("Output directory not found for {fname}").format(fname=fname)
+                )
+                log.warning(
+                    f"Missing out_dir_path_str for results '{fname}': {results}"
+                )
+                continue
+            data_dir = Path(out_dir_path)
             tab_keys_en_dash = [
                 "Overview",
                 "Heatmap",
