@@ -267,9 +267,18 @@ def ingest_excel(
             ym_raw = str(ym_df.iloc[0, 0])
             log.debug(f"読み込んだ年月セルの生データ: '{ym_raw}'")
             m = re.search(r"(\d{4})年(\d{1,2})月", ym_raw)
-            if not m:
-                raise ValueError(f"'{ym_raw}' does not match YYYY年MM月 format")
-            year_val, month_val = int(m.group(1)), int(m.group(2))
+            if m:
+                year_val, month_val = int(m.group(1)), int(m.group(2))
+            else:
+                try:
+                    ym_dt = pd.to_datetime(ym_raw)
+                    if pd.isna(ym_dt):
+                        raise ValueError
+                    year_val, month_val = ym_dt.year, ym_dt.month
+                except Exception:
+                    raise ValueError(
+                        f"'{ym_raw}' does not match YYYY年MM月 format"
+                    ) from None
             log.info(f"解析結果: 年={year_val}, 月={month_val}")
         except Exception as e:
             log.error(f"年月セル '{year_month_cell_location}' の読み込み失敗: {e}")
