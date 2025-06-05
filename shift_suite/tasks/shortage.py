@@ -483,8 +483,7 @@ def shortage_and_brief(
             estimated_excess_cost=lambda d: d.get("excess_h", 0) * wage_direct,
             estimated_lack_cost_if_temporary_staff=lambda d: d.get("lack_h", 0)
             * wage_temp,
-            estimated_lack_penalty_cost=lambda d: d.get("lack_h", 0)
-            * penalty_per_lack,
+            estimated_lack_penalty_cost=lambda d: d.get("lack_h", 0) * penalty_per_lack,
         )
 
     monthly_role_df = pd.DataFrame(monthly_role_rows)
@@ -691,8 +690,7 @@ def shortage_and_brief(
             estimated_excess_cost=lambda d: d.get("excess_h", 0) * wage_direct,
             estimated_lack_cost_if_temporary_staff=lambda d: d.get("lack_h", 0)
             * wage_temp,
-            estimated_lack_penalty_cost=lambda d: d.get("lack_h", 0)
-            * penalty_per_lack,
+            estimated_lack_penalty_cost=lambda d: d.get("lack_h", 0) * penalty_per_lack,
         )
 
     monthly_emp_df = pd.DataFrame(monthly_emp_rows)

@@ -53,9 +53,7 @@ def get_daily_leave_counts(
     # 対象の休暇タイプレコードのみ抽出
     # holiday_type列が存在することを確認
     if "holiday_type" not in long_df.columns:
-        log.error(
-            "long_dfにholiday_type列が存在しません。休暇分析を実行できません。"
-        )
+        log.error("long_dfにholiday_type列が存在しません。休暇分析を実行できません。")
         return pd.DataFrame(columns=["date", "staff", "leave_type", "leave_day_flag"])
 
     leave_df = long_df[long_df["holiday_type"].isin(target_leave_types)].copy()
@@ -122,9 +120,7 @@ def summarize_leave_by_day_count(
         ``num_days_in_period_unit``、 ``avg_leave_days_per_day`` の各列を含む。
     """
     if daily_leave_df.empty or "leave_day_flag" not in daily_leave_df.columns:
-        log.warning(
-            "入力されたdaily_leave_dfが空またはleave_day_flag列がありません。"
-        )
+        log.warning("入力されたdaily_leave_dfが空またはleave_day_flag列がありません。")
         return pd.DataFrame()
 
     df_to_agg = daily_leave_df.copy()

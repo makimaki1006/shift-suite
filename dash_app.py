@@ -299,11 +299,11 @@ def page_shortage():
 
 
 def page_leave():
-    leave_df = leave_results.get("daily_summary") if isinstance(leave_results, dict) else None
+    leave_df = (
+        leave_results.get("daily_summary") if isinstance(leave_results, dict) else None
+    )
     if not isinstance(leave_df, pd.DataFrame) or leave_df.empty:
-        return html.Div([
-            html.H4(_("Leave analysis data not found"))
-        ])
+        return html.Div([html.H4(_("Leave analysis data not found"))])
 
     children = [html.H3(_("Leave Analysis"))]
 

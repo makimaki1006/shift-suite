@@ -222,7 +222,9 @@ def run_import_wizard() -> None:
             st.caption(f"認識列名: {df_prev.columns.tolist()}")
         if st.button("Next", key="wiz_next2"):
             first = st.session_state.shift_sheets_multiselect_widget[0]
-            st.session_state.year_month_cell_input_widget = st.session_state[f"ym_{first}"]
+            st.session_state.year_month_cell_input_widget = st.session_state[
+                f"ym_{first}"
+            ]
             st.session_state.header_row_input_widget = st.session_state[f"hdr_{first}"]
             st.session_state.wizard_step = 3
             st.rerun()
@@ -246,13 +248,22 @@ def run_import_wizard() -> None:
             if canon and canon not in guessed:
                 guessed[canon] = c
         st.selectbox(
-            "氏名列", cols, index=cols.index(guessed.get("staff", cols[0])), key="map_staff"
+            "氏名列",
+            cols,
+            index=cols.index(guessed.get("staff", cols[0])),
+            key="map_staff",
         )
         st.selectbox(
-            "職種列", cols, index=cols.index(guessed.get("role", cols[0])), key="map_role"
+            "職種列",
+            cols,
+            index=cols.index(guessed.get("role", cols[0])),
+            key="map_role",
         )
         st.selectbox(
-            "雇用形態列", cols, index=cols.index(guessed.get("employment", cols[0])), key="map_emp"
+            "雇用形態列",
+            cols,
+            index=cols.index(guessed.get("employment", cols[0])),
+            key="map_emp",
         )
         date_cols = [c for c in cols if re.search(r"\d", str(c))]
         if date_cols:
@@ -283,9 +294,7 @@ def run_import_wizard() -> None:
             )
             st.session_state.analysis_results = {"preview": long_df.head()}
             if unknown_codes:
-                st.warning(
-                    "未知の勤務コード: " + ", ".join(sorted(unknown_codes))
-                )
+                st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
             st.success("取り込み完了")
             st.dataframe(long_df.head(), use_container_width=True)
 
@@ -307,7 +316,9 @@ def load_excel_cached(
 
 
 @st.cache_resource(show_spinner=False)
-def load_excelfile_cached(file_path: str, *, file_mtime: float | None = None) -> pd.ExcelFile:
+def load_excelfile_cached(
+    file_path: str, *, file_mtime: float | None = None
+) -> pd.ExcelFile:
     """Load ``pd.ExcelFile`` with caching so repeated reads are fast.
 
     ``pd.ExcelFile`` objects are not picklable so we cache the handle as a
@@ -577,8 +588,8 @@ with st.sidebar:
     st.divider()
     with st.expander("追加分析モジュール"):
         if "ext_opts_multiselect_widget" not in st.session_state:
-            st.session_state.ext_opts_multiselect_widget = (
-                st.session_state.get("available_ext_opts_widget", [])
+            st.session_state.ext_opts_multiselect_widget = st.session_state.get(
+                "available_ext_opts_widget", []
             )
 
         st.multiselect(
@@ -866,12 +877,8 @@ if run_button_clicked:
                 f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}"
             )
             if unknown_codes:
-                st.warning(
-                    "未知の勤務コード: " + ", ".join(sorted(unknown_codes))
-                )
-                log.warning(
-                    f"Unknown shift codes encountered: {sorted(unknown_codes)}"
-                )
+                st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
+                log.warning(f"Unknown shift codes encountered: {sorted(unknown_codes)}")
             st.success(_("Ingest: Excel data read complete."))
 
             update_progress_exec_run("Heatmap: Generating heatmap...")
@@ -1494,9 +1501,13 @@ def display_overview_tab(tab_container, data_dir):
                     file_mtime=_file_mtime(kpi_fp),
                 )
                 lack_h = df_sh_role["lack_h"].sum() if "lack_h" in df_sh_role else 0.0
-                excess_cost = float(df_sh_role.get("estimated_excess_cost", pd.Series()).sum())
+                excess_cost = float(
+                    df_sh_role.get("estimated_excess_cost", pd.Series()).sum()
+                )
                 lack_temp_cost = float(
-                    df_sh_role.get("estimated_lack_cost_if_temporary_staff", pd.Series()).sum()
+                    df_sh_role.get(
+                        "estimated_lack_cost_if_temporary_staff", pd.Series()
+                    ).sum()
                 )
                 lack_penalty_cost = float(
                     df_sh_role.get("estimated_lack_penalty_cost", pd.Series()).sum()
@@ -1752,7 +1763,9 @@ def display_shortage_tab(tab_container, data_dir):
                     cols[0].metric(_("Total Shortage Hours"), f"{total_lack:.1f}")
                     if {"role", "lack_h"}.issubset(df_s_role.columns):
                         top_roles = df_s_role.nlargest(3, "lack_h")[["role", "lack_h"]]
-                        for i, row in enumerate(top_roles.itertuples(index=False), start=1):
+                        for i, row in enumerate(
+                            top_roles.itertuples(index=False), start=1
+                        ):
                             cols[i].metric(
                                 _("Top shortage role {n}").format(n=i),
                                 f"{row.role}: {row.lack_h:.1f}h",
@@ -1786,18 +1799,30 @@ def display_shortage_tab(tab_container, data_dir):
                     "estimated_lack_cost_if_temporary_staff",
                     "estimated_lack_penalty_cost",
                 ]
-                if {"role"}.issubset(df_s_role.columns) and any(c in df_s_role.columns for c in cost_cols):
-                    cost_df = df_s_role[["role"] + [c for c in cost_cols if c in df_s_role.columns]]
-                    cost_long = cost_df.melt(id_vars="role", var_name="type", value_name="cost")
+                if {"role"}.issubset(df_s_role.columns) and any(
+                    c in df_s_role.columns for c in cost_cols
+                ):
+                    cost_df = df_s_role[
+                        ["role"] + [c for c in cost_cols if c in df_s_role.columns]
+                    ]
+                    cost_long = cost_df.melt(
+                        id_vars="role", var_name="type", value_name="cost"
+                    )
                     fig_cost = px.bar(
                         cost_long,
                         x="role",
                         y="cost",
                         color="type",
                         barmode="group",
-                        labels={"role": _("Role"), "cost": _("Cost (¥)"), "type": _("Type")},
+                        labels={
+                            "role": _("Role"),
+                            "cost": _("Cost (¥)"),
+                            "type": _("Type"),
+                        },
                     )
-                    st.plotly_chart(fig_cost, use_container_width=True, key="cost_role_chart")
+                    st.plotly_chart(
+                        fig_cost, use_container_width=True, key="cost_role_chart"
+                    )
 
                 fp_hire = data_dir / "hire_plan.xlsx"
                 if fp_hire.exists():
@@ -1893,9 +1918,7 @@ def display_shortage_tab(tab_container, data_dir):
                             "estimated_lack_cost_if_temporary_staff": _(
                                 "Lack Cost if Temp(¥)"
                             ),
-                            "estimated_lack_penalty_cost": _(
-                                "Lack Penalty Est.(¥)"
-                            ),
+                            "estimated_lack_penalty_cost": _("Lack Penalty Est.(¥)"),
                             "working_days_considered": _("Working Days"),
                             "note": _("Note"),
                         }
@@ -1940,7 +1963,8 @@ def display_shortage_tab(tab_container, data_dir):
                         c in df_s_emp.columns for c in cost_cols_emp
                     ):
                         emp_cost_df = df_s_emp[
-                            ["employment"] + [c for c in cost_cols_emp if c in df_s_emp.columns]
+                            ["employment"]
+                            + [c for c in cost_cols_emp if c in df_s_emp.columns]
                         ]
                         emp_cost_long = emp_cost_df.melt(
                             id_vars="employment", var_name="type", value_name="cost"
@@ -2406,9 +2430,7 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
         try:
             staff_df = pd.read_excel(fp_staff, sheet_name="by_staff")
             if "staff" in staff_df.columns:
-                staff_options = (
-                    staff_df["staff"].astype(str).dropna().unique().tolist()
-                )
+                staff_options = staff_df["staff"].astype(str).dropna().unique().tolist()
         except Exception:
             staff_options = []
 
@@ -2431,13 +2453,17 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
         reason = st.selectbox(
             _("Reason Category"),
             reason_opts,
-            index=reason_opts.index(row["reason"]) if pd.notna(row.get("reason")) and row["reason"] in reason_opts else 0,
+            index=reason_opts.index(row["reason"])
+            if pd.notna(row.get("reason")) and row["reason"] in reason_opts
+            else 0,
             key=f"reason_{idx}",
         )
         staff_sel = st.multiselect(
             _("Related Staff"),
             staff_options,
-            default=str(row.get("staff", "")).split(";") if pd.notna(row.get("staff")) and str(row.get("staff")) else [],
+            default=str(row.get("staff", "")).split(";")
+            if pd.notna(row.get("staff")) and str(row.get("staff"))
+            else [],
             key=f"staff_{idx}",
         )
         memo = st.text_area(
@@ -2470,7 +2496,12 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
     if not existing.empty:
         summary = existing.groupby("reason")["count"].sum().reset_index()
         st.subheader(_("Reason stats"))
-        fig = px.bar(summary, x="reason", y="count", labels={"reason": _("Reason Category"), "count": _("Count")})
+        fig = px.bar(
+            summary,
+            x="reason",
+            y="count",
+            labels={"reason": _("Reason Category"), "count": _("Count")},
+        )
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -2605,7 +2636,11 @@ def display_fairness_tab(tab_container, data_dir):
                         rename_map["fairness_score"] = _("Fairness Score")
                     display_df = df.rename(columns=rename_map)
                     st.dataframe(display_df, use_container_width=True, hide_index=True)
-                    metric_col = "fairness_score" if "fairness_score" in df.columns else "night_ratio"
+                    metric_col = (
+                        "fairness_score"
+                        if "fairness_score" in df.columns
+                        else "night_ratio"
+                    )
                     if "staff" in df and metric_col in df:
                         fig_fair = px.bar(
                             df,
@@ -2613,7 +2648,9 @@ def display_fairness_tab(tab_container, data_dir):
                             y=metric_col,
                             labels={
                                 "staff": _("Staff"),
-                                metric_col: _("Fairness Score") if metric_col == "fairness_score" else _("Night Shift Ratio"),
+                                metric_col: _("Fairness Score")
+                                if metric_col == "fairness_score"
+                                else _("Night Shift Ratio"),
                             },
                             color_discrete_sequence=["#FF8C00"],
                         )
@@ -2751,6 +2788,7 @@ def display_summary_report_tab(tab_container, data_dir):
                     mime="text/markdown",
                     use_container_width=True,
                 )
+
 
 def load_leave_results_from_dir(data_dir: Path) -> dict:
     """Wrapper for :func:`dashboard.load_leave_results_from_dir`."""
@@ -3031,11 +3069,11 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
     for tab_obj, fname in zip(file_tabs, st.session_state.analysis_results.keys()):
         with tab_obj:
             results = st.session_state.analysis_results[fname]
-            log.debug(
-                "Display results for %s: type=%s", fname, type(results)
-            )
+            log.debug("Display results for %s: type=%s", fname, type(results))
             st.subheader(_("Results for {fname}").format(fname=fname))
-            out_dir_path = results.get("out_dir_path_str") if isinstance(results, dict) else None
+            out_dir_path = (
+                results.get("out_dir_path_str") if isinstance(results, dict) else None
+            )
             if not out_dir_path:
                 st.error(
                     _("Output directory not found for {fname}").format(fname=fname)

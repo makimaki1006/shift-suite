@@ -700,9 +700,17 @@ def build_stats(
             monthly_df = monthly_df.sort_values(
                 by=["month", "summary_item"]
             ).reset_index(drop=True)
+
             def _cost_cols(d: pd.DataFrame) -> pd.DataFrame:
                 mask_hours = d.columns.str.contains("(hours)")
-                hour_col = next((c for c, m in zip(d.columns, mask_hours) if m and c.startswith("total_value_period")), None)
+                hour_col = next(
+                    (
+                        c
+                        for c, m in zip(d.columns, mask_hours)
+                        if m and c.startswith("total_value_period")
+                    ),
+                    None,
+                )
                 if hour_col:
                     d = d.assign(
                         estimated_excess_cost=lambda x: np.where(
@@ -749,8 +757,6 @@ def build_stats(
                 alerts_df.to_excel(writer, sheet_name="alerts", index=False)
         log.info(f"✅ stats.xlsx を正常に作成/更新しました: {stats_fp}")
     except Exception as e:
-        log.error(
-            f"stats.xlsx の書き出し中にエラーが発生しました: {e}", exc_info=True
-        )
+        log.error(f"stats.xlsx の書き出し中にエラーが発生しました: {e}", exc_info=True)
 
     log.info("=== build_stats end ===")

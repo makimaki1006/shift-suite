@@ -302,15 +302,17 @@ def ingest_excel(
             log.info(f"シート shape: {df_sheet.shape}")
             log.debug(f"列名マッピング前: {df_sheet.columns.tolist()}")
         except FileNotFoundError as e:
-            log.error("Excel file not found while reading sheet '%s': %s", sheet_name_actual, e)
+            log.error(
+                "Excel file not found while reading sheet '%s': %s",
+                sheet_name_actual,
+                e,
+            )
             raise
         except pd.errors.EmptyDataError as e:
             log.warning("シート '%s' が空です: %s", sheet_name_actual, e)
             continue
         except Exception as e:
-            log.warning(
-                f"シート '{sheet_name_actual}' の読み込みに失敗しました: {e}"
-            )
+            log.warning(f"シート '{sheet_name_actual}' の読み込みに失敗しました: {e}")
             continue
 
         df_sheet.columns = [
@@ -338,9 +340,7 @@ def ingest_excel(
                 f"シート '{sheet_name_actual}' に日付データ列が見つかりませんでした。"
             )
             continue
-        log.info(
-            f"日付列候補: {len(date_cols_candidate)}個 - {date_cols_candidate}"
-        )
+        log.info(f"日付列候補: {len(date_cols_candidate)}個 - {date_cols_candidate}")
 
         date_col_map: Dict[str, dt.date] = {}
         for c in date_cols_candidate:
@@ -499,9 +499,7 @@ if __name__ == "__main__":
             year_month_cell_location=a.ymcell,
         )
         if unknown_codes:
-            log.warning(
-                "Unknown shift codes found: %s", sorted(unknown_codes)
-            )
+            log.warning("Unknown shift codes found: %s", sorted(unknown_codes))
         log.info("正常に処理が完了しました。")
         if not ld.empty:
             log.info("--- long_df (最初の5行) ---")

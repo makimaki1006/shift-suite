@@ -5,7 +5,9 @@ import datetime as dt
 
 # Provide minimal pandas/numpy stubs so the module can be imported without the real dependencies
 fake_pd = types.SimpleNamespace(
-    Timestamp=lambda x: types.SimpleNamespace(to_pydatetime=lambda: dt.datetime.fromtimestamp(float(x))),
+    Timestamp=lambda x: types.SimpleNamespace(
+        to_pydatetime=lambda: dt.datetime.fromtimestamp(float(x))
+    ),
     to_datetime=lambda x, errors="raise": dt.datetime.fromisoformat(x),
     DataFrame=object,
     Series=object,

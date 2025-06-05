@@ -118,7 +118,9 @@ def fairness_histogram(summary_df: pd.DataFrame, metric: str = "night_ratio"):
         x=metric,
         nbins=20,
         labels={metric: _("Ratio") if metric == "night_ratio" else _(metric)},
-        title=_("Night Shift Ratio Distribution") if metric == "night_ratio" else f"{metric} Distribution",
+        title=_("Night Shift Ratio Distribution")
+        if metric == "night_ratio"
+        else f"{metric} Distribution",
     )
     fig.update_layout(yaxis_title=_("Count"))
     return fig
@@ -186,11 +188,14 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
                 )
                 total_staff["date"] = pd.to_datetime(total_staff["date"])
                 req_df = (
-                    daily_df[daily_df["leave_type"] == leave_analyzer.LEAVE_TYPE_REQUESTED]
-                    .rename(columns={"total_leave_days": "leave_applicants_count"})
+                    daily_df[
+                        daily_df["leave_type"] == leave_analyzer.LEAVE_TYPE_REQUESTED
+                    ].rename(columns={"total_leave_days": "leave_applicants_count"})
                 )[["date", "leave_applicants_count"]]
                 sb = total_staff.merge(req_df, on="date", how="left")
-                sb["leave_applicants_count"] = sb["leave_applicants_count"].fillna(0).astype(int)
+                sb["leave_applicants_count"] = (
+                    sb["leave_applicants_count"].fillna(0).astype(int)
+                )
                 sb["non_leave_staff"] = sb["total_staff"] - sb["leave_applicants_count"]
                 sb["leave_ratio"] = sb["leave_applicants_count"] / sb["total_staff"]
                 results["staff_balance_daily"] = sb
@@ -200,8 +205,9 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
     if "concentration_requested" not in results and _valid_df(daily_df):
         try:
             conc_df = (
-                daily_df[daily_df["leave_type"] == leave_analyzer.LEAVE_TYPE_REQUESTED]
-                .rename(columns={"total_leave_days": "leave_applicants_count"})
+                daily_df[
+                    daily_df["leave_type"] == leave_analyzer.LEAVE_TYPE_REQUESTED
+                ].rename(columns={"total_leave_days": "leave_applicants_count"})
             )[["date", "leave_applicants_count"]]
             if "staff_balance_daily" in results:
                 conc_df = conc_df.merge(
@@ -226,11 +232,10 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
 
     if "leave_ratio_breakdown" not in results and _valid_df(daily_df):
         try:
-            results["leave_ratio_breakdown"] = leave_analyzer.leave_ratio_by_period_and_weekday(
-                daily_df
+            results["leave_ratio_breakdown"] = (
+                leave_analyzer.leave_ratio_by_period_and_weekday(daily_df)
             )
         except Exception as e:  # pragma: no cover - I/O errors
             log.warning("Failed to reconstruct leave_ratio_breakdown: %s", e)
 
     return results
-

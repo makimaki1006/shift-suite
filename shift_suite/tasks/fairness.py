@@ -305,11 +305,15 @@ def run_fairness(
         jain_index_val = calculate_jain_index(summary_df["night_ratio"])
 
     # ---- per-staff fairness score ----
-    mean_ratio = float(summary_df["night_ratio"].mean()) if not summary_df.empty else 0.0
+    mean_ratio = (
+        float(summary_df["night_ratio"].mean()) if not summary_df.empty else 0.0
+    )
     if mean_ratio == 0:
         summary_df["fairness_score"] = (summary_df["night_ratio"] == 0).astype(float)
     else:
-        summary_df["fairness_score"] = 1 - (summary_df["night_ratio"] - mean_ratio).abs() / mean_ratio
+        summary_df["fairness_score"] = (
+            1 - (summary_df["night_ratio"] - mean_ratio).abs() / mean_ratio
+        )
     summary_df["fairness_score"] = summary_df["fairness_score"].clip(0, 1).round(3)
 
     jain_night_ratio = calculate_jain_index(summary_df["night_ratio"])
@@ -338,9 +342,7 @@ def run_fairness(
                 }
             )
             meta_df_before.to_excel(wb_before, sheet_name="meta_summary", index=False)
-        log.info(
-            f"[fairness] fairness_before.xlsx 保存 (Jain: {jain_index_val:.3f})"
-        )
+        log.info(f"[fairness] fairness_before.xlsx 保存 (Jain: {jain_index_val:.3f})")
 
         with pd.ExcelWriter(after_fp_path, engine="openpyxl") as wa_after:
             summary_df.to_excel(wa_after, sheet_name="after_summary", index=False)
