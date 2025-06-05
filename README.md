@@ -4,6 +4,24 @@ Shift-Suite is a collection of utilities for analysing and visualising Excel
 shift schedules.  It offers both a graphical interface built with Streamlit
 and a lightweight command line tool for batch execution.
 
+## Quickstart
+
+Clone the repository and install the dependencies with the provided setup
+script:
+
+```bash
+./setup.sh
+```
+
+Run the linter and test suite locally to ensure everything is working:
+
+```bash
+ruff check .
+pytest -q
+```
+
+Once the tests pass you can explore the modules described below.
+
 ## Main modules
 
 - **`app.py`** – Launches the Streamlit based GUI.  The application guides you
