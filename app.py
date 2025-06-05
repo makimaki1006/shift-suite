@@ -336,13 +336,18 @@ def run_import_wizard() -> None:
         st.write("ヘッダー行:", st.session_state.header_row_input_widget)
         st.write("列マッピング:", st.session_state.wizard_mapping)
         if st.button("取り込み開始", key="wiz_ingest"):
-            long_df, _, unknown_codes = ingest_excel(
-                Path(st.session_state.wizard_excel_path),
-                shift_sheets=st.session_state.shift_sheets_multiselect_widget,
-                header_row=int(st.session_state.header_row_input_widget),
-                slot_minutes=int(st.session_state.slot_input_widget),
-                year_month_cell_location=st.session_state.year_month_cell_input_widget,
-            )
+            try:
+                long_df, _, unknown_codes = ingest_excel(
+                    Path(st.session_state.wizard_excel_path),
+                    shift_sheets=st.session_state.shift_sheets_multiselect_widget,
+                    header_row=int(st.session_state.header_row_input_widget),
+                    slot_minutes=int(st.session_state.slot_input_widget),
+                    year_month_cell_location=st.session_state.year_month_cell_input_widget,
+                )
+            except Exception as e:  # noqa: BLE001
+                st.error(f"読み込みに失敗しました: {e}")
+                log.error(f"Wizard ingest failed: {e}", exc_info=True)
+                return
             st.session_state.analysis_results = {"preview": long_df.head()}
             if unknown_codes:
                 st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
