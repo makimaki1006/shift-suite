@@ -152,7 +152,8 @@ def log_and_display_error(msg: str, exc: Exception | None) -> None:
     """
 
     if exc is not None:
-        log.error(f"{msg}: {exc}", exc_info=True)
+        # Avoid "NoneType: None" stack trace when no active exception
+        log.error(f"{msg}: {exc}")
         st.error(f"{msg}: {exc}")
     else:
         log.error(msg)
@@ -1415,6 +1416,8 @@ if run_button_clicked:
                             )
                         st.success(f"✅ {_(opt_module_name_exec_run)} 完了")
                     except FileNotFoundError as fe_opt_exec_run_loop:
+                        print(f"DEBUG: Caught exception object: {fe_opt_exec_run_loop}")
+                        print(f"DEBUG: Type of exception object: {type(fe_opt_exec_run_loop)}")
                         log_and_display_error(
                             f"{_(opt_module_name_exec_run)} の処理中にエラー (ファイル未検出)",
                             fe_opt_exec_run_loop,
@@ -1424,6 +1427,8 @@ if run_button_clicked:
                             exc_info=True,
                         )
                     except Exception as e_opt_exec_run_loop:
+                        print(f"DEBUG: Caught exception object: {e_opt_exec_run_loop}")
+                        print(f"DEBUG: Type of exception object: {type(e_opt_exec_run_loop)}")
                         log_and_display_error(
                             f"{_(opt_module_name_exec_run)} の処理中にエラーが発生しました",
                             e_opt_exec_run_loop,
@@ -1439,16 +1444,22 @@ if run_button_clicked:
             st.success(_("All processes complete!"))
             st.session_state.analysis_done = True
         except ValueError as ve_exec_run_main:
+            print(f"DEBUG: Caught exception object: {ve_exec_run_main}")
+            print(f"DEBUG: Type of exception object: {type(ve_exec_run_main)}")
             log_and_display_error(
                 _("Error during analysis (ValueError)"), ve_exec_run_main
             )
             log.error(f"解析エラー (ValueError): {ve_exec_run_main}", exc_info=True)
             st.session_state.analysis_done = False
         except FileNotFoundError as fe_exec_run_main:
+            print(f"DEBUG: Caught exception object: {fe_exec_run_main}")
+            print(f"DEBUG: Type of exception object: {type(fe_exec_run_main)}")
             log_and_display_error(_("Required file not found"), fe_exec_run_main)
             log.error(f"ファイル未検出エラー: {fe_exec_run_main}", exc_info=True)
             st.session_state.analysis_done = False
         except Exception as e_exec_run_main:
+            print(f"DEBUG: Caught exception object: {e_exec_run_main}")
+            print(f"DEBUG: Type of exception object: {type(e_exec_run_main)}")
             log_and_display_error(_("Unexpected error occurred"), e_exec_run_main)
             log.error(f"予期せぬエラー: {e_exec_run_main}", exc_info=True)
             st.session_state.analysis_done = False
