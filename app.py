@@ -554,6 +554,8 @@ with st.sidebar:
         )
 
         if _("Leave Analysis") in st.session_state.ext_opts_multiselect_widget:
+            # Nested expanders trigger StreamlitAPIException, so use a heading
+            # instead of an inner st.expander here.
             st.markdown("### 📊 " + _("Leave Analysis") + " 設定")
             st.multiselect(
                 "分析対象の休暇タイプ",
