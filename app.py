@@ -410,6 +410,8 @@ if "app_initialized" not in st.session_state:
     st.session_state.wizard_mapping = {}
     log.info("セッションステートを初期化しました。")
 
+run_import_wizard()
+
 # --- サイドバーのUI要素 ---
 with st.sidebar:
     st.header("🛠️ 解析設定")
@@ -424,37 +426,42 @@ with st.sidebar:
         )
 
     with st.expander("📄 シート選択とヘッダー", expanded=True):
-        if st.session_state.get("_force_update_multiselect_flag", False):
-            new_options = st.session_state.candidate_sheet_list_for_ui
-            current_selection = st.session_state.get("shift_sheets_multiselect_widget", [])
-            valid_selection = [s for s in current_selection if s in new_options]
-            if not valid_selection and new_options:
-                st.session_state.shift_sheets_multiselect_widget = new_options[:]
-            elif valid_selection:
-                st.session_state.shift_sheets_multiselect_widget = valid_selection
-            else:
-                st.session_state.shift_sheets_multiselect_widget = []
-            st.session_state._force_update_multiselect_flag = False
+        if st.session_state.get("wizard_step", 1) <= 2:
+            st.info("Use the Excel Import Wizard to select sheets")
+        else:
+            if st.session_state.get("_force_update_multiselect_flag", False):
+                new_options = st.session_state.candidate_sheet_list_for_ui
+                current_selection = st.session_state.get(
+                    "shift_sheets_multiselect_widget", []
+                )
+                valid_selection = [s for s in current_selection if s in new_options]
+                if not valid_selection and new_options:
+                    st.session_state.shift_sheets_multiselect_widget = new_options[:]
+                elif valid_selection:
+                    st.session_state.shift_sheets_multiselect_widget = valid_selection
+                else:
+                    st.session_state.shift_sheets_multiselect_widget = []
+                st.session_state._force_update_multiselect_flag = False
 
-        st.multiselect(
-            _("Select shift sheets to analyze (multiple)"),
-            options=st.session_state.candidate_sheet_list_for_ui,
-            default=st.session_state.shift_sheets_multiselect_widget,
-            key="shift_sheets_multiselect_widget",
-            help="解析対象とするシートを選択します。",
-        )
-        st.number_input(
-            _("Header row number (1-indexed)"),
-            1,
-            20,
-            key="header_row_input_widget",
-            help="スクリーンショット例の 'No' など列名がある行番号",
-        )
-        st.text_input(
-            _("Year-Month cell location"),
-            key="year_month_cell_input_widget",
-            help="年月情報が記載されているセル位置 (例: A1)",
-        )
+            st.multiselect(
+                _("Select shift sheets to analyze (multiple)"),
+                options=st.session_state.candidate_sheet_list_for_ui,
+                default=st.session_state.shift_sheets_multiselect_widget,
+                key="shift_sheets_multiselect_widget",
+                help="解析対象とするシートを選択します。",
+            )
+            st.number_input(
+                _("Header row number (1-indexed)"),
+                1,
+                20,
+                key="header_row_input_widget",
+                help="スクリーンショット例の 'No' など列名がある行番号",
+            )
+            st.text_input(
+                _("Year-Month cell location"),
+                key="year_month_cell_input_widget",
+                help="年月情報が記載されているセル位置 (例: A1)",
+            )
 
     with st.expander(_("Need Calculation Settings (Day of Week Pattern)")):
         if st.session_state.get("_force_update_need_ref_dates_flag", False):
@@ -630,7 +637,6 @@ with st.sidebar:
         )
 
 # --- メインコンテンツエリア ---
-run_import_wizard()
 holiday_file_global_uploaded = st.file_uploader(
     _("Global holiday file (CSV or JSON)"),
     type=["csv", "json"],
