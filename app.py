@@ -87,6 +87,27 @@ configure_logging()
 log = logging.getLogger(__name__)
 
 
+def log_environment_info() -> None:
+    """Log basic environment details to help with debugging."""
+    import os
+    import platform
+    import sys
+    log.info("Python: %s", sys.version.replace("\n", " "))
+    log.info("Platform: %s", platform.platform())
+    log.info("Working dir: %s", Path.cwd())
+    log.info("Streamlit: %s", st.__version__)
+    try:
+        import torch
+
+        log.info("PyTorch: %s", torch.__version__)
+    except Exception as e:  # pragma: no cover - optional
+        log.info("PyTorch not available: %s", e)
+    log.debug("Environment PATH: %s", os.getenv("PATH", ""))
+
+
+log_environment_info()
+
+
 # ── Utility: log error to terminal and show in Streamlit ──
 def log_and_display_error(msg: str, exc: Exception) -> None:
     """Log an error and also show it in the Streamlit interface."""
