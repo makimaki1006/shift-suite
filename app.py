@@ -720,7 +720,7 @@ if (
             _("Preview")
             + f": {st.session_state.shift_sheets_multiselect_widget[0]} (first 5 rows)"
         )
-        st.dataframe(preview_df_sidebar, use_container_width=True)
+        st.dataframe(preview_df_sidebar.astype(str), use_container_width=True)
     except Exception as e_prev:
         st.warning(_("Error during preview display") + f": {e_prev}")
 
