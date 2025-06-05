@@ -6,6 +6,7 @@ from .analyzers import (
     CombinedScoreCalculator,
     LowStaffLoadAnalyzer,
 )
+from .shortage_factor_analyzer import ShortageFactorAnalyzer
 
 __all__ = [
     "LeaveAnalyzer",
@@ -14,4 +15,5 @@ __all__ = [
     "AttendanceBehaviorAnalyzer",
     "CombinedScoreCalculator",
     "LowStaffLoadAnalyzer",
+    "ShortageFactorAnalyzer",
 ]
