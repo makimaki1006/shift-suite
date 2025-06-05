@@ -60,6 +60,7 @@ from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.hire_plan import build_hire_plan
 from shift_suite.tasks.h2hire import build_hire_plan as build_hire_plan_from_kpi
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
+from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks import leave_analyzer  # ★ 新規インポート
 from shift_suite.tasks import dashboard
@@ -2288,7 +2289,61 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("stats.xlsx alerts表示エラー", e)
 
+        display_shortage_factor_section(data_dir)
+
         display_over_shortage_log_section(data_dir)
+
+
+def display_shortage_factor_section(data_dir: Path) -> None:
+    """Train and display shortage factor model."""
+    st.markdown("---")
+    st.subheader(_("Factor Analysis (AI)"))
+
+    train_key = "train_factor_model_button"
+    if st.button(_("Train factor model"), key=train_key, use_container_width=True):
+        try:
+            heat_df = pd.read_excel(data_dir / "heat_ALL.xlsx", index_col=0)
+            short_df = pd.read_excel(data_dir / "shortage_time.xlsx", index_col=0)
+            leave_fp = data_dir / "leave_analysis.csv"
+            leave_df = (
+                pd.read_csv(leave_fp, parse_dates=["date"])
+                if leave_fp.exists()
+                else pd.DataFrame()
+            )
+            analyzer = ShortageFactorAnalyzer()
+            features = analyzer.generate_features(
+                pd.DataFrame(), heat_df, short_df, leave_df, set()
+            )
+            model, fi_df = analyzer.train_and_get_feature_importance(features)
+            st.session_state.factor_features = features
+            st.session_state.factor_model = model
+            st.session_state.factor_importance_df = fi_df
+            st.success("Model trained")
+        except Exception as e:
+            log_and_display_error("factor model training error", e)
+
+    fi_df = st.session_state.get("factor_importance_df")
+    feat_df = st.session_state.get("factor_features")
+    if fi_df is not None and feat_df is not None and not feat_df.empty:
+        dates = sorted({idx[0] for idx in feat_df.index})
+        slots = sorted({idx[1] for idx in feat_df.index})
+        sel_date = st.selectbox(
+            _("Select date for factor analysis"),
+            dates,
+            key="factor_date_select",
+        )
+        sel_slot = st.selectbox(
+            _("Select time slot for factor analysis"),
+            slots,
+            key="factor_slot_select",
+        )
+        if (sel_date, sel_slot) in feat_df.index:
+            row = feat_df.loc[(sel_date, sel_slot)]
+            top = fi_df.head(5)
+            st.write(_("Top factors"))
+            st.dataframe(top, hide_index=True)
+            with st.expander("Feature values"):
+                st.dataframe(row[top["feature"].tolist()].to_frame("value"))
 
 
 def display_over_shortage_log_section(data_dir: Path) -> None:

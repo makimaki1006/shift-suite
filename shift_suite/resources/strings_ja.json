@@ -198,4 +198,9 @@
   "Resident response": "入居者対応（状態変化、緊急時）",
   "Hiring delay": "採用遅延",
   "Other": "その他",
+  "Factor Analysis (AI)": "要因分析（AI推定）",
+  "Train factor model": "要因分析モデルを学習",
+  "Select date for factor analysis": "要因分析対象日付を選択",
+  "Select time slot for factor analysis": "要因分析対象時間帯を選択",
+  "Top factors": "主要因トップ"
 }
