@@ -153,6 +153,7 @@ if "app_initialized" not in st.session_state:
     # サイドバーのウィジェットのキーとデフォルト値をセッションステートに初期設定
     st.session_state.slot_input_widget = 30
     st.session_state.header_row_input_widget = 3
+    st.session_state.year_month_cell_input_widget = "A1"
     st.session_state.candidate_sheet_list_for_ui = []
     st.session_state.shift_sheets_multiselect_widget = []
     st.session_state._force_update_multiselect_flag = False
@@ -279,11 +280,16 @@ with st.sidebar:
             help="解析対象とするシートを選択します。",
         )
         st.number_input(
-            _("Header start row (1-indexed)"),
+            _("Header row number (1-indexed)"),
             1,
             20,
             key="header_row_input_widget",
-            help="データヘッダーが開始するExcel行番号",
+            help="スクリーンショット例の 'No' など列名がある行番号",
+        )
+        st.text_input(
+            _("Year-Month cell location"),
+            key="year_month_cell_input_widget",
+            help="年月情報が記載されているセル位置 (例: A1)",
         )
 
     with st.expander(_("Need Calculation Settings (Day of Week Pattern)")):
@@ -621,6 +627,7 @@ if run_button_clicked:
         # --- 実行時のUIの値をセッションステートから取得 ---
         param_selected_sheets = st.session_state.shift_sheets_multiselect_widget
         param_header_row = st.session_state.header_row_input_widget
+        param_year_month_cell = st.session_state.year_month_cell_input_widget
         param_slot = st.session_state.slot_input_widget
         param_ref_start = st.session_state.need_ref_start_date_widget
         param_ref_end = st.session_state.need_ref_end_date_widget
@@ -709,6 +716,7 @@ if run_button_clicked:
                 shift_sheets=param_selected_sheets,
                 header_row=param_header_row,
                 slot_minutes=param_slot,
+                year_month_cell_location=param_year_month_cell,
             )
             log.info(
                 f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}"

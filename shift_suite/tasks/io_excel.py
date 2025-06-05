@@ -13,6 +13,7 @@ from typing import Dict, List, Tuple, Any
 import pandas as pd
 
 from ..logger_config import configure_logging
+from .utils import _parse_as_date
 
 configure_logging()
 log = logging.getLogger(__name__)
@@ -195,12 +196,25 @@ def load_shift_patterns(
     return pd.DataFrame(wt_rows), code2slots
 
 
+def _parse_day_with_year_month(col_name: str, year: int, month: int) -> dt.date | None:
+    """Parse column names like '1' or '1(日)' using provided year-month."""
+    m = re.match(r"(\d{1,2})", str(col_name).strip())
+    if not m:
+        return None
+    day = int(m.group(1))
+    try:
+        return dt.date(year, month, day)
+    except ValueError:
+        return None
+
+
 def ingest_excel(
     excel_path: Path,
     *,
     shift_sheets: List[str],
     header_row: int = 2,
     slot_minutes: int = SLOT_MINUTES,
+    year_month_cell_location: str | None = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     wt_df, code2slots = load_shift_patterns(excel_path, slot_minutes=slot_minutes)
     if wt_df.empty:
@@ -209,6 +223,26 @@ def ingest_excel(
 
     records: list[dict] = []
     unknown_codes: set[str] = set()
+    year_val: int | None = None
+    month_val: int | None = None
+    if year_month_cell_location:
+        try:
+            ym_df = pd.read_excel(
+                excel_path,
+                sheet_name=shift_sheets[0],
+                header=None,
+                usecols=year_month_cell_location,
+                nrows=1,
+                dtype=str,
+            )
+            ym_raw = str(ym_df.iloc[0, 0])
+            m = re.search(r"(\d{4})年(\d{1,2})月", ym_raw)
+            if not m:
+                raise ValueError(f"'{ym_raw}' does not match YYYY年MM月 format")
+            year_val, month_val = int(m.group(1)), int(m.group(2))
+        except Exception as e:
+            log.error(f"年月セル '{year_month_cell_location}' の読み込み失敗: {e}")
+            raise ValueError("年月セルの取得に失敗しました") from e
 
     for sheet_name_actual in shift_sheets:
         try:
@@ -261,6 +295,23 @@ def ingest_excel(
             f"シート '{sheet_name_actual}' の日付列候補: {date_cols_candidate}"
         )
 
+        date_col_map: Dict[str, dt.date] = {}
+        for c in date_cols_candidate:
+            parsed_dt: dt.date | None = None
+            if year_val is not None and month_val is not None:
+                parsed_dt = _parse_day_with_year_month(str(c), year_val, month_val)
+                if parsed_dt:
+                    date_col_map[str(c)] = parsed_dt
+                    continue
+            parsed_dt = _parse_as_date(str(c))
+            if parsed_dt:
+                date_col_map[str(c)] = parsed_dt
+            else:
+                if not str(c).startswith("Unnamed:"):
+                    log.warning(
+                        f"シート '{sheet_name_actual}' の日付列パースに失敗しました: 元の列名='{c}'"
+                    )
+
         for _, row_data in df_sheet.iterrows():
             staff = _normalize(row_data.get("staff", ""))
             role = _normalize(row_data.get("role", ""))
@@ -274,9 +325,7 @@ def ingest_excel(
                 continue
 
             for col_name_original_str in date_cols_candidate:  # ★ 必ず文字列として扱う
-                shift_code_raw = row_data.get(
-                    col_name_original_str, ""
-                )  # ★ キーも文字列
+                shift_code_raw = row_data.get(col_name_original_str, "")
                 code_val = _normalize(str(shift_code_raw))
 
                 if code_val in ("", "nan", "NaN") or code_val in DOW_TOKENS:
@@ -289,90 +338,8 @@ def ingest_excel(
                         unknown_codes.add(code_val)
                     continue
 
-                # --- ★ 日付パース処理 (v2.6.3ベースに強化) ---
-                date_val_parsed_dt_date: dt.date | None = None
-
-                # pandasがTimestampとして読み込んでいるケースは dtype=str 指定によりほぼなくなるが、
-                # 念のため isinstance でのチェックも残す (ただし、このブロックは到達しにくい)
-                if isinstance(
-                    col_name_original_str, (dt.datetime, pd.Timestamp)
-                ):  # 通常ここは通らないはず
-                    date_val_parsed_dt_date = (
-                        pd.to_datetime(col_name_original_str).normalize().date()
-                    )
-                    log.debug(
-                        f"日付パース (Timestamp直接): {col_name_original_str} -> {date_val_parsed_dt_date}"
-                    )
-                # 文字列として読み込まれた列名をパースする
-                else:
-                    col_to_parse = str(
-                        col_name_original_str
-                    ).strip()  # 明示的に文字列化してstrip
-
-                    # 1. Excelシリアル値風の数値文字列か？ (例: "45689", "45689.0")
-                    try:
-                        if "." in col_to_parse:
-                            serial_val = float(col_to_parse)
-                        else:
-                            serial_val = int(col_to_parse)
-
-                        if 0 < serial_val < 70000:  # 妥当な範囲
-                            date_val_parsed_dt_date = (
-                                dt.datetime(1899, 12, 30)
-                                + dt.timedelta(days=serial_val)
-                            ).date()
-                            log.debug(
-                                f"日付パース (シリアル風文字列): '{col_to_parse}' -> {date_val_parsed_dt_date}"
-                            )
-                    except ValueError:  # 数値に変換できない場合は次のステップへ
-                        # 2. YYYY-MM-DD[HH:MM:SS] や YYYY/MM/DD[ HH:MM:SS] 形式か？
-                        date_part_match = re.match(
-                            r"(\d{4}[-/]\d{1,2}[-/]\d{1,2})", col_to_parse
-                        )
-                        if date_part_match:
-                            date_str_to_try = date_part_match.group(1)
-                            try:
-                                date_val_parsed_dt_date = (
-                                    pd.to_datetime(date_str_to_try, errors="raise")
-                                    .normalize()
-                                    .date()
-                                )
-                                log.debug(
-                                    f"日付パース (YYYY-MM-DD風): '{col_to_parse}' -> '{date_str_to_try}' -> {date_val_parsed_dt_date}"
-                                )
-                            except (ValueError, TypeError, pd.errors.ParserError):
-                                pass  # 次のフォーマットへ
-
-                        if date_val_parsed_dt_date is None:
-                            # 3. その他の一般的な日付形式を試す
-                            common_formats = [
-                                "%Y年%m月%d日",
-                                "%m/%d/%Y",
-                            ]  # YYYY/MM/DD は上記でカバー
-                            parsed_successfully = False
-                            for fmt in common_formats:
-                                try:
-                                    date_val_parsed_dt_date = dt.datetime.strptime(
-                                        col_to_parse.split(" ")[0], fmt
-                                    ).date()
-                                    log.debug(
-                                        f"日付パース (strptime fmt='{fmt}'): '{col_to_parse}' -> {date_val_parsed_dt_date}"
-                                    )
-                                    parsed_successfully = True
-                                    break
-                                except ValueError:
-                                    continue
-                            if not parsed_successfully:
-                                log.debug(
-                                    f"日付列パース最終失敗: 元列名='{col_name_original_str}', 試行文字列='{col_to_parse}'"
-                                )
-                # --- 日付パース処理ここまで ---
-
+                date_val_parsed_dt_date = date_col_map.get(str(col_name_original_str))
                 if date_val_parsed_dt_date is None:
-                    if not col_name_original_str.startswith("Unnamed:"):
-                        log.warning(
-                            f"シート '{sheet_name_actual}' の日付列パースに失敗しました (最終結果None): 元の列名='{col_name_original_str}'"
-                        )
                     continue
 
                 current_code_slots_list = code2slots.get(code_val, [])
@@ -467,6 +434,7 @@ if __name__ == "__main__":
     )
     p.add_argument("--header", type=int, default=2, help="ヘッダー開始行 (1-indexed)")
     p.add_argument("--slot", type=int, default=SLOT_MINUTES, help="スロット長 (分)")
+    p.add_argument("--ymcell", type=str, help="年月情報セル位置 (例: A1)")
     a = p.parse_args()
     try:
         log.info(
@@ -477,6 +445,7 @@ if __name__ == "__main__":
             shift_sheets=a.sheets,
             header_row=a.header,
             slot_minutes=a.slot,
+            year_month_cell_location=a.ymcell,
         )
         log.info("正常に処理が完了しました。")
         if not ld.empty:
