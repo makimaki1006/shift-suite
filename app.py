@@ -63,6 +63,7 @@ from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks import leave_analyzer  # ★ 新規インポート
 from shift_suite.tasks import dashboard
+from shift_suite.tasks import over_shortage_log
 from shift_suite.i18n import translate as _
 from shift_suite.tasks.leave_analyzer import (
     LEAVE_TYPE_REQUESTED,
@@ -2209,6 +2210,92 @@ def display_shortage_tab(tab_container, data_dir):
                         )
             except Exception as e:
                 log_and_display_error("stats.xlsx alerts表示エラー", e)
+
+        display_over_shortage_log_section(data_dir)
+
+
+def display_over_shortage_log_section(data_dir: Path) -> None:
+    """Display editable over/shortage log."""
+    st.markdown("---")
+    st.subheader(_("Over/Short Log"))
+
+    events = over_shortage_log.list_events(data_dir)
+    if events.empty:
+        st.info("No shortage/excess data.")
+        return
+
+    staff_options: list[str] = []
+    fp_staff = data_dir / "staff_stats.xlsx"
+    if fp_staff.exists():
+        try:
+            staff_df = pd.read_excel(fp_staff, sheet_name="by_staff")
+            if "staff" in staff_df.columns:
+                staff_options = (
+                    staff_df["staff"].astype(str).dropna().unique().tolist()
+                )
+        except Exception:
+            staff_options = []
+
+    log_fp = data_dir / "over_shortage_log.csv"
+    existing = over_shortage_log.load_log(log_fp)
+    merged = events.merge(existing, on=["date", "time", "type"], how="left")
+
+    updated_rows = []
+    reason_opts = [
+        _("Sudden absence"),
+        _("Planned leave"),
+        _("Training/Meeting"),
+        _("Resident response"),
+        _("Hiring delay"),
+        _("Other"),
+    ]
+
+    for idx, row in merged.iterrows():
+        st.write(f"{row['date']} {row['time']} [{row['type']}] ({row['count']})")
+        reason = st.selectbox(
+            _("Reason Category"),
+            reason_opts,
+            index=reason_opts.index(row["reason"]) if pd.notna(row.get("reason")) and row["reason"] in reason_opts else 0,
+            key=f"reason_{idx}",
+        )
+        staff_sel = st.multiselect(
+            _("Related Staff"),
+            staff_options,
+            default=str(row.get("staff", "")).split(";") if pd.notna(row.get("staff")) and str(row.get("staff")) else [],
+            key=f"staff_{idx}",
+        )
+        memo = st.text_area(
+            _("Memo"),
+            value=str(row.get("memo", "")),
+            key=f"memo_{idx}",
+        )
+        updated_rows.append(
+            {
+                "date": row["date"],
+                "time": row["time"],
+                "type": row["type"],
+                "count": row["count"],
+                "reason": reason,
+                "staff": ";".join(staff_sel),
+                "memo": memo,
+            }
+        )
+
+    mode = st.radio(_("Save method"), [_("Append"), _("Overwrite")], horizontal=True)
+    if st.button(_("Save log")):
+        df_save = pd.DataFrame(updated_rows)
+        over_shortage_log.save_log(
+            df_save,
+            log_fp,
+            mode="append" if mode == _("Append") else "overwrite",
+        )
+        st.success(_("Save log"))
+
+    if not existing.empty:
+        summary = existing.groupby("reason")["count"].sum().reset_index()
+        st.subheader(_("Reason stats"))
+        fig = px.bar(summary, x="reason", y="count", labels={"reason": _("Reason Category"), "count": _("Count")})
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def display_fatigue_tab(tab_container, data_dir):
