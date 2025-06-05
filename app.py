@@ -3126,12 +3126,15 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 results.get("out_dir_path_str") if isinstance(results, dict) else None
             )
             if not out_dir_path:
-                st.error(
-                    _("Output directory not found for {fname}").format(fname=fname)
-                )
-                log.warning(
-                    "Missing out_dir_path_str for results '%s': %s", fname, results
-                )
+                if fname == "preview" and isinstance(results, pd.DataFrame):
+                    st.dataframe(results, use_container_width=True)
+                else:
+                    st.error(
+                        _("Output directory not found for {fname}").format(fname=fname)
+                    )
+                    log.warning(
+                        "Missing out_dir_path_str for results '%s': %s", fname, results
+                    )
                 continue
             data_dir = Path(out_dir_path)
             tab_keys_en_dash = [
