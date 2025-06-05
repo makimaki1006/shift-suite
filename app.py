@@ -24,6 +24,7 @@ from __future__ import annotations
 import datetime
 import io
 import logging
+import os
 import re
 import tempfile
 import zipfile
@@ -216,6 +217,17 @@ def run_import_wizard() -> None:
     st.header("📥 Excel Import Wizard")
 
     if step == 1:
+        default_excel = os.getenv("SHIFT_SUITE_DEFAULT_EXCEL")
+        if default_excel and not st.session_state.get("wizard_excel_path"):
+            try:
+                xls = pd.ExcelFile(default_excel)
+            except Exception as e:  # noqa: BLE001
+                log_and_display_error("Excel\u30d5\u30a1\u30a4\u30eb\u306e\u81ea\u52d5\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f", e)
+            else:
+                st.session_state.wizard_excel_path = str(Path(default_excel))
+                st.session_state.wizard_file_size = Path(default_excel).stat().st_size
+                st.session_state.wizard_sheet_names = xls.sheet_names
+
         uploaded = st.file_uploader("Excel file", type=["xlsx"], key="wiz_upload")
         if uploaded is not None:
             if st.session_state.get("wizard_file_size") != uploaded.size:
