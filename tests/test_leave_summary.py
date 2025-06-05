@@ -1,9 +1,10 @@
 import pandas as pd
+
 from shift_suite.tasks.leave_analyzer import (
-    summarize_leave_by_day_count,
-    leave_ratio_by_period_and_weekday,
-    LEAVE_TYPE_REQUESTED,
     LEAVE_TYPE_PAID,
+    LEAVE_TYPE_REQUESTED,
+    leave_ratio_by_period_and_weekday,
+    summarize_leave_by_day_count,
 )
 
 

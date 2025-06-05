@@ -1,6 +1,8 @@
 import types
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
 from shift_suite.tasks import forecast
 from shift_suite.tasks.forecast import forecast_need
 

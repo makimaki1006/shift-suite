@@ -1,7 +1,9 @@
 import datetime as dt
 from pathlib import Path
-from openpyxl import Workbook
+
 import pytest
+from openpyxl import Workbook
+
 from shift_suite.tasks.io_excel import ingest_excel
 
 

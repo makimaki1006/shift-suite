@@ -1,4 +1,5 @@
 import pandas as pd
+
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 
 

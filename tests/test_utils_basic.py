@@ -1,7 +1,7 @@
+import datetime as dt
 import importlib
 import sys
 import types
-import datetime as dt
 
 # Provide minimal pandas/numpy stubs so the module can be imported without the real dependencies
 fake_pd = types.SimpleNamespace(
