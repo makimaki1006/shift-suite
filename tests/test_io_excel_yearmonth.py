@@ -22,13 +22,14 @@ def _create_excel(path: Path, ym_cell_value: object | None = "2023年10月") -> 
 def test_ingest_excel_with_year_month(tmp_path: Path) -> None:
     fp = tmp_path / "shift.xlsx"
     _create_excel(fp)
-    long_df, _ = ingest_excel(
+    long_df, _, unknown = ingest_excel(
         fp,
         shift_sheets=["Sheet1"],
         header_row=2,
         slot_minutes=30,
         year_month_cell_location="A1",
     )
+    assert not unknown
     dates = sorted({d.date() for d in long_df["ds"]})
     assert dates == [dt.date(2023, 10, 1), dt.date(2023, 10, 2)]
 
@@ -49,12 +50,13 @@ def test_ingest_excel_year_month_missing(tmp_path: Path) -> None:
 def test_ingest_excel_with_date_in_year_month_cell(tmp_path: Path) -> None:
     fp = tmp_path / "shift.xlsx"
     _create_excel(fp, ym_cell_value=dt.date(2025, 2, 1))
-    long_df, _ = ingest_excel(
+    long_df, _, unknown = ingest_excel(
         fp,
         shift_sheets=["Sheet1"],
         header_row=2,
         slot_minutes=30,
         year_month_cell_location="A1",
     )
+    assert not unknown
     dates = sorted({d.date() for d in long_df["ds"]})
     assert dates == [dt.date(2025, 2, 1), dt.date(2025, 2, 2)]

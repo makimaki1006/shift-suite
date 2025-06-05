@@ -73,12 +73,14 @@ def main():
     xls = pd.ExcelFile(excel)
     shift_sheets = [s for s in xls.sheet_names if "勤務区分" not in s]
 
-    long, _ = ingest_excel(
+    long, _, unknown_codes = ingest_excel(
         excel,
         shift_sheets=shift_sheets,
         header_row=args.header,
         slot_minutes=args.slot,
     )
+    if unknown_codes:
+        log.warning("Unknown shift codes found: %s", sorted(unknown_codes))
 
     ref_start = pd.to_datetime(long["ds"]).dt.date.min()
     ref_end = pd.to_datetime(long["ds"]).dt.date.max()

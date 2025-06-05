@@ -19,6 +19,7 @@ def test_ingest_excel_employment(tmp_path: Path):
         wt.to_excel(writer, sheet_name="勤務区分", index=False)
         df.to_excel(writer, sheet_name="Sheet1", index=False)
 
-    long_df, _ = ingest_excel(excel_fp, shift_sheets=["Sheet1"], header_row=1)
+    long_df, _, unknown = ingest_excel(excel_fp, shift_sheets=["Sheet1"], header_row=1)
+    assert not unknown
     assert "employment" in long_df.columns
     assert set(long_df["employment"]) == {"正社員"}

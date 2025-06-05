@@ -274,7 +274,7 @@ def run_import_wizard() -> None:
         st.write("ヘッダー行:", st.session_state.header_row_input_widget)
         st.write("列マッピング:", st.session_state.wizard_mapping)
         if st.button("取り込み開始", key="wiz_ingest"):
-            long_df, _ = ingest_excel(
+            long_df, _, unknown_codes = ingest_excel(
                 Path(st.session_state.wizard_excel_path),
                 shift_sheets=st.session_state.shift_sheets_multiselect_widget,
                 header_row=int(st.session_state.header_row_input_widget),
@@ -282,6 +282,10 @@ def run_import_wizard() -> None:
                 year_month_cell_location=st.session_state.year_month_cell_input_widget,
             )
             st.session_state.analysis_results = {"preview": long_df.head()}
+            if unknown_codes:
+                st.warning(
+                    "未知の勤務コード: " + ", ".join(sorted(unknown_codes))
+                )
             st.success("取り込み完了")
             st.dataframe(long_df.head(), use_container_width=True)
 
@@ -851,7 +855,7 @@ if run_button_clicked:
                 )
 
             update_progress_exec_run("Ingest: Reading Excel data...")
-            long_df, wt_df = ingest_excel(
+            long_df, wt_df, unknown_codes = ingest_excel(
                 excel_path_to_use,
                 shift_sheets=param_selected_sheets,
                 header_row=param_header_row,
@@ -861,6 +865,13 @@ if run_button_clicked:
             log.info(
                 f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}"
             )
+            if unknown_codes:
+                st.warning(
+                    "未知の勤務コード: " + ", ".join(sorted(unknown_codes))
+                )
+                log.warning(
+                    f"Unknown shift codes encountered: {sorted(unknown_codes)}"
+                )
             st.success(_("Ingest: Excel data read complete."))
 
             update_progress_exec_run("Heatmap: Generating heatmap...")
@@ -3020,14 +3031,17 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
     for tab_obj, fname in zip(file_tabs, st.session_state.analysis_results.keys()):
         with tab_obj:
             results = st.session_state.analysis_results[fname]
+            log.debug(
+                "Display results for %s: type=%s", fname, type(results)
+            )
             st.subheader(_("Results for {fname}").format(fname=fname))
-            out_dir_path = results.get("out_dir_path_str")
+            out_dir_path = results.get("out_dir_path_str") if isinstance(results, dict) else None
             if not out_dir_path:
                 st.error(
                     _("Output directory not found for {fname}").format(fname=fname)
                 )
                 log.warning(
-                    f"Missing out_dir_path_str for results '{fname}': {results}"
+                    "Missing out_dir_path_str for results '%s': %s", fname, results
                 )
                 continue
             data_dir = Path(out_dir_path)
