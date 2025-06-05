@@ -25,6 +25,9 @@ def shortage_and_brief(
     slot: int,
     *,
     holidays: Iterable[dt.date] | None = None,
+    wage_direct: float = 0.0,
+    wage_temp: float = 0.0,
+    penalty_per_lack: float = 0.0,
 ) -> Tuple[Path, Path] | None:
     """Run shortage analysis and KPI summary.
 
@@ -36,6 +39,12 @@ def shortage_and_brief(
         Slot size in minutes.
     holidays:
         Dates considered as facility holidays.
+    wage_direct:
+        Hourly wage for direct employees used for excess cost estimation.
+    wage_temp:
+        Hourly cost for temporary staff to fill shortages.
+    penalty_per_lack:
+        Penalty or opportunity cost per hour of shortage.
     """
     out_dir_path = Path(out_dir)
     time_labels = gen_labels(slot)
@@ -470,6 +479,13 @@ def shortage_and_brief(
         role_summary_df = role_summary_df.sort_values(
             "lack_h", ascending=False, na_position="last"
         ).reset_index(drop=True)
+        role_summary_df = role_summary_df.assign(
+            estimated_excess_cost=lambda d: d.get("excess_h", 0) * wage_direct,
+            estimated_lack_cost_if_temporary_staff=lambda d: d.get("lack_h", 0)
+            * wage_temp,
+            estimated_lack_penalty_cost=lambda d: d.get("lack_h", 0)
+            * penalty_per_lack,
+        )
 
     monthly_role_df = pd.DataFrame(monthly_role_rows)
     if not monthly_role_df.empty:
@@ -671,6 +687,13 @@ def shortage_and_brief(
         emp_summary_df = emp_summary_df.sort_values(
             "lack_h", ascending=False, na_position="last"
         ).reset_index(drop=True)
+        emp_summary_df = emp_summary_df.assign(
+            estimated_excess_cost=lambda d: d.get("excess_h", 0) * wage_direct,
+            estimated_lack_cost_if_temporary_staff=lambda d: d.get("lack_h", 0)
+            * wage_temp,
+            estimated_lack_penalty_cost=lambda d: d.get("lack_h", 0)
+            * penalty_per_lack,
+        )
 
     monthly_emp_df = pd.DataFrame(monthly_emp_rows)
     if not monthly_emp_df.empty:
