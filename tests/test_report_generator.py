@@ -18,10 +18,16 @@ def _create_sample_files(out_dir: Path) -> None:
             "estimated_excess_cost": [1000, 0],
         }
     )
-    role_df.to_excel(out_dir / "shortage_role.xlsx", sheet_name="role_summary", index=False)
+    role_df.to_excel(
+        out_dir / "shortage_role.xlsx", sheet_name="role_summary", index=False
+    )
 
     emp_df = pd.DataFrame({"employment": ["FT"], "lack_h": [3]})
-    emp_df.to_excel(out_dir / "shortage_employment.xlsx", sheet_name="employment_summary", index=False)
+    emp_df.to_excel(
+        out_dir / "shortage_employment.xlsx",
+        sheet_name="employment_summary",
+        index=False,
+    )
 
     overall_df = pd.DataFrame({"summary_item": ["lack", "excess"], "value": [7, 3]})
     monthly_df = pd.DataFrame(

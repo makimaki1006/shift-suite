@@ -41,9 +41,19 @@ def generate_summary_report(out_dir: Path | str) -> Path:
     if stats_fp.exists():
         try:
             xls = pd.ExcelFile(stats_fp)
-            _ = xls.parse("Overall_Summary") if "Overall_Summary" in xls.sheet_names else pd.DataFrame()
-            monthly_df = xls.parse("Monthly_Summary") if "Monthly_Summary" in xls.sheet_names else pd.DataFrame()
-            alerts_df = xls.parse("alerts") if "alerts" in xls.sheet_names else pd.DataFrame()
+            _ = (
+                xls.parse("Overall_Summary")
+                if "Overall_Summary" in xls.sheet_names
+                else pd.DataFrame()
+            )
+            monthly_df = (
+                xls.parse("Monthly_Summary")
+                if "Monthly_Summary" in xls.sheet_names
+                else pd.DataFrame()
+            )
+            alerts_df = (
+                xls.parse("alerts") if "alerts" in xls.sheet_names else pd.DataFrame()
+            )
         except Exception:
             monthly_df = alerts_df = pd.DataFrame()
     else:
@@ -69,8 +79,12 @@ def generate_summary_report(out_dir: Path | str) -> Path:
 
     lack_h_total = float(role_df.get("lack_h", pd.Series()).sum())
     excess_h_total = float(role_df.get("excess_h", pd.Series()).sum())
-    lack_cost_total = float(role_df.get("estimated_lack_cost_if_temporary_staff", pd.Series()).sum())
-    penalty_cost_total = float(role_df.get("estimated_lack_penalty_cost", pd.Series()).sum())
+    lack_cost_total = float(
+        role_df.get("estimated_lack_cost_if_temporary_staff", pd.Series()).sum()
+    )
+    penalty_cost_total = float(
+        role_df.get("estimated_lack_penalty_cost", pd.Series()).sum()
+    )
     excess_cost_total = float(role_df.get("estimated_excess_cost", pd.Series()).sum())
 
     top_lack_roles = []
@@ -98,11 +112,20 @@ def generate_summary_report(out_dir: Path | str) -> Path:
 
     timeslot_lines = []
     if not weekday_df.empty:
-        num_col = next((c for c in weekday_df.columns if pd.api.types.is_numeric_dtype(weekday_df[c])), None)
+        num_col = next(
+            (
+                c
+                for c in weekday_df.columns
+                if pd.api.types.is_numeric_dtype(weekday_df[c])
+            ),
+            None,
+        )
         if num_col and {"weekday", "timeslot"}.issubset(weekday_df.columns):
             top_ts = weekday_df.nlargest(3, num_col)
             for _, row in top_ts.iterrows():
-                timeslot_lines.append(f"{row['weekday']}{row['timeslot']} 平均{row[num_col]:.1f}人不足")
+                timeslot_lines.append(
+                    f"{row['weekday']}{row['timeslot']} 平均{row[num_col]:.1f}人不足"
+                )
 
     alert_lines = []
     if not alerts_df.empty:
@@ -116,8 +139,12 @@ def generate_summary_report(out_dir: Path | str) -> Path:
     if min_date and max_date:
         md_lines.append(f"**分析期間**: {min_date} ～ {max_date}")
     md_lines.append("\n#### 総括")
-    md_lines.append(f"- 総不足時間: {lack_h_total:.1f}h (派遣補填想定 {lack_cost_total:,.0f}円, ペナルティ {penalty_cost_total:,.0f}円)")
-    md_lines.append(f"- 総過剰時間: {excess_h_total:.1f}h (コスト {excess_cost_total:,.0f}円)")
+    md_lines.append(
+        f"- 総不足時間: {lack_h_total:.1f}h (派遣補填想定 {lack_cost_total:,.0f}円, ペナルティ {penalty_cost_total:,.0f}円)"
+    )
+    md_lines.append(
+        f"- 総過剰時間: {excess_h_total:.1f}h (コスト {excess_cost_total:,.0f}円)"
+    )
 
     if len(top_lack_roles) > 0:
         md_lines.append("- 最も不足の多い職種トップ3:")
@@ -142,12 +169,19 @@ def generate_summary_report(out_dir: Path | str) -> Path:
 
     md_lines.append("\n#### 推奨アクションのヒント")
     if not top_lack_roles.empty:
-        md_lines.append("- 特定職種の不足が顕著です。採用強化や配置見直しをご検討ください。")
+        md_lines.append(
+            "- 特定職種の不足が顕著です。採用強化や配置見直しをご検討ください。"
+        )
     if timeslot_lines:
-        md_lines.append("- 特定の曜日・時間帯で不足が多発しています。シフト調整をご検討ください。")
+        md_lines.append(
+            "- 特定の曜日・時間帯で不足が多発しています。シフト調整をご検討ください。"
+        )
 
     markdown_text = "\n".join(md_lines) + "\n"
 
-    out_fp = out_dir_path / f"OverShortage_SummaryReport_{datetime.now().strftime('%Y%m%d')}.md"
+    out_fp = (
+        out_dir_path
+        / f"OverShortage_SummaryReport_{datetime.now().strftime('%Y%m%d')}.md"
+    )
     out_fp.write_text(markdown_text, encoding="utf-8")
     return out_fp

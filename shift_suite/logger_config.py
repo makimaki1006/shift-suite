@@ -15,4 +15,3 @@ def configure_logging(level: int = logging.INFO) -> None:
     root = logging.getLogger()
     root.setLevel(level)
     root.addHandler(handler)
-

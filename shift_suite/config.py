@@ -7,6 +7,7 @@ from typing import Any
 
 _CONFIG_PATH = Path(__file__).with_name("config.json")
 
+
 @lru_cache(maxsize=1)
 def _load_config() -> dict[str, Any]:
     try:
@@ -14,6 +15,7 @@ def _load_config() -> dict[str, Any]:
             return json.load(f)
     except Exception:
         return {}
+
 
 def get(key: str, default: Any = None) -> Any:
     """Return configuration value for ``key`` or ``default`` if missing."""
