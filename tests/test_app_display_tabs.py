@@ -60,7 +60,14 @@ def test_display_leave_analysis_tab_handles_dict(monkeypatch):
 
 
 def test_display_overview_tab_metrics(monkeypatch, tmp_path):
-    df_shortage = pd.DataFrame({"lack_h": [5, 3]})
+    df_shortage = pd.DataFrame(
+        {
+            "lack_h": [5, 3],
+            "estimated_excess_cost": [0, 0],
+            "estimated_lack_cost_if_temporary_staff": [0, 0],
+            "estimated_lack_penalty_cost": [0, 0],
+        }
+    )
     df_meta = pd.DataFrame({"metric": ["jain_index"], "value": [0.8]})
     df_staff = pd.DataFrame({"night_ratio": [0.2, 0.3]})
     df_alerts = pd.DataFrame({"category": ["c"], "value": [1]})
@@ -90,4 +97,4 @@ def test_display_overview_tab_metrics(monkeypatch, tmp_path):
 
     app.display_overview_tab(DummyTab(), tmp_path)
     assert infos == []
-    assert len(metrics) == 5
+    assert len(metrics) == 8

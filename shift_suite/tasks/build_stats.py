@@ -44,7 +44,29 @@ def _check_files_exist(out_dir: Path, required: Iterable[str]) -> List[str]:
     return missing
 
 
-def build_stats(out_dir: str | Path, *, holidays: Iterable[dt.date] | None = None) -> None:
+def build_stats(
+    out_dir: str | Path,
+    *,
+    holidays: Iterable[dt.date] | None = None,
+    wage_direct: float = 0.0,
+    wage_temp: float = 0.0,
+    penalty_per_lack: float = 0.0,
+) -> None:
+    """Create stats.xlsx with optional cost estimation columns.
+
+    Parameters
+    ----------
+    out_dir:
+        Output directory containing heatmap files.
+    holidays:
+        Holiday dates to exclude from working day counts.
+    wage_direct:
+        Hourly wage for direct employees used for excess cost estimation.
+    wage_temp:
+        Hourly cost for temporary staff to fill shortages.
+    penalty_per_lack:
+        Penalty or opportunity cost per hour of shortage.
+    """
     out_dir_path = Path(out_dir)
     stats_fp = out_dir_path / "stats.xlsx"
     log.info(f"=== build_stats start (out_dir={out_dir_path}) ===")
@@ -518,6 +540,24 @@ def build_stats(out_dir: str | Path, *, holidays: Iterable[dt.date] | None = Non
             overall_df["summary_item"], categories=SUMMARY5, ordered=True
         )
         overall_df = overall_df.sort_values("summary_item")
+        mask_hours = overall_df["metric"].str.contains("(hours)")
+        overall_df = overall_df.assign(
+            estimated_excess_cost=lambda d: np.where(
+                (d["summary_item"] == "excess") & mask_hours,
+                d["value"] * wage_direct,
+                np.nan,
+            ),
+            estimated_lack_cost_if_temporary_staff=lambda d: np.where(
+                (d["summary_item"] == "lack") & mask_hours,
+                d["value"] * wage_temp,
+                np.nan,
+            ),
+            estimated_lack_penalty_cost=lambda d: np.where(
+                (d["summary_item"] == "lack") & mask_hours,
+                d["value"] * penalty_per_lack,
+                np.nan,
+            ),
+        )
     log.debug(f"Overall summary 計算完了:\n{overall_df.head().to_string()}")
 
     monthly_summary_rows = []
@@ -659,6 +699,30 @@ def build_stats(out_dir: str | Path, *, holidays: Iterable[dt.date] | None = Non
             monthly_df = monthly_df.sort_values(
                 by=["month", "summary_item"]
             ).reset_index(drop=True)
+            def _cost_cols(d: pd.DataFrame) -> pd.DataFrame:
+                mask_hours = d.columns.str.contains("(hours)")
+                hour_col = next((c for c, m in zip(d.columns, mask_hours) if m and c.startswith("total_value_period")), None)
+                if hour_col:
+                    d = d.assign(
+                        estimated_excess_cost=lambda x: np.where(
+                            x["summary_item"] == "excess",
+                            x[hour_col] * wage_direct,
+                            np.nan,
+                        ),
+                        estimated_lack_cost_if_temporary_staff=lambda x: np.where(
+                            x["summary_item"] == "lack",
+                            x[hour_col] * wage_temp,
+                            np.nan,
+                        ),
+                        estimated_lack_penalty_cost=lambda x: np.where(
+                            x["summary_item"] == "lack",
+                            x[hour_col] * penalty_per_lack,
+                            np.nan,
+                        ),
+                    )
+                return d
+
+            monthly_df = _cost_cols(monthly_df)
             log.debug(f"Monthly summary 計算完了:\n{monthly_df.head().to_string()}")
         else:
             log.warning("月別集計の結果が空になりました。")

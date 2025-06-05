@@ -850,6 +850,9 @@ if run_button_clicked:
                 param_slot,
                 holidays=(holiday_dates_global_for_run or [])
                 + (holiday_dates_local_for_run or []),
+                wage_direct=param_wage_direct,
+                wage_temp=param_wage_temp,
+                penalty_per_lack=param_penalty_lack,
             )
             if shortage_result_exec_run is None:
                 st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
@@ -1096,6 +1099,9 @@ if run_button_clicked:
                                 out_dir_exec,
                                 holidays=(holiday_dates_global_for_run or [])
                                 + (holiday_dates_local_for_run or []),
+                                wage_direct=param_wage_direct,
+                                wage_temp=param_wage_temp,
+                                penalty_per_lack=param_penalty_lack,
                             )
                         elif opt_module_name_exec_run == "Anomaly":
                             detect_anomaly(out_dir_exec)
@@ -1443,8 +1449,16 @@ def display_overview_tab(tab_container, data_dir):
                     file_mtime=_file_mtime(kpi_fp),
                 )
                 lack_h = df_sh_role["lack_h"].sum() if "lack_h" in df_sh_role else 0.0
+                excess_cost = float(df_sh_role.get("estimated_excess_cost", pd.Series()).sum())
+                lack_temp_cost = float(
+                    df_sh_role.get("estimated_lack_cost_if_temporary_staff", pd.Series()).sum()
+                )
+                lack_penalty_cost = float(
+                    df_sh_role.get("estimated_lack_penalty_cost", pd.Series()).sum()
+                )
             except Exception as e:
                 st.warning(f"shortage_role.xlsx 読込/集計エラー: {e}")
+                excess_cost = lack_temp_cost = lack_penalty_cost = 0.0
         fair_fp_meta = data_dir / "fairness_before.xlsx"
         jain_display = "N/A"
         if fair_fp_meta.exists():
@@ -1494,12 +1508,15 @@ def display_overview_tab(tab_container, data_dir):
             except Exception:
                 pass
 
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
         c1.metric(_("不足時間(h)"), f"{lack_h:.1f}")
         c2.metric("夜勤 Jain指数", jain_display)
         c3.metric(_("Total Staff"), staff_count)
         c4.metric(_("Avg. Night Ratio"), f"{avg_night_ratio:.3f}")
         c5.metric(_("Alerts Count"), alerts_count)
+        c6.metric(_("総過剰コスト試算(¥)"), f"{excess_cost:,.0f}")
+        c7.metric(_("総不足コスト試算(派遣補填時)(¥)"), f"{lack_temp_cost:,.0f}")
+        c8.metric(_("総不足ペナルティ試算(¥)"), f"{lack_penalty_cost:,.0f}")
 
 
 def display_heatmap_tab(tab_container, data_dir):
@@ -1675,6 +1692,11 @@ def display_shortage_tab(tab_container, data_dir):
                         "staff_h": _("Staff Hours"),
                         "lack_h": _("Shortage Hours"),
                         "excess_h": _("Excess Hours"),
+                        "estimated_excess_cost": _("Excess Cost Est.(¥)"),
+                        "estimated_lack_cost_if_temporary_staff": _(
+                            "Lack Cost if Temp(¥)"
+                        ),
+                        "estimated_lack_penalty_cost": _("Lack Penalty Est.(¥)"),
                         "working_days_considered": _("Working Days"),
                         "note": _("Note"),
                     }
@@ -1714,6 +1736,23 @@ def display_shortage_tab(tab_container, data_dir):
                     st.plotly_chart(
                         fig_role_ex, use_container_width=True, key="excess_role_chart"
                     )
+                cost_cols = [
+                    "estimated_excess_cost",
+                    "estimated_lack_cost_if_temporary_staff",
+                    "estimated_lack_penalty_cost",
+                ]
+                if {"role"}.issubset(df_s_role.columns) and any(c in df_s_role.columns for c in cost_cols):
+                    cost_df = df_s_role[["role"] + [c for c in cost_cols if c in df_s_role.columns]]
+                    cost_long = cost_df.melt(id_vars="role", var_name="type", value_name="cost")
+                    fig_cost = px.bar(
+                        cost_long,
+                        x="role",
+                        y="cost",
+                        color="type",
+                        barmode="group",
+                        labels={"role": _("Role"), "cost": _("Cost (¥)"), "type": _("Type")},
+                    )
+                    st.plotly_chart(fig_cost, use_container_width=True, key="cost_role_chart")
 
                 fp_hire = data_dir / "hire_plan.xlsx"
                 if fp_hire.exists():
@@ -1805,6 +1844,13 @@ def display_shortage_tab(tab_container, data_dir):
                             "staff_h": _("Staff Hours"),
                             "lack_h": _("Shortage Hours"),
                             "excess_h": _("Excess Hours"),
+                            "estimated_excess_cost": _("Excess Cost Est.(¥)"),
+                            "estimated_lack_cost_if_temporary_staff": _(
+                                "Lack Cost if Temp(¥)"
+                            ),
+                            "estimated_lack_penalty_cost": _(
+                                "Lack Penalty Est.(¥)"
+                            ),
                             "working_days_considered": _("Working Days"),
                             "note": _("Note"),
                         }
@@ -1839,6 +1885,37 @@ def display_shortage_tab(tab_container, data_dir):
                         )
                         st.plotly_chart(
                             fig_emp_ex, use_container_width=True, key="excess_emp_chart"
+                        )
+                    cost_cols_emp = [
+                        "estimated_excess_cost",
+                        "estimated_lack_cost_if_temporary_staff",
+                        "estimated_lack_penalty_cost",
+                    ]
+                    if {"employment"}.issubset(df_s_emp.columns) and any(
+                        c in df_s_emp.columns for c in cost_cols_emp
+                    ):
+                        emp_cost_df = df_s_emp[
+                            ["employment"] + [c for c in cost_cols_emp if c in df_s_emp.columns]
+                        ]
+                        emp_cost_long = emp_cost_df.melt(
+                            id_vars="employment", var_name="type", value_name="cost"
+                        )
+                        fig_emp_cost = px.bar(
+                            emp_cost_long,
+                            x="employment",
+                            y="cost",
+                            color="type",
+                            barmode="group",
+                            labels={
+                                "employment": _("Employment"),
+                                "cost": _("Cost (¥)"),
+                                "type": _("Type"),
+                            },
+                        )
+                        st.plotly_chart(
+                            fig_emp_cost,
+                            use_container_width=True,
+                            key="cost_emp_chart",
                         )
                 if "employment_monthly" in xls_emp.sheet_names:
                     df_emp_month = xls_emp.parse("employment_monthly")
