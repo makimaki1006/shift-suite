@@ -23,8 +23,8 @@ import numpy as np
 from .constants import SUMMARY5
 from .utils import _parse_as_date
 
-logger = logging.getLogger(__name__)
-if not logger.handlers:
+log = logging.getLogger(__name__)
+if not log.handlers:
     if not logging.getLogger().hasHandlers():  # pragma: no cover
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
@@ -32,28 +32,28 @@ if not logger.handlers:
                 "[%(asctime)s] %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
             )
         )
-        logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
+        log.addHandler(handler)
+    log.setLevel(logging.DEBUG)
 
 
 def _check_files_exist(out_dir: Path, required: Iterable[str]) -> List[str]:
     missing = [f for f in required if not (out_dir / f).exists()]
     if missing:
-        logger.error(f"Missing upstream outputs: {missing}")
+        log.error(f"Missing upstream outputs: {missing}")
     else:
-        logger.debug("All required upstream files exist.")
+        log.debug("All required upstream files exist.")
     return missing
 
 
 def build_stats(out_dir: str | Path) -> None:
     out_dir_path = Path(out_dir)
     stats_fp = out_dir_path / "stats.xlsx"
-    logger.info(f"=== build_stats start (out_dir={out_dir_path}) ===")
+    log.info(f"=== build_stats start (out_dir={out_dir_path}) ===")
 
     required_files = ["heat_ALL.xlsx", "heatmap.meta.json"]
     missing = _check_files_exist(out_dir_path, required_files)
     if missing:
-        logger.error(
+        log.error(
             f"必要なファイルが見つからないため、stats処理をスキップします: {missing}"
         )
         try:
@@ -61,7 +61,7 @@ def build_stats(out_dir: str | Path) -> None:
                 {"error": [f"Missing required files: {', '.join(missing)}"]}
             ).to_excel(stats_fp, sheet_name="Error_Log", index=False)
         except Exception as e_write_err:
-            logger.error(f"エラーログ用 stats.xlsx の書き出し失敗: {e_write_err}")
+            log.error(f"エラーログ用 stats.xlsx の書き出し失敗: {e_write_err}")
         return
 
     estimated_holidays_set: Set[dt.date] = set()
@@ -77,28 +77,28 @@ def build_stats(out_dir: str | Path) -> None:
                         dt.date.fromisoformat(date_str)
                     )  # ★ ISOフォーマットからdateオブジェクトへ
                 except ValueError:
-                    logger.warning(
+                    log.warning(
                         f"heatmap.meta.json 内の休業日 '{date_str}' のISO日付パースに失敗しました。"
                     )
         if estimated_holidays_set:
-            logger.info(
+            log.info(
                 f"読み込んだ推定休業日 ({len(estimated_holidays_set)}日): {sorted(list(estimated_holidays_set))}"
             )
         else:
-            logger.info(
+            log.info(
                 "heatmap.meta.json に有効な推定休業日の情報はありませんでした。"
             )
     except Exception as e:
-        logger.error(
+        log.error(
             f"{heatmap_meta_path} の処理中にエラー: {e}。休業日考慮なしで処理を続行します。",
             exc_info=True,
         )
 
     try:
         heat_all_df = pd.read_excel(out_dir_path / "heat_ALL.xlsx", index_col=0)
-        logger.debug(f"heat_ALL.xlsx を読み込みました。Shape: {heat_all_df.shape}")
+        log.debug(f"heat_ALL.xlsx を読み込みました。Shape: {heat_all_df.shape}")
     except Exception as e:
-        logger.error(
+        log.error(
             f"heat_ALL.xlsx の読み込み中にエラーが発生しました: {e}", exc_info=True
         )
         try:
@@ -106,7 +106,7 @@ def build_stats(out_dir: str | Path) -> None:
                 stats_fp, sheet_name="Error_Log", index=False
             )
         except Exception as e_write_err_read:
-            logger.error(
+            log.error(
                 f"読み込みエラー時のエラーログ用 stats.xlsx の書き出し失敗: {e_write_err_read}"
             )
         return
@@ -124,29 +124,29 @@ def build_stats(out_dir: str | Path) -> None:
                 slot_hours = (time2_dt - time1_dt).total_seconds() / 3600
                 if slot_hours <= 0:
                     slot_hours = 0.5
-                    logger.warning("スロット幅計算結果0以下、0.5h使用")
+                    log.warning("スロット幅計算結果0以下、0.5h使用")
             else:
                 slot_hours = 0.5
-                logger.warning("有効時間帯インデックス2未満、0.5h使用")
+                log.warning("有効時間帯インデックス2未満、0.5h使用")
         except Exception as e_slot:
             slot_hours = 0.5
-            logger.warning(f"スロット幅計算失敗({e_slot})、0.5h使用")
-    logger.info(f"計算に使用するスロット幅: {slot_hours} 時間")
+            log.warning(f"スロット幅計算失敗({e_slot})、0.5h使用")
+    log.info(f"計算に使用するスロット幅: {slot_hours} 時間")
 
     date_columns_in_heat = [
         str(col) for col in heat_all_df.columns if _parse_as_date(str(col)) is not None
     ]
     if not date_columns_in_heat:
-        logger.error(
+        log.error(
             "heat_ALL.xlsx に有効な日付列が見つかりません。統計処理を中止します。"
         )
         return
 
     num_total_date_columns = len(date_columns_in_heat)
 
-    logger.debug("--- 稼働日数計算デバッグ ---")
-    logger.debug(f"date_columns_in_heat (最初の5件): {date_columns_in_heat[:5]}")
-    logger.debug(
+    log.debug("--- 稼働日数計算デバッグ ---")
+    log.debug(f"date_columns_in_heat (最初の5件): {date_columns_in_heat[:5]}")
+    log.debug(
         f"estimated_holidays_set (読み込み結果, 最初の5件): {list(estimated_holidays_set)[:5]}"
     )
 
@@ -159,21 +159,21 @@ def build_stats(out_dir: str | Path) -> None:
                 if estimated_holidays_set and parsed_date_obj in estimated_holidays_set:
                     is_holiday = True
 
-            logger.debug(
+            log.debug(
                 f"  処理中日付列: '{d_str}' -> パース後: {parsed_date_obj} (型: {type(parsed_date_obj)}) -> 休業日か: {is_holiday}"
             )
             if parsed_date_obj and not is_holiday:
                 actual_working_date_strs.append(d_str)
             elif not parsed_date_obj:
-                logger.warning(
+                log.warning(
                     f"    '{d_str}' は日付にパースできなかったため、稼働日数の計算から除外されます（要確認）。"
                 )
     else:
         actual_working_date_strs = []
 
     num_actual_working_days = len(actual_working_date_strs)
-    logger.debug("--- デバッグ終了 ---")
-    logger.info(
+    log.debug("--- デバッグ終了 ---")
+    log.info(
         f"有効な日付列: {num_total_date_columns} 個。うち、推定休業日を除いた稼働日数: {num_actual_working_days} 日。"
     )
 
@@ -182,11 +182,11 @@ def build_stats(out_dir: str | Path) -> None:
         and num_total_date_columns > 0
         and not estimated_holidays_set
     ):  # ★休業日セットが空なのに稼働日0はおかしい
-        logger.error(
+        log.error(
             "稼働日数が0と計算されましたが、推定された休業日もありません。日付パースまたはデータに問題がある可能性があります。"
         )
     elif num_actual_working_days == 0 and num_total_date_columns > 0:
-        logger.warning(
+        log.warning(
             "全ての分析対象日が休業日と推定されたか、有効な稼働日がありませんでした。平均値の計算結果は0またはNaNになる可能性があります。"
         )
 
@@ -196,7 +196,7 @@ def build_stats(out_dir: str | Path) -> None:
     )
 
     if "need" not in heat_all_df.columns or "upper" not in heat_all_df.columns:
-        logger.error(
+        log.error(
             "'need' または 'upper' 列が heat_ALL.xlsx に見つかりません。処理を中止します。"
         )
         return
@@ -265,13 +265,13 @@ def build_stats(out_dir: str | Path) -> None:
         )
 
     if not daily_metrics_data_for_df:
-        logger.error("日次メトリクスの計算結果が空になりました。処理を中止します。")
+        log.error("日次メトリクスの計算結果が空になりました。処理を中止します。")
         try:
             pd.DataFrame({"error": ["No daily metrics were generated."]}).to_excel(
                 stats_fp, sheet_name="Error_Log", index=False
             )
         except Exception as e_write_err_dm:
-            logger.error(
+            log.error(
                 f"日次メトリクス空エラー時のエラーログ用 stats.xlsx の書き出し失敗: {e_write_err_dm}"
             )
         return
@@ -295,7 +295,7 @@ def build_stats(out_dir: str | Path) -> None:
             )
     daily_metrics_df["is_working_day"] = daily_metrics_df["is_working_day"].astype(int)
 
-    logger.debug(
+    log.debug(
         f"日次メトリクス計算完了 (daily_metrics_df):\n{daily_metrics_df.head().to_string()}"
     )
 
@@ -318,7 +318,7 @@ def build_stats(out_dir: str | Path) -> None:
                         }
                     )
         except Exception as e:  # pragma: no cover - runtime warning only
-            logger.warning(f"night ratio alert calculation failed: {e}")
+            log.warning(f"night ratio alert calculation failed: {e}")
 
     # --- monthly shortage trend ---
     if not daily_metrics_df.empty and "lack_hours" in daily_metrics_df.columns:
@@ -547,11 +547,11 @@ def build_stats(out_dir: str | Path) -> None:
             overall_df["summary_item"], categories=SUMMARY5, ordered=True
         )
         overall_df = overall_df.sort_values("summary_item")
-    logger.debug(f"Overall summary 計算完了:\n{overall_df.head().to_string()}")
+    log.debug(f"Overall summary 計算完了:\n{overall_df.head().to_string()}")
 
     monthly_summary_rows = []
     if daily_metrics_df.empty:
-        logger.warning(
+        log.warning(
             "Monthly_Summary: 日次メトリクスデータが空です。月別集計をスキップします。"
         )
         monthly_df = pd.DataFrame(
@@ -571,7 +571,7 @@ def build_stats(out_dir: str | Path) -> None:
             ]
             total_days_with_data_in_month = len(group_df_for_month_full)
             working_days_in_month_for_avg = len(group_df_for_month_working_days)
-            logger.debug(
+            log.debug(
                 f"Processing Monthly_Summary for month: {month_str_monthly}, total days with data: {total_days_with_data_in_month}, working days: {working_days_in_month_for_avg}"
             )
             denominator_for_monthly_avg_calc = (
@@ -688,9 +688,9 @@ def build_stats(out_dir: str | Path) -> None:
             monthly_df = monthly_df.sort_values(
                 by=["month", "summary_item"]
             ).reset_index(drop=True)
-            logger.debug(f"Monthly summary 計算完了:\n{monthly_df.head().to_string()}")
+            log.debug(f"Monthly summary 計算完了:\n{monthly_df.head().to_string()}")
         else:
-            logger.warning("月別集計の結果が空になりました。")
+            log.warning("月別集計の結果が空になりました。")
             monthly_df = pd.DataFrame({"message": ["Monthly summary data is empty."]})
 
     try:
@@ -711,10 +711,10 @@ def build_stats(out_dir: str | Path) -> None:
                 )
             if not alerts_df.empty:
                 alerts_df.to_excel(writer, sheet_name="alerts", index=False)
-        logger.info(f"✅ stats.xlsx を正常に作成/更新しました: {stats_fp}")
+        log.info(f"✅ stats.xlsx を正常に作成/更新しました: {stats_fp}")
     except Exception as e:
-        logger.error(
+        log.error(
             f"stats.xlsx の書き出し中にエラーが発生しました: {e}", exc_info=True
         )
 
-    logger.info("=== build_stats end ===")
+    log.info("=== build_stats end ===")

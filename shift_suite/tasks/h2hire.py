@@ -32,7 +32,7 @@ def _calc_hire_fte(lack_h: float, monthly_hours_fte: int = MONTHLY_HOURS_FTE) ->
     return int(math.ceil(lack_h / monthly_hours_fte))
 
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def build_hire_plan(
@@ -86,4 +86,4 @@ if __name__ == "__main__":  # CLI テスト用
     p.add_argument("out_dir", type=Path, help="解析 out フォルダ")
     args = p.parse_args()
     fp = build_hire_plan(args.out_dir)
-    logger.info("✅ hire_plan saved: %s", fp.relative_to(Path.cwd()))
+    log.info("✅ hire_plan saved: %s", fp.relative_to(Path.cwd()))

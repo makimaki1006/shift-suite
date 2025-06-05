@@ -4,15 +4,15 @@ import pandas as pd
 from typing import Dict, List, Literal, Union  # Union を追加
 import logging
 
-logger = logging.getLogger(__name__)
-if not logger.handlers:  # ログハンドラが重複しないように設定
+log = logging.getLogger(__name__)
+if not log.handlers:  # ログハンドラが重複しないように設定
     ch = logging.StreamHandler()
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
     )
     ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    logger.setLevel(logging.INFO)
+    log.addHandler(ch)
+    log.setLevel(logging.INFO)
 
 
 # --- 定数 ---
@@ -45,20 +45,20 @@ def get_daily_leave_counts(
                ここでは有給休暇日数としてはカウントしない。
     """
     if long_df.empty or "ds" not in long_df.columns:
-        logger.warning("入力されたlong_dfが空またはds列がありません。")
+        log.warning("入力されたlong_dfが空またはds列がありません。")
         return pd.DataFrame(columns=["date", "staff", "leave_type", "leave_day_flag"])
 
     # 対象の休暇タイプレコードのみ抽出
     # holiday_type列が存在することを確認
     if "holiday_type" not in long_df.columns:
-        logger.error(
+        log.error(
             "long_dfにholiday_type列が存在しません。休暇分析を実行できません。"
         )
         return pd.DataFrame(columns=["date", "staff", "leave_type", "leave_day_flag"])
 
     leave_df = long_df[long_df["holiday_type"].isin(target_leave_types)].copy()
     if leave_df.empty:
-        logger.info("対象となる休暇タイプレコードが見つかりませんでした。")
+        log.info("対象となる休暇タイプレコードが見つかりませんでした。")
         return pd.DataFrame(columns=["date", "staff", "leave_type", "leave_day_flag"])
 
     leave_df["date"] = leave_df["ds"].dt.normalize()  # 日付部分のみに正規化
@@ -120,7 +120,7 @@ def summarize_leave_by_day_count(
         ``num_days_in_period_unit``、 ``avg_leave_days_per_day`` の各列を含む。
     """
     if daily_leave_df.empty or "leave_day_flag" not in daily_leave_df.columns:
-        logger.warning(
+        log.warning(
             "入力されたdaily_leave_dfが空またはleave_day_flag列がありません。"
         )
         return pd.DataFrame()
@@ -176,7 +176,7 @@ def summarize_leave_by_day_count(
     elif period == "date":  # 日別の集計
         df_to_agg["period_unit"] = df_to_agg["date"]
     else:
-        logger.error(f"未対応の集計期間: {period}")
+        log.error(f"未対応の集計期間: {period}")
         return pd.DataFrame()
 
     summary = (
@@ -228,7 +228,7 @@ def analyze_leave_concentration(
         daily_leave_counts_df.empty
         or "total_leave_days" not in daily_leave_counts_df.columns
     ):
-        logger.warning(
+        log.warning(
             "入力されたdaily_leave_counts_dfが空またはtotal_leave_days列がありません。"
         )
         return pd.DataFrame(
@@ -239,7 +239,7 @@ def analyze_leave_concentration(
         daily_leave_counts_df["leave_type"] == leave_type_to_analyze
     ].copy()
     if target_df.empty:
-        logger.info(
+        log.info(
             f"{leave_type_to_analyze} のデータが見つかりません。集中度分析をスキップします。"
         )
         return pd.DataFrame(
@@ -301,7 +301,7 @@ def analyze_both_leave_concentration(
     if daily_leave_counts_df.empty or not required_cols.issubset(
         daily_leave_counts_df.columns
     ):
-        logger.warning(
+        log.warning(
             "Invalid daily_leave_counts_df for analyze_both_leave_concentration"
         )
         return pd.DataFrame(
@@ -468,7 +468,7 @@ def leave_ratio_by_period_and_weekday(daily_summary_df: pd.DataFrame) -> pd.Data
 
 # --- CLI実行のためのダミーコード (app.pyから呼び出す際は不要) ---
 if __name__ == "__main__":
-    logger.setLevel(logging.DEBUG)
+    log.setLevel(logging.DEBUG)
     # ダミーデータ作成
     sample_data = {
         "ds": pd.to_datetime(
@@ -538,9 +538,9 @@ if __name__ == "__main__":
 
     sample_long_df = pd.DataFrame(sample_data)
 
-    logger.info("--- get_daily_leave_counts ---")
+    log.info("--- get_daily_leave_counts ---")
     daily_counts = get_daily_leave_counts(sample_long_df)
-    logger.info(daily_counts)
+    log.info(daily_counts)
     # 期待される出力例 (P有は有給日数にはカウントされない):
     #          date   staff leave_type  leave_day_flag
     # 0  2023-01-01  田中花子         有給               1
@@ -549,38 +549,38 @@ if __name__ == "__main__":
     # 3  2023-01-03  田中花子       希望休               1
     # 4  2023-01-08  山田太郎       希望休               1
 
-    logger.info("\n--- summarize_leave_by_day_count (dayofweek for 希望休) ---")
+    log.info("\n--- summarize_leave_by_day_count (dayofweek for 希望休) ---")
     requested_leave_daily = daily_counts[
         daily_counts["leave_type"] == LEAVE_TYPE_REQUESTED
     ]
     summary_dow_req = summarize_leave_by_day_count(
         requested_leave_daily, period="dayofweek"
     )
-    logger.info(summary_dow_req)
+    log.info(summary_dow_req)
     # 期待される出力例 (日本語曜日):
     #   period_unit leave_type  total_leave_days  num_days_in_period_unit  avg_leave_days_per_day
     # 0        月曜日       希望休                   2                        2                     1.0
     # 1        火曜日       希望休                   1                        1                     1.0
     # 2        日曜日       希望休                   1                        1                     1.0
 
-    logger.info("\n--- summarize_leave_by_day_count (month_period for 有給) ---")
+    log.info("\n--- summarize_leave_by_day_count (month_period for 有給) ---")
     paid_leave_daily = daily_counts[daily_counts["leave_type"] == LEAVE_TYPE_PAID]
     summary_month_period_paid = summarize_leave_by_day_count(
         paid_leave_daily, period="month_period"
     )
-    logger.info(summary_month_period_paid)
+    log.info(summary_month_period_paid)
     # 期待される出力例:
     #     period_unit leave_type  total_leave_days  num_days_in_period_unit  avg_leave_days_per_day
     # 0  月初(1-10日)         有給                   1                        1                     1.0
 
-    logger.info("\n--- analyze_leave_concentration (希望休, threshold=2) ---")
+    log.info("\n--- analyze_leave_concentration (希望休, threshold=2) ---")
     daily_requested_summary = summarize_leave_by_day_count(
         requested_leave_daily, period="date"
     )
     concentration = analyze_leave_concentration(
         daily_requested_summary, concentration_threshold=2
     )
-    logger.info(concentration)
+    log.info(concentration)
     # 期待される出力例 (2023-01-01 が集中日になるはずだが、get_daily_leave_countsの仕様変更でstaffでnuniqueするので、
     # このサンプルでは集中日は出ない。もし日別の総件数なら出る)
     # → get_daily_leave_counts は staff ごとのフラグなので、analyze_leave_concentration に渡す前に
@@ -594,24 +594,24 @@ if __name__ == "__main__":
         .nunique()
         .reset_index(name="total_leave_days")
     )
-    logger.info(
+    log.info(
         "\n--- analyze_leave_concentration (希望休, threshold=1) using re-aggregated data ---"
     )
     concentration_adj = analyze_leave_concentration(
         daily_applicants_requested, concentration_threshold=1
     )
-    logger.info(concentration_adj[concentration_adj["is_concentrated"]])
+    log.info(concentration_adj[concentration_adj["is_concentrated"]])
     #          date  leave_applicants_count  is_concentrated
     # 0 2023-01-01                       1             True # 山田
     # 1 2023-01-02                       1             True # 鈴木
     # 2 2023-01-03                       1             True # 田中
     # 3 2023-01-08                       1             True # 山田
 
-    logger.info("\n--- get_staff_leave_list (山田太郎) ---")
+    log.info("\n--- get_staff_leave_list (山田太郎) ---")
     staff_leaves = get_staff_leave_list(
         sample_long_df, target_leave_types=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID]
     )
-    logger.info(staff_leaves[staff_leaves["staff"] == "山田太郎"])
+    log.info(staff_leaves[staff_leaves["staff"] == "山田太郎"])
     # 期待される出力例 (P有の有給部分は終日ではないためリストされない):
     #          staff role leave_type  leave_date
     # 1  山田太郎    A       希望休  2023-01-01

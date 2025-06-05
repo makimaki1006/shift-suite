@@ -7,16 +7,16 @@ from pathlib import Path
 from typing import Optional, Sequence
 import pandas as pd
 
-logger = logging.getLogger(__name__)
-if not logger.handlers:
+log = logging.getLogger(__name__)
+if not log.handlers:
     handler = logging.StreamHandler()
     formatter = logging.Formatter(
         "[%(asctime)s] %(levelname)s - %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s",
         "%Y-%m-%d %H:%M:%S",  # ★ フォーマット変更
     )
     handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    log.addHandler(handler)
+    log.setLevel(logging.INFO)
 
 _STAFF_ALIASES: Sequence[str] = [
     "staff",
@@ -48,7 +48,7 @@ def _find_staff_column_name(
         # よりスタッフ名らしい列を選ぶためのヒューリスティックを追加検討可能
         # 例: ユニーク数が多く、かつ文字列長がある程度のものなど
         candidate = max(obj_cols, key=lambda c: df[c].nunique())
-        logger.warning(f"[fairness] スタッフ列推定: '{candidate}' を使用。")
+        log.warning(f"[fairness] スタッフ列推定: '{candidate}' を使用。")
         return candidate
     raise KeyError(
         "スタッフを示す列 ('staff', 'name'など) がDataFrameに見つかりません。"
@@ -58,7 +58,7 @@ def _find_staff_column_name(
 def _extract_time_series(df: pd.DataFrame) -> pd.Series:
     # (変更なし - ds列から時刻を抽出する部分は問題ないはず)
     if "ds" in df.columns and pd.api.types.is_datetime64_any_dtype(df["ds"].dtype):
-        logger.debug(
+        log.debug(
             "[fairness] 'ds' 列 (datetime64) から時刻情報を抽出します。"
         )  # ★ DEBUGに変更
         return pd.to_datetime(df["ds"]).dt.time
@@ -68,30 +68,30 @@ def _extract_time_series(df: pd.DataFrame) -> pd.Series:
         if pd.api.types.is_object_dtype(col.dtype) or pd.api.types.is_string_dtype(
             col.dtype
         ):
-            logger.debug(
+            log.debug(
                 "[fairness] 'time' 列 (object/string) から時刻情報をパースします。"
             )
             return pd.to_datetime(col, format="%H:%M", errors="coerce").dt.time
         elif pd.api.types.is_datetime64_any_dtype(col.dtype):
-            logger.debug("[fairness] 'time' 列 (datetime64) から時刻情報を抽出します。")
+            log.debug("[fairness] 'time' 列 (datetime64) から時刻情報を抽出します。")
             return pd.to_datetime(col).dt.time
         elif all(isinstance(x, dt.time) for x in col.dropna()):
-            logger.debug("[fairness] 'time' 列 (datetime.time) を使用します。")
+            log.debug("[fairness] 'time' 列 (datetime.time) を使用します。")
             return col
         else:
-            logger.warning(
+            log.warning(
                 f"[fairness] 'time' 列の型が予期しません: {col.dtype}。00:00と仮定。"
             )
     for cand_col_name in ("datetime", "dt"):
         if cand_col_name in df.columns and pd.api.types.is_datetime64_any_dtype(
             df[cand_col_name].dtype
         ):
-            logger.debug(f"[fairness] '{cand_col_name}' 列から時刻情報を抽出。")
+            log.debug(f"[fairness] '{cand_col_name}' 列から時刻情報を抽出。")
             return pd.to_datetime(df[cand_col_name]).dt.time
     if isinstance(df.index, pd.DatetimeIndex):
-        logger.debug("[fairness] DatetimeIndex から時刻情報を抽出。")
+        log.debug("[fairness] DatetimeIndex から時刻情報を抽出。")
         return df.index.to_series().dt.time
-    logger.warning("[fairness] 時刻情報列が見つからず、全行 00:00 を仮置き。")
+    log.warning("[fairness] 時刻情報列が見つからず、全行 00:00 を仮置き。")
     return pd.Series([dt.time(0, 0)] * len(df), index=df.index)
 
 
@@ -118,7 +118,7 @@ def run_fairness(
     out_dir_path = Path(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)  # ★ 変数名変更
     if long_df.empty:
-        logger.warning("[fairness] 入力DataFrame (long_df) が空。スキップ。")
+        log.warning("[fairness] 入力DataFrame (long_df) が空。スキップ。")
         # 空の場合でもExcelファイルは作成する（引継ぎ資料の動作に合わせる）
         empty_summary = pd.DataFrame(
             columns=[
@@ -159,9 +159,9 @@ def run_fairness(
         actual_staff_col_name = _find_staff_column_name(
             df_for_fairness, staff_col_preference
         )  # ★ 変数名変更
-        logger.info(f"[fairness] スタッフ識別列: '{actual_staff_col_name}'")
+        log.info(f"[fairness] スタッフ識別列: '{actual_staff_col_name}'")
     except KeyError as e:
-        logger.error(f"[fairness] {e} スキップ。")
+        log.error(f"[fairness] {e} スキップ。")
         return
 
     # ★修正箇所: 疲労分析と同様に code 列を優先的に使用して夜勤を判定
@@ -171,7 +171,7 @@ def run_fairness(
     )
 
     if use_code:
-        logger.info("[fairness] 'code' 列から夜勤判定を行います。")
+        log.info("[fairness] 'code' 列から夜勤判定を行います。")
         if "parsed_slots_count" in df_for_fairness.columns:
             working_slots_df = df_for_fairness[
                 df_for_fairness["parsed_slots_count"] > 0
@@ -198,7 +198,7 @@ def run_fairness(
         else:
             df_for_fairness["is_night_shift"] = 0
     elif "parsed_slots_count" not in df_for_fairness.columns:
-        logger.error(
+        log.error(
             "[fairness] long_dfに 'parsed_slots_count' 列が見つかりません。夜勤判定をスキップします。"
         )
         df_for_fairness["is_night_shift"] = 0
@@ -208,7 +208,7 @@ def run_fairness(
         ].copy()
         if not working_slots_df.empty:
             time_series_working = _extract_time_series(working_slots_df)
-            logger.info(
+            log.info(
                 f"[fairness] 夜勤フラグ計算中 (夜勤帯: {night_start_time:%H:%M} - {night_end_time:%H:%M}) 対象レコード数: {len(working_slots_df)}"
             )
             working_slots_df["is_night_shift"] = time_series_working.apply(
@@ -224,13 +224,13 @@ def run_fairness(
                 "is_night_shift"
             ].astype(int)
         else:
-            logger.info(
+            log.info(
                 "[fairness] parsed_slots_count > 0 の勤務記録がないため、夜勤シフトはありません。"
             )
             df_for_fairness["is_night_shift"] = 0
 
     if df_for_fairness.empty or not df_for_fairness["is_night_shift"].any():
-        logger.info("[fairness] 夜勤シフト無しかデータ無。Jain指数1.0で処理。")
+        log.info("[fairness] 夜勤シフト無しかデータ無。Jain指数1.0で処理。")
         unique_staff_list = (
             df_for_fairness[actual_staff_col_name].unique()
             if actual_staff_col_name in df_for_fairness
@@ -336,7 +336,7 @@ def run_fairness(
                 }
             )
             meta_df_before.to_excel(wb_before, sheet_name="meta_summary", index=False)
-        logger.info(
+        log.info(
             f"[fairness] fairness_before.xlsx 保存 (Jain: {jain_index_val:.3f})"
         )
 
@@ -353,6 +353,6 @@ def run_fairness(
                 }
             )
             meta_df_after.to_excel(wa_after, sheet_name="meta_summary", index=False)
-        logger.info(f"[fairness] fairness_after.xlsx 保存 (Jain: {jain_index_val:.3f})")
+        log.info(f"[fairness] fairness_after.xlsx 保存 (Jain: {jain_index_val:.3f})")
     except Exception as e:
-        logger.error(f"[fairness] Excel書出エラー: {e}", exc_info=True)
+        log.error(f"[fairness] Excel書出エラー: {e}", exc_info=True)

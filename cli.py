@@ -10,7 +10,7 @@ from shift_suite.h2hire import build_hire_plan as build_hire_plan_from_shortage
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.utils import safe_make_archive
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -59,14 +59,14 @@ def main():
         try:
             holiday_dates_global = _read_holiday_file(fp_hg)
         except Exception as e:
-            logger.error("Failed to read holidays from %s: %s", fp_hg, e)
+            log.error("Failed to read holidays from %s: %s", fp_hg, e)
 
     if args.holidays_local:
         fp_hl = Path(args.holidays_local).expanduser()
         try:
             holiday_dates_local = _read_holiday_file(fp_hl)
         except Exception as e:
-            logger.error("Failed to read holidays from %s: %s", fp_hl, e)
+            log.error("Failed to read holidays from %s: %s", fp_hl, e)
     shutil.rmtree(out, ignore_errors=True)
 
     # Determine shift sheet names by excluding the master sheet
@@ -104,18 +104,18 @@ def main():
     try:
         build_hire_plan_from_shortage(out, safety_factor=args.safety_factor)
     except Exception as e:
-        logger.error("hire_plan generation failed: %s", e)
+        log.error("hire_plan generation failed: %s", e)
     else:
         try:
             analyze_cost_benefit(out)
         except Exception as e:
-            logger.error("cost-benefit analysis failed: %s", e)
+            log.error("cost-benefit analysis failed: %s", e)
     summary.build_staff_stats(long, out)
 
     if args.zip:
         safe_make_archive(out, out.with_suffix(".zip"))
 
-    logger.info("✔ CLI done → %s", out)
+    log.info("✔ CLI done → %s", out)
 
 
 if __name__ == "__main__":
