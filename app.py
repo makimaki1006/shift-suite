@@ -2624,6 +2624,35 @@ def display_hireplan_tab(tab_container, data_dir):
             st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
 
+def display_summary_report_tab(tab_container, data_dir):
+    """Show auto-generated shortage summary report."""
+
+    with tab_container:
+        st.subheader(_("Summary Report"))
+        report_files = sorted(Path(data_dir).glob("OverShortage_SummaryReport_*.md"))
+        latest = report_files[-1] if report_files else None
+
+        if st.button(_("Generate Summary Report")):
+            try:
+                from shift_suite.tasks.report_generator import generate_summary_report
+
+                latest = generate_summary_report(Path(data_dir))
+                st.success(_("Report generated"))
+            except Exception as e:
+                log_and_display_error("summary report generation failed", e)
+
+        if latest and latest.exists():
+            md_text = latest.read_text(encoding="utf-8")
+            st.markdown(md_text)
+            with open(latest, "rb") as f:
+                st.download_button(
+                    label=_("Download Report (Markdown)"),
+                    data=f,
+                    file_name=latest.name,
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
+
 def load_leave_results_from_dir(data_dir: Path) -> dict:
     """Wrapper for :func:`dashboard.load_leave_results_from_dir`."""
 
@@ -2915,6 +2944,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Leave Analysis",
                 "Cost Sim",
                 "Hire Plan",
+                "Summary Report",
                 "PPT Report",
             ]
             tab_labels_dash = [_(key) for key in tab_keys_en_dash]
@@ -2929,6 +2959,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Leave Analysis": display_leave_analysis_tab,
                 "Cost Sim": display_costsim_tab,
                 "Hire Plan": display_hireplan_tab,
+                "Summary Report": display_summary_report_tab,
                 "PPT Report": display_ppt_tab,
             }
             for i, key in enumerate(tab_keys_en_dash):
@@ -3011,6 +3042,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         "Leave Analysis",
         "Cost Sim",
         "Hire Plan",
+        "Summary Report",
         "PPT Report",
     ]
     tab_labels_dash = [_(key) for key in tab_keys_en_dash]
@@ -3027,6 +3059,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Leave Analysis": display_leave_analysis_tab,
             "Cost Sim": display_costsim_tab,
             "Hire Plan": display_hireplan_tab,
+            "Summary Report": display_summary_report_tab,
             "PPT Report": display_ppt_tab,
         }
 
