@@ -40,6 +40,7 @@ def load_log(csv_path: Path | str) -> pd.DataFrame:
 
 def save_log(df: pd.DataFrame, csv_path: Path | str, *, mode: str = "overwrite") -> Path:
     csv_fp = Path(csv_path)
+    csv_fp.parent.mkdir(parents=True, exist_ok=True)
     if mode == "append" and csv_fp.exists():
         existing = pd.read_csv(csv_fp)
         df = pd.concat([existing, df], ignore_index=True)
