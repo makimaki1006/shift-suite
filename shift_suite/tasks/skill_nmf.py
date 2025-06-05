@@ -1,10 +1,13 @@
 """shift_suite.skill_nmf – 潜在スキル推定 (NMF)  v0.2"""
 
 from __future__ import annotations
-import pandas as pd
+
 from pathlib import Path
+
+import pandas as pd
 from sklearn.decomposition import NMF
-from .utils import save_df_xlsx, log
+
+from .utils import log, save_df_xlsx
 
 
 def build_skill_matrix(long_df: pd.DataFrame, out_dir: Path):

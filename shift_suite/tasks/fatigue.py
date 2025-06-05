@@ -1,9 +1,12 @@
 """shift_suite.fatigue – 疲労リスクスコアリング."""
 
 from __future__ import annotations
-import pandas as pd
+
 from pathlib import Path
-from .utils import save_df_xlsx, log
+
+import pandas as pd
+
+from .utils import log, save_df_xlsx
 
 
 def _features(long_df: pd.DataFrame) -> pd.DataFrame:

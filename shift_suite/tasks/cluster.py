@@ -1,11 +1,14 @@
 """shift_suite.cluster – 職員タイプ自動クラスタリング (K-Means)"""
 
 from __future__ import annotations
-import pandas as pd
+
 from pathlib import Path
-from sklearn.preprocessing import StandardScaler
+
+import pandas as pd
 from sklearn.cluster import KMeans
-from .utils import save_df_xlsx, log
+from sklearn.preprocessing import StandardScaler
+
+from .utils import log, save_df_xlsx
 
 
 def cluster_staff(long_df: pd.DataFrame, out_dir: Path, k: int = 3):

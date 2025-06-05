@@ -9,8 +9,8 @@ from pathlib import Path
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches
-from shift_suite.i18n import translate as _
 
+from shift_suite.i18n import translate as _
 
 log = logging.getLogger(__name__)
 

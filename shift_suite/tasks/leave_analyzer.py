@@ -1,8 +1,10 @@
 # shift_suite/tasks/leave_analyzer.py
 from __future__ import annotations
-import pandas as pd
-from typing import Dict, List, Literal, Union  # Union を追加
+
 import logging
+from typing import Dict, List, Literal, Union  # Union を追加
+
+import pandas as pd
 
 log = logging.getLogger(__name__)
 if not log.handlers:  # ログハンドラが重複しないように設定

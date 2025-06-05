@@ -11,6 +11,7 @@ hire_plan.py  ── “必要な採用人数” を算出するユーティリ�
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
 import pandas as pd

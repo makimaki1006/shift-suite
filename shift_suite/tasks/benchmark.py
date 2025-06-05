@@ -6,10 +6,13 @@
 """
 
 from __future__ import annotations
-import pandas as pd
-from pathlib import Path
+
 import json
-from .utils import log, derive_min_staff
+from pathlib import Path
+
+import pandas as pd
+
+from .utils import derive_min_staff, log
 
 
 def _meta(p: Path) -> dict:

@@ -12,6 +12,7 @@ cost_benefit.py ── “採用 / 派遣 / 漏れ (罰金)” コストを試�
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
 import pandas as pd

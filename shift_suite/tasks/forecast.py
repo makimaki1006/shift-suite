@@ -21,11 +21,11 @@ import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
-from shift_suite.config import get as get_config
-
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+
+from shift_suite.config import get as get_config
 
 from .utils import log, save_df_xlsx, write_meta
 

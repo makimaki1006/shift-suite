@@ -1,10 +1,10 @@
 from .analyzers import (
-    LeaveAnalyzer,
-    RestTimeAnalyzer,
-    WorkPatternAnalyzer,
     AttendanceBehaviorAnalyzer,
     CombinedScoreCalculator,
+    LeaveAnalyzer,
     LowStaffLoadAnalyzer,
+    RestTimeAnalyzer,
+    WorkPatternAnalyzer,
 )
 from .shortage_factor_analyzer import ShortageFactorAnalyzer
 
