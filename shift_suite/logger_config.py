@@ -22,7 +22,10 @@ def configure_logging(level: int = logging.INFO) -> None:
 
     handler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
+        (
+            "%(asctime)s [%(levelname)s] %(name)s "
+            "[%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
+        )
     )
     handler.setFormatter(formatter)
     root = logging.getLogger()

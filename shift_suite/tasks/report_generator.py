@@ -78,8 +78,8 @@ def generate_summary_report(out_dir: Path | str) -> Path:
             if not date_cols.empty:
                 min_date = date_cols.min().date().isoformat()
                 max_date = date_cols.max().date().isoformat()
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Failed to load heat map '%s': %s", heat_fp, e)
 
     lack_h_total = float(role_df.get("lack_h", pd.Series()).sum())
     excess_h_total = float(role_df.get("excess_h", pd.Series()).sum())
