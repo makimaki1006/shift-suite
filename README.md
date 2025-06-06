@@ -22,6 +22,11 @@ pytest -q
 
 Once the tests pass you can explore the modules described below.
 
+## Logging
+
+All commands log to ``shift_suite.log`` in the current directory in addition to
+printing to the console.  Set ``SHIFT_SUITE_LOG_FILE`` to override the path.
+
 ## Main modules
 
 - **`app.py`** – Launches the Streamlit based GUI.  The application guides you
