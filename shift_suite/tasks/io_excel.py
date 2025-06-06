@@ -208,8 +208,17 @@ def load_shift_patterns(
 
 
 def _parse_day_with_year_month(col_name: str, year: int, month: int) -> dt.date | None:
-    """Parse column names like '1' or '1(日)' using provided year-month."""
-    m = re.match(r"(\d{1,2})", str(col_name).strip())
+    """Parse column names like '1' or '1(日)' using provided year-month.
+
+    If ``col_name`` already contains a full date string (e.g. ``2025-02-01`` or
+    ``2025-02-01 00:00:00``) try to parse that first. This prevents mis-parsing
+    when the column header starts with a year.
+    """
+    parsed_full = _parse_as_date(col_name)
+    if parsed_full:
+        return parsed_full
+
+    m = re.match(r"^\s*(\d{1,2})(?:\D.*)?$", str(col_name).strip())
     if not m:
         return None
     day = int(m.group(1))
