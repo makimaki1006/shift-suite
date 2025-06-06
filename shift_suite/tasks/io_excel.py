@@ -379,7 +379,25 @@ def ingest_excel(
                 shift_code_raw = row_data.get(col_name_original_str, "")
                 code_val = _normalize(str(shift_code_raw))
 
-                if code_val in ("", "nan", "NaN") or code_val in DOW_TOKENS:
+                if code_val in ("", "nan", "NaN"):
+                    date_val_parsed_dt_date = date_col_map.get(str(col_name_original_str))
+                    if date_val_parsed_dt_date is not None:
+                        record_datetime_for_zero_slot = dt.datetime.combine(
+                            date_val_parsed_dt_date, dt.time(0, 0)
+                        )
+                        records.append(
+                            {
+                                "ds": record_datetime_for_zero_slot,
+                                "staff": staff,
+                                "role": role,
+                                "employment": employment,
+                                "code": "",
+                                "holiday_type": DEFAULT_HOLIDAY_TYPE,
+                                "parsed_slots_count": 0,
+                            }
+                        )
+                    continue
+                if code_val in DOW_TOKENS:
                     continue
                 if code_val not in code2slots:
                     if code_val not in unknown_codes:
