@@ -58,6 +58,12 @@ build_demand_series = _lazy_func("shift_suite.tasks.forecast", "build_demand_ser
 forecast_need = _lazy_func("shift_suite.tasks.forecast", "forecast_need")
 learn_roster = _lazy_func("shift_suite.tasks.rl", "learn_roster")
 build_staff_stats = _lazy_func("shift_suite.tasks.summary", "build_staff_stats")
+weekday_timeslot_summary = _lazy_func(
+    "shift_suite.tasks.shortage", "weekday_timeslot_summary"
+)
+monthperiod_timeslot_summary = _lazy_func(
+    "shift_suite.tasks.shortage", "monthperiod_timeslot_summary"
+)
 
 sys.modules["shift_suite.build_stats"] = import_module("shift_suite.tasks.build_stats")
 
@@ -78,4 +84,6 @@ __all__ = [
     "forecast_need",
     "learn_roster",
     "build_staff_stats",
+    "weekday_timeslot_summary",
+    "monthperiod_timeslot_summary",
 ]

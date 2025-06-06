@@ -818,3 +818,87 @@ def merge_shortage_leave(
 
     out_fp = save_df_xlsx(long_df, out_dir_path / out_excel, index=False)
     return out_fp
+
+
+def _summary_by_period(
+    df: pd.DataFrame, *, period: str
+) -> pd.DataFrame:
+    """Return average counts by *period* and time slot.
+
+    Parameters
+    ----------
+    df:
+        DataFrame loaded from ``shortage_time.xlsx`` or ``excess_time.xlsx``.
+    period:
+        ``"weekday"`` or ``"month_period"``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated average counts per time slot.
+    """
+
+    date_cols = [c for c in df.columns if _parse_as_date(str(c)) is not None]
+    if not date_cols:
+        return pd.DataFrame(columns=[period, "timeslot", "avg_count"])
+
+    data = df[date_cols].copy()
+    data.columns = pd.to_datetime(data.columns)
+    long = (
+        data.reset_index()
+        .melt(id_vars=data.index.name, var_name="date", value_name="count")
+        .rename(columns={data.index.name: "timeslot"})
+    )
+
+    long["date"] = pd.to_datetime(long["date"])
+
+    if period == "weekday":
+        day_name_map = {
+            "Monday": "月曜日",
+            "Tuesday": "火曜日",
+            "Wednesday": "水曜日",
+            "Thursday": "木曜日",
+            "Friday": "金曜日",
+            "Saturday": "土曜日",
+            "Sunday": "日曜日",
+        }
+        long[period] = long["date"].dt.day_name().map(day_name_map)
+        order = list(day_name_map.values())
+    elif period == "month_period":
+        def _mp(day_val: int) -> str:
+            if day_val <= 10:
+                return "月初(1-10日)"
+            if day_val <= 20:
+                return "月中(11-20日)"
+            return "月末(21-末日)"
+
+        long[period] = long["date"].dt.day.apply(_mp)
+        order = ["月初(1-10日)", "月中(11-20日)", "月末(21-末日)"]
+    else:  # pragma: no cover - invalid option
+        raise ValueError("period must be 'weekday' or 'month_period'")
+
+    grouped = (
+        long.groupby([period, "timeslot"], observed=False)["count"]
+        .mean()
+        .reset_index(name="avg_count")
+    )
+    grouped[period] = pd.Categorical(grouped[period], categories=order, ordered=True)
+    return grouped.sort_values([period, "timeslot"]).reset_index(drop=True)
+
+
+def weekday_timeslot_summary(
+    out_dir: Path | str, *, excel: str = "shortage_time.xlsx"
+) -> pd.DataFrame:
+    """Return average shortage counts by weekday and time slot."""
+
+    df = pd.read_excel(Path(out_dir) / excel, index_col=0)
+    return _summary_by_period(df, period="weekday")
+
+
+def monthperiod_timeslot_summary(
+    out_dir: Path | str, *, excel: str = "shortage_time.xlsx"
+) -> pd.DataFrame:
+    """Return average shortage counts by month period and time slot."""
+
+    df = pd.read_excel(Path(out_dir) / excel, index_col=0)
+    return _summary_by_period(df, period="month_period")
