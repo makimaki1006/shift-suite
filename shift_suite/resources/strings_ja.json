@@ -203,5 +203,16 @@
   "Select date for factor analysis": "要因分析対象日付を選択",
   "Select time slot for factor analysis": "要因分析対象時間帯を選択",
   "Top factors": "主要因トップ",
-  "Use the Excel Import Wizard to select sheets": "Excel インポートウィザードでシートを選択してください"
+  "Use the Excel Import Wizard to select sheets": "Excel インポートウィザードでシートを選択してください",
+  "Metric": "指標",
+  "Total staff": "勤務予定人数",
+  "Leave applicants": "希望休取得者数",
+  "Non-leave staff": "非休暇者数",
+  "Leave ratio": "休暇比率",
+  "Leave ratio not available.": "休暇比率を計算できません",
+  "Leave type": "休暇種別",
+  "Month period": "月期間",
+  "Day": "曜日",
+  "Selected staff": "選択されたスタッフ",
+  "Exceeds threshold": "閾値超過"
 }
