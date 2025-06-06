@@ -1,19 +1,33 @@
 from __future__ import annotations
 
 import json
+import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+from .logger_config import configure_logging
+
+
+configure_logging()
+log = logging.getLogger(__name__)
 
 _CONFIG_PATH = Path(__file__).with_name("config.json")
 
 
 @lru_cache(maxsize=1)
 def _load_config() -> dict[str, Any]:
+    if not _CONFIG_PATH.exists():
+        log.warning("Configuration file %s not found", _CONFIG_PATH)
+        return {}
     try:
         with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except json.JSONDecodeError as e:
+        log.error("Failed to parse JSON configuration %s: %s", _CONFIG_PATH, e)
+        return {}
+    except Exception as e:  # pragma: no cover - fallback for unexpected errors
+        log.error("Failed to load configuration %s: %s", _CONFIG_PATH, e)
         return {}
 
 
