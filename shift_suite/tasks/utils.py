@@ -318,9 +318,17 @@ def _parse_as_date(column_name: Any) -> dt.date | None:
         # SUMMARY5 に含まれる列名は日付ではないと明確に判定
         if column_name.lower() in [s.lower() for s in SUMMARY5]:
             return None
+
+        # まずは YYYY-MM-DD のような部分文字列を正規表現で抽出してみる
+        m = re.search(r"(\d{4}-\d{1,2}-\d{1,2})", column_name)
+        if m:
+            try:
+                return pd.to_datetime(m.group(1), errors="raise").date()
+            except (ValueError, TypeError, pd.errors.ParserError):
+                pass
+
         try:
-            # "YYYY-MM-DD HH:MM:SS"のような文字列も考慮し、日付部分のみを抽出
-            # または "YYYY-MM-DD"
+            # "YYYY-MM-DD HH:MM:SS" のような文字列を想定し、空白で分割して日付部分を抽出
             return pd.to_datetime(column_name.split(" ")[0], errors="raise").date()
         except (ValueError, TypeError, pd.errors.ParserError):
             # Excel日付シリアル値のような文字列 "45321.0" や "45321" もここで処理できるか試す
@@ -329,15 +337,11 @@ def _parse_as_date(column_name: Any) -> dt.date | None:
                     excel_serial = float(column_name)
                 else:  # "45321"
                     excel_serial = int(column_name)
-                if (
-                    excel_serial > 0 and excel_serial < 200000
-                ):  # Excelシリアルの妥当な範囲を広めに設定
-                    return (
-                        datetime(1899, 12, 30) + timedelta(days=excel_serial)
-                    ).date()
+                if 0 < excel_serial < 200000:  # 妥当な範囲
+                    return (datetime(1899, 12, 30) + timedelta(days=excel_serial)).date()
             except ValueError:
                 pass  # 文字列から数値への変換失敗
-        return None  # 上記でパースできなければNone
+        return None  # 上記でパースできなければ None
 
     if isinstance(column_name, (int, float)):  # Excelシリアル値
         try:

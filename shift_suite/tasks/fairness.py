@@ -83,7 +83,7 @@ def run_fairness(
     out_dir_path = Path(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
     
-    log.info(f"[fairness] run_fairness start")
+    log.info("[fairness] run_fairness start")
     log.info(f"[fairness] long_df shape: {long_df.shape}")
     log.info(f"[fairness] out_dir_path: {out_dir_path}")
     log.debug(f"[fairness] long_df columns: {list(long_df.columns)}")
