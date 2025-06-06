@@ -8,9 +8,7 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 
-def _find_staff_column_name(
-    df: pd.DataFrame, preference: Optional[str] = None
-) -> str:
+def _find_staff_column_name(df: pd.DataFrame, preference: Optional[str] = None) -> str:
     """
     スタッフを識別する列名を探す。
     preference が指定されていればそれを優先、なければ 'staff' を探す。
@@ -65,11 +63,11 @@ def calculate_jain_index(values):
     if len(values) == 0:
         return 0.0
     sum_values = values.sum()
-    sum_squares = (values ** 2).sum()
+    sum_squares = (values**2).sum()
     n = len(values)
     if sum_squares == 0:
         return 1.0
-    return (sum_values ** 2) / (n * sum_squares)
+    return (sum_values**2) / (n * sum_squares)
 
 
 def run_fairness(
@@ -82,14 +80,16 @@ def run_fairness(
 ) -> None:
     out_dir_path = Path(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
-    
+
     log.info("[fairness] run_fairness start")
     log.info(f"[fairness] long_df shape: {long_df.shape}")
     log.info(f"[fairness] out_dir_path: {out_dir_path}")
     log.debug(f"[fairness] long_df columns: {list(long_df.columns)}")
     log.debug(f"[fairness] long_df sample data:\n{long_df.head()}")
-    log.debug(f"[fairness] unique staff members: {long_df['staff'].nunique() if 'staff' in long_df.columns else 'N/A'}")
-    
+    log.debug(
+        f"[fairness] unique staff members: {long_df['staff'].nunique() if 'staff' in long_df.columns else 'N/A'}"
+    )
+
     if long_df.empty:
         log.warning("[fairness] 入力DataFrame (long_df) が空。スキップ。")
         empty_summary = pd.DataFrame(
@@ -226,9 +226,7 @@ def run_fairness(
             }
         ).set_index(actual_staff_col_name)
         summary_df["total_slots"] = total_slots_series
-        summary_df = summary_df.fillna(
-            {"total_slots": 0}
-        ).reset_index()
+        summary_df = summary_df.fillna({"total_slots": 0}).reset_index()
         summary_df["night_ratio"] = 0.0
         jain_index_val = 1.0
     else:
@@ -279,7 +277,9 @@ def run_fairness(
     jain_total_slots = calculate_jain_index(summary_df["total_slots"])
     jain_index_val = jain_night_ratio
 
-    log.debug(f"[fairness] Jain指数詳細 - night_ratio: {jain_night_ratio:.3f}, night_slots: {jain_night_slots:.3f}, total_slots: {jain_total_slots:.3f}")
+    log.debug(
+        f"[fairness] Jain指数詳細 - night_ratio: {jain_night_ratio:.3f}, night_slots: {jain_night_slots:.3f}, total_slots: {jain_total_slots:.3f}"
+    )
     log.debug(f"[fairness] summary_df shape: {summary_df.shape}")
     log.debug(f"[fairness] summary_df sample:\n{summary_df.head()}")
 

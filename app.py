@@ -228,7 +228,10 @@ def run_import_wizard() -> None:
             try:
                 xls = pd.ExcelFile(default_excel)
             except Exception as e:  # noqa: BLE001
-                log_and_display_error("Excel\u30d5\u30a1\u30a4\u30eb\u306e\u81ea\u52d5\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f", e)
+                log_and_display_error(
+                    "Excel\u30d5\u30a1\u30a4\u30eb\u306e\u81ea\u52d5\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f",
+                    e,
+                )
             else:
                 default_path = Path(default_excel)
                 st.session_state.wizard_excel_path = str(default_path)

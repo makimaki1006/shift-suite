@@ -389,7 +389,9 @@ def ingest_excel(
                 code_val = _normalize(str(shift_code_raw))
 
                 if code_val in ("", "nan", "NaN"):
-                    date_val_parsed_dt_date = date_col_map.get(str(col_name_original_str))
+                    date_val_parsed_dt_date = date_col_map.get(
+                        str(col_name_original_str)
+                    )
                     if date_val_parsed_dt_date is not None:
                         record_datetime_for_zero_slot = dt.datetime.combine(
                             date_val_parsed_dt_date, dt.time(0, 0)

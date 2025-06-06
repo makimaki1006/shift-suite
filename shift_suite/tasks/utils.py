@@ -338,7 +338,9 @@ def _parse_as_date(column_name: Any) -> dt.date | None:
                 else:  # "45321"
                     excel_serial = int(column_name)
                 if 0 < excel_serial < 200000:  # 妥当な範囲
-                    return (datetime(1899, 12, 30) + timedelta(days=excel_serial)).date()
+                    return (
+                        datetime(1899, 12, 30) + timedelta(days=excel_serial)
+                    ).date()
             except ValueError:
                 pass  # 文字列から数値への変換失敗
         return None  # 上記でパースできなければ None
