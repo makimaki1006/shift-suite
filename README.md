@@ -39,6 +39,9 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
   numbers from shift records.
 - **`shortage`** – Computes staff shortages based on heatmap data and outputs
   summary spreadsheets.
+- **`weekday_timeslot_summary` / `monthperiod_timeslot_summary`** –
+  Return average shortage counts by weekday or month period for each time slot
+  so you can create heatmaps highlighting recurring issues.
 - **`build_stats`** – Aggregates KPIs and produces overall and monthly
   statistics.
  - **`forecast`** – Builds demand series and forecasts future staffing needs via
