@@ -64,6 +64,10 @@ weekday_timeslot_summary = _lazy_func(
 monthperiod_timeslot_summary = _lazy_func(
     "shift_suite.tasks.shortage", "monthperiod_timeslot_summary"
 )
+calculate_daily_cost = _lazy_func(
+    "shift_suite.tasks.daily_cost",
+    "calculate_daily_cost",
+)
 
 sys.modules["shift_suite.build_stats"] = import_module("shift_suite.tasks.build_stats")
 
@@ -86,4 +90,5 @@ __all__ = [
     "build_staff_stats",
     "weekday_timeslot_summary",
     "monthperiod_timeslot_summary",
+    "calculate_daily_cost",
 ]
