@@ -8,7 +8,15 @@ def test_load_log_missing_file(tmp_path: Path):
     fp = tmp_path / "over_shortage_log.csv"
     df = load_log(fp)
     assert df.empty
-    assert set(df.columns) == {"date", "time", "type", "count", "reason", "staff", "memo"}
+    assert set(df.columns) == {
+        "date",
+        "time",
+        "type",
+        "count",
+        "reason",
+        "staff",
+        "memo",
+    }
 
 
 def test_load_log_invalid_columns(tmp_path: Path):
@@ -16,5 +24,12 @@ def test_load_log_invalid_columns(tmp_path: Path):
     pd.DataFrame({"foo": [1], "bar": [2]}).to_csv(fp, index=False)
     df = load_log(fp)
     assert df.empty
-    assert set(df.columns) == {"date", "time", "type", "count", "reason", "staff", "memo"}
-
+    assert set(df.columns) == {
+        "date",
+        "time",
+        "type",
+        "count",
+        "reason",
+        "staff",
+        "memo",
+    }
