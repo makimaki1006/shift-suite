@@ -33,10 +33,33 @@ def list_events(out_dir: Path | str) -> pd.DataFrame:
 
 
 def load_log(csv_path: Path | str) -> pd.DataFrame:
+    """Load the shortage/excess log CSV with graceful fallback.
+
+    If the file is missing or lacks the expected columns, an empty DataFrame
+    with the standard schema is returned. The ``date`` column is parsed to
+    ``datetime.date`` when present.
+    """
+
     csv_fp = Path(csv_path)
+    columns = ["date", "time", "type", "count", "reason", "staff", "memo"]
+
     if csv_fp.exists():
-        return pd.read_csv(csv_fp)
-    return pd.DataFrame()
+        try:
+            df = pd.read_csv(csv_fp)
+        except Exception:
+            return pd.DataFrame(columns=columns)
+
+        if not set({"date", "time", "type"}).issubset(df.columns):
+            return pd.DataFrame(columns=columns)
+
+        df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+        # Ensure all expected columns exist
+        for col in columns:
+            if col not in df.columns:
+                df[col] = pd.NA
+        return df[columns]
+
+    return pd.DataFrame(columns=columns)
 
 
 def save_log(
