@@ -1,5 +1,5 @@
 # shift_suite / tasks / io_excel.py
-# v2.7.2 (日付パースを dtype=str 前提のv2.6.3ベースに再々修正 + holiday_type 機能)
+# v2.8.0 (休暇コード明示的処理対応版)
 # =============================================================================
 # (中略：目的、主要修正などは適宜更新)
 # =============================================================================
@@ -52,10 +52,23 @@ SHEET_COL_ALIAS = {
 }
 DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}
 
+# ★新規追加: 休暇コードの明示的定義
+LEAVE_CODES = {
+    "×": "希望休",
+    "休": "施設休",
+    "有": "有給",
+    "研": "研修",
+    "欠": "欠勤",
+    "特": "特休",
+    "組": "組織休",
+    "P有": "有給",  # 部分有給も含む
+}
+
+# 既存のキーワードベース判定も残す
 HOLIDAY_TYPE_KEYWORDS_MAP = {
     "有給": ["有給", "有休", "P有"],
     "希望休": ["希望休"],
-    "その他休暇": ["休暇", "休み", "組織休", "施設休", "特休", "欠勤"],
+    "その他休暇": ["休暇", "休み", "組織休", "施設休", "特休", "欠勤", "研修"],
 }
 DEFAULT_HOLIDAY_TYPE = "通常勤務"
 
@@ -124,8 +137,17 @@ def _expand(
     return slots
 
 
+def _determine_holiday_type_from_code(code: str) -> str | None:
+    """
+    ★新規追加: コード自体から休暇タイプを判定
+    休暇コードの場合は対応する休暇タイプを返し、通常勤務の場合はNoneを返す
+    """
+    code_normalized = _normalize(code)
+    return LEAVE_CODES.get(code_normalized)
+
+
 def _determine_holiday_type(remarks_str: str) -> str:
-    # (v2.7.1案のロジックを流用)
+    """備考欄から休暇タイプを判定（従来ロジック）"""
     if pd.isna(remarks_str) or remarks_str == "":
         return DEFAULT_HOLIDAY_TYPE
     for holiday_name, keywords in HOLIDAY_TYPE_KEYWORDS_MAP.items():
@@ -133,6 +155,12 @@ def _determine_holiday_type(remarks_str: str) -> str:
             if keyword in remarks_str:
                 return holiday_name
     return DEFAULT_HOLIDAY_TYPE
+
+
+def _is_leave_code(code: str) -> bool:
+    """★新規追加: コードが休暇関連かどうかを判定"""
+    code_normalized = _normalize(code)
+    return code_normalized in LEAVE_CODES
 
 
 def load_shift_patterns(
@@ -174,21 +202,38 @@ def load_shift_patterns(
             continue
         st_original = r.get("start", "")
         ed_original = r.get("end", "")
-        st_hm, ed_hm = _to_hhmm(st_original), _to_hhmm(ed_original)
-        log.debug(
-            f"処理中の勤務コード: 行{r_idx + 2}, code='{code}', start='{st_original}', end='{ed_original}'"
-        )
-        log.debug(f"時刻変換結果: {st_original} → {st_hm}, {ed_original} → {ed_hm}")
-        slots = []
-        if st_hm and ed_hm:
-            slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
-            log.debug(f"スロット展開: {code} → {len(slots)}個のスロット: {slots}")
-        elif st_hm or ed_hm:
-            log.warning(
-                f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')"
-            )
         remarks_val = r.get("remarks", "")
-        holiday_type = _determine_holiday_type(str(remarks_val))
+
+        # ★重要: 休暇コードかどうかを最初に判定
+        is_leave = _is_leave_code(code)
+
+        if is_leave:
+            # 休暇コードの場合、時間設定に関係なく強制的に0スロット
+            log.info(f"休暇コード '{code}' を検出: 勤務時間を0に設定")
+            st_hm = ed_hm = None
+            slots = []
+            # コードから休暇タイプを判定
+            holiday_type = _determine_holiday_type_from_code(code) or "その他休暇"
+        else:
+            # 通常勤務コードの場合、時刻を処理
+            st_hm, ed_hm = _to_hhmm(st_original), _to_hhmm(ed_original)
+            log.debug(
+                f"処理中の勤務コード: 行{r_idx + 2}, code='{code}', start='{st_original}', end='{ed_original}'"
+            )
+            log.debug(f"時刻変換結果: {st_original} → {st_hm}, {ed_original} → {ed_hm}")
+
+            slots = []
+            if st_hm and ed_hm:
+                slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
+                log.debug(f"スロット展開: {code} → {len(slots)}個のスロット: {slots}")
+            elif st_hm or ed_hm:
+                log.warning(
+                    f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')"
+                )
+
+            # 通常勤務の場合、備考から休暇タイプを判定
+            holiday_type = _determine_holiday_type(str(remarks_val))
+
         wt_rows.append(
             {
                 "code": code,
@@ -199,12 +244,21 @@ def load_shift_patterns(
                 "parsed_slots_count": len(slots),
                 "remarks_original": remarks_val,
                 "holiday_type": holiday_type,
+                "is_leave_code": is_leave,  # ★デバッグ用フラグ
             }
         )
         code2slots[code] = slots
     log.info(
         f"勤務区分シート '{sheet_name}' から {len(code2slots)} 件の勤務パターンを読み込みました。"
     )
+
+    # 休暇コードの処理結果をログ出力
+    leave_codes_found = [row for row in wt_rows if row.get("is_leave_code")]
+    if leave_codes_found:
+        log.info("検出された休暇コード:")
+        for row in leave_codes_found:
+            log.info(f"  {row['code']}: {row['holiday_type']} (スロット数: {row['parsed_slots_count']})")
+
     return pd.DataFrame(wt_rows), code2slots
 
 
@@ -434,11 +488,14 @@ def ingest_excel(
                     if wt_row_series is not None
                     else DEFAULT_HOLIDAY_TYPE
                 )
-                parsed_slots_count_for_record = (
-                    wt_row_series["parsed_slots_count"]
-                    if wt_row_series is not None
-                    else 0
-                )
+                # ★重要: 休暇コードの場合、スロット数を強制的に0にする
+                if wt_row_series is not None and wt_row_series.get("is_leave_code", False):
+                    parsed_slots_count_for_record = 0
+                    log.debug(f"休暇コード '{code_val}' のスロット数を0に強制設定")
+                else:
+                    parsed_slots_count_for_record = (
+                        wt_row_series["parsed_slots_count"] if wt_row_series is not None else 0
+                    )
 
                 if not current_code_slots_list:
                     record_datetime_for_zero_slot = dt.datetime.combine(
@@ -496,6 +553,16 @@ def ingest_excel(
     if not final_long_df.empty:
         final_long_df["ds"] = pd.to_datetime(final_long_df["ds"])
         final_long_df = final_long_df.sort_values("ds").reset_index(drop=True)
+
+    # ★処理結果の統計をログ出力
+    if not final_long_df.empty:
+        holiday_stats = final_long_df['holiday_type'].value_counts()
+        log.info("処理結果統計:")
+        log.info(f"  総レコード数: {len(final_long_df)}")
+        log.info(f"  休暇タイプ別レコード数:\n{holiday_stats}")
+        leave_records = final_long_df[final_long_df['holiday_type'] != DEFAULT_HOLIDAY_TYPE]
+        if not leave_records.empty:
+            log.info(f"  休暇レコード数: {len(leave_records)} (全体の {len(leave_records)/len(final_long_df)*100:.1f}%)")
 
     return final_long_df, wt_df, unknown_codes
 

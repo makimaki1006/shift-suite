@@ -1,5 +1,5 @@
 # shift_suite / tasks / heatmap.py
-# v1.7.2 (calculate_pattern_based_need 内の logger を log に修正, 他はv1.7.1と同様)
+# v1.8.0 (休暇除外処理対応版)
 from __future__ import annotations
 
 import datetime as dt
@@ -26,6 +26,9 @@ from .utils import (
     safe_sheet,
     write_meta,
 )
+
+# ★新規追加: 通常勤務の判定用定数
+DEFAULT_HOLIDAY_TYPE = "通常勤務"
 
 STAFF_ALIASES = ["staff", "氏名", "名前", "従業員"]
 ROLE_ALIASES = ["role", "職種", "役職", "部署"]
@@ -228,6 +231,34 @@ def calculate_pattern_based_need(
     return dow_need_df_calculated.fillna(0).astype(int)
 
 
+def _filter_work_records(long_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    ★新規追加: 通常勤務のレコードのみを抽出する
+    休暇レコード（holiday_type != "通常勤務"）を除外し、
+    実際に勤務時間がある（parsed_slots_count > 0）レコードのみを返す
+    """
+    if long_df.empty:
+        return long_df
+
+    # 通常勤務且つ勤務時間があるレコードのみ抽出
+    work_records = long_df[
+        (long_df.get("holiday_type", DEFAULT_HOLIDAY_TYPE) == DEFAULT_HOLIDAY_TYPE) &
+        (long_df.get("parsed_slots_count", 0) > 0)
+    ].copy()
+
+    original_count = len(long_df)
+    work_count = len(work_records)
+    leave_count = original_count - work_count
+
+    log.info(f"[heatmap._filter_work_records] フィルタリング結果: 全レコード={original_count}, 勤務レコード={work_count}, 休暇レコード={leave_count}")
+
+    if not work_records.empty:
+        holiday_stats = long_df['holiday_type'].value_counts()
+        log.debug(f"[heatmap._filter_work_records] 休暇タイプ別統計:\n{holiday_stats}")
+
+    return work_records
+
+
 def build_heatmap(
     long_df: pd.DataFrame,
     out_dir: str | Path,
@@ -269,6 +300,17 @@ def build_heatmap(
             estimated_holidays=[d.isoformat() for d in sorted(list(holidays or set()))],
         )
         return
+
+    # ★重要: 休暇レコードの統計を先に収集
+    leave_stats = {}
+    if not long_df.empty and "holiday_type" in long_df.columns:
+        holiday_type_stats = long_df["holiday_type"].value_counts()
+        leave_stats = {
+            "total_records": len(long_df),
+            "leave_records": len(long_df[long_df["holiday_type"] != DEFAULT_HOLIDAY_TYPE]),
+            "holiday_type_breakdown": holiday_type_stats.to_dict(),
+        }
+        log.info(f"[heatmap.build_heatmap] 休暇統計: {leave_stats}")
     estimated_holidays_set: Set[dt.date] = set()
     all_dates_in_period_list: List[dt.date] = []
     if (
@@ -307,10 +349,13 @@ def build_heatmap(
                             f"施設休業日(推定): {current_date_val_iter} (勤務記録なし)"
                         )
                         continue
-                    if not (df_for_current_date_iter["parsed_slots_count"] > 0).any():
+
+                    # ★修正: 通常勤務のレコードのみで判定
+                    work_records_today = _filter_work_records(df_for_current_date_iter)
+                    if work_records_today.empty:
                         estimated_holidays_set.add(current_date_val_iter)
                         log.debug(
-                            f"施設休業日(推定): {current_date_val_iter} (全員スロット0)"
+                            f"施設休業日(推定): {current_date_val_iter} (通常勤務なし)"
                         )
             if estimated_holidays_set:
                 log.info(
@@ -327,7 +372,8 @@ def build_heatmap(
             "[heatmap.build_heatmap] long_dfが空か、必要な列がないため、休業日を推定できません。"
         )
 
-    df_for_heatmap_actuals = long_df[long_df["parsed_slots_count"] > 0].copy()
+    # ★重要: 通常勤務のレコードのみでヒートマップ作成
+    df_for_heatmap_actuals = _filter_work_records(long_df)
     out_dir_path = Path(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
     all_date_labels_in_period_str: List[str] = (
@@ -362,6 +408,7 @@ def build_heatmap(
             dates=[],
             summary_columns=SUMMARY5,
             estimated_holidays=[d.isoformat() for d in sorted(list(holidays or set()))],
+            leave_statistics=leave_stats,  # ★休暇統計を追加
         )
         return
 
@@ -781,5 +828,6 @@ def build_heatmap(
             "remove_outliers": need_remove_outliers,
             "iqr_multiplier": need_iqr_multiplier if need_remove_outliers else None,
         },
+        leave_statistics=leave_stats,  # ★休暇統計をメタデータに追加
     )
     log.info("[heatmap.build_heatmap] ヒートマップ生成処理完了。")
