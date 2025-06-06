@@ -28,3 +28,9 @@ def configure_logging(level: int = logging.INFO) -> None:
     root = logging.getLogger()
     root.setLevel(level)
     root.addHandler(handler)
+
+    # Also write logs to file so they can be reviewed after GUI runs
+    log_file = os.getenv("SHIFT_SUITE_LOG_FILE", "shift_suite.log")
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    root.addHandler(file_handler)
