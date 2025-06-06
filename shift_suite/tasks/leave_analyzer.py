@@ -18,8 +18,10 @@ if not log.handlers:  # ログハンドラが重複しないように設定
 
 
 # --- 定数 ---
+# 新たに「その他休暇」タイプも定数化
 LEAVE_TYPE_PAID = "有給"
 LEAVE_TYPE_REQUESTED = "希望休"
+LEAVE_TYPE_OTHER = "その他休暇"
 # DEFAULT_HOLIDAY_TYPE = '通常勤務' # io_excel.py で定義されているものを参照する形でも良い
 
 
@@ -37,7 +39,11 @@ def _is_full_day_leave(parsed_slots_count_val: Union[int, float]) -> bool:
 
 def get_daily_leave_counts(
     long_df: pd.DataFrame,
-    target_leave_types: List[str] = [LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID],
+    target_leave_types: List[str] = [
+        LEAVE_TYPE_REQUESTED,
+        LEAVE_TYPE_PAID,
+        LEAVE_TYPE_OTHER,
+    ],
 ) -> pd.DataFrame:
     """
     日別・職員別・休暇タイプ別の休暇取得「日数」（1日単位）を集計する。
@@ -365,7 +371,11 @@ def staff_concentration_share(concentration_df: pd.DataFrame) -> pd.DataFrame:
 
 def get_staff_leave_list(
     long_df: pd.DataFrame,
-    target_leave_types: List[str] = [LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID],
+    target_leave_types: List[str] = [
+        LEAVE_TYPE_REQUESTED,
+        LEAVE_TYPE_PAID,
+        LEAVE_TYPE_OTHER,
+    ],
 ) -> pd.DataFrame:
     """
     職員ごと・休暇タイプごとの休暇取得日リスト（終日休暇のみ）を作成する。
@@ -607,7 +617,8 @@ if __name__ == "__main__":
 
     log.info("\n--- get_staff_leave_list (山田太郎) ---")
     staff_leaves = get_staff_leave_list(
-        sample_long_df, target_leave_types=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID]
+        sample_long_df,
+        target_leave_types=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID, LEAVE_TYPE_OTHER],
     )
     log.info(staff_leaves[staff_leaves["staff"] == "山田太郎"])
     # 期待される出力例 (P有の有給部分は終日ではないためリストされない):

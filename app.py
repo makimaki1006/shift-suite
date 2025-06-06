@@ -85,6 +85,7 @@ from shift_suite.tasks.io_excel import SHEET_COL_ALIAS, _normalize, ingest_excel
 from shift_suite.tasks.leave_analyzer import (
     LEAVE_TYPE_PAID,
     LEAVE_TYPE_REQUESTED,
+    LEAVE_TYPE_OTHER,
 )
 from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.shortage import merge_shortage_leave, shortage_and_brief
@@ -527,6 +528,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.leave_analysis_target_types_widget = [
         LEAVE_TYPE_REQUESTED,
         LEAVE_TYPE_PAID,
+        LEAVE_TYPE_OTHER,
     ]  # デフォルトで両方
     st.session_state.leave_concentration_threshold_widget = (
         3  # 希望休集中度閾値のデフォルト
@@ -713,7 +715,11 @@ with st.sidebar:
             st.markdown("### 📊 " + _("Leave Analysis") + " 設定")
             st.multiselect(
                 "分析対象の休暇タイプ",
-                options=[LEAVE_TYPE_REQUESTED, LEAVE_TYPE_PAID],
+                options=[
+                    LEAVE_TYPE_REQUESTED,
+                    LEAVE_TYPE_PAID,
+                    LEAVE_TYPE_OTHER,
+                ],
                 key="leave_analysis_target_types_widget",
                 help="分析する休暇の種類を選択します。",
             )
