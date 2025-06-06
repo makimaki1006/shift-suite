@@ -2544,7 +2544,12 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
 
     log_fp = data_dir / "over_shortage_log.csv"
     existing = over_shortage_log.load_log(log_fp)
-    merged = events.merge(existing, on=["date", "time", "type"], how="left")
+    merged = events.merge(
+        existing,
+        on=["date", "time", "type"],
+        how="left",
+        suffixes=("", "_log"),
+    )
 
     updated_rows = []
     reason_opts = [
