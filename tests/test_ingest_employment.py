@@ -5,7 +5,11 @@ import pandas as pd
 from shift_suite.tasks.io_excel import ingest_excel
 
 
-def test_ingest_excel_employment(tmp_path: Path):
+import pytest
+
+
+@pytest.mark.parametrize("emp_col", ["雇用形態", "雇用区分"])
+def test_ingest_excel_employment(tmp_path: Path, emp_col: str):
     excel_fp = tmp_path / "shift.xlsx"
 
     wt = pd.DataFrame({"勤務記号": ["A"], "開始": ["09:00"], "終了": ["18:00"]})
@@ -13,7 +17,7 @@ def test_ingest_excel_employment(tmp_path: Path):
         {
             "氏名": ["山田"],
             "職種": ["看護師"],
-            "雇用形態": ["正社員"],
+            emp_col: ["正社員"],
             "2024-01-01": ["A"],
         }
     )

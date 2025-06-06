@@ -47,6 +47,7 @@ SHEET_COL_ALIAS = {
     "役職": "role",
     "role": "role",
     "雇用形態": "employment",
+    "雇用区分": "employment",
     "employment": "employment",
 }
 DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}
