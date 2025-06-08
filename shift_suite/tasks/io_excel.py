@@ -257,7 +257,9 @@ def load_shift_patterns(
     if leave_codes_found:
         log.info("検出された休暇コード:")
         for row in leave_codes_found:
-            log.info(f"  {row['code']}: {row['holiday_type']} (スロット数: {row['parsed_slots_count']})")
+            log.info(
+                f"  {row['code']}: {row['holiday_type']} (スロット数: {row['parsed_slots_count']})"
+            )
 
     return pd.DataFrame(wt_rows), code2slots
 
@@ -489,12 +491,16 @@ def ingest_excel(
                     else DEFAULT_HOLIDAY_TYPE
                 )
                 # ★重要: 休暇コードの場合、スロット数を強制的に0にする
-                if wt_row_series is not None and wt_row_series.get("is_leave_code", False):
+                if wt_row_series is not None and wt_row_series.get(
+                    "is_leave_code", False
+                ):
                     parsed_slots_count_for_record = 0
                     log.debug(f"休暇コード '{code_val}' のスロット数を0に強制設定")
                 else:
                     parsed_slots_count_for_record = (
-                        wt_row_series["parsed_slots_count"] if wt_row_series is not None else 0
+                        wt_row_series["parsed_slots_count"]
+                        if wt_row_series is not None
+                        else 0
                     )
 
                 if not current_code_slots_list:
@@ -556,13 +562,17 @@ def ingest_excel(
 
     # ★処理結果の統計をログ出力
     if not final_long_df.empty:
-        holiday_stats = final_long_df['holiday_type'].value_counts()
+        holiday_stats = final_long_df["holiday_type"].value_counts()
         log.info("処理結果統計:")
         log.info(f"  総レコード数: {len(final_long_df)}")
         log.info(f"  休暇タイプ別レコード数:\n{holiday_stats}")
-        leave_records = final_long_df[final_long_df['holiday_type'] != DEFAULT_HOLIDAY_TYPE]
+        leave_records = final_long_df[
+            final_long_df["holiday_type"] != DEFAULT_HOLIDAY_TYPE
+        ]
         if not leave_records.empty:
-            log.info(f"  休暇レコード数: {len(leave_records)} (全体の {len(leave_records)/len(final_long_df)*100:.1f}%)")
+            log.info(
+                f"  休暇レコード数: {len(leave_records)} (全体の {len(leave_records) / len(final_long_df) * 100:.1f}%)"
+            )
 
     return final_long_df, wt_df, unknown_codes
 

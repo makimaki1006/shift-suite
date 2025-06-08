@@ -2665,14 +2665,22 @@ def display_optimization_tab(tab_container, data_dir):
                         df_sur,
                         aspect="auto",
                         color_continuous_scale="Blues",
-                        labels={"x": _("Date"), "y": _("Time"), "color": _("Surplus vs Need")},
+                        labels={
+                            "x": _("Date"),
+                            "y": _("Time"),
+                            "color": _("Surplus vs Need"),
+                        },
                     )
-                    st.plotly_chart(fig_heat, use_container_width=True, key="surplus_need_heat")
+                    st.plotly_chart(
+                        fig_heat, use_container_width=True, key="surplus_need_heat"
+                    )
             except Exception as e:
                 log_and_display_error("surplus_vs_need_time.xlsx 表示エラー", e)
         else:
             st.info(
-                _("Surplus vs Need") + " (surplus_vs_need_time.xlsx) " + _("が見つかりません。")
+                _("Surplus vs Need")
+                + " (surplus_vs_need_time.xlsx) "
+                + _("が見つかりません。")
             )
 
         fp_margin = data_dir / "margin_vs_upper_time.xlsx"
@@ -2705,13 +2713,19 @@ def display_optimization_tab(tab_container, data_dir):
                                 color_discrete_sequence=["#2ca02c"],
                             )
                             st.plotly_chart(
-                                fig_m, use_container_width=True, key="margin_upper_chart"
+                                fig_m,
+                                use_container_width=True,
+                                key="margin_upper_chart",
                             )
                     fig_margin = px.imshow(
                         df_margin,
                         aspect="auto",
                         color_continuous_scale="Greens",
-                        labels={"x": _("Date"), "y": _("Time"), "color": _("Margin vs Upper")},
+                        labels={
+                            "x": _("Date"),
+                            "y": _("Time"),
+                            "color": _("Margin vs Upper"),
+                        },
                     )
                     st.plotly_chart(
                         fig_margin, use_container_width=True, key="margin_upper_heat"
@@ -2720,7 +2734,9 @@ def display_optimization_tab(tab_container, data_dir):
                 log_and_display_error("margin_vs_upper_time.xlsx 表示エラー", e)
         else:
             st.info(
-                _("Margin vs Upper") + " (margin_vs_upper_time.xlsx) " + _("が見つかりません。")
+                _("Margin vs Upper")
+                + " (margin_vs_upper_time.xlsx) "
+                + _("が見つかりません。")
             )
 
         fp_score = data_dir / "optimization_score_time.xlsx"
@@ -2740,7 +2756,11 @@ def display_optimization_tab(tab_container, data_dir):
                         color_continuous_scale="RdYlGn",
                         zmin=0,
                         zmax=1,
-                        labels={"x": _("Date"), "y": _("Time"), "color": _("Optimization Score")},
+                        labels={
+                            "x": _("Date"),
+                            "y": _("Time"),
+                            "color": _("Optimization Score"),
+                        },
                     )
                     st.plotly_chart(
                         fig_score, use_container_width=True, key="optimization_heat"
