@@ -32,4 +32,3 @@ def test_calculate_daily_cost_by_role():
     wages = {"N": 1000, "C": 1500}
     res = calculate_daily_cost(df, wages, by="role", slot_minutes=30)
     assert res.loc[0, "cost"] == 2500
-

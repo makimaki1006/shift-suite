@@ -242,18 +242,20 @@ def _filter_work_records(long_df: pd.DataFrame) -> pd.DataFrame:
 
     # 通常勤務且つ勤務時間があるレコードのみ抽出
     work_records = long_df[
-        (long_df.get("holiday_type", DEFAULT_HOLIDAY_TYPE) == DEFAULT_HOLIDAY_TYPE) &
-        (long_df.get("parsed_slots_count", 0) > 0)
+        (long_df.get("holiday_type", DEFAULT_HOLIDAY_TYPE) == DEFAULT_HOLIDAY_TYPE)
+        & (long_df.get("parsed_slots_count", 0) > 0)
     ].copy()
 
     original_count = len(long_df)
     work_count = len(work_records)
     leave_count = original_count - work_count
 
-    log.info(f"[heatmap._filter_work_records] フィルタリング結果: 全レコード={original_count}, 勤務レコード={work_count}, 休暇レコード={leave_count}")
+    log.info(
+        f"[heatmap._filter_work_records] フィルタリング結果: 全レコード={original_count}, 勤務レコード={work_count}, 休暇レコード={leave_count}"
+    )
 
     if not work_records.empty:
-        holiday_stats = long_df['holiday_type'].value_counts()
+        holiday_stats = long_df["holiday_type"].value_counts()
         log.debug(f"[heatmap._filter_work_records] 休暇タイプ別統計:\n{holiday_stats}")
 
     return work_records
@@ -307,7 +309,9 @@ def build_heatmap(
         holiday_type_stats = long_df["holiday_type"].value_counts()
         leave_stats = {
             "total_records": len(long_df),
-            "leave_records": len(long_df[long_df["holiday_type"] != DEFAULT_HOLIDAY_TYPE]),
+            "leave_records": len(
+                long_df[long_df["holiday_type"] != DEFAULT_HOLIDAY_TYPE]
+            ),
             "holiday_type_breakdown": holiday_type_stats.to_dict(),
         }
         log.info(f"[heatmap.build_heatmap] 休暇統計: {leave_stats}")

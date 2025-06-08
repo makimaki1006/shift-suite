@@ -159,8 +159,8 @@ def shortage_and_brief(
     )
 
     surplus_vs_need_df = (
-        staff_actual_data_all_df - need_df_all
-    ).clip(lower=0).fillna(0).astype(int)
+        (staff_actual_data_all_df - need_df_all).clip(lower=0).fillna(0).astype(int)
+    )
     save_df_xlsx(
         surplus_vs_need_df,
         out_dir_path / "surplus_vs_need_time.xlsx",
@@ -228,8 +228,11 @@ def shortage_and_brief(
         )
 
         margin_vs_upper_df = (
-            upper_df_all - staff_actual_data_all_df
-        ).clip(lower=0).fillna(0).astype(int)
+            (upper_df_all - staff_actual_data_all_df)
+            .clip(lower=0)
+            .fillna(0)
+            .astype(int)
+        )
         save_df_xlsx(
             margin_vs_upper_df,
             out_dir_path / "margin_vs_upper_time.xlsx",
@@ -248,9 +251,7 @@ def shortage_and_brief(
     pen_excess_df = (
         excess_ratio_df if "upper" in heat_all_df.columns else pen_lack_df * 0
     )
-    optimization_score_df = 1 - (
-        w_lack * pen_lack_df + w_excess * pen_excess_df
-    )
+    optimization_score_df = 1 - (w_lack * pen_lack_df + w_excess * pen_excess_df)
     optimization_score_df = optimization_score_df.clip(lower=0, upper=1)
     save_df_xlsx(
         optimization_score_df,
@@ -860,9 +861,7 @@ def merge_shortage_leave(
     return out_fp
 
 
-def _summary_by_period(
-    df: pd.DataFrame, *, period: str
-) -> pd.DataFrame:
+def _summary_by_period(df: pd.DataFrame, *, period: str) -> pd.DataFrame:
     """Return average counts by *period* and time slot.
 
     Parameters
@@ -905,6 +904,7 @@ def _summary_by_period(
         long[period] = long["date"].dt.day_name().map(day_name_map)
         order = list(day_name_map.values())
     elif period == "month_period":
+
         def _mp(day_val: int) -> str:
             if day_val <= 10:
                 return "月初(1-10日)"
