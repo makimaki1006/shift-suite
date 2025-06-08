@@ -35,6 +35,9 @@ printing to the console.  Set ``SHIFT_SUITE_LOG_FILE`` to override the path.
 - **`cli.py`** – Provides a command line interface for running a subset of the
   analysis pipeline without the GUI.  It ingests an Excel file, builds a
   heatmap, runs shortage analysis and summarises the results.
+- New in v0.9.0: the GUI includes an **Optimization Analysis** tab that visualises
+  surplus capacity and margin to upper limits and outputs an optimisation score
+  per time slot.
 
 The `shift_suite/tasks` package holds the analysis modules listed below. They
 are automatically imported by `shift_suite/__init__.py`, so you can simply
