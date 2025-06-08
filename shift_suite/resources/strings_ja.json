@@ -215,4 +215,8 @@
   "Day": "曜日",
   "Selected staff": "選択されたスタッフ",
   "Exceeds threshold": "閾値超過"
+  ,"Optimization Analysis": "人員配置 最適化分析"
+  ,"Surplus vs Need": "needに対する余剰"
+  ,"Margin vs Upper": "upperに対する余白"
+  ,"Optimization Score": "人員配置最適化スコア"
 }

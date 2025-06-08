@@ -1,10 +1,11 @@
 """
-shortage.py – v2.5.0 (過不足分析サポート)
+shortage.py – v2.6.0 (過不足分析 + 最適化スコア)
 ────────────────────────────────────────────────────────
 * v2.3.0: SUMMARY5列参照・計算ロジック修正・constants参照
 * v2.4.0: heatmap.meta.json から推定休業日を読み込み、need計算に反映。
 * v2.4.1: 職種別KPIの稼働日数考慮とデバッグログ強化。
 * v2.5.0: excess(過剰) 指標を追加し過不足分析に対応。
+* v2.6.0: need/upper 余剰・余白および最適化スコア計算を追加。
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from typing import Any, Dict, Iterable, List, Set, Tuple
 import numpy as np
 import pandas as pd
 
+from .. import config
 from .constants import SUMMARY5
 from .utils import _parse_as_date, gen_labels, log, save_df_xlsx, write_meta
 
@@ -156,6 +158,16 @@ def shortage_and_brief(
         index=True,
     )
 
+    surplus_vs_need_df = (
+        staff_actual_data_all_df - need_df_all
+    ).clip(lower=0).fillna(0).astype(int)
+    save_df_xlsx(
+        surplus_vs_need_df,
+        out_dir_path / "surplus_vs_need_time.xlsx",
+        sheet_name="surplus_need_time",
+        index=True,
+    )
+
     # ----- excess analysis -----
     fp_excess_time = fp_excess_ratio = fp_excess_freq = None
     if "upper" in heat_all_df.columns:
@@ -214,10 +226,38 @@ def shortage_and_brief(
             sheet_name="freq_by_time",
             index=True,
         )
+
+        margin_vs_upper_df = (
+            upper_df_all - staff_actual_data_all_df
+        ).clip(lower=0).fillna(0).astype(int)
+        save_df_xlsx(
+            margin_vs_upper_df,
+            out_dir_path / "margin_vs_upper_time.xlsx",
+            sheet_name="margin_upper_time",
+            index=True,
+        )
     else:
         log.warning(
             "[shortage] heat_ALL.xlsx に 'upper' 列がないため excess 分析をスキップします。"
         )
+
+    weights = config.get("optimization_weights", {"lack": 0.6, "excess": 0.4})
+    w_lack = float(weights.get("lack", 0.6))
+    w_excess = float(weights.get("excess", 0.4))
+    pen_lack_df = shortage_ratio_df
+    pen_excess_df = (
+        excess_ratio_df if "upper" in heat_all_df.columns else pen_lack_df * 0
+    )
+    optimization_score_df = 1 - (
+        w_lack * pen_lack_df + w_excess * pen_excess_df
+    )
+    optimization_score_df = optimization_score_df.clip(lower=0, upper=1)
+    save_df_xlsx(
+        optimization_score_df,
+        out_dir_path / "optimization_score_time.xlsx",
+        sheet_name="optimization_score",
+        index=True,
+    )
 
     log.debug(
         "--- shortage_time.xlsx / shortage_ratio.xlsx / shortage_freq.xlsx 計算デバッグ (全体) 終了 ---"

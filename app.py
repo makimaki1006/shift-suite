@@ -2624,6 +2624,137 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
         st.plotly_chart(fig, use_container_width=True)
 
 
+def display_optimization_tab(tab_container, data_dir):
+    """Display staffing optimization metrics."""
+    with tab_container:
+        st.subheader(_("Optimization Analysis"))
+
+        fp_sur = data_dir / "surplus_vs_need_time.xlsx"
+        if fp_sur.exists():
+            try:
+                df_sur = load_excel_cached(
+                    str(fp_sur),
+                    sheet_name="surplus_need_time",
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_sur),
+                )
+                if _valid_df(df_sur):
+                    st.write(_("Surplus vs Need"))
+                    dates = df_sur.columns.tolist()
+                    if dates:
+                        sel = st.selectbox(
+                            _("Select date to display"),
+                            dates,
+                            key="surplus_need_date",
+                        )
+                        if sel:
+                            fig = px.bar(
+                                df_sur[sel].reset_index(),
+                                x=df_sur.index.name or "index",
+                                y=sel,
+                                labels={
+                                    df_sur.index.name or "index": _("Time"),
+                                    sel: _("Surplus vs Need"),
+                                },
+                                color_discrete_sequence=["#1f77b4"],
+                            )
+                            st.plotly_chart(
+                                fig, use_container_width=True, key="surplus_need_chart"
+                            )
+                    fig_heat = px.imshow(
+                        df_sur,
+                        aspect="auto",
+                        color_continuous_scale="Blues",
+                        labels={"x": _("Date"), "y": _("Time"), "color": _("Surplus vs Need")},
+                    )
+                    st.plotly_chart(fig_heat, use_container_width=True, key="surplus_need_heat")
+            except Exception as e:
+                log_and_display_error("surplus_vs_need_time.xlsx 表示エラー", e)
+        else:
+            st.info(
+                _("Surplus vs Need") + " (surplus_vs_need_time.xlsx) " + _("が見つかりません。")
+            )
+
+        fp_margin = data_dir / "margin_vs_upper_time.xlsx"
+        if fp_margin.exists():
+            try:
+                df_margin = load_excel_cached(
+                    str(fp_margin),
+                    sheet_name="margin_upper_time",
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_margin),
+                )
+                if _valid_df(df_margin):
+                    st.write(_("Margin vs Upper"))
+                    dates_m = df_margin.columns.tolist()
+                    if dates_m:
+                        sel_m = st.selectbox(
+                            _("Select date to display"),
+                            dates_m,
+                            key="margin_upper_date",
+                        )
+                        if sel_m:
+                            fig_m = px.bar(
+                                df_margin[sel_m].reset_index(),
+                                x=df_margin.index.name or "index",
+                                y=sel_m,
+                                labels={
+                                    df_margin.index.name or "index": _("Time"),
+                                    sel_m: _("Margin vs Upper"),
+                                },
+                                color_discrete_sequence=["#2ca02c"],
+                            )
+                            st.plotly_chart(
+                                fig_m, use_container_width=True, key="margin_upper_chart"
+                            )
+                    fig_margin = px.imshow(
+                        df_margin,
+                        aspect="auto",
+                        color_continuous_scale="Greens",
+                        labels={"x": _("Date"), "y": _("Time"), "color": _("Margin vs Upper")},
+                    )
+                    st.plotly_chart(
+                        fig_margin, use_container_width=True, key="margin_upper_heat"
+                    )
+            except Exception as e:
+                log_and_display_error("margin_vs_upper_time.xlsx 表示エラー", e)
+        else:
+            st.info(
+                _("Margin vs Upper") + " (margin_vs_upper_time.xlsx) " + _("が見つかりません。")
+            )
+
+        fp_score = data_dir / "optimization_score_time.xlsx"
+        if fp_score.exists():
+            try:
+                df_score = load_excel_cached(
+                    str(fp_score),
+                    sheet_name="optimization_score",
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_score),
+                )
+                if _valid_df(df_score):
+                    st.write(_("Optimization Score"))
+                    fig_score = px.imshow(
+                        df_score,
+                        aspect="auto",
+                        color_continuous_scale="RdYlGn",
+                        zmin=0,
+                        zmax=1,
+                        labels={"x": _("Date"), "y": _("Time"), "color": _("Optimization Score")},
+                    )
+                    st.plotly_chart(
+                        fig_score, use_container_width=True, key="optimization_heat"
+                    )
+            except Exception as e:
+                log_and_display_error("optimization_score_time.xlsx 表示エラー", e)
+        else:
+            st.info(
+                _("Optimization Score")
+                + " (optimization_score_time.xlsx) "
+                + _("が見つかりません。")
+            )
+
+
 def display_fatigue_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Fatigue Score per Staff"))
@@ -3209,6 +3340,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Overview",
                 "Heatmap",
                 "Shortage",
+                "Optimization Analysis",
                 "Fatigue",
                 "Forecast",
                 "Fairness",
@@ -3224,6 +3356,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Overview": display_overview_tab,
                 "Heatmap": display_heatmap_tab,
                 "Shortage": display_shortage_tab,
+                "Optimization Analysis": display_optimization_tab,
                 "Fatigue": display_fatigue_tab,
                 "Forecast": display_forecast_tab,
                 "Fairness": display_fairness_tab,
@@ -3307,6 +3440,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         "Overview",
         "Heatmap",
         "Shortage",
+        "Optimization Analysis",
         "Fatigue",
         "Forecast",
         "Fairness",
@@ -3324,6 +3458,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Overview": display_overview_tab,
             "Heatmap": display_heatmap_tab,
             "Shortage": display_shortage_tab,
+            "Optimization Analysis": display_optimization_tab,
             "Fatigue": display_fatigue_tab,
             "Forecast": display_forecast_tab,
             "Fairness": display_fairness_tab,
