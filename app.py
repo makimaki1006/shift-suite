@@ -1822,6 +1822,7 @@ def display_heatmap_tab(tab_container, data_dir):
                             "y": _("Time"),
                             "color": _("Raw Count"),
                         },
+                        title="スタッフ配置ヒートマップ",
                     )
                 else:
                     zmax = st.slider(
@@ -1860,6 +1861,7 @@ def display_heatmap_tab(tab_container, data_dir):
                                     "y": _("Time"),
                                     "color": _("Ratio (staff ÷ need)"),
                                 },
+                                title="充足率ヒートマップ",
                             )
                         else:
                             st.warning(
@@ -2211,6 +2213,7 @@ def display_shortage_tab(tab_container, data_dir):
                                 sel_date: _("Shortage Hours"),
                             },
                             color_discrete_sequence=["#FFA500"],
+                            title=f"{sel_date} の時間帯別不足時間",
                         )
                         st.plotly_chart(
                             fig_time, use_container_width=True, key="short_time_chart"
@@ -2255,6 +2258,7 @@ def display_shortage_tab(tab_container, data_dir):
                                 sel_e_date: _("Excess Hours"),
                             },
                             color_discrete_sequence=["#00BFFF"],
+                            title=f"{sel_e_date} の時間帯別過剰時間",
                         )
                         st.plotly_chart(
                             fig_e_time,
@@ -2304,6 +2308,7 @@ def display_shortage_tab(tab_container, data_dir):
                                 sel_ratio_date: _("Shortage Ratio"),
                             },
                             color_discrete_sequence=["#FF6347"],
+                            title=f"{sel_ratio_date} の時間帯別不足率",
                         )
                         st.plotly_chart(
                             fig_ratio, use_container_width=True, key="short_ratio_chart"
@@ -2313,6 +2318,7 @@ def display_shortage_tab(tab_container, data_dir):
                 with st.expander(_("Display all ratio data")):
                     st.dataframe(df_ratio, use_container_width=True)
                 fig_ratio_heat = dashboard.shortage_heatmap(df_ratio)
+                fig_ratio_heat.update_layout(title="不足率ヒートマップ")
                 st.plotly_chart(
                     fig_ratio_heat,
                     use_container_width=True,
@@ -2353,6 +2359,7 @@ def display_shortage_tab(tab_container, data_dir):
                                 sel_er_date: _("Excess Hours"),
                             },
                             color_discrete_sequence=["#00BFFF"],
+                            title=f"{sel_er_date} の時間帯別過剰率",
                         )
                         st.plotly_chart(
                             fig_er, use_container_width=True, key="excess_ratio_chart"
@@ -2392,6 +2399,7 @@ def display_shortage_tab(tab_container, data_dir):
                         "shortage_days": _("Shortage Frequency (days)"),
                     },
                     color_discrete_sequence=["#708090"],
+                    title="時間帯別不足日数",
                 )
                 st.plotly_chart(
                     fig_freq, use_container_width=True, key="short_freq_chart"
@@ -2425,6 +2433,7 @@ def display_shortage_tab(tab_container, data_dir):
                         "excess_days": _("Excess Frequency (days)"),
                     },
                     color_discrete_sequence=["#00BFFF"],
+                    title="時間帯別過剰日数",
                 )
                 st.plotly_chart(
                     fig_efreq, use_container_width=True, key="excess_freq_chart"
@@ -2487,6 +2496,7 @@ def display_shortage_tab(tab_container, data_dir):
                         x=df_cost.index.name or "index",
                         y="Cost_Million",
                         labels={"Cost_Million": _("Estimated Cost Impact (Million ¥)")},
+                        title="推定コスト影響",
                     )
                     st.plotly_chart(
                         fig_cost, use_container_width=True, key="short_cost_chart"
@@ -2665,6 +2675,7 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
             x="reason",
             y="count",
             labels={"reason": _("Reason Category"), "count": _("Count")},
+            title="不足理由別件数",
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -2702,6 +2713,7 @@ def display_optimization_tab(tab_container, data_dir):
                                     sel: _("Surplus vs Need"),
                                 },
                                 color_discrete_sequence=["#1f77b4"],
+                                title=f"{sel} の余剰と必要の差",
                             )
                             st.plotly_chart(
                                 fig, use_container_width=True, key="surplus_need_chart"
@@ -2715,6 +2727,7 @@ def display_optimization_tab(tab_container, data_dir):
                             "y": _("Time"),
                             "color": _("Surplus vs Need"),
                         },
+                        title="余剰と必要の差ヒートマップ",
                     )
                     st.plotly_chart(
                         fig_heat, use_container_width=True, key="surplus_need_heat"
@@ -2756,6 +2769,7 @@ def display_optimization_tab(tab_container, data_dir):
                                     sel_m: _("Margin vs Upper"),
                                 },
                                 color_discrete_sequence=["#2ca02c"],
+                                title=f"{sel_m} の上限差分",
                             )
                             st.plotly_chart(
                                 fig_m,
@@ -2771,6 +2785,7 @@ def display_optimization_tab(tab_container, data_dir):
                             "y": _("Time"),
                             "color": _("Margin vs Upper"),
                         },
+                        title="上限差分ヒートマップ",
                     )
                     st.plotly_chart(
                         fig_margin, use_container_width=True, key="margin_upper_heat"
@@ -2806,6 +2821,7 @@ def display_optimization_tab(tab_container, data_dir):
                             "y": _("Time"),
                             "color": _("Optimization Score"),
                         },
+                        title="最適化スコア ヒートマップ",
                     )
                     st.plotly_chart(
                         fig_score, use_container_width=True, key="optimization_heat"
@@ -2847,11 +2863,13 @@ def display_fatigue_tab(tab_container, data_dir):
                             y="fatigue_score",
                             labels={"staff": _("Staff"), "fatigue_score": _("Score")},
                             color_discrete_sequence=["#FF8C00"],
+                            title="スタッフ別疲労スコア",
                         )
                         st.plotly_chart(
                             fig_fatigue, use_container_width=True, key="fatigue_chart"
                         )
                         fig_fatigue_hist = dashboard.fatigue_distribution(df)
+                        fig_fatigue_hist.update_layout(title="疲労スコア分布")
                         st.plotly_chart(
                             fig_fatigue_hist,
                             use_container_width=True,
@@ -3153,6 +3171,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     "leave_applicants_count": _("Leave applicants"),
                     "non_leave_staff": _("Non-leave staff"),
                 },
+                title="スタッフバランスの推移",
             )
             st.plotly_chart(
                 fig_bal, use_container_width=True, key="staff_balance_chart"
@@ -3186,6 +3205,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     "leave_type": _("Leave type"),
                     "month_period": _("Month period"),
                 },
+                title="曜日・月期間別休暇取得率",
             )
             st.plotly_chart(
                 fig_ratio_break,
@@ -3209,6 +3229,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     "requested_count": _("Requested"),
                     "paid_count": _("Paid"),
                 },
+                title="希望休＋有給取得数の推移",
             )
             st.plotly_chart(fig_both, use_container_width=True, key="leave_both_chart")
             st.dataframe(conc_both, use_container_width=True, hide_index=True)
@@ -3228,6 +3249,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         "date": _("Date"),
                         "leave_applicants_count": _("Leave applicants"),
                     },
+                    title="希望休集中度",
                 )
                 if not focused_df.empty:
                     fig_conc.add_scatter(
@@ -3273,6 +3295,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                             "date": _("Date"),
                             "leave_ratio": _("Leave ratio"),
                         },
+                        title="希望休比率の推移",
                     )
                     if not focused_df.empty:
                         fig_ratio.add_scatter(
@@ -3335,6 +3358,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                             x="staff",
                             y="count",
                             labels={"staff": _("Staff"), "count": _("Count")},
+                            title="選択スタッフ回数",
                         )
                         st.plotly_chart(
                             fig_bar,
