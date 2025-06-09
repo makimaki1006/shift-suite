@@ -204,35 +204,43 @@ def load_shift_patterns(
         ed_original = r.get("end", "")
         remarks_val = r.get("remarks", "")
 
-        # ★重要: 休暇コードかどうかを最初に判定
-        is_leave = _is_leave_code(code)
+        # ★新ロジック: 備考欄キーワードを最優先
+        holiday_type_from_remarks = _determine_holiday_type(str(remarks_val))
 
-        if is_leave:
-            # 休暇コードの場合、時間設定に関係なく強制的に0スロット
-            log.info(f"休暇コード '{code}' を検出: 勤務時間を0に設定")
+        if holiday_type_from_remarks != DEFAULT_HOLIDAY_TYPE:
+            log.info(
+                f"備考欄 '{remarks_val}' に基づき、記号 '{code}' を休暇として定義します。"
+            )
             st_hm = ed_hm = None
             slots = []
-            # コードから休暇タイプを判定
-            holiday_type = _determine_holiday_type_from_code(code) or "その他休暇"
+            holiday_type = holiday_type_from_remarks
+            is_leave = True
         else:
-            # 通常勤務コードの場合、時刻を処理
-            st_hm, ed_hm = _to_hhmm(st_original), _to_hhmm(ed_original)
-            log.debug(
-                f"処理中の勤務コード: 行{r_idx + 2}, code='{code}', start='{st_original}', end='{ed_original}'"
-            )
-            log.debug(f"時刻変換結果: {st_original} → {st_hm}, {ed_original} → {ed_hm}")
+            # 備考に休暇キーワードがない場合に従来判定
+            is_leave = _is_leave_code(code)
 
-            slots = []
-            if st_hm and ed_hm:
-                slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
-                log.debug(f"スロット展開: {code} → {len(slots)}個のスロット: {slots}")
-            elif st_hm or ed_hm:
-                log.warning(
-                    f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')"
+            if is_leave:
+                log.info(f"休暇コード '{code}' を検出: 勤務時間を0に設定")
+                st_hm = ed_hm = None
+                slots = []
+                holiday_type = _determine_holiday_type_from_code(code) or "その他休暇"
+            else:
+                st_hm, ed_hm = _to_hhmm(st_original), _to_hhmm(ed_original)
+                log.debug(
+                    f"処理中の勤務コード: 行{r_idx + 2}, code='{code}', start='{st_original}', end='{ed_original}'"
                 )
+                log.debug(f"時刻変換結果: {st_original} → {st_hm}, {ed_original} → {ed_hm}")
 
-            # 通常勤務の場合、備考から休暇タイプを判定
-            holiday_type = _determine_holiday_type(str(remarks_val))
+                slots = []
+                if st_hm and ed_hm:
+                    slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
+                    log.debug(f"スロット展開: {code} → {len(slots)}個のスロット: {slots}")
+                elif st_hm or ed_hm:
+                    log.warning(
+                        f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')"
+                    )
+
+                holiday_type = DEFAULT_HOLIDAY_TYPE
 
         wt_rows.append(
             {
