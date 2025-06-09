@@ -35,6 +35,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import IO, Optional, Sequence
+import json
+import numpy as np
 
 import pandas as pd
 import plotly.express as px
@@ -58,7 +60,8 @@ from shift_suite.tasks import (
     leave_analyzer,  # ★ 新規インポート
     over_shortage_log,
 )
-from shift_suite.tasks.utils import safe_read_excel
+from shift_suite.tasks.utils import safe_read_excel, safe_sheet, _parse_as_date
+from shift_suite import config
 
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
@@ -204,6 +207,70 @@ def _file_mtime(path: Path) -> float:
 def _valid_df(df: pd.DataFrame) -> bool:
     """Return True if ``df`` is a non-empty ``pd.DataFrame``."""
     return isinstance(df, pd.DataFrame) and not df.empty
+
+
+def load_shortage_meta(data_dir: Path) -> tuple[list[str], list[str]]:
+    """Return role and employment lists from ``shortage.meta.json`` if present."""
+    roles: list[str] = []
+    employments: list[str] = []
+    meta_fp = data_dir / "shortage.meta.json"
+    if meta_fp.exists():
+        try:
+            meta = json.loads(meta_fp.read_text(encoding="utf-8"))
+            roles = meta.get("roles", []) or []
+            employments = meta.get("employments", []) or []
+        except Exception as e:  # noqa: BLE001
+            log.debug("failed to load shortage meta: %s", e)
+    return roles, employments
+
+
+def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
+    """Return shortage ratio DataFrame calculated from heatmap data."""
+    if df is None or df.empty or "need" not in df.columns:
+        return pd.DataFrame()
+    date_cols = [c for c in df.columns if _parse_as_date(str(c)) is not None]
+    if not date_cols:
+        return pd.DataFrame()
+    need_series = df["need"].fillna(0)
+    need_df = pd.DataFrame(
+        np.repeat(need_series.values[:, np.newaxis], len(date_cols), axis=1),
+        index=need_series.index,
+        columns=date_cols,
+    )
+    staff_df = df[date_cols].fillna(0)
+    ratio_df = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    return ratio_df
+
+
+def calc_opt_score_from_heatmap(
+    df: pd.DataFrame, w_lack: float = 0.6, w_excess: float = 0.4
+) -> pd.DataFrame:
+    """Return optimization score heatmap from raw heatmap data."""
+    if df is None or df.empty or "need" not in df.columns:
+        return pd.DataFrame()
+    date_cols = [c for c in df.columns if _parse_as_date(str(c)) is not None]
+    if not date_cols:
+        return pd.DataFrame()
+    need_series = df["need"].fillna(0)
+    need_df = pd.DataFrame(
+        np.repeat(need_series.values[:, np.newaxis], len(date_cols), axis=1),
+        index=need_series.index,
+        columns=date_cols,
+    )
+    staff_df = df[date_cols].fillna(0)
+    lack_ratio = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    if "upper" in df.columns:
+        upper_series = df["upper"].fillna(0)
+        upper_df = pd.DataFrame(
+            np.repeat(upper_series.values[:, np.newaxis], len(date_cols), axis=1),
+            index=upper_series.index,
+            columns=date_cols,
+        )
+        excess_ratio = ((staff_df - upper_df) / upper_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    else:
+        excess_ratio = staff_df * 0
+    score_df = 1 - (w_lack * lack_ratio + w_excess * excess_ratio)
+    return score_df.clip(lower=0, upper=1)
 
 
 def excel_cell_to_row_col(cell: str) -> tuple[int, int] | None:
@@ -663,8 +730,8 @@ with st.sidebar:
     )
     st.slider(
         "必要人数 調整係数",
-        min_value=0.5,
-        max_value=1.5,
+        min_value=0.1,
+        max_value=1.0,
         value=st.session_state.get("need_adjustment_factor_widget", 1.0),
         step=0.05,
         key="need_adjustment_factor_widget",
@@ -1886,6 +1953,20 @@ def display_shortage_tab(tab_container, data_dir):
             st.warning("不足分析が正常に完了していないため、結果を表示できません。")
             return
         st.subheader(_("Shortage"))
+        roles, employments = load_shortage_meta(data_dir)
+        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
+        scope_lbl = st.radio(
+            _("Heatmap scope"),
+            list(scope_opts.values()),
+            horizontal=True,
+            key="short_scope",
+        )
+        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
+        sel_role = sel_emp = None
+        if scope == "role" and roles:
+            sel_role = st.selectbox(_("Role"), roles, key="short_scope_role")
+        elif scope == "employment" and employments:
+            sel_emp = st.selectbox(_("Employment"), employments, key="short_scope_emp")
         fp_s_role = data_dir / "shortage_role.xlsx"
         if fp_s_role.exists():
             try:
@@ -2278,56 +2359,73 @@ def display_shortage_tab(tab_container, data_dir):
                 + _("が見つかりません。")
             )
 
-        fp_s_ratio = data_dir / "shortage_ratio.xlsx"
-        if fp_s_ratio.exists():
-            try:
-                df_ratio = load_excel_cached(
-                    str(fp_s_ratio),
-                    sheet_name="lack_ratio",
-                    index_col=0,
-                    file_mtime=_file_mtime(fp_s_ratio),
-                )
-                if not _valid_df(df_ratio):
-                    st.info("Data not available")
-                    return
-                st.write(_("Shortage Ratio by Time"))
-                avail_ratio_dates = df_ratio.columns.tolist()
-                if avail_ratio_dates:
-                    sel_ratio_date = st.selectbox(
-                        _("Select date for ratio"),
-                        avail_ratio_dates,
-                        key="short_ratio_date",
+        df_ratio = pd.DataFrame()
+        if scope == "overall":
+            fp_s_ratio = data_dir / "shortage_ratio.xlsx"
+            if fp_s_ratio.exists():
+                try:
+                    df_ratio = load_excel_cached(
+                        str(fp_s_ratio),
+                        sheet_name="lack_ratio",
+                        index_col=0,
+                        file_mtime=_file_mtime(fp_s_ratio),
                     )
-                    if sel_ratio_date:
-                        fig_ratio = px.bar(
-                            df_ratio[sel_ratio_date].reset_index(),
-                            x=df_ratio.index.name or "index",
-                            y=sel_ratio_date,
-                            labels={
-                                df_ratio.index.name or "index": _("Time"),
-                                sel_ratio_date: _("Shortage Ratio"),
-                            },
-                            color_discrete_sequence=["#FF6347"],
-                            title=f"{sel_ratio_date} の時間帯別不足率",
-                        )
-                        st.plotly_chart(
-                            fig_ratio, use_container_width=True, key="short_ratio_chart"
-                        )
-                else:
-                    st.info(_("No date columns in shortage ratio."))
-                with st.expander(_("Display all ratio data")):
-                    st.dataframe(df_ratio, use_container_width=True)
-                fig_ratio_heat = dashboard.shortage_heatmap(df_ratio)
-                fig_ratio_heat.update_layout(title="不足率ヒートマップ")
-                st.plotly_chart(
-                    fig_ratio_heat,
-                    use_container_width=True,
-                    key="short_ratio_heatmap",
+                except Exception as e:
+                    log_and_display_error("shortage_ratio.xlsx 表示エラー", e)
+        elif scope == "role" and sel_role:
+            fp_heat = data_dir / f"heat_{safe_sheet(sel_role, for_path=True)}.xlsx"
+            if fp_heat.exists():
+                try:
+                    role_df = load_excel_cached(str(fp_heat), index_col=0)
+                    df_ratio = calc_ratio_from_heatmap(role_df)
+                except Exception as e:
+                    log_and_display_error("role heatmap ratio error", e)
+        elif scope == "employment" and sel_emp:
+            fp_heat = data_dir / f"heat_emp_{safe_sheet(sel_emp, for_path=True)}.xlsx"
+            if fp_heat.exists():
+                try:
+                    emp_df = load_excel_cached(str(fp_heat), index_col=0)
+                    df_ratio = calc_ratio_from_heatmap(emp_df)
+                except Exception as e:
+                    log_and_display_error("employment heatmap ratio error", e)
+
+        if _valid_df(df_ratio):
+            st.write(_("Shortage Ratio by Time"))
+            avail_ratio_dates = df_ratio.columns.tolist()
+            if avail_ratio_dates and scope == "overall":
+                sel_ratio_date = st.selectbox(
+                    _("Select date for ratio"),
+                    avail_ratio_dates,
+                    key="short_ratio_date",
                 )
-            except Exception as e:
-                log_and_display_error("shortage_ratio.xlsx 表示エラー", e)
+                if sel_ratio_date:
+                    fig_ratio = px.bar(
+                        df_ratio[sel_ratio_date].reset_index(),
+                        x=df_ratio.index.name or "index",
+                        y=sel_ratio_date,
+                        labels={
+                            df_ratio.index.name or "index": _("Time"),
+                            sel_ratio_date: _("Shortage Ratio"),
+                        },
+                        color_discrete_sequence=["#FF6347"],
+                        title=f"{sel_ratio_date} の時間帯別不足率",
+                    )
+                    st.plotly_chart(
+                        fig_ratio,
+                        use_container_width=True,
+                        key="short_ratio_chart",
+                    )
+            with st.expander(_("Display all ratio data")):
+                st.dataframe(df_ratio, use_container_width=True)
+            fig_ratio_heat = dashboard.shortage_heatmap(df_ratio)
+            fig_ratio_heat.update_layout(title="不足率ヒートマップ")
+            st.plotly_chart(
+                fig_ratio_heat,
+                use_container_width=True,
+                key="short_ratio_heatmap",
+            )
         else:
-            st.info(_("Shortage") + " (shortage_ratio.xlsx) " + _("が見つかりません。"))
+            st.info("Data not available")
 
         fp_e_ratio = data_dir / "excess_ratio.xlsx"
         if fp_e_ratio.exists():
@@ -2684,6 +2782,23 @@ def display_optimization_tab(tab_container, data_dir):
     """Display staffing optimization metrics."""
     with tab_container:
         st.subheader(_("Optimization Analysis"))
+        roles, employments = load_shortage_meta(data_dir)
+        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
+        scope_lbl = st.radio(
+            _("Heatmap scope"),
+            list(scope_opts.values()),
+            horizontal=True,
+            key="opt_scope",
+        )
+        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
+        sel_role = sel_emp = None
+        if scope == "role" and roles:
+            sel_role = st.selectbox(_("Role"), roles, key="opt_scope_role")
+        elif scope == "employment" and employments:
+            sel_emp = st.selectbox(_("Employment"), employments, key="opt_scope_emp")
+        weights = config.get("optimization_weights", {"lack": 0.6, "excess": 0.4})
+        w_lack = float(weights.get("lack", 0.6))
+        w_excess = float(weights.get("excess", 0.4))
 
         fp_sur = data_dir / "surplus_vs_need_time.xlsx"
         if fp_sur.exists():
@@ -2799,41 +2914,56 @@ def display_optimization_tab(tab_container, data_dir):
                 + _("が見つかりません。")
             )
 
-        fp_score = data_dir / "optimization_score_time.xlsx"
-        if fp_score.exists():
-            try:
-                df_score = load_excel_cached(
-                    str(fp_score),
-                    sheet_name="optimization_score",
-                    index_col=0,
-                    file_mtime=_file_mtime(fp_score),
-                )
-                if _valid_df(df_score):
-                    st.write(_("Optimization Score"))
-                    fig_score = px.imshow(
-                        df_score,
-                        aspect="auto",
-                        color_continuous_scale="RdYlGn",
-                        zmin=0,
-                        zmax=1,
-                        labels={
-                            "x": _("Date"),
-                            "y": _("Time"),
-                            "color": _("Optimization Score"),
-                        },
-                        title="最適化スコア ヒートマップ",
+        df_score = pd.DataFrame()
+        if scope == "overall":
+            fp_score = data_dir / "optimization_score_time.xlsx"
+            if fp_score.exists():
+                try:
+                    df_score = load_excel_cached(
+                        str(fp_score),
+                        sheet_name="optimization_score",
+                        index_col=0,
+                        file_mtime=_file_mtime(fp_score),
                     )
-                    st.plotly_chart(
-                        fig_score, use_container_width=True, key="optimization_heat"
-                    )
-            except Exception as e:
-                log_and_display_error("optimization_score_time.xlsx 表示エラー", e)
-        else:
-            st.info(
-                _("Optimization Score")
-                + " (optimization_score_time.xlsx) "
-                + _("が見つかりません。")
+                except Exception as e:
+                    log_and_display_error("optimization_score_time.xlsx 表示エラー", e)
+        elif scope == "role" and sel_role:
+            fp_heat = data_dir / f"heat_{safe_sheet(sel_role, for_path=True)}.xlsx"
+            if fp_heat.exists():
+                try:
+                    role_df = load_excel_cached(str(fp_heat), index_col=0)
+                    df_score = calc_opt_score_from_heatmap(role_df, w_lack, w_excess)
+                except Exception as e:
+                    log_and_display_error("role optimization heat error", e)
+        elif scope == "employment" and sel_emp:
+            fp_heat = data_dir / f"heat_emp_{safe_sheet(sel_emp, for_path=True)}.xlsx"
+            if fp_heat.exists():
+                try:
+                    emp_df = load_excel_cached(str(fp_heat), index_col=0)
+                    df_score = calc_opt_score_from_heatmap(emp_df, w_lack, w_excess)
+                except Exception as e:
+                    log_and_display_error("employment optimization heat error", e)
+
+        if _valid_df(df_score):
+            st.write(_("Optimization Score"))
+            fig_score = px.imshow(
+                df_score,
+                aspect="auto",
+                color_continuous_scale="RdYlGn",
+                zmin=0,
+                zmax=1,
+                labels={
+                    "x": _("Date"),
+                    "y": _("Time"),
+                    "color": _("Optimization Score"),
+                },
+                title="最適化スコア ヒートマップ",
             )
+            st.plotly_chart(
+                fig_score, use_container_width=True, key="optimization_heat"
+            )
+        else:
+            st.info("Data not available")
 
 
 def display_fatigue_tab(tab_container, data_dir):
