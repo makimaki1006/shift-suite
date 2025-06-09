@@ -3225,12 +3225,12 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 labels={
                     "date": _("Date"),
                     "value": _("Count"),
-                    "variable": _("Leave type"),
-                    "requested_count": _("Requested"),
-                    "paid_count": _("Paid"),
                 },
                 title="希望休＋有給取得数の推移",
             )
+            fig_both.data[0].name = "希望休取得者数"
+            fig_both.data[1].name = "有給取得者数"
+            fig_both.update_layout(legend_title_text="休暇種別")
             st.plotly_chart(fig_both, use_container_width=True, key="leave_both_chart")
             st.dataframe(conc_both, use_container_width=True, hide_index=True)
 
@@ -3249,7 +3249,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         "date": _("Date"),
                         "leave_applicants_count": _("Leave applicants"),
                     },
-                    title="希望休集中度",
+                    title="希望休の集中日",
                 )
                 if not focused_df.empty:
                     fig_conc.add_scatter(
@@ -3347,23 +3347,42 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                             + ":** "
                             + ", ".join(sorted(set(all_names)))
                         )
-                        cnt_df = (
+                        proportion_df = (
                             pd.Series(all_names)
-                            .value_counts()
-                            .reset_index()
-                            .rename(columns={"index": "staff", 0: "count"})
+                            .value_counts(normalize=True)
+                            .mul(100)
+                            .round(1)
+                            .rename_axis("staff")
+                            .reset_index(name="割合 (%)")
                         )
-                        fig_bar = px.bar(
-                            cnt_df,
+
+                        fig_proportion_bar = px.bar(
+                            proportion_df,
                             x="staff",
-                            y="count",
-                            labels={"staff": _("Staff"), "count": _("Count")},
-                            title="選択スタッフ回数",
+                            y="割合 (%)",
+                            text="割合 (%)",
+                            title="選択された集中日における職員の構成比",
+                            labels={"staff": "スタッフ", "割合 (%)": "割合 (%)"},
+                        )
+                        fig_proportion_bar.update_traces(
+                            texttemplate="%{text:.1f}%", textposition="outside"
                         )
                         st.plotly_chart(
-                            fig_bar,
+                            fig_proportion_bar,
                             use_container_width=True,
-                            key="selected_staff_chart",
+                            key="selected_staff_proportion_chart",
+                        )
+
+                        fig_proportion_pie = px.pie(
+                            proportion_df,
+                            names="staff",
+                            values="割合 (%)",
+                            title="選択された集中日における職員の構成比（円グラフ）",
+                        )
+                        st.plotly_chart(
+                            fig_proportion_pie,
+                            use_container_width=True,
+                            key="selected_staff_pie_chart",
                         )
 
 
