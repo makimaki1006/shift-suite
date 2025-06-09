@@ -77,6 +77,18 @@ def build_hire_plan(
 
     out_fp = Path(out_dir) / out_excel
     df_out.to_excel(out_fp, index=False)
+
+    # text summary
+    summary_fp = out_fp.with_suffix(".txt")
+    try:
+        summary_lines = [
+            f"total_hire_fte: {int(df_out['hire_fte'].sum())}",
+            f"est_monthly_pay_total: {int(df_out['est_monthly_pay'].sum())}",
+            f"est_recruit_cost_total: {int(df_out['est_recruit_cost'].sum())}",
+        ]
+        summary_fp.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"failed writing hire plan summary: {e}")
     return out_fp
 
 

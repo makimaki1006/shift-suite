@@ -94,4 +94,14 @@ def analyze_cost_benefit(
     # Excel 保存
     df.to_excel(out_dir / "cost_benefit.xlsx")
 
+    # text summary
+    summary_fp = out_dir / "cost_benefit_summary.txt"
+    try:
+        min_row = df["Cost_JPY"].idxmin()
+        min_cost = int(df.loc[min_row, "Cost_JPY"])
+        lines = [f"lowest_cost_scenario: {min_row}", f"cost_jpy: {min_cost}"]
+        summary_fp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+
     return df
