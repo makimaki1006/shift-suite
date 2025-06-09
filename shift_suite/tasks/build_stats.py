@@ -759,4 +759,33 @@ def build_stats(
     except Exception as e:
         log.error(f"stats.xlsx の書き出し中にエラーが発生しました: {e}", exc_info=True)
 
+    # text summary
+    try:
+        summary_fp = out_dir_path / "stats_summary.txt"
+        lack_total = int(
+            round(
+                overall_df.loc[
+                    (overall_df["summary_item"] == "lack")
+                    & overall_df["metric"].str.contains("(hours)"),
+                    "value",
+                ].sum()
+            )
+        )
+        excess_total = int(
+            round(
+                overall_df.loc[
+                    (overall_df["summary_item"] == "excess")
+                    & overall_df["metric"].str.contains("(hours)"),
+                    "value",
+                ].sum()
+            )
+        )
+        lines = [
+            f"lack_hours_total: {lack_total}",
+            f"excess_hours_total: {excess_total}",
+        ]
+        summary_fp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"failed to write stats summary: {e}")
+
     log.info("=== build_stats end ===")

@@ -357,6 +357,14 @@ def forecast_need(
         periods=periods,
         created=str(dt.datetime.now()),
     )
+
+    # text summary
+    try:
+        summary_fp = excel_out.with_suffix(".summary.txt")
+        lines = [f"model: {sel}", f"mape: {float(np.round(sel_mape, 4))}"]
+        summary_fp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"forecast summary write failed: {e}")
     try:
         hist_row = pd.DataFrame(
             {

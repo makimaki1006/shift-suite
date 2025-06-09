@@ -11,6 +11,7 @@ from shift_suite import build_heatmap, ingest_excel, shortage_and_brief, summary
 from shift_suite.h2hire import build_hire_plan as build_hire_plan_from_shortage
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.utils import safe_make_archive
+from shift_suite.tasks.report_generator import generate_summary_report
 
 log = logging.getLogger(__name__)
 
@@ -114,6 +115,11 @@ def main():
         except Exception as e:
             log.error("cost-benefit analysis failed: %s", e)
     summary.build_staff_stats(long, out)
+
+    try:
+        generate_summary_report(out)
+    except Exception as e:
+        log.error("summary report generation failed: %s", e)
 
     if args.zip:
         safe_make_archive(out, out.with_suffix(".zip"))

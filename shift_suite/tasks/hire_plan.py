@@ -77,4 +77,12 @@ def build_hire_plan(
         }
         pd.DataFrame(meta, index=[0]).to_excel(writer, sheet_name="meta", index=False)
 
+    # text summary
+    summary_fp = out_path.with_suffix(".txt")
+    try:
+        lines = [f"total_hire_need: {int(summary['hire_need'].sum())}"]
+        summary_fp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+
     return summary

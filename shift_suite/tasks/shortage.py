@@ -771,6 +771,19 @@ def shortage_and_brief(
         ],
     )
 
+    # ── text summary output ────────────────────────────────────────────────
+    summary_fp = out_dir_path / "shortage_summary.txt"
+    try:
+        total_lack_h = int(round(role_summary_df.get("lack_h", pd.Series()).sum()))
+        total_excess_h = int(round(role_summary_df.get("excess_h", pd.Series()).sum()))
+        summary_lines = [
+            f"total_lack_hours: {total_lack_h}",
+            f"total_excess_hours: {total_excess_h}",
+        ]
+        summary_fp.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"failed writing shortage summary text: {e}")
+
     log.info(
         (
             f"[shortage] completed — shortage_time → {fp_shortage_time.name}, "
