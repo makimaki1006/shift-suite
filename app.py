@@ -547,6 +547,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.uploaded_files_info = {}
     st.session_state.file_options = {}
     st.session_state.analysis_results = {}
+    st.session_state.analysis_status = {}
     st.session_state.wizard_step = 1
     st.session_state.wizard_excel_path = None
     st.session_state.wizard_sheet_names = []
@@ -841,6 +842,7 @@ if (
 if run_button_clicked:
     st.session_state.analysis_done = False
     st.session_state.analysis_results = {}
+    st.session_state.analysis_status = {}
 
     holiday_dates_global_for_run = None
     holiday_dates_local_for_run = None
@@ -979,62 +981,80 @@ if run_button_clicked:
                     "プレビューを表示するシートが選択されていないか、ファイルパスが無効です。"
                 )
 
-            update_progress_exec_run("Ingest: Reading Excel data...")
-            long_df, wt_df, unknown_codes = ingest_excel(
-                excel_path_to_use,
-                shift_sheets=param_selected_sheets,
-                header_row=param_header_row,
-                slot_minutes=param_slot,
-                year_month_cell_location=param_year_month_cell,
-            )
-            log.info(
-                f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}"
-            )
-            if unknown_codes:
-                st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
-                log.warning(f"Unknown shift codes encountered: {sorted(unknown_codes)}")
-            st.success(_("Ingest: Excel data read complete."))
+            long_df = None
+            try:
+                update_progress_exec_run("Ingest: Reading Excel data...")
+                long_df, wt_df, unknown_codes = ingest_excel(
+                    excel_path_to_use,
+                    shift_sheets=param_selected_sheets,
+                    header_row=param_header_row,
+                    slot_minutes=param_slot,
+                    year_month_cell_location=param_year_month_cell,
+                )
+                st.session_state.analysis_status["ingest"] = "success"
+                log.info(
+                    f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}"
+                )
+                if unknown_codes:
+                    st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
+                    log.warning(f"Unknown shift codes encountered: {sorted(unknown_codes)}")
+                st.success("✅ Excelデータ読み込み完了")
+            except Exception as e:
+                st.session_state.analysis_status["ingest"] = "failure"
+                log_and_display_error("Excelデータの読み込み中にエラーが発生しました", e)
 
-            update_progress_exec_run("Heatmap: Generating heatmap...")
-            build_heatmap(
-                long_df,
-                out_dir_exec,
-                param_slot,
-                ref_start_date_for_need=param_ref_start,
-                ref_end_date_for_need=param_ref_end,
-                need_statistic_method=param_need_stat,
-                need_remove_outliers=param_need_outlier,
-                need_iqr_multiplier=1.5,
-                min_method=param_min_method_upper,
-                max_method=param_max_method_upper,
-            )
-            st.success("✅ Heatmap生成完了")
+            if st.session_state.analysis_status.get("ingest") == "success":
+                try:
+                    update_progress_exec_run("Heatmap: Generating heatmap...")
+                    build_heatmap(
+                        long_df,
+                        out_dir_exec,
+                        param_slot,
+                        ref_start_date_for_need=param_ref_start,
+                        ref_end_date_for_need=param_ref_end,
+                        need_statistic_method=param_need_stat,
+                        need_remove_outliers=param_need_outlier,
+                        need_iqr_multiplier=1.5,
+                        min_method=param_min_method_upper,
+                        max_method=param_max_method_upper,
+                    )
+                    st.session_state.analysis_status["heatmap"] = "success"
+                    st.success("✅ Heatmap生成完了")
+                except Exception as e:
+                    st.session_state.analysis_status["heatmap"] = "failure"
+                    log_and_display_error("Heatmapの生成中にエラーが発生しました", e)
 
-            update_progress_exec_run("Shortage: Analyzing shortage...")
-            shortage_result_exec_run = shortage_and_brief(
-                out_dir_exec,
-                param_slot,
-                holidays=(holiday_dates_global_for_run or [])
-                + (holiday_dates_local_for_run or []),
-                wage_direct=param_wage_direct,
-                wage_temp=param_wage_temp,
-                penalty_per_lack=param_penalty_lack,
-            )
-            if shortage_result_exec_run is None:
-                st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
-            else:
-                st.success("✅ Shortage (不足分析) 完了")
-                if "Hire plan" in param_ext_opts:
-                    try:
-                        build_hire_plan_from_kpi(
-                            out_dir_exec,
-                            monthly_hours_fte=param_std_work_hours,
-                            hourly_wage=param_wage_direct,
-                            recruit_cost=param_hiring_cost,
-                            safety_factor=param_safety_factor,
-                        )
-                    except Exception as e:
-                        log.warning(f"hire_plan generation error: {e}")
+            if st.session_state.analysis_status.get("heatmap") == "success":
+                try:
+                    update_progress_exec_run("Shortage: Analyzing shortage...")
+                    shortage_result_exec_run = shortage_and_brief(
+                        out_dir_exec,
+                        param_slot,
+                        holidays=(holiday_dates_global_for_run or [])
+                        + (holiday_dates_local_for_run or []),
+                        wage_direct=param_wage_direct,
+                        wage_temp=param_wage_temp,
+                        penalty_per_lack=param_penalty_lack,
+                    )
+                    st.session_state.analysis_status["shortage"] = "success"
+                    if shortage_result_exec_run is None:
+                        st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
+                    else:
+                        st.success("✅ Shortage (不足分析) 完了")
+                        if "Hire plan" in param_ext_opts:
+                            try:
+                                build_hire_plan_from_kpi(
+                                    out_dir_exec,
+                                    monthly_hours_fte=param_std_work_hours,
+                                    hourly_wage=param_wage_direct,
+                                    recruit_cost=param_hiring_cost,
+                                    safety_factor=param_safety_factor,
+                                )
+                            except Exception as e:
+                                log.warning(f"hire_plan generation error: {e}")
+                except Exception as e:
+                    st.session_state.analysis_status["shortage"] = "failure"
+                    log_and_display_error("不足分析の処理中にエラーが発生しました", e)
 
             # ★----- 休暇分析モジュールの実行 -----★
             # "休暇分析" (日本語) が選択されているか確認
@@ -1257,18 +1277,26 @@ if run_button_clicked:
                     and opt_module_name_exec_run != _("Leave Analysis")
                 ):
                     progress_key_exec_run = f"{opt_module_name_exec_run}: Processing..."
-                    update_progress_exec_run(progress_key_exec_run)
+                    if opt_module_name_exec_run != "Stats":
+                        update_progress_exec_run(progress_key_exec_run)
                     st.info(f"{_(opt_module_name_exec_run)} 処理中…")
                     try:
                         if opt_module_name_exec_run == "Stats":
-                            build_stats(
-                                out_dir_exec,
-                                holidays=(holiday_dates_global_for_run or [])
-                                + (holiday_dates_local_for_run or []),
-                                wage_direct=param_wage_direct,
-                                wage_temp=param_wage_temp,
-                                penalty_per_lack=param_penalty_lack,
-                            )
+                            if st.session_state.analysis_status.get("heatmap") == "success":
+                                update_progress_exec_run("Stats: Processing...")
+                                build_stats(
+                                    out_dir_exec,
+                                    holidays=(holiday_dates_global_for_run or [])
+                                    + (holiday_dates_local_for_run or []),
+                                    wage_direct=param_wage_direct,
+                                    wage_temp=param_wage_temp,
+                                    penalty_per_lack=param_penalty_lack,
+                                )
+                                st.session_state.analysis_status["stats"] = "success"
+                                st.success("✅ Stats (統計情報) 生成完了")
+                            else:
+                                st.session_state.analysis_status["stats"] = "skipped"
+                                st.warning("Heatmap生成が失敗したため、Stats処理をスキップしました。")
                         elif opt_module_name_exec_run == "Anomaly":
                             detect_anomaly(out_dir_exec)
                         elif opt_module_name_exec_run == "Fatigue":
@@ -1838,6 +1866,9 @@ def display_heatmap_tab(tab_container, data_dir):
 
 def display_shortage_tab(tab_container, data_dir):
     with tab_container:
+        if st.session_state.analysis_status.get("shortage") != "success":
+            st.warning("不足分析が正常に完了していないため、結果を表示できません。")
+            return
         st.subheader(_("Shortage"))
         fp_s_role = data_dir / "shortage_role.xlsx"
         if fp_s_role.exists():
