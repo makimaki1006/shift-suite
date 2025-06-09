@@ -1,7 +1,9 @@
 import pandas as pd
 from pathlib import Path
 
-from shift_suite.tasks.over_shortage_log import load_log
+import pytest
+
+from shift_suite.tasks.over_shortage_log import list_events, load_log, save_log
 
 
 def test_load_log_missing_file(tmp_path: Path):
@@ -33,3 +35,15 @@ def test_load_log_invalid_columns(tmp_path: Path):
         "staff",
         "memo",
     }
+
+
+def test_list_events_missing_files(tmp_path: Path) -> None:
+    df = list_events(tmp_path)
+    assert df.empty
+    assert list(df.columns) == ["time", "date", "count", "type"]
+
+
+def test_save_log_invalid_mode(tmp_path: Path) -> None:
+    csv_fp = tmp_path / "log.csv"
+    with pytest.raises(ValueError):
+        save_log(pd.DataFrame(), csv_fp, mode="bad")

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 
 import pandas as pd
+
+log = logging.getLogger(__name__)
 
 
 def list_events(out_dir: Path | str) -> pd.DataFrame:
@@ -11,18 +14,24 @@ def list_events(out_dir: Path | str) -> pd.DataFrame:
     records = []
 
     def _read(fp: Path, sheet: str, kind: str) -> None:
-        if fp.exists():
+        if not fp.exists():
+            return
+        try:
             df = pd.read_excel(fp, sheet_name=sheet, index_col=0)
-            long = (
-                df.reset_index()
-                .melt(id_vars=df.index.name, var_name="date", value_name="count")
-                .rename(columns={df.index.name: "time"})
-            )
-            long["date"] = pd.to_datetime(long["date"]).dt.date
-            long = long[long["count"] > 0]
-            if not long.empty:
-                long["type"] = kind
-                records.append(long)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Failed to read %s [%s]: %s", fp, sheet, e)
+            return
+
+        long = (
+            df.reset_index()
+            .melt(id_vars=df.index.name, var_name="date", value_name="count")
+            .rename(columns={df.index.name: "time"})
+        )
+        long["date"] = pd.to_datetime(long["date"]).dt.date
+        long = long[long["count"] > 0]
+        if not long.empty:
+            long["type"] = kind
+            records.append(long)
 
     _read(out_dir_path / "shortage_time.xlsx", "lack_time", "shortage")
     _read(out_dir_path / "excess_time.xlsx", "excess_time", "excess")
@@ -66,9 +75,16 @@ def save_log(
     df: pd.DataFrame, csv_path: Path | str, *, mode: str = "overwrite"
 ) -> Path:
     csv_fp = Path(csv_path)
+    if mode not in {"overwrite", "append"}:
+        raise ValueError("mode must be 'overwrite' or 'append'")
+
     csv_fp.parent.mkdir(parents=True, exist_ok=True)
     if mode == "append" and csv_fp.exists():
         existing = pd.read_csv(csv_fp)
         df = pd.concat([existing, df], ignore_index=True)
+
     df.to_csv(csv_fp, index=False)
     return csv_fp
+
+
+__all__ = ["list_events", "load_log", "save_log"]
