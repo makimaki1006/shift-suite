@@ -665,7 +665,7 @@ with st.sidebar:
         "必要人数 調整係数",
         min_value=0.5,
         max_value=1.5,
-        value=st.session_state.need_adjustment_factor_widget,
+        value=st.session_state.get("need_adjustment_factor_widget", 1.0),
         step=0.05,
         key="need_adjustment_factor_widget",
         help="算出された統計値に乗算する係数。1.0で変更なし、0.9で10%減となります。",
@@ -914,7 +914,9 @@ if run_button_clicked:
         param_ref_end = st.session_state.need_ref_end_date_widget
         param_need_stat = st.session_state.need_stat_method_widget
         param_need_outlier = st.session_state.need_remove_outliers_widget
-        param_need_adjustment_factor = st.session_state.need_adjustment_factor_widget
+        param_need_adjustment_factor = st.session_state.get(
+            "need_adjustment_factor_widget", 1.0
+        )
         param_min_method_upper = st.session_state.min_method_for_upper_widget
         param_max_method_upper = st.session_state.max_method_for_upper_widget
         param_ext_opts = st.session_state.ext_opts_multiselect_widget
