@@ -224,6 +224,14 @@ dates accumulate across clicks, and the selected staff members are listed below,
 together with a bar chart showing how frequently each person appears within the
 chosen range. Use the **選択をクリア** button to reset the selection.
 
+### Custom leave codes via remarks
+
+`load_shift_patterns` now checks the remarks column first when reading the
+"勤務区分" sheet.  If keywords such as "希望休" or "有給" are found, the code in
+that row is treated as a leave code even if it is not listed in
+`LEAVE_CODES`. The shift time for that pattern becomes zero, letting you define
+ad‑hoc leave markers directly in Excel without modifying the source code.
+
 ### Shortage → Hire plan workflow
 
 After `shortage_role.xlsx` is generated, the application automatically runs
