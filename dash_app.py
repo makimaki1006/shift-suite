@@ -279,6 +279,7 @@ def page_shortage():
                     zmin=0,
                     zmax=1,
                     labels=dict(x=_("Date"), y=_("Time"), color=_("Shortage Ratio")),
+                    title="不足率ヒートマップ",
                 ),
             ),
             html.Hr(),
@@ -324,6 +325,7 @@ def page_leave():
                 "leave_applicants_count": _("Leave applicants"),
                 "non_leave_staff": _("Non-leave staff"),
             },
+            title="スタッフバランスの推移",
         )
         children.append(dcc.Graph(figure=fig_bal))
 
@@ -353,6 +355,7 @@ def page_leave():
                 "leave_type": _("Leave type"),
                 "month_period": _("Month period"),
             },
+            title="曜日・月期間別休暇取得率",
         )
         children.append(dcc.Graph(figure=fig_ratio_break))
 
@@ -407,6 +410,7 @@ def update_heatmap(mode: str, zmax_val: float, zmode: str):
             zmin=0,
             zmax=zmax_val,
             labels=dict(x="日付", y="時間帯", color="配置人数"),
+            title="スタッフ配置ヒートマップ",
         )
         return fig, slider_disabled, zmax_val
 
@@ -420,6 +424,7 @@ def update_heatmap(mode: str, zmax_val: float, zmode: str):
         labels=dict(
             x="日付", y="時間帯", color="充足率 (実績/必要)"
         ),  # ★ ラベル日本語化
+        title="充足率ヒートマップ",
     )
     return fig, True, zmax_val
 
