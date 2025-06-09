@@ -478,6 +478,7 @@ if "app_initialized" not in st.session_state:
     ]
     st.session_state.need_stat_method_widget = "中央値"
     st.session_state.need_remove_outliers_widget = True
+    st.session_state.need_adjustment_factor_widget = 1.0
 
     st.session_state.min_method_for_upper_options_widget = ["mean-1s", "p25", "mode"]
     st.session_state.min_method_for_upper_widget = "p25"
@@ -659,6 +660,15 @@ with st.sidebar:
         _("Remove Outliers for Need Calculation"),
         key="need_remove_outliers_widget",
         help="IQR法で外れ値を除去してから統計量を計算します",
+    )
+    st.slider(
+        "必要人数 調整係数",
+        min_value=0.5,
+        max_value=1.5,
+        value=st.session_state.need_adjustment_factor_widget,
+        step=0.05,
+        key="need_adjustment_factor_widget",
+        help="算出された統計値に乗算する係数。1.0で変更なし、0.9で10%減となります。",
     )
 
     with st.expander(_("(Optional) Upper Limit Calculation Method"), expanded=False):
@@ -904,6 +914,7 @@ if run_button_clicked:
         param_ref_end = st.session_state.need_ref_end_date_widget
         param_need_stat = st.session_state.need_stat_method_widget
         param_need_outlier = st.session_state.need_remove_outliers_widget
+        param_need_adjustment_factor = st.session_state.need_adjustment_factor_widget
         param_min_method_upper = st.session_state.min_method_for_upper_widget
         param_max_method_upper = st.session_state.max_method_for_upper_widget
         param_ext_opts = st.session_state.ext_opts_multiselect_widget
@@ -1014,6 +1025,7 @@ if run_button_clicked:
                         ref_end_date_for_need=param_ref_end,
                         need_statistic_method=param_need_stat,
                         need_remove_outliers=param_need_outlier,
+                        need_adjustment_factor=param_need_adjustment_factor,
                         need_iqr_multiplier=1.5,
                         min_method=param_min_method_upper,
                         max_method=param_max_method_upper,

@@ -124,6 +124,7 @@ def calculate_pattern_based_need(
     slot_minutes_for_empty: int = 30,
     *,
     holidays: set[dt.date] | None = None,
+    adjustment_factor: float = 1.0,
 ) -> pd.DataFrame:
     # ★修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
     log.info(
@@ -218,6 +219,8 @@ def calculate_pattern_based_need(
                         f"不明な統計的指標: {statistic_method}。中央値を使用します。"
                     )
                     need_calculated_val = np.median(values_for_stat_calc)
+            # Apply adjustment factor after calculating the statistic
+            need_calculated_val *= adjustment_factor
             dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = (
                 math.ceil(need_calculated_val)
                 if not pd.isna(need_calculated_val)
@@ -271,6 +274,7 @@ def build_heatmap(
     need_statistic_method: str,
     need_remove_outliers: bool,
     need_iqr_multiplier: float,
+    need_adjustment_factor: float = 1.0,
     min_method: str = "p25",
     max_method: str = "p75",
     holidays: set[dt.date] | None = None,
@@ -480,6 +484,7 @@ def build_heatmap(
         need_iqr_multiplier,
         slot_minutes_for_empty=slot_minutes,
         holidays=holidays_set,
+        adjustment_factor=need_adjustment_factor,
     )
 
     pivot_data_all_final = pd.DataFrame(

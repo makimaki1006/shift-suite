@@ -96,6 +96,7 @@ def main():
         ref_end_date_for_need=ref_end,
         need_statistic_method="中央値",
         need_remove_outliers=True,
+        need_adjustment_factor=1.0,
         need_iqr_multiplier=1.5,
         min_method="p25",
         max_method="p75",
