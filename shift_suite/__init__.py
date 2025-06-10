@@ -68,6 +68,10 @@ calculate_daily_cost = _lazy_func(
     "shift_suite.tasks.daily_cost",
     "calculate_daily_cost",
 )
+create_optimal_hire_plan = _lazy_func(
+    "shift_suite.tasks.optimal_hire_plan",
+    "create_optimal_hire_plan",
+)
 
 sys.modules["shift_suite.build_stats"] = import_module("shift_suite.tasks.build_stats")
 
@@ -91,4 +95,5 @@ __all__ = [
     "weekday_timeslot_summary",
     "monthperiod_timeslot_summary",
     "calculate_daily_cost",
+    "create_optimal_hire_plan",
 ]

@@ -99,6 +99,7 @@ from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.shortage import merge_shortage_leave, shortage_and_brief
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks.skill_nmf import build_skill_matrix
+from shift_suite.tasks.optimal_hire_plan import create_optimal_hire_plan
 
 
 def _patch_streamlit_watcher() -> None:
@@ -576,6 +577,7 @@ if "app_initialized" not in st.session_state:
         "RL roster (model)",
         "Hire plan",
         "Cost / Benefit",
+        "最適採用計画",
     ]
     # デフォルトで休暇分析も選択状態にするかはお好みで
     st.session_state.ext_opts_multiselect_widget = (
@@ -1574,6 +1576,12 @@ if run_button_clicked:
                                 param_hiring_cost,
                                 param_penalty_lack,
                             )
+                        elif opt_module_name_exec_run == "最適採用計画":
+                            if st.session_state.analysis_status.get("shortage") == "success":
+                                original_excel_path = Path(next(iter(st.session_state.uploaded_files_info.values()))["path"])
+                                create_optimal_hire_plan(out_dir_exec, original_excel_path)
+                            else:
+                                st.warning("最適採用計画の生成には、不足分析が先に完了している必要があります。")
                         st.success(f"✅ {_(opt_module_name_exec_run)} 完了")
                     except FileNotFoundError as fe_opt_exec_run_loop:
                         log_and_display_error(
@@ -3200,6 +3208,25 @@ def display_hireplan_tab(tab_container, data_dir):
             st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
 
+def display_optimal_hire_plan_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader("最適採用計画")
+        fp = data_dir / "optimal_hire_plan.xlsx"
+        if fp.exists():
+            try:
+                df = load_excel_cached(
+                    str(fp),
+                    sheet_name=0,
+                    file_mtime=_file_mtime(fp),
+                )
+                st.info("分析の結果、以下の具体的な採用計画を推奨します。")
+                st.dataframe(df, use_container_width=True, hide_index=True)
+            except Exception as e:
+                log_and_display_error("最適採用計画ファイルの表示エラー", e)
+        else:
+            st.info("最適採用計画の分析結果ファイルが見つかりません。")
+
+
 def display_summary_report_tab(tab_container, data_dir):
     """Show auto-generated shortage summary report."""
 
@@ -3559,6 +3586,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Leave Analysis",
                 "Cost Sim",
                 "Hire Plan",
+                "Optimal Hire Plan",
                 "Summary Report",
                 "PPT Report",
             ]
@@ -3575,6 +3603,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Leave Analysis": display_leave_analysis_tab,
                 "Cost Sim": display_costsim_tab,
                 "Hire Plan": display_hireplan_tab,
+                "Optimal Hire Plan": display_optimal_hire_plan_tab,
                 "Summary Report": display_summary_report_tab,
                 "PPT Report": display_ppt_tab,
             }
@@ -3659,6 +3688,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         "Leave Analysis",
         "Cost Sim",
         "Hire Plan",
+        "Optimal Hire Plan",
         "Summary Report",
         "PPT Report",
     ]
@@ -3675,11 +3705,12 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Forecast": display_forecast_tab,
             "Fairness": display_fairness_tab,
             "Leave Analysis": display_leave_analysis_tab,
-            "Cost Sim": display_costsim_tab,
-            "Hire Plan": display_hireplan_tab,
-            "Summary Report": display_summary_report_tab,
-            "PPT Report": display_ppt_tab,
-        }
+        "Cost Sim": display_costsim_tab,
+        "Hire Plan": display_hireplan_tab,
+        "Optimal Hire Plan": display_optimal_hire_plan_tab,
+        "Summary Report": display_summary_report_tab,
+        "PPT Report": display_ppt_tab,
+    }
 
         # 各タブに対応する表示関数を呼び出す
         for i, tab_key in enumerate(tab_keys_en_dash):
