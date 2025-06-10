@@ -24,11 +24,12 @@ def test_calculate_daily_cost_by_role():
         {
             "ds": pd.date_range("2024-01-01 09:00", periods=4, freq="30min"),
             "staff": ["A", "A", "B", "B"],
-            "role": ["N", "N", "C", "C"],
+            "role": ["Nurse", "Nurse", "Care", "Care"],
             "employment": ["FT", "FT", "PT", "PT"],
             "parsed_slots_count": [1] * 4,
         }
     )
-    wages = {"N": 1000, "C": 1500}
+    wages = {"Nurse": 1500, "Care": 1200}
     res = calculate_daily_cost(df, wages, by="role", slot_minutes=30)
-    assert res.loc[0, "cost"] == 2500
+    assert res.loc[0, "cost"] == (1500 * 0.5 * 2) + (1200 * 0.5 * 2)
+    assert res["cost"].sum() == 2700

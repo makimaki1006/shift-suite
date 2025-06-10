@@ -99,6 +99,7 @@ from shift_suite.tasks.rl import learn_roster
 from shift_suite.tasks.shortage import merge_shortage_leave, shortage_and_brief
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks.skill_nmf import build_skill_matrix
+from shift_suite.tasks.daily_cost import calculate_daily_cost  # <-- added
 from shift_suite.tasks.optimal_hire_plan import create_optimal_hire_plan
 
 
@@ -838,6 +839,17 @@ with st.sidebar:
     )
 
     with st.expander(_("Cost & Hire Parameters")):
+        st.subheader("人件費計算 設定")
+        st.session_state.cost_by_widget = st.radio(
+            "単価基準",
+            options=["role", "employment", "staff"],
+            index=0,
+            horizontal=True,
+            key="cost_by_radio",
+        )
+        st.session_state.wage_widgets_placeholder = st.empty()
+        st.divider()
+        st.subheader("採用・コスト試算 設定")
         st.number_input(
             _("Standard work hours (h/month)"), 100, 300, key="std_work_hours_widget"
         )
@@ -1090,7 +1102,22 @@ if run_button_clicked:
                 st.session_state.analysis_status["ingest"] = "failure"
                 log_and_display_error("Excelデータの読み込み中にエラーが発生しました", e)
 
-            if st.session_state.analysis_status.get("ingest") == "success":
+            if st.session_state.analysis_status.get("ingest") == "success" and not long_df.empty:
+                # --- 人件費UIの動的生成 ---
+                cost_by_key = st.session_state.get("cost_by_widget", "role")
+                if cost_by_key in long_df.columns:
+                    unique_keys = sorted(long_df[cost_by_key].unique())
+                    if "wage_config" not in st.session_state:
+                        st.session_state.wage_config = {}
+                    with st.session_state.wage_widgets_placeholder.container():
+                        for key in unique_keys:
+                            wage_key = f"wage_{cost_by_key}_{key}"
+                            if wage_key not in st.session_state:
+                                st.session_state[wage_key] = 1000
+                            st.session_state[wage_key] = st.number_input(
+                                f"時給: {key}", value=st.session_state[wage_key], key=wage_key
+                            )
+                            st.session_state.wage_config[key] = st.session_state[wage_key]
                 try:
                     update_progress_exec_run("Heatmap: Generating heatmap...")
                     build_heatmap(
@@ -1601,6 +1628,23 @@ if run_button_clicked:
                             f"{opt_module_name_exec_run} 処理エラー: {e_opt_exec_run_loop}",
                             exc_info=True,
                         )
+
+            # --- 日別人件費の計算と保存 ---
+            if (
+                "wage_config" in st.session_state
+                and st.session_state.analysis_status.get("ingest") == "success"
+                and not long_df.empty
+            ):
+                try:
+                    daily_cost_df = calculate_daily_cost(
+                        long_df,
+                        st.session_state.wage_config,
+                        by=st.session_state.get("cost_by_widget", "role"),
+                        slot_minutes=param_slot,
+                    )
+                    daily_cost_df.to_excel(out_dir_exec / "daily_cost.xlsx", index=False)
+                except Exception as e_cost:
+                    log.warning(f"daily cost calculation failed: {e_cost}")
 
             progress_bar_val.progress(100)
             progress_text_area.success("✨ 全工程完了！")
@@ -3121,16 +3165,15 @@ def display_fairness_tab(tab_container, data_dir):
             st.info(_("Fairness") + " (fairness_after.xlsx) " + _("が見つかりません。"))
 
 
-def display_costsim_tab(tab_container, data_dir):
+def display_cost_tab(tab_container, data_dir):
     with tab_container:
-        st.subheader(_("Cost Simulation (Million ¥)"))
-        fp = data_dir / "cost_benefit.xlsx"
+        st.subheader("人件費分析")
+        fp = data_dir / "daily_cost.xlsx"
         if fp.exists():
             try:
                 df = load_excel_cached(
                     str(fp),
                     sheet_name=0,
-                    index_col=0,
                     file_mtime=_file_mtime(fp),
                 )
                 if not _valid_df(df):
@@ -3138,27 +3181,16 @@ def display_costsim_tab(tab_container, data_dir):
                     return
 
                 try:
-                    if "Cost_Million" in df:
-                        fig_cost = px.bar(
-                            df.reset_index(),
-                            x=df.index.name or "index",
-                            y="Cost_Million",
-                            labels={
-                                "Cost_Million": _("Estimated Cost Impact (Million ¥)")
-                            },
-                        )
-                        st.plotly_chart(
-                            fig_cost, use_container_width=True, key="costsim_chart"
-                        )
-                    st.dataframe(df, use_container_width=True)
+                    if "date" in df.columns and "cost" in df.columns:
+                        fig_cost = px.bar(df, x="date", y="cost")
+                        st.plotly_chart(fig_cost, use_container_width=True, key="daily_cost_chart")
+                    st.dataframe(df, use_container_width=True, hide_index=True)
                 except AttributeError as e:
-                    log_and_display_error("Invalid data format in cost_benefit.xlsx", e)
+                    log_and_display_error("Invalid data format in daily_cost.xlsx", e)
             except Exception as e:
-                log_and_display_error("cost_benefit.xlsx 表示エラー", e)
+                log_and_display_error("daily_cost.xlsx 表示エラー", e)
         else:
-            st.info(
-                _("Cost Simulation") + " (cost_benefit.xlsx) " + _("が見つかりません。")
-            )
+            st.info("人件費分析結果ファイルが見つかりません。")
 
 
 def display_hireplan_tab(tab_container, data_dir):
@@ -3584,7 +3616,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Forecast",
                 "Fairness",
                 "Leave Analysis",
-                "Cost Sim",
+                "Cost Analysis",
                 "Hire Plan",
                 "Optimal Hire Plan",
                 "Summary Report",
@@ -3601,7 +3633,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Forecast": display_forecast_tab,
                 "Fairness": display_fairness_tab,
                 "Leave Analysis": display_leave_analysis_tab,
-                "Cost Sim": display_costsim_tab,
+                "Cost Analysis": display_cost_tab,
                 "Hire Plan": display_hireplan_tab,
                 "Optimal Hire Plan": display_optimal_hire_plan_tab,
                 "Summary Report": display_summary_report_tab,
@@ -3686,7 +3718,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         "Forecast",
         "Fairness",
         "Leave Analysis",
-        "Cost Sim",
+        "Cost Analysis",
         "Hire Plan",
         "Optimal Hire Plan",
         "Summary Report",
@@ -3705,7 +3737,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Forecast": display_forecast_tab,
             "Fairness": display_fairness_tab,
             "Leave Analysis": display_leave_analysis_tab,
-        "Cost Sim": display_costsim_tab,
+        "Cost Analysis": display_cost_tab,
         "Hire Plan": display_hireplan_tab,
         "Optimal Hire Plan": display_optimal_hire_plan_tab,
         "Summary Report": display_summary_report_tab,

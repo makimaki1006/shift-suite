@@ -22,6 +22,8 @@ _module_map = {
     "WorkPatternAnalyzer": "shift_suite.tasks.analyzers.work_pattern",
     "ShortageFactorAnalyzer": "shift_suite.tasks.shortage_factor_analyzer",
     "create_optimal_hire_plan": "shift_suite.tasks.optimal_hire_plan",
+    "optimal_hire_plan": "shift_suite.tasks.optimal_hire_plan",
+    "daily_cost": "shift_suite.tasks.daily_cost",
 }
 
 
