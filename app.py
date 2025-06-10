@@ -2780,193 +2780,161 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-
 def display_optimization_tab(tab_container, data_dir):
     """Display staffing optimization metrics."""
     with tab_container:
         st.subheader(_("Optimization Analysis"))
+
         roles, employments = load_shortage_meta(data_dir)
-        weights = config.get("optimization_weights", {"lack": 0.6, "excess": 0.4})
-        w_lack = float(weights.get("lack", 0.6))
-        w_excess = float(weights.get("excess", 0.4))
 
-        fp_sur = data_dir / "surplus_vs_need_time.xlsx"
-        if fp_sur.exists():
-            try:
-                df_sur = load_excel_cached(
-                    str(fp_sur),
-                    sheet_name="surplus_need_time",
-                    index_col=0,
-                    file_mtime=_file_mtime(fp_sur),
-                )
-                if _valid_df(df_sur):
-                    st.write(_("Surplus vs Need"))
-                    dates = df_sur.columns.tolist()
-                    if dates:
-                        sel = st.selectbox(
-                            _("Select date to display"),
-                            dates,
-                            key="surplus_need_date",
-                        )
-                        if sel:
-                            fig = px.bar(
-                                df_sur[sel].reset_index(),
-                                x=df_sur.index.name or "index",
-                                y=sel,
-                                labels={
-                                    df_sur.index.name or "index": _("Time"),
-                                    sel: _("Surplus vs Need"),
-                                },
-                                color_discrete_sequence=["#1f77b4"],
-                                title=f"{sel} の余剰と必要の差",
-                            )
-                            st.plotly_chart(
-                                fig, use_container_width=True, key="surplus_need_chart"
-                            )
-                    fig_heat = px.imshow(
-                        df_sur,
-                        aspect="auto",
-                        color_continuous_scale="Blues",
-                        labels={
-                            "x": _("Date"),
-                            "y": _("Time"),
-                            "color": _("Surplus vs Need"),
-                        },
-                        title="余剰と必要の差ヒートマップ",
-                    )
-                    st.plotly_chart(
-                        fig_heat, use_container_width=True, key="surplus_need_heat"
-                    )
-            except Exception as e:
-                log_and_display_error("surplus_vs_need_time.xlsx 表示エラー", e)
-        else:
-            st.info(
-                _("Surplus vs Need")
-                + " (surplus_vs_need_time.xlsx) "
-                + _("が見つかりません。")
+        # --- UI Controls at the top ---
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            scope_opts = {
+                "overall": _("Overall"),
+                "role": _("Role"),
+                "employment": _("Employment"),
+            }
+            scope_lbl = st.selectbox(
+                "ヒートマップの対象範囲",
+                list(scope_opts.values()),
+                key="opt_scope",
             )
+            scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
 
-        fp_margin = data_dir / "margin_vs_upper_time.xlsx"
-        if fp_margin.exists():
-            try:
-                df_margin = load_excel_cached(
-                    str(fp_margin),
-                    sheet_name="margin_upper_time",
-                    index_col=0,
-                    file_mtime=_file_mtime(fp_margin),
-                )
-                if _valid_df(df_margin):
-                    st.write(_("Margin vs Upper"))
-                    dates_m = df_margin.columns.tolist()
-                    if dates_m:
-                        sel_m = st.selectbox(
-                            _("Select date to display"),
-                            dates_m,
-                            key="margin_upper_date",
-                        )
-                        if sel_m:
-                            fig_m = px.bar(
-                                df_margin[sel_m].reset_index(),
-                                x=df_margin.index.name or "index",
-                                y=sel_m,
-                                labels={
-                                    df_margin.index.name or "index": _("Time"),
-                                    sel_m: _("Margin vs Upper"),
-                                },
-                                color_discrete_sequence=["#2ca02c"],
-                                title=f"{sel_m} の上限差分",
-                            )
-                            st.plotly_chart(
-                                fig_m,
-                                use_container_width=True,
-                                key="margin_upper_chart",
-                            )
-                    fig_margin = px.imshow(
-                        df_margin,
-                        aspect="auto",
-                        color_continuous_scale="Greens",
-                        labels={
-                            "x": _("Date"),
-                            "y": _("Time"),
-                            "color": _("Margin vs Upper"),
-                        },
-                        title="上限差分ヒートマップ",
-                    )
-                    st.plotly_chart(
-                        fig_margin, use_container_width=True, key="margin_upper_heat"
-                    )
-            except Exception as e:
-                log_and_display_error("margin_vs_upper_time.xlsx 表示エラー", e)
-        else:
-            st.info(
-                _("Margin vs Upper")
-                + " (margin_vs_upper_time.xlsx) "
-                + _("が見つかりません。")
-            )
+        sel_role = None
+        with c2:
+            if scope == "role" and roles:
+                sel_role = st.selectbox(_("Role"), roles, key="opt_scope_role")
 
-        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
-        scope_lbl = st.selectbox(
-            "ヒートマップの対象範囲",
-            list(scope_opts.values()),
-            key="opt_scope",
-        )
-        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
-        sel_role = sel_emp = None
-        if scope == "role" and roles:
-            sel_role = st.selectbox(_("Role"), roles, key="opt_scope_role")
-        elif scope == "employment" and employments:
-            sel_emp = st.selectbox(_("Employment"), employments, key="opt_scope_emp")
+        sel_emp = None
+        with c3:
+            if scope == "employment" and employments:
+                sel_emp = st.selectbox(_("Employment"), employments, key="opt_scope_emp")
 
-        df_score = pd.DataFrame()
+        # --- Data Loading based on scope ---
+        base_heatmap_df = pd.DataFrame()
         if scope == "overall":
-            fp_score = data_dir / "optimization_score_time.xlsx"
-            if fp_score.exists():
-                try:
-                    df_score = load_excel_cached(
-                        str(fp_score),
-                        sheet_name="optimization_score",
-                        index_col=0,
-                        file_mtime=_file_mtime(fp_score),
-                    )
-                except Exception as e:
-                    log_and_display_error("optimization_score_time.xlsx 表示エラー", e)
+            fp_heat = data_dir / "heat_ALL.xlsx"
+            if fp_heat.exists():
+                base_heatmap_df = load_excel_cached(
+                    str(fp_heat),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_heat),
+                )
         elif scope == "role" and sel_role:
             fp_heat = data_dir / f"heat_{safe_sheet(sel_role, for_path=True)}.xlsx"
             if fp_heat.exists():
-                try:
-                    role_df = load_excel_cached(str(fp_heat), index_col=0)
-                    df_score = calc_opt_score_from_heatmap(role_df, w_lack, w_excess)
-                except Exception as e:
-                    log_and_display_error("role optimization heat error", e)
+                base_heatmap_df = load_excel_cached(
+                    str(fp_heat),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_heat),
+                )
         elif scope == "employment" and sel_emp:
             fp_heat = data_dir / f"heat_emp_{safe_sheet(sel_emp, for_path=True)}.xlsx"
             if fp_heat.exists():
-                try:
-                    emp_df = load_excel_cached(str(fp_heat), index_col=0)
-                    df_score = calc_opt_score_from_heatmap(emp_df, w_lack, w_excess)
-                except Exception as e:
-                    log_and_display_error("employment optimization heat error", e)
+                base_heatmap_df = load_excel_cached(
+                    str(fp_heat),
+                    index_col=0,
+                    file_mtime=_file_mtime(fp_heat),
+                )
 
-        if _valid_df(df_score):
-            st.write(_("Optimization Score"))
+        if not _valid_df(base_heatmap_df):
+            st.warning("選択されたスコープのヒートマップデータが見つかりません。")
+            return
+
+        # --- Dynamic Calculation for all 3 metrics ---
+        date_cols = [c for c in base_heatmap_df.columns if _parse_as_date(str(c)) is not None]
+        if not date_cols:
+            st.warning("ヒートマップデータに有効な日付列がありません。")
+            return
+
+        staff_df = base_heatmap_df[date_cols].fillna(0)
+        need_df = pd.DataFrame(
+            np.repeat(base_heatmap_df["need"].values[:, np.newaxis], len(date_cols), axis=1),
+            index=base_heatmap_df.index,
+            columns=date_cols,
+        )
+        upper_df = pd.DataFrame(
+            np.repeat(base_heatmap_df["upper"].values[:, np.newaxis], len(date_cols), axis=1),
+            index=base_heatmap_df.index,
+            columns=date_cols,
+        )
+
+        # 1. Surplus vs Need
+        df_surplus = (staff_df - need_df).clip(lower=0).fillna(0).astype(int)
+
+        # 2. Margin vs Upper
+        df_margin = (upper_df - staff_df).clip(lower=0).fillna(0).astype(int)
+
+        # 3. Optimization Score
+        weights = config.get("optimization_weights", {"lack": 0.6, "excess": 0.4})
+        w_lack = float(weights.get("lack", 0.6))
+        w_excess = float(weights.get("excess", 0.4))
+        df_score = calc_opt_score_from_heatmap(base_heatmap_df, w_lack, w_excess)
+
+        st.divider()
+
+        # --- Display Heatmaps side-by-side ---
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.markdown("##### 1. 必要人数に対する余剰 (Surplus vs Need)")
+            st.info(
+                """
+                このヒートマップは、各時間帯で**必要人数（need）に対して何人多くスタッフがいたか**を示します。
+                - **値が高い（色が濃い）**: 必要人数を大幅に超える人員が配置されており、過剰人員（コスト増）の可能性があります。
+                - **値が0**: 必要人数ちょうどか、それ以下の人員しか配置されていません。
+                """
+            )
+            fig_surplus = px.imshow(
+                df_surplus,
+                aspect="auto",
+                color_continuous_scale="Blues",
+                labels={"x": _("Date"), "y": _("Time"), "color": _("Surplus vs Need")},
+                title="必要人数に対する余剰人員ヒートマップ",
+            )
+            st.plotly_chart(fig_surplus, use_container_width=True, key="surplus_need_heat")
+
+        with col2:
+            st.markdown("##### 2. 上限に対する余白 (Margin to Upper)")
+            st.info(
+                """
+                このヒートマップは、各時間帯で**配置人数の上限（upper）まであと何人の余裕があったか**を示します。
+                - **値が高い（色が濃い）**: 上限までまだ余裕があり、追加の人員を受け入れられるキャパシティがあったことを示します。
+                - **値が0に近い**: 上限ギリギリで稼働しており、突発的な事態に対応する余裕が少なかったことを示唆します。
+                """
+            )
+            fig_margin = px.imshow(
+                df_margin,
+                aspect="auto",
+                color_continuous_scale="Greens",
+                labels={"x": _("Date"), "y": _("Time"), "color": _("Margin vs Upper")},
+                title="上限人数までの余白ヒートマップ",
+            )
+            st.plotly_chart(fig_margin, use_container_width=True, key="margin_upper_heat")
+
+        with col3:
+            st.markdown("##### 3. 人員配置 最適化スコア")
+            st.info(
+                """
+                このヒートマップは、**人員配置の効率性**を0から1のスコアで示します（1が最も良い）。
+                - **スコアが高い（緑色に近い）**: 必要人数（need）を満たしつつ、上限（upper）を超えない、効率的な人員配置ができています。
+                - **スコアが低い（赤色に近い）**: 人員不足、または過剰人員が発生しており、改善の余地があることを示します。
+                """
+            )
             fig_score = px.imshow(
                 df_score,
                 aspect="auto",
                 color_continuous_scale="RdYlGn",
                 zmin=0,
                 zmax=1,
-                labels={
-                    "x": _("Date"),
-                    "y": _("Time"),
-                    "color": _("Optimization Score"),
-                },
+                labels={"x": _("Date"), "y": _("Time"), "color": _("Optimization Score")},
                 title="最適化スコア ヒートマップ",
             )
-            st.plotly_chart(
-                fig_score, use_container_width=True, key="optimization_heat"
-            )
-        else:
-            st.info("Data not available")
+            st.plotly_chart(fig_score, use_container_width=True, key="optimization_heat")
+
+
 
 
 def display_fatigue_tab(tab_container, data_dir):
