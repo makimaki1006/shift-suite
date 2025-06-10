@@ -2875,64 +2875,60 @@ def display_optimization_tab(tab_container, data_dir):
 
         st.divider()
 
-        # --- Display Heatmaps side-by-side ---
-        col1, col2, col3 = st.columns(3)
+        # --- Display Heatmaps Vertically ---
 
-        with col1:
-            st.markdown("##### 1. 必要人数に対する余剰 (Surplus vs Need)")
-            st.info(
-                """
-                このヒートマップは、各時間帯で**必要人数（need）に対して何人多くスタッフがいたか**を示します。
-                - **値が高い（色が濃い）**: 必要人数を大幅に超える人員が配置されており、過剰人員（コスト増）の可能性があります。
-                - **値が0**: 必要人数ちょうどか、それ以下の人員しか配置されていません。
-                """
-            )
-            fig_surplus = px.imshow(
-                df_surplus,
-                aspect="auto",
-                color_continuous_scale="Blues",
-                labels={"x": _("Date"), "y": _("Time"), "color": _("Surplus vs Need")},
-                title="必要人数に対する余剰人員ヒートマップ",
-            )
-            st.plotly_chart(fig_surplus, use_container_width=True, key="surplus_need_heat")
+        st.markdown("##### 1. 必要人数に対する余剰 (Surplus vs Need)")
+        st.info(
+            """
+            このヒートマップは、各時間帯で**必要人数（need）に対して何人多くスタッフがいたか**を示します。
+            - **値が高い（色が濃い）**: 必要人数を大幅に超える人員が配置されており、過剰人員（コスト増）の可能性があります。
+            - **値が0**: 必要人数ちょうどか、それ以下の人員しか配置されていません。
+            """
+        )
+        fig_surplus = px.imshow(
+            df_surplus,
+            aspect="auto",
+            color_continuous_scale="Blues",
+            labels={"x": _("Date"), "y": _("Time"), "color": _("Surplus vs Need")},
+            title="必要人数に対する余剰人員ヒートマップ",
+        )
+        st.plotly_chart(fig_surplus, use_container_width=True, key="surplus_need_heat")
 
-        with col2:
-            st.markdown("##### 2. 上限に対する余白 (Margin to Upper)")
-            st.info(
-                """
-                このヒートマップは、各時間帯で**配置人数の上限（upper）まであと何人の余裕があったか**を示します。
-                - **値が高い（色が濃い）**: 上限までまだ余裕があり、追加の人員を受け入れられるキャパシティがあったことを示します。
-                - **値が0に近い**: 上限ギリギリで稼働しており、突発的な事態に対応する余裕が少なかったことを示唆します。
-                """
-            )
-            fig_margin = px.imshow(
-                df_margin,
-                aspect="auto",
-                color_continuous_scale="Greens",
-                labels={"x": _("Date"), "y": _("Time"), "color": _("Margin vs Upper")},
-                title="上限人数までの余白ヒートマップ",
-            )
-            st.plotly_chart(fig_margin, use_container_width=True, key="margin_upper_heat")
+        st.markdown("##### 2. 上限に対する余白 (Margin to Upper)")
+        st.info(
+            """
+            このヒートマップは、各時間帯で**配置人数の上限（upper）まであと何人の余裕があったか**を示します。
+            - **値が高い（色が濃い）**: 上限までまだ余裕があり、追加の人員を受け入れられるキャパシティがあったことを示します。
+            - **値が0に近い**: 上限ギリギリで稼働しており、突発的な事態に対応する余裕が少なかったことを示唆します。
+            """
+        )
+        fig_margin = px.imshow(
+            df_margin,
+            aspect="auto",
+            color_continuous_scale="Greens",
+            labels={"x": _("Date"), "y": _("Time"), "color": _("Margin vs Upper")},
+            title="上限人数までの余白ヒートマップ",
+        )
+        st.plotly_chart(fig_margin, use_container_width=True, key="margin_upper_heat")
 
-        with col3:
-            st.markdown("##### 3. 人員配置 最適化スコア")
-            st.info(
-                """
-                このヒートマップは、**人員配置の効率性**を0から1のスコアで示します（1が最も良い）。
-                - **スコアが高い（緑色に近い）**: 必要人数（need）を満たしつつ、上限（upper）を超えない、効率的な人員配置ができています。
-                - **スコアが低い（赤色に近い）**: 人員不足、または過剰人員が発生しており、改善の余地があることを示します。
-                """
-            )
-            fig_score = px.imshow(
-                df_score,
-                aspect="auto",
-                color_continuous_scale="RdYlGn",
-                zmin=0,
-                zmax=1,
-                labels={"x": _("Date"), "y": _("Time"), "color": _("Optimization Score")},
-                title="最適化スコア ヒートマップ",
-            )
-            st.plotly_chart(fig_score, use_container_width=True, key="optimization_heat")
+        st.markdown("##### 3. 人員配置 最適化スコア")
+        st.info(
+            """
+            このヒートマップは、**人員配置の効率性**を0から1のスコアで示します（1が最も良い）。
+            - **スコアが高い（緑色に近い）**: 必要人数（need）を満たしつつ、上限（upper）を超えない、効率的な人員配置ができています。
+            - **スコアが低い（赤色に近い）**: 人員不足、または過剰人員が発生しており、改善の余地があることを示します。
+            """
+        )
+        fig_score = px.imshow(
+            df_score,
+            aspect="auto",
+            color_continuous_scale="RdYlGn",
+            zmin=0,
+            zmax=1,
+            labels={"x": _("Date"), "y": _("Time"), "color": _("Optimization Score")},
+            title="最適化スコア ヒートマップ",
+        )
+        st.plotly_chart(fig_score, use_container_width=True, key="optimization_heat")
 
 
 
