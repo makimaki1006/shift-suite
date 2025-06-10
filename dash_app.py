@@ -20,6 +20,7 @@ import plotly.express as px
 from dash import Input, Output, callback, dcc, html
 
 from shift_suite.i18n import translate as _
+from shift_suite.tasks.utils import date_with_weekday
 from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks.dashboard import load_leave_results_from_dir
 
@@ -279,6 +280,7 @@ def page_shortage():
                     zmin=0,
                     zmax=1,
                     labels=dict(x=_("Date"), y=_("Time"), color=_("Shortage Ratio")),
+                    x=[date_with_weekday(c) for c in shortage_ratio_df.columns],
                     title="不足率ヒートマップ",
                 ),
             ),
@@ -410,6 +412,7 @@ def update_heatmap(mode: str, zmax_val: float, zmode: str):
             zmin=0,
             zmax=zmax_val,
             labels=dict(x="日付", y="時間帯", color="配置人数"),
+            x=[date_with_weekday(c) for c in heat_staff_data.columns],
             title="スタッフ配置ヒートマップ",
         )
         return fig, slider_disabled, zmax_val
@@ -424,6 +427,7 @@ def update_heatmap(mode: str, zmax_val: float, zmode: str):
         labels=dict(
             x="日付", y="時間帯", color="充足率 (実績/必要)"
         ),  # ★ ラベル日本語化
+        x=[date_with_weekday(c) for c in ratio_calculated_df.columns],
         title="充足率ヒートマップ",
     )
     return fig, True, zmax_val

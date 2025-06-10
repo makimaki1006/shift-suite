@@ -29,3 +29,8 @@ def test_to_hhmm_variants():
     assert utils.to_hhmm("23:45") == "23:45"
     assert utils.to_hhmm("12:00:59") == "12:00"
     assert utils.to_hhmm(None) is None
+
+
+def test_date_with_weekday_formatting():
+    s = utils.date_with_weekday("2024-06-01")
+    assert s.startswith("2024-06-01") and "(" in s and ")" in s

@@ -361,6 +361,18 @@ def _parse_as_date(column_name: Any) -> dt.date | None:
     return None
 
 
+# ────────────────── 8. Date + Weekday Helpers ──────────────────
+def date_with_weekday(date_val: Any) -> str:
+    """Return ``YYYY-MM-DD(曜日)`` for the given date string."""
+
+    try:
+        dt_val = pd.to_datetime(date_val, errors="raise")
+    except Exception:  # noqa: BLE001 - parse failure
+        return str(date_val)
+    weekday_jp = "月火水木金土日"[dt_val.weekday()]
+    return dt_val.strftime("%Y-%m-%d") + f"({weekday_jp})"
+
+
 # ────────────────── 9. Public Re-export ──────────────────
 __all__: Sequence[str] = [
     "log",
@@ -376,4 +388,5 @@ __all__: Sequence[str] = [
     "derive_max_staff",
     "calculate_jain_index",
     "_parse_as_date",  # ★追加
+    "date_with_weekday",
 ]
