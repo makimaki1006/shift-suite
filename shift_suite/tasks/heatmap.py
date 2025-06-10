@@ -27,7 +27,7 @@ from .utils import (
     write_meta,
 )
 
-# ★新規追加: 通常勤務の判定用定数
+# 新規追加: 通常勤務の判定用定数
 DEFAULT_HOLIDAY_TYPE = "通常勤務"
 
 STAFF_ALIASES = ["staff", "氏名", "名前", "従業員"]
@@ -126,7 +126,7 @@ def calculate_pattern_based_need(
     holidays: set[dt.date] | None = None,
     adjustment_factor: float = 1.0,
 ) -> pd.DataFrame:
-    # ★修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
+    # 修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
     log.info(
         f"[heatmap.calculate_pattern_based_need] 参照期間: {ref_start_date} - {ref_end_date}, 手法: {statistic_method}, 外れ値除去: {remove_outliers}"
     )
@@ -236,7 +236,7 @@ def calculate_pattern_based_need(
 
 def _filter_work_records(long_df: pd.DataFrame) -> pd.DataFrame:
     """
-    ★新規追加: 通常勤務のレコードのみを抽出する
+    新規追加: 通常勤務のレコードのみを抽出する
     休暇レコード（holiday_type != "通常勤務"）を除外し、
     実際に勤務時間がある（parsed_slots_count > 0）レコードのみを返す
     """
@@ -307,7 +307,7 @@ def build_heatmap(
         )
         return
 
-    # ★重要: 休暇レコードの統計を先に収集
+    # 重要: 休暇レコードの統計を先に収集
     leave_stats = {}
     if not long_df.empty and "holiday_type" in long_df.columns:
         holiday_type_stats = long_df["holiday_type"].value_counts()
@@ -358,7 +358,7 @@ def build_heatmap(
                         )
                         continue
 
-                    # ★修正: 通常勤務のレコードのみで判定
+                    # 修正: 通常勤務のレコードのみで判定
                     work_records_today = _filter_work_records(df_for_current_date_iter)
                     if work_records_today.empty:
                         estimated_holidays_set.add(current_date_val_iter)
@@ -380,7 +380,7 @@ def build_heatmap(
             "[heatmap.build_heatmap] long_dfが空か、必要な列がないため、休業日を推定できません。"
         )
 
-    # ★重要: 通常勤務のレコードのみでヒートマップ作成
+    # 重要: 通常勤務のレコードのみでヒートマップ作成
     df_for_heatmap_actuals = _filter_work_records(long_df)
     out_dir_path = Path(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -416,7 +416,7 @@ def build_heatmap(
             dates=[],
             summary_columns=SUMMARY5,
             estimated_holidays=[d.isoformat() for d in sorted(list(holidays or set()))],
-            leave_statistics=leave_stats,  # ★休暇統計を追加
+            leave_statistics=leave_stats,  # 休暇統計を追加
         )
         return
 
@@ -819,7 +819,7 @@ def build_heatmap(
         .to_dict(orient="records")
         if not dow_need_pattern_df.empty
         else []
-    )  # ★ index名変更
+    )  #  index名変更
 
     write_meta(
         out_dir_path / "heatmap.meta.json",
@@ -837,6 +837,6 @@ def build_heatmap(
             "remove_outliers": need_remove_outliers,
             "iqr_multiplier": need_iqr_multiplier if need_remove_outliers else None,
         },
-        leave_statistics=leave_stats,  # ★休暇統計をメタデータに追加
+        leave_statistics=leave_stats,  # 休暇統計をメタデータに追加
     )
     log.info("[heatmap.build_heatmap] ヒートマップ生成処理完了。")

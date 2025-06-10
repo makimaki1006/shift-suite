@@ -57,7 +57,7 @@ from shift_suite.i18n import translate as _
 from shift_suite.logger_config import configure_logging
 from shift_suite.tasks import (
     dashboard,
-    leave_analyzer,  # ★ 新規インポート
+    leave_analyzer,  #  新規インポート
     over_shortage_log,
 )
 from shift_suite.tasks.utils import (
@@ -557,7 +557,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.max_method_for_upper_options_widget = ["mean+1s", "p75"]
     st.session_state.max_method_for_upper_widget = "p75"
 
-    # ★ 休暇分析を含む追加モジュールリスト
+    #  休暇分析を含む追加モジュールリスト
     st.session_state.available_ext_opts_widget = [
         "Stats",
         "Anomaly",
@@ -597,7 +597,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.penalty_per_lack_widget = 4000
     st.session_state.forecast_period_widget = 30
 
-    # ★ 休暇分析用パラメータの初期化
+    #  休暇分析用パラメータの初期化
     st.session_state.leave_analysis_target_types_widget = [
         LEAVE_TYPE_REQUESTED,
         LEAVE_TYPE_PAID,
@@ -607,7 +607,7 @@ if "app_initialized" not in st.session_state:
         3  # 希望休集中度閾値のデフォルト
     )
 
-    # ★ 休暇分析結果格納用
+    #  休暇分析結果格納用
     st.session_state.leave_analysis_results = {}
 
     st.session_state.rest_time_results = None
@@ -1002,13 +1002,13 @@ if run_button_clicked:
         param_penalty_lack = st.session_state.penalty_per_lack_widget
         param_forecast_period = st.session_state.forecast_period_widget
 
-        # ★ 休暇分析用パラメータの取得
+        #  休暇分析用パラメータの取得
         param_leave_target_types = st.session_state.leave_analysis_target_types_widget
         param_leave_concentration_threshold = (
             st.session_state.leave_concentration_threshold_widget
         )
 
-        # ★ セッションステート内の前回結果をクリア
+        #  セッションステート内の前回結果をクリア
         st.session_state.leave_analysis_results = {}
         # --- UI値取得ここまで ---
 
@@ -1142,7 +1142,7 @@ if run_button_clicked:
                     st.session_state.analysis_status["shortage"] = "failure"
                     log_and_display_error("不足分析の処理中にエラーが発生しました", e)
 
-            # ★----- 休暇分析モジュールの実行 -----★
+            # ----- 休暇分析モジュールの実行 -----
             # "休暇分析" (日本語) が選択されているか確認
             if _("Leave Analysis") in param_ext_opts:
                 update_progress_exec_run("Leave Analysis: Processing...")
@@ -1357,7 +1357,7 @@ if run_button_clicked:
                     log_and_display_error(
                         f"{_('Leave Analysis')} の処理中にエラーが発生しました", e_leave
                     )
-            # ★----- 休暇分析モジュールの実行ここまで -----★
+            # ----- 休暇分析モジュールの実行ここまで -----
 
             # 他の追加モジュールの実行
             for opt_module_name_exec_run in st.session_state.available_ext_opts_widget:
@@ -1717,7 +1717,7 @@ st.session_state.analysis_done = True
 # Plotlyの全体問題を修正した休暇分析コード
 
 
-# ★ 新しい「休暇分析」タブの表示 (解析が完了し、休暇分析が選択されている場合)
+#  新しい「休暇分析」タブの表示 (解析が完了し、休暇分析が選択されている場合)
 # ─────────────────────────────  app.py  (Part 3 / 3)  ──────────────────────────
 def display_overview_tab(tab_container, data_dir):
     with tab_container:

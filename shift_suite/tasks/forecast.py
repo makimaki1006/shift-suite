@@ -1,7 +1,7 @@
 """
 shift_suite.tasks.forecast  v1.5.0 – 休暇・履歴対応
 ────────────────────────────────────────────────────────
-■ v1.5 変更点 ★
+■ v1.5 変更点 
   1. 予測期間の既定を 30 日に延長
   2. build_demand_series / forecast_need が leave_analysis.csv を任意で受け付け
   3. MAPE 計算を 0 除算回避処理付きに修正
@@ -345,7 +345,7 @@ def forecast_need(
 
     # ───── 予測結果組立 ─────
     out_df = pd.DataFrame({"ds": future_dates, "yhat": forecast})
-    out_df["model"] = sel  # ★ 追加: 常に model 列を付与
+    out_df["model"] = sel  #  追加: 常に model 列を付与
 
     save_df_xlsx(out_df, excel_out)
 
