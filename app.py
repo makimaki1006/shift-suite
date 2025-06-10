@@ -3395,39 +3395,6 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             if not conc_df.empty:
                 st.subheader(_("Leave concentration graphs"))
 
-                fig_conc = px.bar(
-                    conc_df,
-                    x="date",
-                    y="leave_applicants_count",
-                    labels={
-                        "date": _("Date"),
-                        "leave_applicants_count": _("Leave applicants"),
-                    },
-                    title="希望休の集中日",
-                )
-                if not focused_df.empty:
-                    fig_conc.add_scatter(
-                        x=focused_df["date"],
-                        y=focused_df["leave_applicants_count"],
-                        mode="markers",
-                        marker=dict(color="red", size=10, symbol="diamond"),
-                        name=_("Exceeds threshold"),
-                    )
-
-                events = []
-                if plotly_events is not None:
-                    events = plotly_events(
-                        fig_conc,
-                        click_event=True,
-                        select_event=True,
-                        override_height=None,
-                        key="leave_conc_chart",
-                    )
-                else:
-                    st.plotly_chart(
-                        fig_conc, use_container_width=True, key="leave_conc_chart"
-                    )
-
                 if "leave_ratio" not in conc_df.columns:
                     sb = results_dict.get("staff_balance_daily")
                     if isinstance(sb, pd.DataFrame) and {
@@ -3439,6 +3406,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                         )
                         focused_df = conc_df[conc_df.get("is_concentrated")]
 
+                events = []
                 if "leave_ratio" in conc_df.columns:
                     fig_ratio = px.line(
                         conc_df,
@@ -3459,9 +3427,17 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                             marker=dict(color="red", size=10, symbol="diamond"),
                             name=_("Exceeds threshold"),
                         )
-                    st.plotly_chart(
-                        fig_ratio, use_container_width=True, key="leave_ratio_chart"
-                    )
+                    if plotly_events is not None:
+                        events = plotly_events(
+                            fig_ratio,
+                            click_event=True,
+                            override_height=None,
+                            key="leave_ratio_chart_events",
+                        )
+                    else:
+                        st.plotly_chart(
+                            fig_ratio, use_container_width=True, key="leave_ratio_chart"
+                        )
                 else:
                     st.info(_("Leave ratio not available."))
 
