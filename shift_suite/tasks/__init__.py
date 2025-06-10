@@ -10,6 +10,7 @@ __all__ = [
     "CombinedScoreCalculator",
     "LowStaffLoadAnalyzer",
     "ShortageFactorAnalyzer",
+    "create_optimal_hire_plan",
 ]
 
 _module_map = {
@@ -20,6 +21,7 @@ _module_map = {
     "RestTimeAnalyzer": "shift_suite.tasks.analyzers.rest_time",
     "WorkPatternAnalyzer": "shift_suite.tasks.analyzers.work_pattern",
     "ShortageFactorAnalyzer": "shift_suite.tasks.shortage_factor_analyzer",
+    "create_optimal_hire_plan": "shift_suite.tasks.optimal_hire_plan",
 }
 
 
