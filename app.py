@@ -60,7 +60,12 @@ from shift_suite.tasks import (
     leave_analyzer,  # ★ 新規インポート
     over_shortage_log,
 )
-from shift_suite.tasks.utils import safe_read_excel, safe_sheet, _parse_as_date
+from shift_suite.tasks.utils import (
+    safe_read_excel,
+    safe_sheet,
+    _parse_as_date,
+    date_with_weekday,
+)
 from shift_suite import config
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1892,6 +1897,7 @@ def display_heatmap_tab(tab_container, data_dir):
                             "y": _("Time"),
                             "color": _("Raw Count"),
                         },
+                        x=[date_with_weekday(c) for c in disp_df_heat.columns],
                         title="スタッフ配置ヒートマップ",
                     )
                 else:
@@ -1931,6 +1937,7 @@ def display_heatmap_tab(tab_container, data_dir):
                                     "y": _("Time"),
                                     "color": _("Ratio (staff ÷ need)"),
                                 },
+                                x=[date_with_weekday(c) for c in ratio_display_df.columns],
                                 title="充足率ヒートマップ",
                             )
                         else:
@@ -2890,6 +2897,7 @@ def display_optimization_tab(tab_container, data_dir):
             aspect="auto",
             color_continuous_scale="Blues",
             labels={"x": _("Date"), "y": _("Time"), "color": _("Surplus vs Need")},
+            x=[date_with_weekday(c) for c in df_surplus.columns],
             title="必要人数に対する余剰人員ヒートマップ",
         )
         st.plotly_chart(fig_surplus, use_container_width=True, key="surplus_need_heat")
@@ -2907,6 +2915,7 @@ def display_optimization_tab(tab_container, data_dir):
             aspect="auto",
             color_continuous_scale="Greens",
             labels={"x": _("Date"), "y": _("Time"), "color": _("Margin vs Upper")},
+            x=[date_with_weekday(c) for c in df_margin.columns],
             title="上限人数までの余白ヒートマップ",
         )
         st.plotly_chart(fig_margin, use_container_width=True, key="margin_upper_heat")
@@ -2926,6 +2935,7 @@ def display_optimization_tab(tab_container, data_dir):
             zmin=0,
             zmax=1,
             labels={"x": _("Date"), "y": _("Time"), "color": _("Optimization Score")},
+            x=[date_with_weekday(c) for c in df_score.columns],
             title="最適化スコア ヒートマップ",
         )
         st.plotly_chart(fig_score, use_container_width=True, key="optimization_heat")

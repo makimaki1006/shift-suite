@@ -6,6 +6,8 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 
+from .utils import date_with_weekday
+
 from shift_suite.i18n import translate as _
 
 from . import leave_analyzer
@@ -84,6 +86,7 @@ def shortage_heatmap(lack_ratio_df: pd.DataFrame):
         aspect="auto",
         color_continuous_scale="Reds",
         labels={"x": _("Date"), "y": _("Time"), "color": _("Shortage Ratio")},
+        x=[date_with_weekday(c) for c in lack_ratio_df.columns],
     )
     return fig
 
