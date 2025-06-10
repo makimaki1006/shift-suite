@@ -14,7 +14,7 @@ import logging
 import pathlib
 
 import dash
-import numpy as np  # ★ 追加: np.nan のため
+import numpy as np  #  追加: np.nan のため
 import pandas as pd
 import plotly.express as px
 from dash import Input, Output, callback, dcc, html
@@ -29,14 +29,14 @@ from shift_suite.tasks.dashboard import load_leave_results_from_dir
 log = logging.getLogger(__name__)
 
 # ────────────────── 1. 定数 & ヘルパ ──────────────────
-DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out"  # ★ .resolve() を追加
+DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out"  #  .resolve() を追加
 
 leave_results: dict[str, pd.DataFrame] = {}
 
 
 def drop_summary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """need / upper / staff / lack / excess を除外した DF を返す"""
-    cols_to_check = df.columns.str.strip().str.lower()  # ★ 変数名変更
+    cols_to_check = df.columns.str.strip().str.lower()  #  変数名変更
     return df.loc[:, ~cols_to_check.isin(SUMMARY5_CONST)]
 
 
@@ -122,20 +122,20 @@ except Exception as e:
 # ────────────────── 3. Dash App ──────────────────
 app = dash.Dash(
     __name__, suppress_callback_exceptions=True, title="ShiftSuite Dashboard"
-)  # ★ title変更
+)  #  title変更
 server = app.server
 
 NAV = html.Div(
     [
         dcc.Link(
             _("Overview"), href="/", className="nav-link me-2"
-        ),  # ★ class変更 (Bootstrap風)
+        ),  #  class変更 (Bootstrap風)
         dcc.Link(_("Heatmap"), href="/heat", className="nav-link me-2"),
         dcc.Link(_("Shortage"), href="/short", className="nav-link me-2"),
         dcc.Link(_("Leave"), href="/leave", className="nav-link me-2"),
         # ... (他のナビゲーションリンクも同様に)
     ],
-    className="d-flex flex-wrap p-2 bg-light border-bottom",  # ★ Bootstrapクラス追加
+    className="d-flex flex-wrap p-2 bg-light border-bottom",  #  Bootstrapクラス追加
 )
 
 app.layout = html.Div(
@@ -144,7 +144,7 @@ app.layout = html.Div(
         NAV,
         html.Div(
             id="page-content", className="container-fluid p-3"
-        ),  # ★ id変更, Bootstrapクラス追加
+        ),  #  id変更, Bootstrapクラス追加
     ]
 )
 
@@ -178,7 +178,7 @@ def page_overview():
 
 
 def page_heat():
-    if heat_staff_data.empty:  # ★ データロード失敗時の表示
+    if heat_staff_data.empty:  #  データロード失敗時の表示
         return html.Div(
             [
                 html.H4(_("Heatmap Data Not Found")),
@@ -195,14 +195,14 @@ def page_heat():
             html.Div(
                 [
                     dcc.RadioItems(
-                        id="hm-mode-radio",  # ★ id変更 (他のhm-modeと区別)
+                        id="hm-mode-radio",  #  id変更 (他のhm-modeと区別)
                         options=[
                             {"label": "Raw 人数", "value": "raw"},
                             {"label": "Ratio (staff ÷ need)", "value": "ratio"},
                         ],
                         value="raw",
                         inline=True,
-                        className="me-3",  # ★ Bootstrapクラス追加
+                        className="me-3",  #  Bootstrapクラス追加
                     ),
                     dcc.Dropdown(
                         id="hm-zmax-mode",
@@ -219,7 +219,7 @@ def page_heat():
                     ),
                     html.Label(
                         "カラースケール上限(zmax):", className="me-2"
-                    ),  # ★ ラベル追加
+                    ),  #  ラベル追加
                     dcc.Slider(
                         id="hm-zmax-slider",
                         min=5,
@@ -231,13 +231,13 @@ def page_heat():
                         disabled=False,
                     ),
                 ],
-                className="d-flex align-items-center mb-3 p-2 border rounded bg-light",  # ★ Bootstrapクラス追加
+                className="d-flex align-items-center mb-3 p-2 border rounded bg-light",  #  Bootstrapクラス追加
             ),
-            dcc.Graph(id="hm-main-graph"),  # ★ id変更
+            dcc.Graph(id="hm-main-graph"),  #  id変更
             html.Hr(),
-            html.H4("時間帯別不足人数 (選択日)", className="mt-3"),  # ★ タイトル追加
+            html.H4("時間帯別不足人数 (選択日)", className="mt-3"),  #  タイトル追加
             dcc.Dropdown(
-                id="hm-shortage-date-dropdown",  # ★ id変更
+                id="hm-shortage-date-dropdown",  #  id変更
                 options=[
                     {"label": str(d), "value": str(d)} for d in shortage_time_df.columns
                 ]
@@ -246,10 +246,10 @@ def page_heat():
                 value=str(shortage_time_df.columns[0])
                 if not shortage_time_df.empty and len(shortage_time_df.columns) > 0
                 else None,
-                className="mb-2",  # ★ Bootstrapクラス追加
+                className="mb-2",  #  Bootstrapクラス追加
                 style={"width": "300px"},
             ),
-            dcc.Graph(id="hm-shortage-bar-graph"),  # ★ id変更
+            dcc.Graph(id="hm-shortage-bar-graph"),  #  id変更
         ]
     )
 
@@ -370,7 +370,7 @@ def page_leave():
 # ─────────── 5. ルーティング ───────────
 @callback(
     Output("page-content", "children"), Input("url", "pathname")
-)  # ★ Output id変更
+)  #  Output id変更
 def router(path):
     if path == "/heat":
         return page_heat()
@@ -392,7 +392,7 @@ def router(path):
     Input("hm-zmax-mode", "value"),
 )
 def update_heatmap(mode: str, zmax_val: float, zmode: str):
-    if heat_staff_data.empty and mode == "raw":  # ★ データなしの場合のフォールバック
+    if heat_staff_data.empty and mode == "raw":  #  データなしの場合のフォールバック
         return px.imshow(pd.DataFrame()), True, zmax_val
     if ratio_calculated_df.empty and mode == "ratio":
         return px.imshow(pd.DataFrame()), True, zmax_val
@@ -426,7 +426,7 @@ def update_heatmap(mode: str, zmax_val: float, zmode: str):
         zmax=2,  # Ratioモードのデフォルトzmaxは2 (固定、スライダーは無効化)
         labels=dict(
             x="日付", y="時間帯", color="充足率 (実績/必要)"
-        ),  # ★ ラベル日本語化
+        ),  #  ラベル日本語化
         x=[date_with_weekday(c) for c in ratio_calculated_df.columns],
         title="充足率ヒートマップ",
     )
@@ -434,10 +434,10 @@ def update_heatmap(mode: str, zmax_val: float, zmode: str):
 
 
 @callback(
-    Output("hm-shortage-bar-graph", "figure"),  # ★ id変更
-    Input("hm-shortage-date-dropdown", "value"),  # ★ id変更
+    Output("hm-shortage-bar-graph", "figure"),  #  id変更
+    Input("hm-shortage-date-dropdown", "value"),  #  id変更
 )
-def update_shortage_bar(selected_date_str: str | None):  # ★ 引数名変更、型ヒント追加
+def update_shortage_bar(selected_date_str: str | None):  #  引数名変更、型ヒント追加
     if (
         selected_date_str is None
         or shortage_time_df.empty
@@ -448,17 +448,17 @@ def update_shortage_bar(selected_date_str: str | None):  # ★ 引数名変更�
         fig_empty.update_layout(showlegend=False, height=300)
         return fig_empty
 
-    series_data = shortage_time_df[selected_date_str]  # ★ 変数名変更
+    series_data = shortage_time_df[selected_date_str]  #  変数名変更
     fig = px.bar(
         x=series_data.index,
         y=series_data.values,
-        labels={"x": "時間帯", "y": "不足人数"},  # ★ ラベル日本語化
-        title=f"{selected_date_str} の時間帯別不足人数",  # ★ タイトル追加
+        labels={"x": "時間帯", "y": "不足人数"},  #  ラベル日本語化
+        title=f"{selected_date_str} の時間帯別不足人数",  #  タイトル追加
         # template="plotly_dark", # ダークテーマはオプション
     )
     fig.update_layout(
         showlegend=False, xaxis_tickangle=-45, height=350
-    )  # ★ tickangle調整, height調整
+    )  #  tickangle調整, height調整
     return fig
 
 

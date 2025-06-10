@@ -175,7 +175,7 @@ def build_stats(
         num_actual_working_days == 0
         and num_total_date_columns > 0
         and not estimated_holidays_set
-    ):  # ★休業日セットが空なのに稼働日0はおかしい
+    ):  # 休業日セットが空なのに稼働日0はおかしい
         log.error(
             "稼働日数が0と計算されましたが、推定された休業日もありません。日付パースまたはデータに問題がある可能性があります。"
         )
@@ -210,7 +210,7 @@ def build_stats(
 
     for date_col_str in staff_actual_df.columns:
         current_date_obj = _parse_as_date(date_col_str)
-        # ★ 休業日セットが空でないこと、かつ日付が有効であることも判定条件に加える
+        #  休業日セットが空でないこと、かつ日付が有効であることも判定条件に加える
         if (
             estimated_holidays_set
             and current_date_obj
@@ -228,7 +228,7 @@ def build_stats(
             staff_actual_df[date_col_str] - current_day_upper
         ).clip(lower=0)
 
-    daily_metrics_data_for_df: List[Dict[str, Any]] = []  # ★ リストオブディクトに変更
+    daily_metrics_data_for_df: List[Dict[str, Any]] = []  #  リストオブディクトに変更
     for date_col_name_original_str in date_columns_in_heat:
         parsed_date = _parse_as_date(date_col_name_original_str)
         if parsed_date is None:
@@ -246,7 +246,7 @@ def build_stats(
             {
                 "date": pd.to_datetime(
                     parsed_date
-                ),  # ★ pd.to_datetimeでDatetimeIndex互換に
+                ),  #  pd.to_datetimeでDatetimeIndex互換に
                 "actual_slots": float(actual_slots_today),
                 "actual_hours": float(actual_slots_today * slot_hours),
                 "lack_slots": float(lack_slots_today),
@@ -254,7 +254,7 @@ def build_stats(
                 "excess_slots": float(excess_slots_today),
                 "excess_hours": float(excess_slots_today * slot_hours),
                 "is_working_day": is_working_day_flag,
-                "parsed_date_debug": parsed_date.isoformat(),  # ★デバッグ用にパースされた日付文字列も追加
+                "parsed_date_debug": parsed_date.isoformat(),  # デバッグ用にパースされた日付文字列も追加
             }
         )
 
@@ -272,7 +272,7 @@ def build_stats(
 
     daily_metrics_df = pd.DataFrame(daily_metrics_data_for_df).set_index(
         "date"
-    )  # ★ date列をindexに
+    )  #  date列をindexに
     # is_working_day 以外を数値型に変換（既に行われているはずだが念のため）
     cols_to_numeric = [
         "actual_slots",
@@ -282,7 +282,7 @@ def build_stats(
         "excess_slots",
         "excess_hours",
     ]
-    for col_to_num in cols_to_numeric:  # ★ 変数名変更
+    for col_to_num in cols_to_numeric:  #  変数名変更
         if col_to_num in daily_metrics_df.columns:
             daily_metrics_df[col_to_num] = pd.to_numeric(
                 daily_metrics_df[col_to_num], errors="coerce"
@@ -377,7 +377,7 @@ def build_stats(
         item_key,
         daily_values_df_cols_tuple,
         source_ts_df_filtered,
-    ) in [  # ★ source_ts_df_key_part -> source_ts_df_filtered
+    ) in [  #  source_ts_df_key_part -> source_ts_df_filtered
         ("staff", ("actual_slots", "actual_hours"), staff_actual_df_working_days),
         ("lack", ("lack_slots", "lack_hours"), daily_lack_count_df_working_days),
         (
@@ -744,7 +744,7 @@ def build_stats(
             if not monthly_df.empty:
                 monthly_df.to_excel(writer, sheet_name="Monthly_Summary", index=False)
             if not daily_metrics_df.empty:
-                # ★ daily_metrics_df の parsed_date_debug 列はデバッグ用なので、最終的なExcel出力からは除外しても良い
+                #  daily_metrics_df の parsed_date_debug 列はデバッグ用なので、最終的なExcel出力からは除外しても良い
                 cols_to_output_dm = [
                     col
                     for col in daily_metrics_df.columns

@@ -52,7 +52,7 @@ SHEET_COL_ALIAS = {
 }
 DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}
 
-# ★新規追加: 休暇コードの明示的定義
+# 新規追加: 休暇コードの明示的定義
 LEAVE_CODES = {
     "×": "希望休",
     "休": "施設休",
@@ -139,7 +139,7 @@ def _expand(
 
 def _determine_holiday_type_from_code(code: str) -> str | None:
     """
-    ★新規追加: コード自体から休暇タイプを判定
+    新規追加: コード自体から休暇タイプを判定
     休暇コードの場合は対応する休暇タイプを返し、通常勤務の場合はNoneを返す
     """
     code_normalized = _normalize(code)
@@ -158,7 +158,7 @@ def _determine_holiday_type(remarks_str: str) -> str:
 
 
 def _is_leave_code(code: str) -> bool:
-    """★新規追加: コードが休暇関連かどうかを判定"""
+    """新規追加: コードが休暇関連かどうかを判定"""
     code_normalized = _normalize(code)
     return code_normalized in LEAVE_CODES
 
@@ -204,7 +204,7 @@ def load_shift_patterns(
         ed_original = r.get("end", "")
         remarks_val = r.get("remarks", "")
 
-        # ★新ロジック: 備考欄キーワードを最優先
+        # 新ロジック: 備考欄キーワードを最優先
         holiday_type_from_remarks = _determine_holiday_type(str(remarks_val))
 
         if holiday_type_from_remarks != DEFAULT_HOLIDAY_TYPE:
@@ -252,7 +252,7 @@ def load_shift_patterns(
                 "parsed_slots_count": len(slots),
                 "remarks_original": remarks_val,
                 "holiday_type": holiday_type,
-                "is_leave_code": is_leave,  # ★デバッグ用フラグ
+                "is_leave_code": is_leave,  # デバッグ用フラグ
             }
         )
         code2slots[code] = slots
@@ -449,7 +449,7 @@ def ingest_excel(
             ):
                 continue
 
-            for col_name_original_str in date_cols_candidate:  # ★ 必ず文字列として扱う
+            for col_name_original_str in date_cols_candidate:  #  必ず文字列として扱う
                 shift_code_raw = row_data.get(col_name_original_str, "")
                 code_val = _normalize(str(shift_code_raw))
 
@@ -498,7 +498,7 @@ def ingest_excel(
                     if wt_row_series is not None
                     else DEFAULT_HOLIDAY_TYPE
                 )
-                # ★重要: 休暇コードの場合、スロット数を強制的に0にする
+                # 重要: 休暇コードの場合、スロット数を強制的に0にする
                 if wt_row_series is not None and wt_row_series.get(
                     "is_leave_code", False
                 ):
@@ -568,7 +568,7 @@ def ingest_excel(
         final_long_df["ds"] = pd.to_datetime(final_long_df["ds"])
         final_long_df = final_long_df.sort_values("ds").reset_index(drop=True)
 
-    # ★処理結果の統計をログ出力
+    # 処理結果の統計をログ出力
     if not final_long_df.empty:
         holiday_stats = final_long_df["holiday_type"].value_counts()
         log.info("処理結果統計:")
