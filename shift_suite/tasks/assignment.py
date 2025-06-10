@@ -15,6 +15,33 @@ except Exception:  # pragma: no cover - optional dependency
 from .utils import log
 
 
+def _validate_schedule_inputs(
+    roster_df: pd.DataFrame,
+    staff_df: pd.DataFrame,
+    leave_df: pd.DataFrame,
+) -> bool:
+    """Return ``True`` if all required columns exist and data is non-empty."""
+
+    missing_roster = {"date", "required_personnel"} - set(roster_df.columns)
+    missing_staff = {"name", "wage"} - set(staff_df.columns)
+    missing_leave = {"staff_id", "date"} - set(leave_df.columns)
+
+    if missing_roster or missing_staff or missing_leave:
+        log.error(
+            "Invalid input columns - roster: %s staff: %s leave: %s",
+            missing_roster,
+            missing_staff,
+            missing_leave,
+        )
+        return False
+
+    if roster_df.empty or staff_df.empty:
+        log.error("roster_df and staff_df cannot be empty")
+        return False
+
+    return True
+
+
 class ShiftSolutionPrinter(cp_model.CpSolverSolutionCallback):  # type: ignore
     """Print intermediate solutions during search."""
 
@@ -69,6 +96,9 @@ def generate_optimal_schedule(
     """
     if cp_model is None:
         log.error("ortools is not installed; assignment cannot run")
+        return pd.DataFrame()
+
+    if not _validate_schedule_inputs(roster_df, staff_df, leave_df):
         return pd.DataFrame()
 
     staff_ids = staff_df.index.tolist()
