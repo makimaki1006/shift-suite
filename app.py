@@ -1192,46 +1192,6 @@ if run_button_clicked:
                                             daily_leave_df=requested_leave_daily.copy(),
                                         )
                                     )
-                                    # --- 新規: 勤務予定人数との比較データ作成 ---
-                                    try:
-                                        total_staff_per_day = (
-                                            long_df[long_df["parsed_slots_count"] > 0]
-                                            .assign(
-                                                date=lambda df: pd.to_datetime(
-                                                    df["ds"]
-                                                ).dt.normalize()
-                                            )
-                                            .groupby("date")["staff"]
-                                            .nunique()
-                                            .reset_index(name="total_staff")
-                                        )
-                                        staff_balance = total_staff_per_day.merge(
-                                            daily_requested_applicants_counts.rename(
-                                                columns={
-                                                    "total_leave_days": "leave_applicants_count"
-                                                }
-                                            )[["date", "leave_applicants_count"]],
-                                            on="date",
-                                            how="left",
-                                        )
-                                        staff_balance["leave_applicants_count"] = (
-                                            staff_balance["leave_applicants_count"]
-                                            .fillna(0)
-                                            .astype(int)
-                                        )
-                                        staff_balance["non_leave_staff"] = (
-                                            staff_balance["total_staff"]
-                                            - staff_balance["leave_applicants_count"]
-                                        )
-                                        staff_balance["leave_ratio"] = (
-                                            staff_balance["leave_applicants_count"]
-                                            / staff_balance["total_staff"]
-                                        )
-                                        leave_results_temp["staff_balance_daily"] = (
-                                            staff_balance
-                                        )
-                                    except Exception as e:
-                                        log.error(f"勤務予定人数の計算中にエラー: {e}")
                                 else:
                                     log.info(
                                         f"{LEAVE_TYPE_REQUESTED} のデータが見つからなかったため、関連する集計・分析をスキップしました。"
@@ -1248,6 +1208,49 @@ if run_button_clicked:
                                     leave_results_temp["concentration_requested"] = (
                                         pd.DataFrame()
                                     )
+
+                            # 勤務予定人数との比較データ作成 (全休暇タイプ)
+                            try:
+                                total_staff_per_day = (
+                                    long_df[long_df["parsed_slots_count"] > 0]
+                                    .assign(
+                                        date=lambda df: pd.to_datetime(df["ds"]).dt.normalize()
+                                    )
+                                    .groupby("date")["staff"]
+                                    .nunique()
+                                    .reset_index(name="total_staff")
+                                )
+                                all_leave_counts = (
+                                    leave_analyzer.summarize_leave_by_day_count(
+                                        daily_leave_df.copy(),
+                                        period="date",
+                                    )
+                                    .groupby("date")
+                                    ["total_leave_days"]
+                                    .sum()
+                                    .reset_index(name="leave_applicants_count")
+                                )
+                                staff_balance = total_staff_per_day.merge(
+                                    all_leave_counts,
+                                    on="date",
+                                    how="left",
+                                )
+                                staff_balance["leave_applicants_count"] = (
+                                    staff_balance["leave_applicants_count"]
+                                    .fillna(0)
+                                    .astype(int)
+                                )
+                                staff_balance["non_leave_staff"] = (
+                                    staff_balance["total_staff"]
+                                    - staff_balance["leave_applicants_count"]
+                                )
+                                staff_balance["leave_ratio"] = (
+                                    staff_balance["leave_applicants_count"]
+                                    / staff_balance["total_staff"]
+                                )
+                                leave_results_temp["staff_balance_daily"] = staff_balance
+                            except Exception as e:
+                                log.error(f"勤務予定人数の計算中にエラー: {e}")
 
                             # 3. 有給休暇関連の集計
                             if LEAVE_TYPE_PAID in param_leave_target_types:
@@ -1954,19 +1957,6 @@ def display_shortage_tab(tab_container, data_dir):
             return
         st.subheader(_("Shortage"))
         roles, employments = load_shortage_meta(data_dir)
-        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
-        scope_lbl = st.radio(
-            _("Heatmap scope"),
-            list(scope_opts.values()),
-            horizontal=True,
-            key="short_scope",
-        )
-        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
-        sel_role = sel_emp = None
-        if scope == "role" and roles:
-            sel_role = st.selectbox(_("Role"), roles, key="short_scope_role")
-        elif scope == "employment" and employments:
-            sel_emp = st.selectbox(_("Employment"), employments, key="short_scope_emp")
         fp_s_role = data_dir / "shortage_role.xlsx"
         if fp_s_role.exists():
             try:
@@ -2358,6 +2348,19 @@ def display_shortage_tab(tab_container, data_dir):
                 + " (excess_time.xlsx) "
                 + _("が見つかりません。")
             )
+
+        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
+        scope_lbl = st.selectbox(
+            "ヒートマップの対象範囲",
+            list(scope_opts.values()),
+            key="short_scope",
+        )
+        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
+        sel_role = sel_emp = None
+        if scope == "role" and roles:
+            sel_role = st.selectbox(_("Role"), roles, key="short_scope_role")
+        elif scope == "employment" and employments:
+            sel_emp = st.selectbox(_("Employment"), employments, key="short_scope_emp")
 
         df_ratio = pd.DataFrame()
         if scope == "overall":
@@ -2783,19 +2786,6 @@ def display_optimization_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Optimization Analysis"))
         roles, employments = load_shortage_meta(data_dir)
-        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
-        scope_lbl = st.radio(
-            _("Heatmap scope"),
-            list(scope_opts.values()),
-            horizontal=True,
-            key="opt_scope",
-        )
-        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
-        sel_role = sel_emp = None
-        if scope == "role" and roles:
-            sel_role = st.selectbox(_("Role"), roles, key="opt_scope_role")
-        elif scope == "employment" and employments:
-            sel_emp = st.selectbox(_("Employment"), employments, key="opt_scope_emp")
         weights = config.get("optimization_weights", {"lack": 0.6, "excess": 0.4})
         w_lack = float(weights.get("lack", 0.6))
         w_excess = float(weights.get("excess", 0.4))
@@ -2913,6 +2903,19 @@ def display_optimization_tab(tab_container, data_dir):
                 + " (margin_vs_upper_time.xlsx) "
                 + _("が見つかりません。")
             )
+
+        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
+        scope_lbl = st.selectbox(
+            "ヒートマップの対象範囲",
+            list(scope_opts.values()),
+            key="opt_scope",
+        )
+        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
+        sel_role = sel_emp = None
+        if scope == "role" and roles:
+            sel_role = st.selectbox(_("Role"), roles, key="opt_scope_role")
+        elif scope == "employment" and employments:
+            sel_emp = st.selectbox(_("Employment"), employments, key="opt_scope_emp")
 
         df_score = pd.DataFrame()
         if scope == "overall":
@@ -3287,7 +3290,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
 
         staff_balance = results_dict.get("staff_balance_daily")
         if isinstance(staff_balance, pd.DataFrame) and not staff_balance.empty:
-            st.subheader("勤務予定人数と希望休取得者数")
+            st.subheader("勤務予定人数と全休暇取得者数の推移")
             fig_bal = px.line(
                 staff_balance,
                 x="date",
@@ -3307,6 +3310,28 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 fig_bal, use_container_width=True, key="staff_balance_chart"
             )
             st.dataframe(staff_balance, use_container_width=True, hide_index=True)
+
+            daily_summary_for_chart = results_dict.get("daily_summary")
+            if isinstance(daily_summary_for_chart, pd.DataFrame) and not daily_summary_for_chart.empty:
+                st.subheader("日別 休暇取得者数（内訳）")
+                fig_breakdown = px.bar(
+                    daily_summary_for_chart,
+                    x="date",
+                    y="total_leave_days",
+                    color="leave_type",
+                    barmode="stack",
+                    labels={
+                        "date": _("Date"),
+                        "total_leave_days": _("Leave applicants"),
+                        "leave_type": _("Leave type"),
+                    },
+                    title="日別 休暇取得者数（内訳）",
+                )
+                st.plotly_chart(
+                    fig_breakdown,
+                    use_container_width=True,
+                    key="daily_leave_breakdown_chart",
+                )
 
         ratio_break = results_dict.get("leave_ratio_breakdown")
         if isinstance(ratio_break, pd.DataFrame) and not ratio_break.empty:
@@ -3344,25 +3369,24 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             )
             st.dataframe(ratio_break, use_container_width=True, hide_index=True)
 
-        conc_both = results_dict.get("concentration_both")
-        if isinstance(conc_both, pd.DataFrame) and not conc_both.empty:
-            st.subheader("Requested + Paid concentration")
-            fig_both = px.line(
-                conc_both,
+        daily_summary_for_chart = results_dict.get("daily_summary")
+        if isinstance(daily_summary_for_chart, pd.DataFrame) and not daily_summary_for_chart.empty:
+            st.subheader("休暇タイプ別 取得者数の推移")
+            fig_type = px.line(
+                daily_summary_for_chart,
                 x="date",
-                y=["requested_count", "paid_count"],
+                y="total_leave_days",
+                color="leave_type",
                 markers=True,
                 labels={
                     "date": _("Date"),
-                    "value": _("Count"),
+                    "total_leave_days": _("Leave applicants"),
+                    "leave_type": _("Leave type"),
                 },
-                title="希望休＋有給取得数の推移",
+                title="休暇タイプ別 取得者数の推移",
             )
-            fig_both.data[0].name = "希望休取得者数"
-            fig_both.data[1].name = "有給取得者数"
-            fig_both.update_layout(legend_title_text="休暇種別")
-            st.plotly_chart(fig_both, use_container_width=True, key="leave_both_chart")
-            st.dataframe(conc_both, use_container_width=True, hide_index=True)
+            st.plotly_chart(fig_type, use_container_width=True, key="leave_type_trend_chart")
+            st.dataframe(daily_summary_for_chart, use_container_width=True, hide_index=True)
 
         concentration = results_dict.get("concentration_requested")
         if isinstance(concentration, pd.DataFrame) and not concentration.empty:
