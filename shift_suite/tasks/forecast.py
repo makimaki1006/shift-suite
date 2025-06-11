@@ -123,7 +123,7 @@ def build_demand_series(
     raise_on_empty: bool = True,
     leave_csv: Path | None = None,
 ) -> Path:
-    """heat_ALL.xlsx → 需要系列 CSV(ds,y) を生成
+    """heat_ALL.parquet → 需要系列 CSV(ds,y) を生成
 
     Parameters
     ----------
@@ -140,7 +140,11 @@ def build_demand_series(
         休暇取得数を ``leave_…`` 列として付与する
     """
     log.info("[forecast] build_demand_series start")
-    heat = pd.read_excel(heat_xlsx, index_col=0)
+    # heat_xlsx が .xlsx で終わる場合と .parquet で終わる場合の両方に対応
+    if str(heat_xlsx).endswith(".xlsx"):
+        heat = pd.read_excel(heat_xlsx, index_col=0)
+    else:
+        heat = pd.read_parquet(heat_xlsx)
 
     date_map = _extract_date_columns(heat)
     if not date_map:

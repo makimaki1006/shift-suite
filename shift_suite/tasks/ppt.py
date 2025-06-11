@@ -19,7 +19,7 @@ def _add_shortage_slide(prs: Presentation, shortage_fp: Path) -> None:
     """Add a bar chart slide summarising shortage by role."""
     import matplotlib.pyplot as plt
 
-    df = pd.read_excel(shortage_fp, sheet_name="role_summary")
+    df = pd.read_parquet(shortage_fp)  # read_excel から read_parquet に変更
     if df.empty:
         return
 
@@ -42,7 +42,7 @@ def _add_cost_slide(prs: Presentation, cost_fp: Path) -> None:
     """Add a slide showing cost simulations."""
     import matplotlib.pyplot as plt
 
-    df = pd.read_excel(cost_fp, index_col=0)
+    df = pd.read_parquet(cost_fp)  # read_excel から read_parquet に変更
     if df.empty:
         return
 
@@ -78,8 +78,8 @@ def build_ppt(out_dir: Path) -> Path:
         subtitle = slide.placeholders[1]
         subtitle.text = str(out_dir)
 
-    shortage_fp = out_dir / "shortage_role.xlsx"
-    cost_fp = out_dir / "cost_benefit.xlsx"
+    shortage_fp = out_dir / "shortage_role_summary.parquet"  # ファイル名を .parquet に変更
+    cost_fp = out_dir / "cost_benefit.parquet"  # ファイル名を .parquet に変更
 
     if shortage_fp.exists():
         _add_shortage_slide(prs, shortage_fp)

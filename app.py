@@ -1521,8 +1521,8 @@ if run_button_clicked:
                             )
                         elif opt_module_name_exec_run == "Need forecast":
                             demand_csv_exec_run_fc = out_dir_exec / "demand_series.csv"
-                            forecast_xls_exec_run_fc = out_dir_exec / "forecast.xlsx"
-                            heat_all_for_fc_exec_run_fc = out_dir_exec / "heat_ALL.xlsx"
+                            forecast_xls_exec_run_fc = out_dir_exec / "forecast.parquet"  # 出力もparquetに
+                            heat_all_for_fc_exec_run_fc = out_dir_exec / "heat_ALL.parquet"  # 入力をparquetに
                             if not heat_all_for_fc_exec_run_fc.exists():
                                 st.warning(
                                     _("Need forecast")
