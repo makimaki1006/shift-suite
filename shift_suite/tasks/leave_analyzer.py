@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Literal, Union  # Union を追加
+from typing import Dict, List, Literal, Optional, Union  # Union を追加
 
 import pandas as pd
 
@@ -39,11 +39,7 @@ def _is_full_day_leave(parsed_slots_count_val: Union[int, float]) -> bool:
 
 def get_daily_leave_counts(
     long_df: pd.DataFrame,
-    target_leave_types: List[str] = [
-        LEAVE_TYPE_REQUESTED,
-        LEAVE_TYPE_PAID,
-        LEAVE_TYPE_OTHER,
-    ],
+    target_leave_types: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
     日別・職員別・休暇タイプ別の休暇取得「日数」（1日単位）を集計する。
@@ -52,6 +48,13 @@ def get_daily_leave_counts(
                一部勤務・一部有給(P有など parsed_slots_count > 0)は、
                ここでは有給休暇日数としてはカウントしない。
     """
+    if target_leave_types is None:
+        target_leave_types = [
+            LEAVE_TYPE_REQUESTED,
+            LEAVE_TYPE_PAID,
+            LEAVE_TYPE_OTHER,
+        ]
+
     if long_df.empty or "ds" not in long_df.columns:
         log.warning("入力されたlong_dfが空またはds列がありません。")
         return pd.DataFrame(columns=["date", "staff", "leave_type", "leave_day_flag"])
@@ -371,15 +374,18 @@ def staff_concentration_share(concentration_df: pd.DataFrame) -> pd.DataFrame:
 
 def get_staff_leave_list(
     long_df: pd.DataFrame,
-    target_leave_types: List[str] = [
-        LEAVE_TYPE_REQUESTED,
-        LEAVE_TYPE_PAID,
-        LEAVE_TYPE_OTHER,
-    ],
+    target_leave_types: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
     職員ごと・休暇タイプごとの休暇取得日リスト（終日休暇のみ）を作成する。
     """
+    if target_leave_types is None:
+        target_leave_types = [
+            LEAVE_TYPE_REQUESTED,
+            LEAVE_TYPE_PAID,
+            LEAVE_TYPE_OTHER,
+        ]
+
     if long_df.empty or "ds" not in long_df.columns:
         return pd.DataFrame(columns=["staff", "role", "leave_type", "leave_date"])
 
