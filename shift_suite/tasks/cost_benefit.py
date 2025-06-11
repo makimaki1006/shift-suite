@@ -14,8 +14,11 @@ cost_benefit.py ── “採用 / 派遣 / 漏れ (罰金)” コストを試�
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 
 import pandas as pd
+
+log = logging.getLogger(__name__)
 
 
 def analyze_cost_benefit(
@@ -101,7 +104,7 @@ def analyze_cost_benefit(
         min_cost = int(df.loc[min_row, "Cost_JPY"])
         lines = [f"lowest_cost_scenario: {min_row}", f"cost_jpy: {min_cost}"]
         summary_fp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        log.warning("Failed to write summary %s: %s", summary_fp, e)
 
     return df

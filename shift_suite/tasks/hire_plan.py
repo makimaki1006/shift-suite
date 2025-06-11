@@ -13,8 +13,11 @@ hire_plan.py  ── “必要な採用人数” を算出するユーティリ�
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 
 import pandas as pd
+
+log = logging.getLogger(__name__)
 
 
 def build_hire_plan(
@@ -82,7 +85,7 @@ def build_hire_plan(
     try:
         lines = [f"total_hire_need: {int(summary['hire_need'].sum())}"]
         summary_fp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        log.warning("Failed to write summary %s: %s", summary_fp, e)
 
     return summary
