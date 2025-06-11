@@ -105,6 +105,8 @@ from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks.skill_nmf import build_skill_matrix
 from shift_suite.tasks.daily_cost import calculate_daily_cost  # <-- added
 from shift_suite.tasks.optimal_hire_plan import create_optimal_hire_plan
+# ★新規インポート
+from shift_suite.tasks.gap_analyzer import analyze_standards_gap
 
 
 def _patch_streamlit_watcher() -> None:
@@ -707,15 +709,17 @@ with st.sidebar:
     )
 
     if need_calc_method == _("過去の実績から統計的に推定する"):
+        st.date_input(_("参照期間 開始日"), key="need_ref_start_date_widget")
+        st.date_input(_("参照期間 終了日"), key="need_ref_end_date_widget")
         st.selectbox(
             _("統計的指標"),
             options=["中央値", "平均値", "25パーセンタイル", "10パーセンタイル"],
             key="need_stat_method_widget",
         )
         st.checkbox(
-            _("Remove Outliers for Need Calculation"),
+            _("外れ値を除去してNeedを算出"),
+            value=True,
             key="need_remove_outliers_widget",
-            help="IQR法で外れ値を除去してから統計量を計算します",
         )
         st.slider(
             "必要人数 調整係数",
@@ -991,8 +995,14 @@ if run_button_clicked:
         param_year_month_cell = st.session_state.year_month_cell_input_widget
         param_slot = st.session_state.slot_input_widget
         param_need_calc_method = st.session_state.need_calc_method_widget
+        param_need_ref_start = st.session_state.get("need_ref_start_date_widget")
+        param_need_ref_end = st.session_state.get("need_ref_end_date_widget")
         param_need_stat_method = st.session_state.get("need_stat_method_widget")
         param_need_manual = st.session_state.get("manual_need_values_widget")
+        param_need_remove_outliers = st.session_state.get(
+            "need_remove_outliers_widget",
+            True,
+        )
         param_upper_method = st.session_state.upper_calc_method_widget
         param_upper_param = {
             "fixed_value": st.session_state.get("upper_param_fixed_val"),
@@ -1108,14 +1118,18 @@ if run_button_clicked:
                     out_dir_exec,
                     param_slot,
                     need_calc_method=param_need_calc_method,
+                    ref_start_date_for_need=param_need_ref_start,
+                    ref_end_date_for_need=param_need_ref_end,
                     need_stat_method=param_need_stat_method,
                     need_manual_values=param_need_manual,
+                    need_remove_outliers=param_need_remove_outliers,
                     upper_calc_method=param_upper_method,
                     upper_calc_param=param_upper_param,
                 )
-                if param_need_manual:
-                    from shift_suite.tasks.gap_analyzer import analyze_standards_gap
-
+                if (
+                    _("基準乖離分析") in param_ext_opts
+                    and param_need_calc_method == _("人員配置基準に基づき設定する")
+                ):
                     heat_all_df = pd.read_excel(out_dir_exec / "heat_ALL.xlsx", index_col=0)
                     gap_results = analyze_standards_gap(heat_all_df, param_need_manual)
                     st.session_state.gap_analysis_results = gap_results
