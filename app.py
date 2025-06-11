@@ -1114,6 +1114,9 @@ if run_button_clicked:
                     slot_minutes=param_slot,
                     year_month_cell_location=param_year_month_cell,
                 )
+                parquet_fp = out_dir_exec / "intermediate_data.parquet"
+                long_df.to_parquet(parquet_fp)
+                st.session_state["intermediate_parquet_path"] = str(parquet_fp)
                 st.session_state.analysis_status["ingest"] = "success"
                 log.info(
                     f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}"
