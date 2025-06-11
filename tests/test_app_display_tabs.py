@@ -40,7 +40,7 @@ def make_dummy_st():
 
 
 def test_display_fairness_tab_empty(monkeypatch, tmp_path):
-    (tmp_path / "fairness_after.xlsx").touch()
+    (tmp_path / "fairness_after.parquet").touch()
     monkeypatch.setattr(app, "load_excel_cached", lambda *a, **k: pd.DataFrame())
     dummy_st, infos, _ = make_dummy_st()
     monkeypatch.setattr(app, "st", dummy_st)
@@ -75,11 +75,11 @@ def test_display_overview_tab_metrics(monkeypatch, tmp_path):
     df_alerts = pd.DataFrame({"category": ["c"], "value": [1]})
 
     def fake_load_excel_cached(path, *a, **k):
-        if "shortage_role.xlsx" in path:
+        if "shortage_role_summary.parquet" in path:
             return df_shortage
-        if "fairness_before.xlsx" in path:
+        if "fairness_before.parquet" in path:
             return df_meta
-        if "staff_stats.xlsx" in path:
+        if "staff_stats.parquet" in path:
             return df_staff
         return pd.DataFrame()
 

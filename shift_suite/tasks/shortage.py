@@ -19,7 +19,7 @@ import pandas as pd
 
 from .. import config
 from .constants import SUMMARY5
-from .utils import _parse_as_date, gen_labels, log, save_df_xlsx, write_meta
+from .utils import _parse_as_date, gen_labels, log, save_df_parquet, write_meta
 
 
 def shortage_and_brief(
@@ -73,22 +73,19 @@ def shortage_and_brief(
         log.warning("[shortage] heat_ALL.xlsx に日付データ列が見つかりませんでした。")
         # 空のExcelを生成して返す
         empty_df = pd.DataFrame(index=time_labels)
-        fp_s_t_empty = save_df_xlsx(
+        fp_s_t_empty = save_df_parquet(
             empty_df,
-            out_dir_path / "shortage_time.xlsx",
-            sheet_name="lack_time",
+            out_dir_path / "shortage_time.parquet",
             index=True,
         )
-        fp_s_r_empty = save_df_xlsx(
+        fp_s_r_empty = save_df_parquet(
             pd.DataFrame(),
-            out_dir_path / "shortage_role.xlsx",
-            sheet_name="role_summary",
+            out_dir_path / "shortage_role.parquet",
             index=False,
         )
-        save_df_xlsx(
+        save_df_parquet(
             empty_df,
-            out_dir_path / "shortage_freq.xlsx",
-            sheet_name="freq_by_time",
+            out_dir_path / "shortage_freq.parquet",
             index=True,
         )
         return (fp_s_t_empty, fp_s_r_empty) if fp_s_t_empty and fp_s_r_empty else None
@@ -134,16 +131,14 @@ def shortage_and_brief(
         .fillna(0)
     )
 
-    fp_shortage_time = save_df_xlsx(
+    fp_shortage_time = save_df_parquet(
         lack_count_overall_df,
-        out_dir_path / "shortage_time.xlsx",
-        sheet_name="lack_time",
+        out_dir_path / "shortage_time.parquet",
         index=True,
     )
-    fp_shortage_ratio = save_df_xlsx(
+    fp_shortage_ratio = save_df_parquet(
         shortage_ratio_df,
-        out_dir_path / "shortage_ratio.xlsx",
-        sheet_name="lack_ratio",
+        out_dir_path / "shortage_ratio.parquet",
         index=True,
     )
 
@@ -151,20 +146,18 @@ def shortage_and_brief(
     shortage_freq_df = pd.DataFrame(
         lack_occurrence_df.sum(axis=1), columns=["shortage_days"]
     )
-    fp_shortage_freq = save_df_xlsx(
+    fp_shortage_freq = save_df_parquet(
         shortage_freq_df,
-        out_dir_path / "shortage_freq.xlsx",
-        sheet_name="freq_by_time",
+        out_dir_path / "shortage_freq.parquet",
         index=True,
     )
 
     surplus_vs_need_df = (
         (staff_actual_data_all_df - need_df_all).clip(lower=0).fillna(0).astype(int)
     )
-    save_df_xlsx(
+    save_df_parquet(
         surplus_vs_need_df,
-        out_dir_path / "surplus_vs_need_time.xlsx",
-        sheet_name="surplus_need_time",
+        out_dir_path / "surplus_vs_need_time.parquet",
         index=True,
     )
 
@@ -203,16 +196,14 @@ def shortage_and_brief(
             .fillna(0)
         )
 
-        fp_excess_time = save_df_xlsx(
+        fp_excess_time = save_df_parquet(
             excess_count_overall_df,
-            out_dir_path / "excess_time.xlsx",
-            sheet_name="excess_time",
+            out_dir_path / "excess_time.parquet",
             index=True,
         )
-        fp_excess_ratio = save_df_xlsx(
+        fp_excess_ratio = save_df_parquet(
             excess_ratio_df,
-            out_dir_path / "excess_ratio.xlsx",
-            sheet_name="excess_ratio",
+            out_dir_path / "excess_ratio.parquet",
             index=True,
         )
 
@@ -220,10 +211,9 @@ def shortage_and_brief(
         excess_freq_df = pd.DataFrame(
             excess_occurrence_df.sum(axis=1), columns=["excess_days"]
         )
-        fp_excess_freq = save_df_xlsx(
+        fp_excess_freq = save_df_parquet(
             excess_freq_df,
-            out_dir_path / "excess_freq.xlsx",
-            sheet_name="freq_by_time",
+            out_dir_path / "excess_freq.parquet",
             index=True,
         )
 
@@ -233,10 +223,9 @@ def shortage_and_brief(
             .fillna(0)
             .astype(int)
         )
-        save_df_xlsx(
+        save_df_parquet(
             margin_vs_upper_df,
-            out_dir_path / "margin_vs_upper_time.xlsx",
-            sheet_name="margin_upper_time",
+            out_dir_path / "margin_vs_upper_time.parquet",
             index=True,
         )
     else:
@@ -253,10 +242,9 @@ def shortage_and_brief(
     )
     optimization_score_df = 1 - (w_lack * pen_lack_df + w_excess * pen_excess_df)
     optimization_score_df = optimization_score_df.clip(lower=0, upper=1)
-    save_df_xlsx(
+    save_df_parquet(
         optimization_score_df,
-        out_dir_path / "optimization_score_time.xlsx",
-        sheet_name="optimization_score",
+        out_dir_path / "optimization_score_time.parquet",
         index=True,
     )
 
@@ -537,11 +525,13 @@ def shortage_and_brief(
             drop=True
         )
 
-    fp_shortage_role = out_dir_path / "shortage_role.xlsx"
-    with pd.ExcelWriter(fp_shortage_role, engine="openpyxl") as ew:
-        role_summary_df.to_excel(ew, sheet_name="role_summary", index=False)
-        if not monthly_role_df.empty:
-            monthly_role_df.to_excel(ew, sheet_name="role_monthly", index=False)
+    fp_shortage_role = out_dir_path / "shortage_role_summary.parquet"
+    role_summary_df.to_parquet(fp_shortage_role, index=False)
+    if not monthly_role_df.empty:
+        monthly_role_df.to_parquet(
+            out_dir_path / "shortage_role_monthly.parquet",
+            index=False,
+        )
 
     meta_dates_list_shortage = date_columns_in_heat_all
     meta_roles_list_shortage = (
@@ -744,11 +734,13 @@ def shortage_and_brief(
             ["month", "employment"]
         ).reset_index(drop=True)
 
-    fp_shortage_emp = out_dir_path / "shortage_employment.xlsx"
-    with pd.ExcelWriter(fp_shortage_emp, engine="openpyxl") as ew:
-        emp_summary_df.to_excel(ew, sheet_name="employment_summary", index=False)
-        if not monthly_emp_df.empty:
-            monthly_emp_df.to_excel(ew, sheet_name="employment_monthly", index=False)
+    fp_shortage_emp = out_dir_path / "shortage_employment_summary.parquet"
+    emp_summary_df.to_parquet(fp_shortage_emp, index=False)
+    if not monthly_emp_df.empty:
+        monthly_emp_df.to_parquet(
+            out_dir_path / "shortage_employment_monthly.parquet",
+            index=False,
+        )
 
     meta_employments_list_shortage = (
         emp_summary_df["employment"].tolist()
@@ -766,10 +758,10 @@ def shortage_and_brief(
         roles=sorted(list(set(meta_roles_list_shortage))),
         employments=sorted(list(set(meta_employments_list_shortage))),
         months=sorted(list(set(meta_months_list_shortage))),
-        ratio_file="shortage_ratio.xlsx",
-        freq_file="shortage_freq.xlsx",
-        excess_ratio_file="excess_ratio.xlsx" if fp_excess_ratio else None,
-        excess_freq_file="excess_freq.xlsx" if fp_excess_freq else None,
+        ratio_file="shortage_ratio.parquet",
+        freq_file="shortage_freq.parquet",
+        excess_ratio_file="excess_ratio.parquet" if fp_excess_ratio else None,
+        excess_freq_file="excess_freq.parquet" if fp_excess_freq else None,
         estimated_holidays_used=[
             d.isoformat() for d in sorted(list(estimated_holidays_set))
         ],
@@ -810,7 +802,7 @@ def merge_shortage_leave(
     *,
     shortage_xlsx: str | Path = "shortage_time.xlsx",
     leave_csv: str | Path = "leave_analysis.csv",
-    out_excel: str | Path = "shortage_leave.xlsx",
+    out_excel: str | Path = "shortage_leave.parquet",
 ) -> Path | None:
     """Combine shortage_time.xlsx with leave counts.
 
@@ -824,7 +816,7 @@ def merge_shortage_leave(
         Optional ``leave_analysis.csv`` with columns ``date`` and
         ``total_leave_days``. If missing, leave counts are treated as ``0``.
     out_excel:
-        Output Excel filename.
+        Output parquet filename.
 
     Returns
     -------
@@ -874,7 +866,7 @@ def merge_shortage_leave(
         lower=0
     )
 
-    out_fp = save_df_xlsx(long_df, out_dir_path / out_excel, index=False)
+    out_fp = save_df_parquet(long_df, out_dir_path / out_excel, index=False)
     return out_fp
 
 

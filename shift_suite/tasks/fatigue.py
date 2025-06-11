@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .utils import log, save_df_xlsx
+from .utils import log, save_df_parquet
 
 
 def _features(long_df: pd.DataFrame) -> pd.DataFrame:
@@ -62,7 +62,7 @@ def train_fatigue(long_df: pd.DataFrame, out_dir: Path):
         # 空のDataFrameを保存するか、エラーをraiseするかは要件による
         # ここでは空のDataFrameを保存して処理の継続を試みる
         empty_fatigue_df = pd.DataFrame(columns=["fatigue_score"])
-        save_df_xlsx(empty_fatigue_df, out_dir / "fatigue_score.xlsx", "fatigue")
+        save_df_parquet(empty_fatigue_df, out_dir / "fatigue_score.parquet")
         log.info(
             "fatigue: 'staff'列がなかったため、空のfatigue_score.xlsxを作成しました。"
         )
@@ -72,7 +72,7 @@ def train_fatigue(long_df: pd.DataFrame, out_dir: Path):
     if X.empty:
         log.warning("[fatigue] 特徴量データ(X)が空です。疲労スコアは計算されません。")
         empty_fatigue_df = pd.DataFrame(columns=["fatigue_score"])
-        save_df_xlsx(empty_fatigue_df, out_dir / "fatigue_score.xlsx", "fatigue")
+        save_df_parquet(empty_fatigue_df, out_dir / "fatigue_score.parquet")
         return None
 
     X["fatigue_score"] = (
@@ -85,7 +85,7 @@ def train_fatigue(long_df: pd.DataFrame, out_dir: Path):
 
     # fatigue_score列のみを保存
     fatigue_output_df = X[["fatigue_score"]].copy()
-    save_df_xlsx(fatigue_output_df, out_dir / "fatigue_score.xlsx", "fatigue")
-    log.info(f"fatigue: score file written to {out_dir / 'fatigue_score.xlsx'}")
+    save_df_parquet(fatigue_output_df, out_dir / "fatigue_score.parquet")
+    log.info(f"fatigue: score file written to {out_dir / 'fatigue_score.parquet'}")
     # train_fatigueはモデルを返す設計だったが、app.pyでは返り値を使っていないため、Noneを返すか、必要ならモデルを返す
     return None  # model を返す場合は model

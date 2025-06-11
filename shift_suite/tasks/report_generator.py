@@ -35,29 +35,17 @@ def generate_summary_report(out_dir: Path | str) -> Path:
     out_dir_path = Path(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
 
-    role_fp = out_dir_path / "shortage_role.xlsx"
-    stats_fp = out_dir_path / "stats.xlsx"
-    weekday_fp = out_dir_path / "shortage_weekday_timeslot_summary.xlsx"
-    heat_fp = out_dir_path / "heat_ALL.xlsx"
+    role_fp = out_dir_path / "shortage_role_summary.parquet"
+    stats_fp = out_dir_path / "stats_overall_summary.parquet"
+    weekday_fp = out_dir_path / "shortage_weekday_timeslot_summary.parquet"
+    heat_fp = out_dir_path / "heat_ALL.parquet"
 
-    role_df = _read_excel(role_fp, "role_summary")
+    role_df = pd.read_parquet(role_fp) if role_fp.exists() else pd.DataFrame()
 
     if stats_fp.exists():
         try:
-            xls = pd.ExcelFile(stats_fp)
-            _ = (
-                xls.parse("Overall_Summary")
-                if "Overall_Summary" in xls.sheet_names
-                else pd.DataFrame()
-            )
-            monthly_df = (
-                xls.parse("Monthly_Summary")
-                if "Monthly_Summary" in xls.sheet_names
-                else pd.DataFrame()
-            )
-            alerts_df = (
-                xls.parse("alerts") if "alerts" in xls.sheet_names else pd.DataFrame()
-            )
+            monthly_df = pd.read_parquet(out_dir_path / "stats_monthly_summary.parquet")
+            alerts_df = pd.read_parquet(out_dir_path / "stats_alerts.parquet")
         except Exception:
             monthly_df = alerts_df = pd.DataFrame()
     else:
@@ -66,14 +54,14 @@ def generate_summary_report(out_dir: Path | str) -> Path:
     weekday_df = pd.DataFrame()
     if weekday_fp.exists():
         try:
-            weekday_df = pd.read_excel(weekday_fp)
+            weekday_df = pd.read_parquet(weekday_fp)
         except Exception:
             weekday_df = pd.DataFrame()
 
     min_date = max_date = ""
     if heat_fp.exists():
         try:
-            heat_df = pd.read_excel(heat_fp, index_col=0)
+            heat_df = pd.read_parquet(heat_fp)
             date_cols = pd.to_datetime(heat_df.columns, errors="coerce").dropna()
             if not date_cols.empty:
                 min_date = date_cols.min().date().isoformat()

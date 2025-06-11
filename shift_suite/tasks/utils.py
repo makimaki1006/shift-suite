@@ -172,6 +172,19 @@ def save_df_xlsx(
     return fp_path
 
 
+def save_df_parquet(
+    df: DataFrame,
+    fp: Path | str,
+    *,
+    index: bool = True,
+) -> Path:
+    """Save DataFrame to Parquet file."""
+    fp_path = Path(fp)
+    fp_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(fp_path, index=index)
+    return fp_path
+
+
 # ────────────────── 5. メタファイル ──────────────────
 def write_meta(target: Path | str, /, **meta) -> Path:
     """
@@ -382,6 +395,7 @@ __all__: Sequence[str] = [
     "safe_sheet",
     "safe_read_excel",
     "save_df_xlsx",
+    "save_df_parquet",
     "write_meta",
     "safe_make_archive",
     "derive_min_staff",

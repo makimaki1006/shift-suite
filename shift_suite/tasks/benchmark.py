@@ -49,7 +49,7 @@ def benchmark_multi(out_dirs: list[Path], out_path: Path | None = None) -> pd.Da
 
     df = pd.DataFrame(rows).sort_values(["month", "facility"])
     if out_path:
-        df.to_excel(out_path, index=False)
+        df.to_parquet(out_path, index=False)
         log.info("benchmark_multi: %s に保存", out_path.name)
     else:
         log.info("benchmark_multi: DataFrame 返却のみ (%d 施設)", len(df))

@@ -31,8 +31,8 @@ def create_optimal_hire_plan(
 ) -> Path | None:
     """不足分析の結果と勤務区分マスターを突き合わせ、最適な採用計画を生成する。"""
     log.info("最適採用計画の生成を開始します。")
-    shortage_summary_fp = out_dir / "shortage_weekday_timeslot_summary.xlsx"
-    shortage_role_fp = out_dir / "shortage_role.xlsx"
+    shortage_summary_fp = out_dir / "shortage_weekday_timeslot_summary.parquet"
+    shortage_role_fp = out_dir / "shortage_role_summary.parquet"
 
     if not shortage_summary_fp.exists() or not shortage_role_fp.exists():
         log.warning(
@@ -40,7 +40,7 @@ def create_optimal_hire_plan(
         )
         return None
 
-    role_shortage = pd.read_excel(shortage_role_fp)
+    role_shortage = pd.read_parquet(shortage_role_fp)
     if (
         role_shortage.empty
         or "role" not in role_shortage.columns
@@ -50,7 +50,7 @@ def create_optimal_hire_plan(
         return None
     most_lacking_role = role_shortage.loc[role_shortage["lack_h"].idxmax()]["role"]
 
-    df = pd.read_excel(shortage_summary_fp)
+    df = pd.read_parquet(shortage_summary_fp)
     top_shortages = df.nlargest(top_n_shortages, "avg_count")
 
     shift_patterns = _get_shift_pattern_hours(original_excel_path)
@@ -83,8 +83,8 @@ def create_optimal_hire_plan(
         return None
 
     result_df = pd.DataFrame(recommendations).drop_duplicates().reset_index(drop=True)
-    out_fp = out_dir / "optimal_hire_plan.xlsx"
-    result_df.to_excel(out_fp, index=False)
+    out_fp = out_dir / "optimal_hire_plan.parquet"
+    result_df.to_parquet(out_fp, index=False)
     log.info(f"最適採用計画を {out_fp} に保存しました。")
 
     return out_fp

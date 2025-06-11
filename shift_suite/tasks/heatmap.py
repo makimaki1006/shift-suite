@@ -405,14 +405,11 @@ def build_heatmap(
         empty_pivot = pd.DataFrame(index=time_index_labels)
         for col_name_ep_loop in SUMMARY5:
             empty_pivot[col_name_ep_loop] = 0
-        fp_all_empty_path = out_dir_path / "heat_ALL.xlsx"
+        fp_all_empty_path = out_dir_path / "heat_ALL.parquet"
         try:
-            with pd.ExcelWriter(
-                fp_all_empty_path, engine="openpyxl"
-            ) as writer_empty_excel:
-                empty_pivot.to_excel(writer_empty_excel, sheet_name="ALL", index=True)
+            empty_pivot.to_parquet(fp_all_empty_path)
         except Exception as e_empty_write:
-            log.error(f"空のheat_ALL.xlsxの書き込みに失敗: {e_empty_write}")
+            log.error(f"空のheat_ALL.parquetの書き込みに失敗: {e_empty_write}")
         all_unique_roles_val = (
             sorted(list(set(long_df["role"]))) if "role" in long_df.columns else []
         )
@@ -561,37 +558,15 @@ def build_heatmap(
     ):
         pivot_to_excel_all[col_name_summary_loop] = series_data_summary_loop
 
-    fp_all_path = out_dir_path / "heat_ALL.xlsx"
+    fp_all_path = out_dir_path / "heat_ALL.parquet"
     try:
-        with pd.ExcelWriter(fp_all_path, engine="openpyxl") as writer_all_excel_file:
-            pivot_to_excel_all.to_excel(
-                writer_all_excel_file, sheet_name="ALL", index=True
-            )
-            ws_all_sheet_obj = writer_all_excel_file.sheets["ALL"]
-            date_data_columns_all_excel = pivot_data_all_final.columns
-            actual_date_columns_for_styling = [
-                col for col in date_data_columns_all_excel if col not in SUMMARY5
-            ]
-            if actual_date_columns_for_styling:
-                _apply_conditional_formatting_to_worksheet(
-                    ws_all_sheet_obj, pd.Index(actual_date_columns_for_styling)
-                )
-                _apply_holiday_column_styling(
-                    ws_all_sheet_obj,
-                    pd.Index(actual_date_columns_for_styling),
-                    holidays_set,
-                    _parse_as_date,
-                )
-        log.info("[heatmap.build_heatmap] 全体ヒートマップ (heat_ALL.xlsx) 作成完了。")
+        pivot_to_excel_all.to_parquet(fp_all_path)
+        log.info("[heatmap.build_heatmap] 全体ヒートマップ (heat_ALL.parquet) 作成完了。")
     except Exception as e_write_all:
         log.error(
-            f"[heatmap.build_heatmap] heat_ALL.xlsx 作成エラー: {e_write_all}",
+            f"[heatmap.build_heatmap] heat_ALL.parquet 作成エラー: {e_write_all}",
             exc_info=True,
         )
-        try:
-            pivot_to_excel_all.to_excel(fp_all_path, sheet_name="ALL", index=True)
-        except Exception as e_fb_all:
-            log.error(f"書式なし heat_ALL.xlsx 保存失敗: {e_fb_all}")
 
     unique_roles_list_final_loop = sorted(
         list(set(df_for_heatmap_actuals[role_col_name]))
@@ -707,30 +682,13 @@ def build_heatmap(
         ):
             pivot_to_excel_role[col] = data
 
-        fp_role = out_dir_path / f"heat_{role_safe_name_final_loop}.xlsx"
+        fp_role = out_dir_path / f"heat_{role_safe_name_final_loop}.parquet"
         try:
-            with pd.ExcelWriter(fp_role, engine="openpyxl") as writer_role:
-                pivot_to_excel_role.to_excel(
-                    writer_role, sheet_name=role_safe_name_final_loop, index=True
-                )
-                ws_role = writer_role.sheets[role_safe_name_final_loop]
-                date_cols_role_excel = pivot_to_excel_role.drop(
-                    columns=SUMMARY5, errors="ignore"
-                ).columns
-                if not date_cols_role_excel.empty:
-                    _apply_conditional_formatting_to_worksheet(
-                        ws_role, date_cols_role_excel
-                    )
-                    _apply_holiday_column_styling(
-                        ws_role,
-                        date_cols_role_excel,
-                        holidays_set,
-                        _parse_as_date,
-                    )
+            pivot_to_excel_role.to_parquet(fp_role)
             log.info(f"職種 '{role_item_final_loop}' ヒートマップ作成完了。")
         except Exception as e_role_write:
             log.error(
-                f"heat_{role_safe_name_final_loop}.xlsx 作成エラー: {e_role_write}",
+                f"heat_{role_safe_name_final_loop}.parquet 作成エラー: {e_role_write}",
                 exc_info=True,
             )
 
@@ -824,30 +782,13 @@ def build_heatmap(
         ):
             pivot_to_excel_emp[col] = data
 
-        fp_emp = out_dir_path / f"heat_emp_{emp_safe_name_final_loop}.xlsx"
+        fp_emp = out_dir_path / f"heat_emp_{emp_safe_name_final_loop}.parquet"
         try:
-            with pd.ExcelWriter(fp_emp, engine="openpyxl") as writer_emp:
-                pivot_to_excel_emp.to_excel(
-                    writer_emp, sheet_name=emp_safe_name_final_loop, index=True
-                )
-                ws_emp = writer_emp.sheets[emp_safe_name_final_loop]
-                date_cols_emp_excel = pivot_to_excel_emp.drop(
-                    columns=SUMMARY5, errors="ignore"
-                ).columns
-                if not date_cols_emp_excel.empty:
-                    _apply_conditional_formatting_to_worksheet(
-                        ws_emp, date_cols_emp_excel
-                    )
-                    _apply_holiday_column_styling(
-                        ws_emp,
-                        date_cols_emp_excel,
-                        holidays_set,
-                        _parse_as_date,
-                    )
+            pivot_to_excel_emp.to_parquet(fp_emp)
             log.info(f"雇用形態 '{emp_item_final_loop}' ヒートマップ作成完了。")
         except Exception as e_emp_write:
             log.error(
-                f"heat_emp_{emp_safe_name_final_loop}.xlsx 作成エラー: {e_emp_write}",
+                f"heat_emp_{emp_safe_name_final_loop}.parquet 作成エラー: {e_emp_write}",
                 exc_info=True,
             )
 

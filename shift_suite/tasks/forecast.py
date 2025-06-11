@@ -27,7 +27,7 @@ import statsmodels.api as sm
 
 from shift_suite.config import get as get_config
 
-from .utils import log, save_df_xlsx, write_meta
+from .utils import log, save_df_parquet, write_meta
 
 # ────────────────── pmdarima (optional) ──────────────────
 try:
@@ -283,7 +283,7 @@ def forecast_need(
             periods=periods,
         )
         out_df = pd.DataFrame({"ds": future_dates, "yhat": last_val, "model": "Naive"})
-        save_df_xlsx(out_df, excel_out)
+        save_df_parquet(out_df, excel_out)
         write_meta(
             excel_out.with_suffix(".json"),
             selected_model="Naive",
@@ -349,7 +349,7 @@ def forecast_need(
     out_df = pd.DataFrame({"ds": future_dates, "yhat": forecast})
     out_df["model"] = sel  #  追加: 常に model 列を付与
 
-    save_df_xlsx(out_df, excel_out)
+    save_df_parquet(out_df, excel_out)
 
     write_meta(
         excel_out.with_suffix(".json"),

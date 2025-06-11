@@ -14,8 +14,8 @@ def test_create_optimal_hire_plan(tmp_path: Path):
             "avg_count": [1.8, 1.2],
         }
     )
-    shortage_summary_fp = out_dir / "shortage_weekday_timeslot_summary.xlsx"
-    shortage_summary_df.to_excel(shortage_summary_fp, index=False)
+    shortage_summary_fp = out_dir / "shortage_weekday_timeslot_summary.parquet"
+    shortage_summary_df.to_parquet(shortage_summary_fp, index=False)
 
     role_shortage_df = pd.DataFrame(
         {
@@ -23,8 +23,8 @@ def test_create_optimal_hire_plan(tmp_path: Path):
             "lack_h": [100, 50],
         }
     )
-    role_shortage_fp = out_dir / "shortage_role.xlsx"
-    role_shortage_df.to_excel(role_shortage_fp, index=False)
+    role_shortage_fp = out_dir / "shortage_role_summary.parquet"
+    role_shortage_df.to_parquet(role_shortage_fp, index=False)
 
     original_excel_fp = tmp_path / "original_shift.xlsx"
     work_patterns_df = pd.DataFrame(
@@ -42,7 +42,7 @@ def test_create_optimal_hire_plan(tmp_path: Path):
     assert result_path is not None
     assert result_path.exists()
 
-    result_df = pd.read_excel(result_path)
+    result_df = pd.read_parquet(result_path)
     assert not result_df.empty
     assert "推奨職種" in result_df.columns
     assert "推奨勤務区分" in result_df.columns

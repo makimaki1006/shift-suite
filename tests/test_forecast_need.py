@@ -35,7 +35,7 @@ def test_forecast_need_arima_without_y(tmp_path, monkeypatch):
     demand_fp = tmp_path / "demand.csv"
     df.to_csv(demand_fp, index=False)
 
-    excel_fp = tmp_path / "out.xlsx"
+    excel_fp = tmp_path / "out.parquet"
 
     monkeypatch.setattr(forecast, "_HAS_PMDARIMA", True)
     monkeypatch.setattr(
@@ -44,5 +44,5 @@ def test_forecast_need_arima_without_y(tmp_path, monkeypatch):
 
     out = forecast_need(demand_fp, excel_fp, choose="arima", periods=3)
     assert out.exists()
-    result = pd.read_excel(out)
+    result = pd.read_parquet(out)
     assert len(result) == 3

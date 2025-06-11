@@ -10,7 +10,7 @@ import pandas as pd
 from sklearn.ensemble import IsolationForest
 
 from .constants import SUMMARY5  # SUMMARY5 を constants からインポート
-from .utils import log, save_df_xlsx
+from .utils import log, save_df_parquet
 
 
 def detect_anomaly(out_dir: Path, contamination: float = 0.05):
@@ -53,9 +53,9 @@ def detect_anomaly(out_dir: Path, contamination: float = 0.05):
             "is_anomaly": is_anomaly_flags,
         }
     )
-    output_path = out_dir / "anomaly_days.xlsx"
+    output_path = out_dir / "anomaly_days.parquet"
     try:
-        save_df_xlsx(df_anomaly_report, output_path, sheet_name="anomaly", index=False)
+        save_df_parquet(df_anomaly_report, output_path, index=False)
         log.info(
             f"[anomaly] 異常検知レポート ({is_anomaly_flags.sum()}/{len(is_anomaly_flags)}日異常) 保存: {output_path}"
         )
