@@ -71,9 +71,7 @@ def test_ingest_excel_leave_via_remarks(tmp_path: Path) -> None:
     wt = pd.DataFrame(
         {"勤務記号": ["特A"], "開始": ["09:00"], "終了": ["18:00"], "備考": ["希望休"]}
     )
-    df = pd.DataFrame(
-        {"氏名": ["山田"], "職種": ["看護師"], "2024-01-01": ["特A"]}
-    )
+    df = pd.DataFrame({"氏名": ["山田"], "職種": ["看護師"], "2024-01-01": ["特A"]})
     with pd.ExcelWriter(fp) as writer:
         wt.to_excel(writer, sheet_name="勤務区分", index=False)
         df.to_excel(writer, sheet_name="Sheet1", index=False)

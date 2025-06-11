@@ -249,7 +249,9 @@ def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
         columns=date_cols,
     )
     staff_df = df[date_cols].fillna(0)
-    ratio_df = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    ratio_df = (
+        ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    )
     return ratio_df
 
 
@@ -269,7 +271,9 @@ def calc_opt_score_from_heatmap(
         columns=date_cols,
     )
     staff_df = df[date_cols].fillna(0)
-    lack_ratio = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    lack_ratio = (
+        ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    )
     if "upper" in df.columns:
         upper_series = df["upper"].fillna(0)
         upper_df = pd.DataFrame(
@@ -277,7 +281,11 @@ def calc_opt_score_from_heatmap(
             index=upper_series.index,
             columns=date_cols,
         )
-        excess_ratio = ((staff_df - upper_df) / upper_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+        excess_ratio = (
+            ((staff_df - upper_df) / upper_df.replace(0, np.nan))
+            .clip(lower=0)
+            .fillna(0)
+        )
     else:
         excess_ratio = staff_df * 0
     score_df = 1 - (w_lack * lack_ratio + w_excess * excess_ratio)
@@ -1119,12 +1127,16 @@ if run_button_clicked:
                 )
                 if unknown_codes:
                     st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
-                    log.warning(f"Unknown shift codes encountered: {sorted(unknown_codes)}")
+                    log.warning(
+                        f"Unknown shift codes encountered: {sorted(unknown_codes)}"
+                    )
                 st.success("✅ Excelデータ読み込み完了")
                 st.session_state.long_df = long_df
             except Exception as e:
                 st.session_state.analysis_status["ingest"] = "failure"
-                log_and_display_error("Excelデータの読み込み中にエラーが発生しました", e)
+                log_and_display_error(
+                    "Excelデータの読み込み中にエラーが発生しました", e
+                )
 
             try:
                 update_progress_exec_run("Heatmap: Generating heatmap...")
@@ -1161,7 +1173,9 @@ if run_button_clicked:
                     )
                     st.session_state.analysis_status["shortage"] = "success"
                     if shortage_result_exec_run is None:
-                        st.warning("Shortage (不足分析) の一部または全てが完了しませんでした。")
+                        st.warning(
+                            "Shortage (不足分析) の一部または全てが完了しませんでした。"
+                        )
                     else:
                         st.success("✅ Shortage (不足分析) 完了")
                         if "Hire plan" in param_ext_opts:
@@ -1256,7 +1270,9 @@ if run_button_clicked:
                                 total_staff_per_day = (
                                     long_df[long_df["parsed_slots_count"] > 0]
                                     .assign(
-                                        date=lambda df: pd.to_datetime(df["ds"]).dt.normalize()
+                                        date=lambda df: pd.to_datetime(
+                                            df["ds"]
+                                        ).dt.normalize()
                                     )
                                     .groupby("date")["staff"]
                                     .nunique()
@@ -1267,8 +1283,7 @@ if run_button_clicked:
                                         daily_leave_df.copy(),
                                         period="date",
                                     )
-                                    .groupby("date")
-                                    ["total_leave_days"]
+                                    .groupby("date")["total_leave_days"]
                                     .sum()
                                     .reset_index(name="leave_applicants_count")
                                 )
@@ -1290,7 +1305,9 @@ if run_button_clicked:
                                     staff_balance["leave_applicants_count"]
                                     / staff_balance["total_staff"]
                                 )
-                                leave_results_temp["staff_balance_daily"] = staff_balance
+                                leave_results_temp["staff_balance_daily"] = (
+                                    staff_balance
+                                )
                             except Exception as e:
                                 log.error(f"勤務予定人数の計算中にエラー: {e}")
 
@@ -1408,7 +1425,10 @@ if run_button_clicked:
                     st.info(f"{_(opt_module_name_exec_run)} 処理中…")
                     try:
                         if opt_module_name_exec_run == "Stats":
-                            if st.session_state.analysis_status.get("heatmap") == "success":
+                            if (
+                                st.session_state.analysis_status.get("heatmap")
+                                == "success"
+                            ):
                                 update_progress_exec_run("Stats: Processing...")
                                 build_stats(
                                     out_dir_exec,
@@ -1422,7 +1442,9 @@ if run_button_clicked:
                                 st.success("✅ Stats (統計情報) 生成完了")
                             else:
                                 st.session_state.analysis_status["stats"] = "skipped"
-                                st.warning("Heatmap生成が失敗したため、Stats処理をスキップしました。")
+                                st.warning(
+                                    "Heatmap生成が失敗したため、Stats処理をスキップしました。"
+                                )
                         elif opt_module_name_exec_run == "Anomaly":
                             detect_anomaly(out_dir_exec)
                         elif opt_module_name_exec_run == "Fatigue":
@@ -1612,18 +1634,36 @@ if run_button_clicked:
                                 param_penalty_lack,
                             )
                         elif opt_module_name_exec_run == "最適採用計画":
-                            if st.session_state.analysis_status.get("shortage") == "success":
+                            if (
+                                st.session_state.analysis_status.get("shortage")
+                                == "success"
+                            ):
                                 try:
-                                    log.info("最適採用計画のためのサマリーファイルを生成します。")
-                                    weekday_summary_df = weekday_timeslot_summary(out_dir_exec)
-                                    summary_fp = out_dir_exec / "shortage_weekday_timeslot_summary.xlsx"
+                                    log.info(
+                                        "最適採用計画のためのサマリーファイルを生成します。"
+                                    )
+                                    weekday_summary_df = weekday_timeslot_summary(
+                                        out_dir_exec
+                                    )
+                                    summary_fp = (
+                                        out_dir_exec
+                                        / "shortage_weekday_timeslot_summary.xlsx"
+                                    )
                                     weekday_summary_df.to_excel(summary_fp, index=False)
-                                    log.info(f"不足分析の曜日・時間帯サマリーを保存しました: {summary_fp}")
+                                    log.info(
+                                        f"不足分析の曜日・時間帯サマリーを保存しました: {summary_fp}"
+                                    )
 
                                     original_excel_path = Path(
-                                        next(iter(st.session_state.uploaded_files_info.values()))["path"]
+                                        next(
+                                            iter(
+                                                st.session_state.uploaded_files_info.values()
+                                            )
+                                        )["path"]
                                     )
-                                    create_optimal_hire_plan(out_dir_exec, original_excel_path)
+                                    create_optimal_hire_plan(
+                                        out_dir_exec, original_excel_path
+                                    )
                                     st.success("✅ 最適採用計画 生成完了")
                                 except Exception as e_opt_hire:
                                     log.error(
@@ -1670,7 +1710,9 @@ if run_button_clicked:
                         by=st.session_state.get("cost_by_widget", "role"),
                         slot_minutes=param_slot,
                     )
-                    daily_cost_df.to_excel(out_dir_exec / "daily_cost.xlsx", index=False)
+                    daily_cost_df.to_excel(
+                        out_dir_exec / "daily_cost.xlsx", index=False
+                    )
                 except Exception as e_cost:
                     log.warning(f"daily cost calculation failed: {e_cost}")
 
@@ -2018,7 +2060,10 @@ def display_heatmap_tab(tab_container, data_dir):
                                     "y": _("Time"),
                                     "color": _("Ratio (staff ÷ need)"),
                                 },
-                                x=[date_with_weekday(c) for c in ratio_display_df.columns],
+                                x=[
+                                    date_with_weekday(c)
+                                    for c in ratio_display_df.columns
+                                ],
                                 title="充足率ヒートマップ",
                             )
                         else:
@@ -2437,7 +2482,11 @@ def display_shortage_tab(tab_container, data_dir):
                 + _("が見つかりません。")
             )
 
-        scope_opts = {"overall": _("Overall"), "role": _("Role"), "employment": _("Employment")}
+        scope_opts = {
+            "overall": _("Overall"),
+            "role": _("Role"),
+            "employment": _("Employment"),
+        }
         scope_lbl = st.selectbox(
             "ヒートマップの対象範囲",
             list(scope_opts.values()),
@@ -2868,6 +2917,7 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
         )
         st.plotly_chart(fig, use_container_width=True)
 
+
 def display_optimization_tab(tab_container, data_dir):
     """Display staffing optimization metrics."""
     with tab_container:
@@ -2898,7 +2948,9 @@ def display_optimization_tab(tab_container, data_dir):
         sel_emp = None
         with c3:
             if scope == "employment" and employments:
-                sel_emp = st.selectbox(_("Employment"), employments, key="opt_scope_emp")
+                sel_emp = st.selectbox(
+                    _("Employment"), employments, key="opt_scope_emp"
+                )
 
         # --- Data Loading based on scope ---
         base_heatmap_df = pd.DataFrame()
@@ -2932,19 +2984,25 @@ def display_optimization_tab(tab_container, data_dir):
             return
 
         # --- Dynamic Calculation for all 3 metrics ---
-        date_cols = [c for c in base_heatmap_df.columns if _parse_as_date(str(c)) is not None]
+        date_cols = [
+            c for c in base_heatmap_df.columns if _parse_as_date(str(c)) is not None
+        ]
         if not date_cols:
             st.warning("ヒートマップデータに有効な日付列がありません。")
             return
 
         staff_df = base_heatmap_df[date_cols].fillna(0)
         need_df = pd.DataFrame(
-            np.repeat(base_heatmap_df["need"].values[:, np.newaxis], len(date_cols), axis=1),
+            np.repeat(
+                base_heatmap_df["need"].values[:, np.newaxis], len(date_cols), axis=1
+            ),
             index=base_heatmap_df.index,
             columns=date_cols,
         )
         upper_df = pd.DataFrame(
-            np.repeat(base_heatmap_df["upper"].values[:, np.newaxis], len(date_cols), axis=1),
+            np.repeat(
+                base_heatmap_df["upper"].values[:, np.newaxis], len(date_cols), axis=1
+            ),
             index=base_heatmap_df.index,
             columns=date_cols,
         )
@@ -3020,8 +3078,6 @@ def display_optimization_tab(tab_container, data_dir):
             title="最適化スコア ヒートマップ",
         )
         st.plotly_chart(fig_score, use_container_width=True, key="optimization_heat")
-
-
 
 
 def display_fatigue_tab(tab_container, data_dir):
@@ -3225,7 +3281,9 @@ def display_cost_tab(tab_container, data_dir):
                         .agg(
                             day_of_week=(
                                 "ds",
-                                lambda x: ["月", "火", "水", "木", "金", "土", "日"][x.iloc[0].weekday()],
+                                lambda x: ["月", "火", "水", "木", "金", "土", "日"][
+                                    x.iloc[0].weekday()
+                                ],
                             ),
                             total_staff=("staff", "nunique"),
                             role_breakdown=(
@@ -3235,7 +3293,10 @@ def display_cost_tab(tab_container, data_dir):
                                     for role, count in x.value_counts().items()
                                 ),
                             ),
-                            staff_list=("staff", lambda x: ", ".join(sorted(x.unique()))),
+                            staff_list=(
+                                "staff",
+                                lambda x: ", ".join(sorted(x.unique())),
+                            ),
                         )
                         .reset_index()
                     )
@@ -3243,12 +3304,15 @@ def display_cost_tab(tab_container, data_dir):
                     def summarize_staff(staff_str, limit=5):
                         staff_list = staff_str.split(", ")
                         if len(staff_list) > limit:
-                            return ", ".join(staff_list[:limit]) + f", ...他{len(staff_list) - limit}名"
+                            return (
+                                ", ".join(staff_list[:limit])
+                                + f", ...他{len(staff_list) - limit}名"
+                            )
                         return staff_str
 
-                    daily_details["staff_list_summary"] = daily_details["staff_list"].apply(
-                        summarize_staff
-                    )
+                    daily_details["staff_list_summary"] = daily_details[
+                        "staff_list"
+                    ].apply(summarize_staff)
 
                     df = pd.merge(df, daily_details, on="date", how="left")
 
@@ -3282,7 +3346,9 @@ def display_cost_tab(tab_container, data_dir):
                 if final_custom_data:
                     fig_cost.update_traces(hovertemplate=hovertemplate)
 
-                st.plotly_chart(fig_cost, use_container_width=True, key="daily_cost_chart_enhanced")
+                st.plotly_chart(
+                    fig_cost, use_container_width=True, key="daily_cost_chart_enhanced"
+                )
 
                 # --- 変更ここまで ---
 
@@ -3305,7 +3371,11 @@ def display_cost_tab(tab_container, data_dir):
                         yaxis_title="累計人件費 (円)",
                         xaxis_title="日付",
                     )
-                    st.plotly_chart(fig_cumulative, use_container_width=True, key="cumulative_cost_chart")
+                    st.plotly_chart(
+                        fig_cumulative,
+                        use_container_width=True,
+                        key="cumulative_cost_chart",
+                    )
 
             except Exception as e:
                 log_and_display_error("daily_cost.xlsx 表示エラー", e)
@@ -3460,7 +3530,10 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             st.dataframe(staff_balance, use_container_width=True, hide_index=True)
 
             daily_summary_for_chart = results_dict.get("daily_summary")
-            if isinstance(daily_summary_for_chart, pd.DataFrame) and not daily_summary_for_chart.empty:
+            if (
+                isinstance(daily_summary_for_chart, pd.DataFrame)
+                and not daily_summary_for_chart.empty
+            ):
                 st.subheader("日別 休暇取得者数（内訳）")
                 fig_breakdown = px.bar(
                     daily_summary_for_chart,
@@ -3518,7 +3591,10 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             st.dataframe(ratio_break, use_container_width=True, hide_index=True)
 
         daily_summary_for_chart = results_dict.get("daily_summary")
-        if isinstance(daily_summary_for_chart, pd.DataFrame) and not daily_summary_for_chart.empty:
+        if (
+            isinstance(daily_summary_for_chart, pd.DataFrame)
+            and not daily_summary_for_chart.empty
+        ):
             st.subheader("休暇タイプ別 取得者数の推移")
             fig_type = px.line(
                 daily_summary_for_chart,
@@ -3533,8 +3609,12 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 },
                 title="休暇タイプ別 取得者数の推移",
             )
-            st.plotly_chart(fig_type, use_container_width=True, key="leave_type_trend_chart")
-            st.dataframe(daily_summary_for_chart, use_container_width=True, hide_index=True)
+            st.plotly_chart(
+                fig_type, use_container_width=True, key="leave_type_trend_chart"
+            )
+            st.dataframe(
+                daily_summary_for_chart, use_container_width=True, hide_index=True
+            )
 
         concentration = results_dict.get("concentration_requested")
         if isinstance(concentration, pd.DataFrame) and not concentration.empty:
@@ -3849,11 +3929,11 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Forecast": display_forecast_tab,
             "Fairness": display_fairness_tab,
             "Leave Analysis": display_leave_analysis_tab,
-        "Cost Analysis": display_cost_tab,
-        "Hire Plan": display_hireplan_tab,
-        "Summary Report": display_summary_report_tab,
-        "PPT Report": display_ppt_tab,
-    }
+            "Cost Analysis": display_cost_tab,
+            "Hire Plan": display_hireplan_tab,
+            "Summary Report": display_summary_report_tab,
+            "PPT Report": display_ppt_tab,
+        }
 
         # 各タブに対応する表示関数を呼び出す
         for i, tab_key in enumerate(tab_keys_en_dash):

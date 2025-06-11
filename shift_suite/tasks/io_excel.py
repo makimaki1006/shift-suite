@@ -229,12 +229,16 @@ def load_shift_patterns(
                 log.debug(
                     f"処理中の勤務コード: 行{r_idx + 2}, code='{code}', start='{st_original}', end='{ed_original}'"
                 )
-                log.debug(f"時刻変換結果: {st_original} → {st_hm}, {ed_original} → {ed_hm}")
+                log.debug(
+                    f"時刻変換結果: {st_original} → {st_hm}, {ed_original} → {ed_hm}"
+                )
 
                 slots = []
                 if st_hm and ed_hm:
                     slots = _expand(st_hm, ed_hm, slot_minutes=slot_minutes)
-                    log.debug(f"スロット展開: {code} → {len(slots)}個のスロット: {slots}")
+                    log.debug(
+                        f"スロット展開: {code} → {len(slots)}個のスロット: {slots}"
+                    )
                 elif st_hm or ed_hm:
                     log.warning(
                         f"勤務コード '{code}': 開始/終了の一方のみ指定。スロット0扱い (開始='{st_original}', 終了='{ed_original}')"
