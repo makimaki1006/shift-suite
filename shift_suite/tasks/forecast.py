@@ -147,7 +147,7 @@ def build_demand_series(
         msg = "有効な日付列が 1 つも見つかりません"
         if raise_on_empty:
             raise ValueError(msg)
-        warnings.warn(msg)
+        warnings.warn(msg, stacklevel=2)
         pd.DataFrame(columns=["ds", "y"]).to_csv(csv_out, index=False)
         return csv_out
 
@@ -243,13 +243,15 @@ def forecast_need(
             if choose == "auto" and recent_mape > 0.25:
                 log.info("[forecast] recent MAPE high → prefer ARIMA")
                 warnings.warn(
-                    "Recent forecast MAPE above 0.25 – using ARIMA instead of ETS"
+                    "Recent forecast MAPE above 0.25 – using ARIMA instead of ETS",
+                    stacklevel=2,
                 )
                 choose = "arima"
             if seasonal == "add" and recent_mape > 0.25:
                 log.info("[forecast] recent MAPE high → switch seasonal to 'mul'")
                 warnings.warn(
-                    "Recent forecast MAPE above 0.25 – switching seasonal parameter to 'mul'"
+                    "Recent forecast MAPE above 0.25 – switching seasonal parameter to 'mul'",
+                    stacklevel=2,
                 )
                 seasonal = "mul"
         except Exception as e:
@@ -274,7 +276,7 @@ def forecast_need(
 
     # ───── データ不足 → Naive ─────
     if len(df) < 2 or df["y"].sum() < 2:
-        warnings.warn("実績データが不足しているため Naive 予測で継続")
+        warnings.warn("実績データが不足しているため Naive 予測で継続", stacklevel=2)
         last_val = df["y"].iloc[-1] if not df.empty else 0
         future_dates = pd.date_range(
             df["ds"].max() + dt.timedelta(days=1) if not df.empty else dt.date.today(),

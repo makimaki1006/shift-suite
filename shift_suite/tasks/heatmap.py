@@ -544,6 +544,7 @@ def build_heatmap(
             avg_lack_series,
             avg_excess_series,
         ],
+        strict=True,
     ):
         pivot_to_excel_all[col_name_summary_loop] = series_data_summary_loop
 
@@ -659,6 +660,7 @@ def build_heatmap(
                 lack_r_series,
                 excess_r_series,
             ],
+            strict=True,
         ):
             pivot_to_excel_role[col] = data
 
@@ -775,6 +777,7 @@ def build_heatmap(
                 lack_e_series,
                 excess_e_series,
             ],
+            strict=True,
         ):
             pivot_to_excel_emp[col] = data
 

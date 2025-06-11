@@ -90,7 +90,8 @@ def learn_roster(
     elif "y" in df.columns:
         demand = df["y"].values
         warnings.warn(
-            "[rl] `need` 列が無かったため `y` 列を使用しました（forecast 由来）"
+            "[rl] `need` 列が無かったため `y` 列を使用しました（forecast 由来）",
+            stacklevel=2,
         )
     else:
         log.warning("[rl] 需要列 (`need` または `y`) が見つからず学習をスキップ")
