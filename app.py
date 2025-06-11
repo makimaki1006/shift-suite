@@ -96,7 +96,11 @@ from shift_suite.tasks.leave_analyzer import (
     LEAVE_TYPE_OTHER,
 )
 from shift_suite.tasks.rl import learn_roster
-from shift_suite.tasks.shortage import merge_shortage_leave, shortage_and_brief
+from shift_suite.tasks.shortage import (
+    merge_shortage_leave,
+    shortage_and_brief,
+    weekday_timeslot_summary,
+)
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks.skill_nmf import build_skill_matrix
 from shift_suite.tasks.daily_cost import calculate_daily_cost  # <-- added
@@ -1609,10 +1613,30 @@ if run_button_clicked:
                             )
                         elif opt_module_name_exec_run == "最適採用計画":
                             if st.session_state.analysis_status.get("shortage") == "success":
-                                original_excel_path = Path(next(iter(st.session_state.uploaded_files_info.values()))["path"])
-                                create_optimal_hire_plan(out_dir_exec, original_excel_path)
+                                try:
+                                    log.info("最適採用計画のためのサマリーファイルを生成します。")
+                                    weekday_summary_df = weekday_timeslot_summary(out_dir_exec)
+                                    summary_fp = out_dir_exec / "shortage_weekday_timeslot_summary.xlsx"
+                                    weekday_summary_df.to_excel(summary_fp, index=False)
+                                    log.info(f"不足分析の曜日・時間帯サマリーを保存しました: {summary_fp}")
+
+                                    original_excel_path = Path(
+                                        next(iter(st.session_state.uploaded_files_info.values()))["path"]
+                                    )
+                                    create_optimal_hire_plan(out_dir_exec, original_excel_path)
+                                    st.success("✅ 最適採用計画 生成完了")
+                                except Exception as e_opt_hire:
+                                    log.error(
+                                        f"最適採用計画の生成中にエラーが発生しました: {e_opt_hire}",
+                                        exc_info=True,
+                                    )
+                                    st.warning(
+                                        "最適採用計画の生成に失敗しました。詳細はログを確認してください。"
+                                    )
                             else:
-                                st.warning("最適採用計画の生成には、不足分析が先に完了している必要があります。")
+                                st.warning(
+                                    "最適採用計画の生成には、不足分析が先に完了している必要があります。"
+                                )
                         st.success(f"✅ {_(opt_module_name_exec_run)} 完了")
                     except FileNotFoundError as fe_opt_exec_run_loop:
                         log_and_display_error(
