@@ -41,7 +41,7 @@ def make_dummy_st():
 
 def test_display_fairness_tab_empty(monkeypatch, tmp_path):
     (tmp_path / "fairness_after.parquet").touch()
-    monkeypatch.setattr(app, "load_excel_cached", lambda *a, **k: pd.DataFrame())
+    monkeypatch.setattr(app, "load_data_cached", lambda *a, **k: pd.DataFrame())
     dummy_st, infos, _ = make_dummy_st()
     monkeypatch.setattr(app, "st", dummy_st)
     monkeypatch.setattr(app, "_", lambda x: x)
@@ -74,7 +74,7 @@ def test_display_overview_tab_metrics(monkeypatch, tmp_path):
     df_staff = pd.DataFrame({"night_ratio": [0.2, 0.3]})
     df_alerts = pd.DataFrame({"category": ["c"], "value": [1]})
 
-    def fake_load_excel_cached(path, *a, **k):
+    def fake_load_data_cached(path, *a, **k):
         if "shortage_role_summary.parquet" in path:
             return df_shortage
         if "fairness_before.parquet" in path:
@@ -90,8 +90,8 @@ def test_display_overview_tab_metrics(monkeypatch, tmp_path):
             assert name == "alerts"
             return df_alerts
 
-    monkeypatch.setattr(app, "load_excel_cached", fake_load_excel_cached)
-    monkeypatch.setattr(app, "load_excelfile_cached", lambda *a, **k: DummyXLS())
+    monkeypatch.setattr(app, "load_data_cached", fake_load_data_cached)
+    # stats_alerts.parquet loaded via load_data_cached as well
 
     dummy_st, infos, metrics = make_dummy_st()
     monkeypatch.setattr(app, "st", dummy_st)
