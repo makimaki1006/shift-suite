@@ -3210,10 +3210,37 @@ def display_cost_tab(tab_container, data_dir):
                     return
 
                 try:
+                    # --- 既存の日別コスト棒グラフ ---
                     if "date" in df.columns and "cost" in df.columns:
-                        fig_cost = px.bar(df, x="date", y="cost")
+                        st.subheader("日別コスト")
+                        fig_cost = px.bar(df, x="date", y="cost", title="日別発生人件費")
                         st.plotly_chart(fig_cost, use_container_width=True, key="daily_cost_chart")
                     st.dataframe(df, use_container_width=True, hide_index=True)
+
+                    # --- ここから追加 ---
+                    st.divider()
+                    st.subheader("累計人件費の推移")
+
+                    # 日付でソートしてから累計を計算
+                    df_sorted = df.sort_values(by="date").copy()
+                    df_sorted["cumulative_cost"] = df_sorted["cost"].cumsum()
+
+                    # 累計コストの折れ線グラフを作成
+                    fig_cumulative = px.line(
+                        df_sorted,
+                        x="date",
+                        y="cumulative_cost",
+                        title="日別累計人件費",
+                        labels={"date": "日付", "cumulative_cost": "累計人件費 (円)"},
+                        markers=True,
+                    )
+                    fig_cumulative.update_layout(
+                        yaxis_title="累計人件費 (円)",
+                        xaxis_title="日付",
+                    )
+                    st.plotly_chart(fig_cumulative, use_container_width=True, key="cumulative_cost_chart")
+                    # --- 追加ここまで ---
+
                 except AttributeError as e:
                     log_and_display_error("Invalid data format in daily_cost.xlsx", e)
             except Exception as e:
