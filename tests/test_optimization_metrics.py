@@ -14,15 +14,15 @@ def _create_heatmap(out_dir: Path) -> None:
         },
         index=labels,
     )
-    df.to_excel(out_dir / "heat_ALL.xlsx")
+    df.to_parquet(out_dir / "heat_ALL.parquet")
 
 
 def test_optimization_outputs(tmp_path: Path) -> None:
     _create_heatmap(tmp_path)
     shortage_and_brief(tmp_path, slot=30)
-    surplus_df = pd.read_excel(tmp_path / "surplus_vs_need_time.xlsx", index_col=0)
-    margin_df = pd.read_excel(tmp_path / "margin_vs_upper_time.xlsx", index_col=0)
-    score_df = pd.read_excel(tmp_path / "optimization_score_time.xlsx", index_col=0)
+    surplus_df = pd.read_parquet(tmp_path / "surplus_vs_need_time.parquet")
+    margin_df = pd.read_parquet(tmp_path / "margin_vs_upper_time.parquet")
+    score_df = pd.read_parquet(tmp_path / "optimization_score_time.parquet")
 
     assert surplus_df.iloc[0, 0] == 1
     assert surplus_df.iloc[2, 0] == 3

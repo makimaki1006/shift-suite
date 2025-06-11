@@ -54,14 +54,14 @@ def shortage_and_brief(
 
     estimated_holidays_set: Set[dt.date] = set(holidays or [])
 
-    fp_all_heatmap = out_dir_path / "heat_ALL.xlsx"
+    fp_all_heatmap = out_dir_path / "heat_ALL.parquet"
     if not fp_all_heatmap.exists():
-        log.error(f"[shortage] heat_ALL.xlsx が見つかりません: {fp_all_heatmap}")
+        log.error(f"[shortage] heat_ALL.parquet が見つかりません: {fp_all_heatmap}")
         return None
     try:
-        heat_all_df = pd.read_excel(fp_all_heatmap, index_col=0)
+        heat_all_df = pd.read_parquet(fp_all_heatmap)
     except Exception as e:
-        log.error(f"[shortage] heat_ALL.xlsx の読み込み中にエラー: {e}", exc_info=True)
+        log.error(f"[shortage] heat_ALL.parquet の読み込み中にエラー: {e}", exc_info=True)
         return None
 
     date_columns_in_heat_all = [
@@ -936,18 +936,18 @@ def _summary_by_period(df: pd.DataFrame, *, period: str) -> pd.DataFrame:
 
 
 def weekday_timeslot_summary(
-    out_dir: Path | str, *, excel: str = "shortage_time.xlsx"
+    out_dir: Path | str, *, excel: str = "shortage_time.parquet"
 ) -> pd.DataFrame:
     """Return average shortage counts by weekday and time slot."""
 
-    df = pd.read_excel(Path(out_dir) / excel, index_col=0)
+    df = pd.read_parquet(Path(out_dir) / excel)
     return _summary_by_period(df, period="weekday")
 
 
 def monthperiod_timeslot_summary(
-    out_dir: Path | str, *, excel: str = "shortage_time.xlsx"
+    out_dir: Path | str, *, excel: str = "shortage_time.parquet"
 ) -> pd.DataFrame:
     """Return average shortage counts by month period and time slot."""
 
-    df = pd.read_excel(Path(out_dir) / excel, index_col=0)
+    df = pd.read_parquet(Path(out_dir) / excel)
     return _summary_by_period(df, period="month_period")

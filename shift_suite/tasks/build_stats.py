@@ -72,7 +72,7 @@ def build_stats(
     stats_fp = out_dir_path / "stats_error.parquet"
     log.info(f"=== build_stats start (out_dir={out_dir_path}) ===")
 
-    required_files = ["heat_ALL.xlsx"]
+    required_files = ["heat_ALL.parquet"]
     missing = _check_files_exist(out_dir_path, required_files)
     if missing:
         log.error(
@@ -89,14 +89,14 @@ def build_stats(
     estimated_holidays_set: Set[dt.date] = set(holidays or [])
 
     try:
-        heat_all_df = pd.read_excel(out_dir_path / "heat_ALL.xlsx", index_col=0)
-        log.debug(f"heat_ALL.xlsx を読み込みました。Shape: {heat_all_df.shape}")
+        heat_all_df = pd.read_parquet(out_dir_path / "heat_ALL.parquet")
+        log.debug(f"heat_ALL.parquet を読み込みました。Shape: {heat_all_df.shape}")
     except Exception as e:
         log.error(
-            f"heat_ALL.xlsx の読み込み中にエラーが発生しました: {e}", exc_info=True
+            f"heat_ALL.parquet の読み込み中にエラーが発生しました: {e}", exc_info=True
         )
         try:
-            pd.DataFrame({"error": [f"Error reading heat_ALL.xlsx: {e}"]}).to_parquet(
+            pd.DataFrame({"error": [f"Error reading heat_ALL.parquet: {e}"]}).to_parquet(
                 stats_fp,
                 index=False,
             )
@@ -133,7 +133,7 @@ def build_stats(
     ]
     if not date_columns_in_heat:
         log.error(
-            "heat_ALL.xlsx に有効な日付列が見つかりません。統計処理を中止します。"
+            "heat_ALL.parquet に有効な日付列が見つかりません。統計処理を中止します。"
         )
         return
 
@@ -192,7 +192,7 @@ def build_stats(
 
     if "need" not in heat_all_df.columns or "upper" not in heat_all_df.columns:
         log.error(
-            "'need' または 'upper' 列が heat_ALL.xlsx に見つかりません。処理を中止します。"
+            "'need' または 'upper' 列が heat_ALL.parquet に見つかりません。処理を中止します。"
         )
         return
     need_per_timeslot_series_orig = (

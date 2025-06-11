@@ -16,14 +16,14 @@ def _create_heatmap_with_upper(out_dir: Path) -> None:
         },
         index=labels,
     )
-    df.to_excel(out_dir / "heat_ALL.xlsx")
+    df.to_parquet(out_dir / "heat_ALL.parquet")
 
 
 def test_excess_output(tmp_path: Path) -> None:
     _create_heatmap_with_upper(tmp_path)
     shortage_and_brief(tmp_path, slot=30)
-    excess_df = pd.read_excel(tmp_path / "excess_time.xlsx", index_col=0)
-    shortage_df = pd.read_excel(tmp_path / "shortage_time.xlsx", index_col=0)
+    excess_df = pd.read_parquet(tmp_path / "excess_time.parquet")
+    shortage_df = pd.read_parquet(tmp_path / "shortage_time.parquet")
     assert excess_df.iloc[0, 0] == 1
     assert excess_df.iloc[1, 0] == 0
     assert shortage_df.iloc[0, 0] == 0

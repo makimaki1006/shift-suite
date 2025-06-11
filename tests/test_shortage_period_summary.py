@@ -21,7 +21,7 @@ def _create_heatmap(out_dir: Path) -> None:
         },
         index=labels,
     )
-    df.to_excel(out_dir / "heat_ALL.xlsx")
+    df.to_parquet(out_dir / "heat_ALL.parquet")
 
 
 def test_weekday_timeslot_summary(tmp_path: Path) -> None:

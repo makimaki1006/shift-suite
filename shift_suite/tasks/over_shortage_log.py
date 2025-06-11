@@ -17,7 +17,7 @@ def list_events(out_dir: Path | str) -> pd.DataFrame:
         if not fp.exists():
             return
         try:
-            df = pd.read_excel(fp, sheet_name=sheet, index_col=0)
+            df = pd.read_parquet(fp)
         except Exception as e:  # noqa: BLE001
             log.warning("Failed to read %s [%s]: %s", fp, sheet, e)
             return
@@ -33,8 +33,8 @@ def list_events(out_dir: Path | str) -> pd.DataFrame:
             long["type"] = kind
             records.append(long)
 
-    _read(out_dir_path / "shortage_time.xlsx", "lack_time", "shortage")
-    _read(out_dir_path / "excess_time.xlsx", "excess_time", "excess")
+    _read(out_dir_path / "shortage_time.parquet", "lack_time", "shortage")
+    _read(out_dir_path / "excess_time.parquet", "excess_time", "excess")
 
     if records:
         return pd.concat(records, ignore_index=True)
