@@ -19,7 +19,7 @@ prophet==1.1.6         #  Python 3.12 で動作する最新版
 stable-baselines3>=2.3
 gymnasium>=0.29        #  明示
 # 固定した CPU 版 PyTorch を使用する
-torch==2.3.1+cpu
+torch
 
 # ─── misc / utils ───
 python-pptx>=0.6
