@@ -177,10 +177,10 @@ def load_leave_results_from_dir(data_dir: Path) -> dict:
     daily_df = results.get("daily_summary")
 
     if "staff_balance_daily" not in results and _valid_df(daily_df):
-        heat_fp = data_dir / "heat_ALL.xlsx"
+        heat_fp = data_dir / "heat_ALL.parquet"
         if heat_fp.exists():
             try:
-                heat = pd.read_excel(heat_fp, index_col=0)
+                heat = pd.read_parquet(heat_fp)
                 date_cols = [c for c in heat.columns if c not in SUMMARY5_CONST]
                 total_staff = (
                     (heat[date_cols] > 0)

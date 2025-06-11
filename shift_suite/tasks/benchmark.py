@@ -23,10 +23,10 @@ def _meta(p: Path) -> dict:
 
 
 def _kpi(out_dir: Path) -> dict:
-    heat_p = out_dir / "heat_ALL.xlsx"
+    heat_p = out_dir / "heat_ALL.parquet"
     if not heat_p.exists():
         return {}
-    heat = pd.read_excel(heat_p, index_col=0)
+    heat = pd.read_parquet(heat_p)
     total_h = heat.sum().sum()
     need = derive_min_staff(heat, "mean-1s")
     lack_h = heat.sub(need, axis=0).clip(lower=0).sum().sum()
