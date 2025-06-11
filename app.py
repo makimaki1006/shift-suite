@@ -1926,7 +1926,7 @@ def display_overview_tab(tab_container, data_dir):
                 pass
 
         c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
-        c1.metric(_("不足時間(h)"), f"{lack_h:.1f}")
+        c1.metric(_("総不足時間(h) (職種別合計)"), f"{lack_h:.1f}")
         c2.metric("夜勤 Jain指数", jain_display)
         c3.metric(_("Total Staff"), staff_count)
         c4.metric(_("Avg. Night Ratio"), f"{avg_night_ratio:.3f}")
@@ -1939,14 +1939,45 @@ def display_overview_tab(tab_container, data_dir):
 def display_heatmap_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Heatmap"))
-        fp = data_dir / "heat_ALL.xlsx"
-        if fp.exists():
+
+        roles, employments = load_shortage_meta(data_dir)
+        scope_opts = {"overall": _("Overall")}
+        if roles:
+            scope_opts["role"] = _("Role")
+        if employments:
+            scope_opts["employment"] = _("Employment")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            scope_lbl = st.selectbox(
+                "表示範囲", list(scope_opts.values()), key="heat_scope"
+            )
+            scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
+
+        sel_item = None
+        with c2:
+            if scope == "role":
+                sel_item = st.selectbox(_("Role"), roles, key="heat_scope_role")
+            elif scope == "employment":
+                sel_item = st.selectbox(
+                    _("Employment"), employments, key="heat_scope_emp"
+                )
+
+        heatmap_fp = None
+        if scope == "overall":
+            heatmap_fp = data_dir / "heat_ALL.xlsx"
+        elif scope == "role" and sel_item:
+            heatmap_fp = data_dir / f"heat_{safe_sheet(sel_item, for_path=True)}.xlsx"
+        elif scope == "employment" and sel_item:
+            heatmap_fp = data_dir / f"heat_emp_{safe_sheet(sel_item, for_path=True)}.xlsx"
+
+        if heatmap_fp and heatmap_fp.exists():
             try:
                 df_heat = load_excel_cached(
-                    str(fp),
-                    sheet_name="ALL",
+                    str(heatmap_fp),
+                    sheet_name=0,
                     index_col=0,
-                    file_mtime=_file_mtime(fp),
+                    file_mtime=_file_mtime(heatmap_fp),
                 )
                 if not _valid_df(df_heat):
                     st.info("Data not available")
@@ -1968,7 +1999,6 @@ def display_heatmap_tab(tab_container, data_dir):
                     columns=[c for c in SUMMARY5_CONST if c in df_heat.columns],
                     errors="ignore",
                 )
-
                 if mode_key == "Raw":
                     pos_vals = disp_df_heat[disp_df_heat > 0].stack()
                     p90 = (
@@ -2087,7 +2117,7 @@ def display_heatmap_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("ヒートマップ表示エラー", e)
         else:
-            st.info(_("Heatmap") + " (heat_ALL.xlsx) " + _("が見つかりません。"))
+            st.info(_("Heatmap file not found."))
 
 
 def display_shortage_tab(tab_container, data_dir):
@@ -2489,90 +2519,63 @@ def display_shortage_tab(tab_container, data_dir):
                 + _("が見つかりません。")
             )
 
-        scope_opts = {
-            "overall": _("Overall"),
-            "role": _("Role"),
-            "employment": _("Employment"),
-        }
-        scope_lbl = st.selectbox(
-            "ヒートマップの対象範囲",
-            list(scope_opts.values()),
-            key="short_scope",
+        st.markdown("##### 不足率ヒートマップ")
+        st.info(
+            """
+            このヒートマップは、各時間帯で**必要人数に対してどれくらいの割合で人員が不足していたか**を示します。
+            - **色が濃い（赤に近い）**: 不足の割合が高く、人員配置が特に手薄だった時間帯です。
+            - **色が薄い（白に近い）**: 不足がなかった、または少なかった時間帯です。
+            """
         )
-        scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
-        sel_role = sel_emp = None
-        if scope == "role" and roles:
-            sel_role = st.selectbox(_("Role"), roles, key="short_scope_role")
-        elif scope == "employment" and employments:
-            sel_emp = st.selectbox(_("Employment"), employments, key="short_scope_emp")
+
+        roles, employments = load_shortage_meta(data_dir)
+        scope_opts_shortage = {"overall": _("Overall")}
+        if roles:
+            scope_opts_shortage["role"] = _("Role")
+        if employments:
+            scope_opts_shortage["employment"] = _("Employment")
+
+        c1_short, c2_short, c3_short = st.columns(3)
+        with c1_short:
+            scope_lbl_s = st.selectbox(
+                "表示範囲", list(scope_opts_shortage.values()), key="shortage_heat_scope"
+            )
+            scope_s = [k for k, v in scope_opts_shortage.items() if v == scope_lbl_s][0]
+
+        sel_item_s = None
+        with c2_short:
+            if scope_s == "role":
+                sel_item_s = st.selectbox(_("Role"), roles, key="shortage_heat_scope_role")
+            elif scope_s == "employment":
+                sel_item_s = st.selectbox(
+                    _("Employment"), employments, key="shortage_heat_scope_emp"
+                )
 
         df_ratio = pd.DataFrame()
-        if scope == "overall":
-            fp_s_ratio = data_dir / "shortage_ratio.xlsx"
-            if fp_s_ratio.exists():
-                try:
-                    df_ratio = load_excel_cached(
-                        str(fp_s_ratio),
-                        sheet_name="lack_ratio",
-                        index_col=0,
-                        file_mtime=_file_mtime(fp_s_ratio),
-                    )
-                except Exception as e:
-                    log_and_display_error("shortage_ratio.xlsx 表示エラー", e)
-        elif scope == "role" and sel_role:
-            fp_heat = data_dir / f"heat_{safe_sheet(sel_role, for_path=True)}.xlsx"
-            if fp_heat.exists():
-                try:
-                    role_df = load_excel_cached(str(fp_heat), index_col=0)
-                    df_ratio = calc_ratio_from_heatmap(role_df)
-                except Exception as e:
-                    log_and_display_error("role heatmap ratio error", e)
-        elif scope == "employment" and sel_emp:
-            fp_heat = data_dir / f"heat_emp_{safe_sheet(sel_emp, for_path=True)}.xlsx"
-            if fp_heat.exists():
-                try:
-                    emp_df = load_excel_cached(str(fp_heat), index_col=0)
-                    df_ratio = calc_ratio_from_heatmap(emp_df)
-                except Exception as e:
-                    log_and_display_error("employment heatmap ratio error", e)
+        heat_fp_s = None
+        if scope_s == "overall":
+            heat_fp_s = data_dir / "heat_ALL.xlsx"
+        elif scope_s == "role" and sel_item_s:
+            heat_fp_s = data_dir / f"heat_{safe_sheet(sel_item_s, for_path=True)}.xlsx"
+        elif scope_s == "employment" and sel_item_s:
+            heat_fp_s = data_dir / f"heat_emp_{safe_sheet(sel_item_s, for_path=True)}.xlsx"
+
+        if heat_fp_s and heat_fp_s.exists():
+            role_df = load_excel_cached(str(heat_fp_s), index_col=0)
+            df_ratio = calc_ratio_from_heatmap(role_df)
 
         if _valid_df(df_ratio):
-            st.write(_("Shortage Ratio by Time"))
-            avail_ratio_dates = df_ratio.columns.tolist()
-            if avail_ratio_dates and scope == "overall":
-                sel_ratio_date = st.selectbox(
-                    _("Select date for ratio"),
-                    avail_ratio_dates,
-                    key="short_ratio_date",
-                )
-                if sel_ratio_date:
-                    fig_ratio = px.bar(
-                        df_ratio[sel_ratio_date].reset_index(),
-                        x=df_ratio.index.name or "index",
-                        y=sel_ratio_date,
-                        labels={
-                            df_ratio.index.name or "index": _("Time"),
-                            sel_ratio_date: _("Shortage Ratio"),
-                        },
-                        color_discrete_sequence=["#FF6347"],
-                        title=f"{sel_ratio_date} の時間帯別不足率",
-                    )
-                    st.plotly_chart(
-                        fig_ratio,
-                        use_container_width=True,
-                        key="short_ratio_chart",
-                    )
-            with st.expander(_("Display all ratio data")):
-                st.dataframe(df_ratio, use_container_width=True)
             fig_ratio_heat = dashboard.shortage_heatmap(df_ratio)
-            fig_ratio_heat.update_layout(title="不足率ヒートマップ")
+            fig_ratio_heat.update_layout(
+                title=f"不足率ヒートマップ ({scope_lbl_s}{': ' + sel_item_s if sel_item_s else ''})"
+            )
             st.plotly_chart(
                 fig_ratio_heat,
                 use_container_width=True,
-                key="short_ratio_heatmap",
+                key="shortage_tab_ratio_heatmap_dynamic",
             )
         else:
-            st.info("Data not available")
+            st.info("選択されたスコープの不足率データを表示できません。")
 
         fp_e_ratio = data_dir / "excess_ratio.xlsx"
         if fp_e_ratio.exists():
@@ -2772,8 +2775,6 @@ def display_shortage_tab(tab_container, data_dir):
                 log_and_display_error("stats.xlsx alerts表示エラー", e)
 
         display_shortage_factor_section(data_dir)
-
-        display_over_shortage_log_section(data_dir)
 
 
 def display_shortage_factor_section(data_dir: Path) -> None:
@@ -3626,129 +3627,91 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
         concentration = results_dict.get("concentration_requested")
         if isinstance(concentration, pd.DataFrame) and not concentration.empty:
             conc_df = concentration.copy()
-            focused_df = conc_df[conc_df.get("is_concentrated")]
-            if not conc_df.empty:
-                st.subheader(_("Leave concentration graphs"))
 
-                if "leave_ratio" not in conc_df.columns:
-                    sb = results_dict.get("staff_balance_daily")
-                    if isinstance(sb, pd.DataFrame) and {
-                        "date",
-                        "leave_ratio",
-                    }.issubset(sb.columns):
-                        conc_df = conc_df.merge(
-                            sb[["date", "leave_ratio"]], on="date", how="left"
-                        )
-                        focused_df = conc_df[conc_df.get("is_concentrated")]
+            st.subheader(_("Leave concentration graphs"))
+            st.info(
+                "下のグラフの◇マーカー（閾値超過日）をクリックすると、該当日に休暇を申請した職員を確認できます。複数日のクリックで対象を追加・解除できます。"
+            )
 
-                events = []
-                if "leave_ratio" in conc_df.columns:
-                    fig_ratio = px.line(
-                        conc_df,
-                        x="date",
-                        y="leave_ratio",
-                        markers=True,
-                        labels={
-                            "date": _("Date"),
-                            "leave_ratio": _("Leave ratio"),
-                        },
-                        title="希望休比率の推移",
+            fig_conc = go.Figure()
+            fig_conc.add_trace(
+                go.Scatter(
+                    x=conc_df["date"],
+                    y=conc_df["leave_applicants_count"],
+                    mode="lines+markers",
+                    name=_("Leave applicants"),
+                    line=dict(shape="spline", smoothing=0.5),
+                    marker=dict(size=6),
+                )
+            )
+
+            focused_mask = conc_df.get("is_concentrated")
+            focused_df = conc_df[focused_mask] if focused_mask is not None else pd.DataFrame()
+            if not focused_df.empty:
+                fig_conc.add_trace(
+                    go.Scatter(
+                        x=focused_df["date"],
+                        y=focused_df["leave_applicants_count"],
+                        mode="markers",
+                        marker=dict(color="red", size=12, symbol="diamond"),
+                        name=_("Exceeds threshold"),
+                        hoverinfo="text",
+                        text=[
+                            f"<b>{row['date'].strftime('%Y-%m-%d')}</b><br>申請者: {row['leave_applicants_count']}人<br>氏名: {', '.join(row['staff_names'])}"
+                            for _, row in focused_df.iterrows()
+                        ],
                     )
-                    if not focused_df.empty:
-                        fig_ratio.add_scatter(
-                            x=focused_df["date"],
-                            y=focused_df["leave_ratio"],
-                            mode="markers",
-                            marker=dict(color="red", size=10, symbol="diamond"),
-                            name=_("Exceeds threshold"),
-                        )
-                    if plotly_events is not None:
-                        events = plotly_events(
-                            fig_ratio,
-                            click_event=True,
-                            override_height=None,
-                            key="leave_ratio_chart_events",
-                        )
-                    else:
-                        st.plotly_chart(
-                            fig_ratio, use_container_width=True, key="leave_ratio_chart"
-                        )
-                else:
-                    st.info(_("Leave ratio not available."))
-
-                if "selected_leave_dates" not in st.session_state:
-                    st.session_state.selected_leave_dates = set()
-
-                focused_dates = set(
-                    pd.to_datetime(focused_df["date"]).dt.normalize().tolist()
                 )
 
-                for ev in events:
-                    if isinstance(ev, dict) and "x" in ev:
-                        try:
-                            date_val = pd.to_datetime(ev["x"]).normalize()
-                        except Exception:
-                            continue
-                        if date_val in focused_dates:
-                            st.session_state.selected_leave_dates.add(date_val)
+            fig_conc.update_layout(
+                title="希望休 申請者数の推移と集中日",
+                xaxis_title="日付",
+                yaxis_title="申請者数",
+            )
 
-                if st.button("選択をクリア"):
-                    st.session_state.selected_leave_dates = set()
+            if plotly_events:
+                selected_points = plotly_events(fig_conc, click_event=True, key="leave_conc_events")
+            else:
+                st.plotly_chart(fig_conc, use_container_width=True)
+                selected_points = []
 
-                selected_dates = sorted(st.session_state.selected_leave_dates)
-                if selected_dates:
-                    name_lists = conc_df[conc_df["date"].isin(selected_dates)][
-                        "staff_names"
-                    ]
-                    all_names: list[str] = []
-                    for names in name_lists:
-                        if isinstance(names, list):
-                            all_names.extend(names)
+            if "selected_leave_dates" not in st.session_state:
+                st.session_state.selected_leave_dates = set()
 
-                    if all_names:
-                        st.markdown(
-                            "**"
-                            + _("Selected staff")
-                            + ":** "
-                            + ", ".join(sorted(set(all_names)))
-                        )
-                        proportion_df = (
-                            pd.Series(all_names)
-                            .value_counts(normalize=True)
-                            .mul(100)
-                            .round(1)
-                            .rename_axis("staff")
-                            .reset_index(name="割合 (%)")
-                        )
+            for point in selected_points:
+                try:
+                    clicked_date = pd.to_datetime(point["x"]).normalize()
+                    if clicked_date in st.session_state.selected_leave_dates:
+                        st.session_state.selected_leave_dates.remove(clicked_date)
+                    else:
+                        st.session_state.selected_leave_dates.add(clicked_date)
+                except Exception as e:
+                    log.debug(f"クリックイベントの処理中にエラー: {e}")
 
-                        fig_proportion_bar = px.bar(
-                            proportion_df,
-                            x="staff",
-                            y="割合 (%)",
-                            text="割合 (%)",
-                            title="選択された集中日における職員の構成比",
-                            labels={"staff": "スタッフ", "割合 (%)": "割合 (%)"},
-                        )
-                        fig_proportion_bar.update_traces(
-                            texttemplate="%{text:.1f}%", textposition="outside"
-                        )
-                        st.plotly_chart(
-                            fig_proportion_bar,
-                            use_container_width=True,
-                            key="selected_staff_proportion_chart",
-                        )
+            if st.button("選択をクリア"):
+                st.session_state.selected_leave_dates.clear()
+                st.rerun()
 
-                        fig_proportion_pie = px.pie(
-                            proportion_df,
-                            names="staff",
-                            values="割合 (%)",
-                            title="選択された集中日における職員の構成比（円グラフ）",
-                        )
-                        st.plotly_chart(
-                            fig_proportion_pie,
-                            use_container_width=True,
-                            key="selected_staff_pie_chart",
-                        )
+            selected_dates = sorted(list(st.session_state.selected_leave_dates))
+            if selected_dates:
+                st.markdown("---")
+                st.markdown("##### 選択された集中日の休暇申請者")
+
+                all_names_in_selection = []
+                for selected_date in selected_dates:
+                    names_series = conc_df.loc[conc_df["date"] == selected_date, "staff_names"]
+                    if not names_series.empty and isinstance(names_series.iloc[0], list):
+                        names_list = names_series.iloc[0]
+                        st.markdown(f"**{selected_date.strftime('%Y-%m-%d')}**: {', '.join(names_list)}")
+                        all_names_in_selection.extend(names_list)
+
+                if all_names_in_selection:
+                    st.markdown("##### 選択範囲内での申請回数")
+                    name_counts = (
+                        pd.Series(all_names_in_selection).value_counts().reset_index()
+                    )
+                    name_counts.columns = ["職員名", "申請回数"]
+                    st.dataframe(name_counts, use_container_width=True, hide_index=True)
 
 
 def display_gap_analysis_tab(tab_container, data_dir):
