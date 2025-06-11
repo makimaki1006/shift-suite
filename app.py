@@ -1937,7 +1937,8 @@ def display_heatmap_tab(tab_container, data_dir):
 
         # --- UIコントロールをフォームで囲む ---
         with st.form(key="heatmap_controls_form"):
-            c1, c2, c3 = st.columns(3)
+            st.write("表示するヒートマップの範囲とモードを選択し、更新ボタンを押してください。")
+            c1, c2 = st.columns(2)
             with c1:
                 scope_lbl = st.selectbox(
                     "表示範囲", list(scope_opts.values()), key="heat_scope_form"
@@ -1953,9 +1954,10 @@ def display_heatmap_tab(tab_container, data_dir):
                         _("Employment"), employments, key="heat_scope_emp_form"
                     )
 
-            st.radio(
+            mode_opts = {"Raw": _("Raw Count"), "Ratio": _("Ratio (staff ÷ need)")}
+            mode_lbl = st.radio(
                 _("Display Mode"),
-                [_("Raw Count"), _("Ratio (staff ÷ need)")],
+                list(mode_opts.values()),
                 horizontal=True,
                 key="dash_heat_mode_radio_form",
             )
@@ -1963,34 +1965,32 @@ def display_heatmap_tab(tab_container, data_dir):
             # 更新ボタン
             submitted = st.form_submit_button("ヒートマップを更新")
 
-        # --- フォームが送信された後でグラフを描画 ---
+        # --- フォームが送信された後でのみ、データ読み込みとグラフ描画を実行 ---
         if submitted:
-            heatmap_fp_str = ""
-            if scope == "overall":
-                heatmap_fp_str = str(data_dir / "heat_ALL.parquet")
-            elif scope == "role" and sel_item:
-                heatmap_fp_str = str(data_dir / f"heat_role_{safe_sheet(sel_item, for_path=True)}.parquet")
-            elif scope == "employment" and sel_item:
-                heatmap_fp_str = str(data_dir / f"heat_emp_{safe_sheet(sel_item, for_path=True)}.parquet")
+            file_prefix_map = {
+                "overall": "ALL",
+                "role": f"role_{safe_sheet(sel_item, for_path=True)}",
+                "employment": f"emp_{safe_sheet(sel_item, for_path=True)}",
+            }
+            file_to_load = data_dir / f"heat_{file_prefix_map.get(scope)}.parquet"
 
-            if heatmap_fp_str and Path(heatmap_fp_str).exists():
-                df_heat = load_data_cached(heatmap_fp_str, is_parquet=True)
+            if file_to_load.exists():
+                df_heat = load_data_cached(str(file_to_load), is_parquet=True)
 
                 if not df_heat.empty:
-                    # ここから下のグラフ描画ロジックは、元の関数のロジックをそのまま流用
-                    # (zmaxの計算やpx.imshowの呼び出しなど)
-                    # ... 元の表示ロジック ...
+                    # ↓↓↓ ここから下のグラフ表示ロジックは、元のdisplay_heatmap_tab関数からコピー＆ペーストしてください ↓↓↓
                     disp_df_heat = df_heat.drop(
-                         columns=[c for c in SUMMARY5_CONST if c in df_heat.columns],
-                         errors="ignore",
+                        columns=[c for c in SUMMARY5_CONST if c in df_heat.columns],
+                        errors="ignore",
                     )
-                    # (zmax slider and px.imshow call from original function)
-                    st.write(f"Displaying heatmap for: {scope_lbl} - {sel_item or ''}")
-                    fig = px.imshow(disp_df_heat, aspect="auto") # Simplified for example
+                    st.write(
+                        f"表示中: {scope_lbl} {f'({sel_item})' if sel_item else ''} - {mode_lbl}"
+                    )
+                    fig = px.imshow(disp_df_heat, aspect="auto")
                     st.plotly_chart(fig, use_container_width=True)
-
+                    # ↑↑↑ ここまで元の表示ロジックを記述 ↑↑↑
             else:
-                st.warning("選択されたスコープのヒートマップデータが見つかりません。")
+                st.warning(f"ヒートマップデータが見つかりません: {file_to_load.name}")
 
 
 def display_shortage_tab(tab_container, data_dir):
@@ -2651,8 +2651,16 @@ def display_shortage_factor_section(data_dir: Path) -> None:
     train_key = "train_factor_model_button"
     if st.button(_("Train factor model"), key=train_key, use_container_width=True):
         try:
-            heat_df = pd.read_excel(data_dir / "heat_ALL.xlsx", index_col=0)
-            short_df = pd.read_excel(data_dir / "shortage_time.xlsx", index_col=0)
+            heat_df = load_data_cached(
+                str(data_dir / "heat_ALL.parquet"),
+                is_parquet=True,
+                file_mtime=_file_mtime(data_dir / "heat_ALL.parquet"),
+            )
+            short_df = load_data_cached(
+                str(data_dir / "shortage_time.parquet"),
+                is_parquet=True,
+                file_mtime=_file_mtime(data_dir / "shortage_time.parquet"),
+            )
             leave_fp = data_dir / "leave_analysis.csv"
             leave_df = (
                 pd.read_csv(leave_fp, parse_dates=["date"])

@@ -73,8 +73,8 @@ are automatically imported by `shift_suite/__init__.py`, so you can simply
 - **`leave_analyzer`** – Summarises paid and requested leave days.
 - **`cli_bridge`** – Lightweight CLI for `leave_analyzer` based on CSV input.
 
-The GUI caches the uploaded workbook using `load_excelfile_cached()` with
-`st.cache_resource`, as `pd.ExcelFile` objects cannot be pickled.
+The GUI caches uploaded Excel or Parquet files using `load_data_cached()` with
+`st.cache_data`.
 
 ## Usage
 
