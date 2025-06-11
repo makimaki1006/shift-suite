@@ -1114,10 +1114,10 @@ if run_button_clicked:
                             wage_key = f"wage_{cost_by_key}_{key}"
                             if wage_key not in st.session_state:
                                 st.session_state[wage_key] = 1000
-                            st.session_state[wage_key] = st.number_input(
+                            wage_val = st.number_input(
                                 f"時給: {key}", value=st.session_state[wage_key], key=wage_key
                             )
-                            st.session_state.wage_config[key] = st.session_state[wage_key]
+                            st.session_state.wage_config[key] = wage_val
                 try:
                     update_progress_exec_run("Heatmap: Generating heatmap...")
                     build_heatmap(
@@ -1776,6 +1776,7 @@ def display_overview_tab(tab_container, data_dir):
         st.subheader(_("Overview"))
         kpi_fp = data_dir / "shortage_role.xlsx"
         lack_h = 0.0
+        excess_cost = lack_temp_cost = lack_penalty_cost = 0.0
         if kpi_fp.exists():
             try:
                 df_sh_role = load_excel_cached(
