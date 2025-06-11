@@ -105,9 +105,7 @@ def generate_optimal_schedule(
     dates = pd.to_datetime(roster_df["date"]).dt.date.tolist()
     num_days = len(dates)
 
-    required_personnel = dict(
-        zip(dates, roster_df["required_personnel"], strict=True)
-    )
+    required_personnel = dict(zip(dates, roster_df["required_personnel"], strict=True))
     wages = dict(zip(staff_ids, staff_df["wage"], strict=True))
 
     leave_set = set(

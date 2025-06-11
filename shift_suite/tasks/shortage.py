@@ -121,9 +121,7 @@ def shortage_and_brief(
         columns=staff_actual_data_all_df.columns,
     )
     if any(holiday_mask_all):
-        for col, is_h in zip(
-            need_df_all.columns, holiday_mask_all, strict=True
-        ):
+        for col, is_h in zip(need_df_all.columns, holiday_mask_all, strict=True):
             if is_h:
                 need_df_all[col] = 0
 
@@ -186,9 +184,7 @@ def shortage_and_brief(
             columns=staff_actual_data_all_df.columns,
         )
         if any(holiday_mask_all):
-            for col, is_h in zip(
-                upper_df_all.columns, holiday_mask_all, strict=True
-            ):
+            for col, is_h in zip(upper_df_all.columns, holiday_mask_all, strict=True):
                 if is_h:
                     upper_df_all[col] = 0
 
@@ -367,9 +363,7 @@ def shortage_and_brief(
             columns=role_staff_actual_data_df.columns,
         )
         if any(holiday_mask_role):
-            for c, is_h in zip(
-                need_df_role.columns, holiday_mask_role, strict=True
-            ):
+            for c, is_h in zip(need_df_role.columns, holiday_mask_role, strict=True):
                 if is_h:
                     need_df_role[c] = 0
 
@@ -649,17 +643,13 @@ def shortage_and_brief(
             columns=emp_staff_df.columns,
         )
         if any(holiday_mask_emp):
-            for c, is_h in zip(
-                need_df_emp.columns, holiday_mask_emp, strict=True
-            ):
+            for c, is_h in zip(need_df_emp.columns, holiday_mask_emp, strict=True):
                 if is_h:
                     need_df_emp[c] = 0
 
         working_cols_emp = [
             c
-            for c, is_h in zip(
-                emp_staff_df.columns, holiday_mask_emp, strict=True
-            )
+            for c, is_h in zip(emp_staff_df.columns, holiday_mask_emp, strict=True)
             if not is_h and _parse_as_date(c)
         ]
         num_working_days_for_current_emp = len(working_cols_emp)

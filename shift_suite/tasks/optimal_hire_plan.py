@@ -8,11 +8,16 @@ configure_logging()
 log = logging.getLogger(__name__)
 
 
-def _get_shift_pattern_hours(excel_path: Path, master_sheet_name: str = "勤務区分") -> dict[str, set[str]]:
+def _get_shift_pattern_hours(
+    excel_path: Path, master_sheet_name: str = "勤務区分"
+) -> dict[str, set[str]]:
     """勤務区分シートから、各勤務コードの時間帯セットを読み込む"""
     try:
         from .io_excel import load_shift_patterns
-        _, code2slots = load_shift_patterns(excel_path, sheet_name=master_sheet_name, slot_minutes=30)
+
+        _, code2slots = load_shift_patterns(
+            excel_path, sheet_name=master_sheet_name, slot_minutes=30
+        )
         return {code: set(slots) for code, slots in code2slots.items()}
     except Exception as e:  # noqa: BLE001
         log.error(f"勤務区分シート '{master_sheet_name}' の読み込みに失敗しました: {e}")
@@ -30,11 +35,17 @@ def create_optimal_hire_plan(
     shortage_role_fp = out_dir / "shortage_role.xlsx"
 
     if not shortage_summary_fp.exists() or not shortage_role_fp.exists():
-        log.warning("不足分析のサマリーファイルが見つからないため、最適採用計画を生成できません。")
+        log.warning(
+            "不足分析のサマリーファイルが見つからないため、最適採用計画を生成できません。"
+        )
         return None
 
     role_shortage = pd.read_excel(shortage_role_fp)
-    if role_shortage.empty or "role" not in role_shortage.columns or "lack_h" not in role_shortage.columns:
+    if (
+        role_shortage.empty
+        or "role" not in role_shortage.columns
+        or "lack_h" not in role_shortage.columns
+    ):
         log.warning("職種別の不足データが不正です。")
         return None
     most_lacking_role = role_shortage.loc[role_shortage["lack_h"].idxmax()]["role"]
