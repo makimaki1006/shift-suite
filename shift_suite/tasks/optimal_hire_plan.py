@@ -1,9 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
 import pandas as pd
+import logging
 from ..logger_config import configure_logging
 
-log = configure_logging()
+configure_logging()
+log = logging.getLogger(__name__)
 
 
 def _get_shift_pattern_hours(excel_path: Path, master_sheet_name: str = "勤務区分") -> dict[str, set[str]]:
