@@ -656,7 +656,9 @@ def build_heatmap(
                 need_r_series = pivot_data_role_actual.quantile(0.10, axis=1).round()
             else:
                 need_r_series = derive_min_staff(pivot_data_role_actual, min_method)
-        elif need_calc_method == _("人員配置基準に基づき設定する") and need_manual_values:
+        elif (
+            need_calc_method == _("人員配置基準に基づき設定する") and need_manual_values
+        ):
             const_val = need_manual_values.get(role_item_final_loop, 0)
             need_r_series = pd.Series(const_val, index=time_index_labels)
         else:
