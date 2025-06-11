@@ -20,3 +20,14 @@ def test_load_config_invalid_json(tmp_path, monkeypatch, caplog):
     with caplog.at_level(logging.ERROR):
         assert config.get("y", "d") == "d"
     assert "Failed to parse" in caplog.text
+
+
+def test_reload_config(tmp_path, monkeypatch):
+    cfg = tmp_path / "c.json"
+    cfg.write_text('{"k": 1}', encoding="utf-8")
+    monkeypatch.setattr(config, "_CONFIG_PATH", cfg)
+    config.reload_config()
+    assert config.get("k") == 1
+    cfg.write_text('{"k": 2}', encoding="utf-8")
+    config.reload_config()
+    assert config.get("k") == 2
