@@ -9,7 +9,7 @@ import pandas as pd
 
 def merge_shortage_leave(
     out_dir: Path | str,
-    shortage_excel: str | Path = "shortage_time.xlsx",
+    shortage_excel: str | Path = "shortage_time.parquet",  # .xlsx から .parquet に変更
     leave_csv: str | Path = "leave_analysis.csv",
     out_csv: str | Path = "shortage_leave.csv",
     *,
@@ -42,7 +42,7 @@ def merge_shortage_leave(
     if not leave_fp.exists():
         raise FileNotFoundError(leave_fp)
 
-    lack_df = pd.read_excel(shortage_fp, index_col=0)
+    lack_df = pd.read_parquet(shortage_fp)  # read_excel から read_parquet に変更
     lack_long = (
         lack_df.reset_index()
         .melt(id_vars=lack_df.index.name, var_name="date", value_name="lack")
