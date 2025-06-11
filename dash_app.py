@@ -42,7 +42,7 @@ def drop_summary_cols(df: pd.DataFrame) -> pd.DataFrame:
 
 # ────────────────── 2. データロード (エラーハンドリングを少し追加) ──────────────────
 try:
-    heat_all_df = pd.read_excel(DATA_DIR / "heat_ALL.xlsx", index_col=0)
+    heat_all_df = pd.read_parquet(DATA_DIR / "heat_ALL.parquet")
     need_series_for_ratio = heat_all_df["need"].replace(0, np.nan)
 
     heat_staff_data = drop_summary_cols(heat_all_df)
@@ -97,7 +97,7 @@ try:
 except FileNotFoundError:
     log.error(
         "エラー: %s が見つかりません。先にstreamlit app.pyで解析を実行してください。",
-        DATA_DIR / "heat_ALL.xlsx",
+        DATA_DIR / "heat_ALL.parquet",
     )
     # Dashアプリ起動前に終了させるか、エラーメッセージを表示するコンポーネントを返す
     heat_all_df = pd.DataFrame()  # 空のDFで初期化
@@ -184,7 +184,7 @@ def page_heat():
                 html.H4(_("Heatmap Data Not Found")),
                 html.P(
                     _(
-                        "Please run the analysis via the Streamlit app first and ensure 'out/heat_ALL.xlsx' exists."
+                        "Please run the analysis via the Streamlit app first and ensure 'out/heat_ALL.parquet' exists."
                     )
                 ),
             ]

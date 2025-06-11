@@ -1138,8 +1138,8 @@ if run_button_clicked:
                 if _("基準乖離分析") in param_ext_opts and param_need_calc_method == _(
                     "人員配置基準に基づき設定する"
                 ):
-                    heat_all_df = pd.read_excel(
-                        out_dir_exec / "heat_ALL.xlsx", index_col=0
+                    heat_all_df = pd.read_parquet(
+                        out_dir_exec / "heat_ALL.parquet"
                     )
                     gap_results = analyze_standards_gap(heat_all_df, param_need_manual)
                     st.session_state.gap_analysis_results = gap_results
