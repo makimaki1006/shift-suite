@@ -21,6 +21,7 @@ dependencies = [
     "statsmodels>=0.14",
     "scikit-learn>=1.4",
     "openpyxl>=3.1",
+    "pyarrow>=15.0",
     "pillow>=10.0"
 ]
 
