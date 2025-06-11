@@ -55,10 +55,12 @@ def load_log(csv_path: Path | str) -> pd.DataFrame:
     if csv_fp.exists():
         try:
             df = pd.read_csv(csv_fp)
-        except Exception:
+        except Exception as e:  # noqa: BLE001
+            log.warning("Failed to read log CSV %s: %s", csv_fp, e)
             return pd.DataFrame(columns=columns)
 
         if not set({"date", "time", "type"}).issubset(df.columns):
+            log.warning("Log CSV %s missing required columns", csv_fp)
             return pd.DataFrame(columns=columns)
 
         df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
@@ -68,6 +70,7 @@ def load_log(csv_path: Path | str) -> pd.DataFrame:
                 df[col] = pd.NA
         return df[columns]
 
+    log.debug("Log CSV %s not found; returning empty frame", csv_fp)
     return pd.DataFrame(columns=columns)
 
 
