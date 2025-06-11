@@ -15,6 +15,7 @@ from openpyxl.styles import PatternFill
 from openpyxl.utils import get_column_letter
 
 from .constants import SUMMARY5
+from shift_suite.i18n import translate as _
 
 # 'log' という名前でロガーを取得 (utils.pyからインポートされるlogと同じ)
 from .utils import (
@@ -269,11 +270,17 @@ def build_heatmap(
     out_dir: str | Path,
     slot_minutes: int = 30,
     *,
-    ref_start_date_for_need: dt.date,
-    ref_end_date_for_need: dt.date,
-    need_statistic_method: str,
-    need_remove_outliers: bool,
-    need_iqr_multiplier: float,
+    need_calc_method: str | None = None,
+    need_stat_method: str | None = None,
+    need_manual_values: dict | None = None,
+    upper_calc_method: str | None = None,
+    upper_calc_param: dict | None = None,
+    # legacy parameters kept for backward compatibility
+    ref_start_date_for_need: dt.date | None = None,
+    ref_end_date_for_need: dt.date | None = None,
+    need_statistic_method: str | None = None,
+    need_remove_outliers: bool | None = None,
+    need_iqr_multiplier: float | None = None,
     need_adjustment_factor: float = 1.0,
     min_method: str = "p25",
     max_method: str = "p75",
@@ -632,16 +639,44 @@ def build_heatmap(
             except Exception as e_sort_r:
                 log.warning(f"職種 '{role_item_final_loop}' 日付ソート失敗: {e_sort_r}")
 
-        need_r_series = (
-            derive_min_staff(pivot_data_role_actual, min_method)
-            if not pivot_data_role_actual.empty
-            else pd.Series(0, index=time_index_labels)
-        )
-        upper_r_series = (
-            derive_max_staff(pivot_data_role_actual, max_method)
-            if not pivot_data_role_actual.empty
-            else pd.Series(0, index=time_index_labels)
-        )
+        if need_calc_method == _("過去の実績から統計的に推定する"):
+            if need_stat_method == "中央値":
+                need_r_series = pivot_data_role_actual.median(axis=1).round()
+            elif need_stat_method == "平均値":
+                need_r_series = pivot_data_role_actual.mean(axis=1).round()
+            elif need_stat_method == "25パーセンタイル":
+                need_r_series = pivot_data_role_actual.quantile(0.25, axis=1).round()
+            elif need_stat_method == "10パーセンタイル":
+                need_r_series = pivot_data_role_actual.quantile(0.10, axis=1).round()
+            else:
+                need_r_series = derive_min_staff(pivot_data_role_actual, min_method)
+        elif need_calc_method == _("人員配置基準に基づき設定する") and need_manual_values:
+            const_val = need_manual_values.get(role_item_final_loop, 0)
+            need_r_series = pd.Series(const_val, index=time_index_labels)
+        else:
+            need_r_series = (
+                derive_min_staff(pivot_data_role_actual, min_method)
+                if not pivot_data_role_actual.empty
+                else pd.Series(0, index=time_index_labels)
+            )
+
+        if upper_calc_method == _("下限値(Need) + 固定値"):
+            fixed_val = (upper_calc_param or {}).get("fixed_value", 0)
+            upper_r_series = need_r_series + fixed_val
+        elif upper_calc_method == _("下限値(Need) * 固定係数"):
+            factor = (upper_calc_param or {}).get("factor", 1.0)
+            upper_r_series = (need_r_series * factor).apply(np.ceil)
+        elif upper_calc_method == _("過去実績のパーセンタイル"):
+            pct = (upper_calc_param or {}).get("percentile", 90) / 100
+            upper_r_series = pivot_data_role_actual.quantile(pct, axis=1).round()
+        else:
+            upper_r_series = (
+                derive_max_staff(pivot_data_role_actual, max_method)
+                if not pivot_data_role_actual.empty
+                else pd.Series(0, index=time_index_labels)
+            )
+
+        upper_r_series = np.maximum(upper_r_series, need_r_series)
         staff_r_series = (
             pivot_data_role_final.drop(columns=SUMMARY5, errors="ignore")
             .sum(axis=1)

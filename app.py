@@ -698,101 +698,64 @@ with st.sidebar:
                 help="年月情報が記載されているセル位置 (例: A1)",
             )
 
-    with st.expander(_("Need Calculation Settings (Day of Week Pattern)")):
-        if st.session_state.get("_force_update_need_ref_dates_flag", False):
-            if st.session_state.get("_intended_need_ref_start_date"):
-                st.session_state.need_ref_start_date_widget = (
-                    st.session_state._intended_need_ref_start_date
-                )
-            if st.session_state.get("_intended_need_ref_end_date"):
-                st.session_state.need_ref_end_date_widget = (
-                    st.session_state._intended_need_ref_end_date
-                )
-            st.session_state._force_update_need_ref_dates_flag = False
-            if "_intended_need_ref_start_date" in st.session_state:
-                del st.session_state["_intended_need_ref_start_date"]
-            if "_intended_need_ref_end_date" in st.session_state:
-                del st.session_state["_intended_need_ref_end_date"]
-
-        c1_need_ui, c2_need_ui = st.columns(2)
-        with c1_need_ui:
-            st.date_input(
-                _("Start Date"),
-                key="need_ref_start_date_widget",
-                help="Need算出の参照期間の開始日",
-            )
-    with c2_need_ui:
-        st.date_input(
-            _("End Date"),
-            key="need_ref_end_date_widget",
-            help="Need算出の参照期間の終了日",
-        )
-    st.caption(_("Reference Period for Need Calculation"))
-
-    current_need_stat_method_idx_val = 0
-    try:
-        current_need_stat_method_idx_val = (
-            st.session_state.need_stat_method_options_widget.index(
-                st.session_state.need_stat_method_widget
-            )
-        )
-    except (ValueError, AttributeError):
-        current_need_stat_method_idx_val = 2
-    st.selectbox(
-        _("Statistical Metric for Need"),
-        options=st.session_state.need_stat_method_options_widget,
-        index=current_need_stat_method_idx_val,
-        key="need_stat_method_widget",
-        help="曜日別・時間帯別のNeedを算出する際の統計指標",
-    )
-    st.checkbox(
-        _("Remove Outliers for Need Calculation"),
-        key="need_remove_outliers_widget",
-        help="IQR法で外れ値を除去してから統計量を計算します",
-    )
-    st.slider(
-        "必要人数 調整係数",
-        min_value=0.1,
-        max_value=1.0,
-        value=st.session_state.get("need_adjustment_factor_widget", 1.0),
-        step=0.05,
-        key="need_adjustment_factor_widget",
-        help="算出された統計値に乗算する係数。1.0で変更なし、0.9で10%減となります。",
+    st.subheader("分析基準設定")
+    need_calc_method = st.radio(
+        _("最適ゾーンの下限値(Need)の算出方法"),
+        options=[_("過去の実績から統計的に推定する"), _("人員配置基準に基づき設定する")],
+        key="need_calc_method_widget",
+        horizontal=True,
     )
 
-    with st.expander(_("(Optional) Upper Limit Calculation Method"), expanded=False):
-        current_min_method_upper_idx_val = 0
-        try:
-            current_min_method_upper_idx_val = (
-                st.session_state.min_method_for_upper_options_widget.index(
-                    st.session_state.min_method_for_upper_widget
-                )
-            )
-        except (ValueError, AttributeError):
-            current_min_method_upper_idx_val = 1
+    if need_calc_method == _("過去の実績から統計的に推定する"):
         st.selectbox(
-            _("Min-staff method (for Upper)"),
-            options=st.session_state.min_method_for_upper_options_widget,
-            index=current_min_method_upper_idx_val,
-            key="min_method_for_upper_widget",
-            help="（オプション）ヒートマップの『代表的な上限スタッフ数』の算出方法の一部",
+            _("統計的指標"),
+            options=["中央値", "平均値", "25パーセンタイル", "10パーセンタイル"],
+            key="need_stat_method_widget",
         )
-        current_max_method_upper_idx_val = 0
-        try:
-            current_max_method_upper_idx_val = (
-                st.session_state.max_method_for_upper_options_widget.index(
-                    st.session_state.max_method_for_upper_widget
+        st.checkbox(
+            _("Remove Outliers for Need Calculation"),
+            key="need_remove_outliers_widget",
+            help="IQR法で外れ値を除去してから統計量を計算します",
+        )
+        st.slider(
+            "必要人数 調整係数",
+            min_value=0.1,
+            max_value=1.0,
+            value=st.session_state.get("need_adjustment_factor_widget", 1.0),
+            step=0.05,
+            key="need_adjustment_factor_widget",
+        )
+    else:
+        st.number_input(_("分析対象の平均利用者数"), min_value=0, key="avg_users_widget")
+        st.write("職種ごとの最低必要人数（配置基準）を入力してください:")
+        if 'long_df' in st.session_state and not st.session_state.long_df.empty:
+            roles = sorted(st.session_state.long_df['role'].unique())
+            manual_need_values = {}
+            for role in roles:
+                manual_need_values[role] = st.number_input(
+                    f"{role}",
+                    min_value=0,
+                    key=f"manual_need_{role}",
                 )
-            )
-        except (ValueError, AttributeError):
-            current_max_method_upper_idx_val = 0
-        st.selectbox(
-            _("Max-staff method (for Upper)"),
-            options=st.session_state.max_method_for_upper_options_widget,
-            index=current_max_method_upper_idx_val,
-            key="max_method_for_upper_widget",
-            help="（オプション）ヒートマップの『代表的な上限スタッフ数』の算出方法",
-        )
+            st.session_state.manual_need_values_widget = manual_need_values
+
+    st.divider()
+    upper_calc_method = st.selectbox(
+        _("最適ゾーンの上限値(Upper)の算出方法"),
+        options=[
+            _("下限値(Need) + 固定値"),
+            _("下限値(Need) * 固定係数"),
+            _("過去実績のパーセンタイル"),
+        ],
+        key="upper_calc_method_widget",
+    )
+
+    if upper_calc_method == _("下限値(Need) + 固定値"):
+        st.number_input(_("加算する人数"), min_value=0, step=1, key="upper_param_fixed_val")
+    elif upper_calc_method == _("下限値(Need) * 固定係数"):
+        st.slider(_("乗算する係数"), min_value=1.0, max_value=2.0, value=1.2, step=0.05, key="upper_param_factor_val")
+    else:
+        st.selectbox(_("パーセンタイル"), options=[75, 80, 85, 90, 95], index=3, key="upper_param_percentile_val")
 
     st.divider()
     with st.expander("追加分析モジュール"):
@@ -1027,15 +990,15 @@ if run_button_clicked:
         param_header_row = st.session_state.header_row_input_widget
         param_year_month_cell = st.session_state.year_month_cell_input_widget
         param_slot = st.session_state.slot_input_widget
-        param_ref_start = st.session_state.need_ref_start_date_widget
-        param_ref_end = st.session_state.need_ref_end_date_widget
-        param_need_stat = st.session_state.need_stat_method_widget
-        param_need_outlier = st.session_state.need_remove_outliers_widget
-        param_need_adjustment_factor = st.session_state.get(
-            "need_adjustment_factor_widget", 1.0
-        )
-        param_min_method_upper = st.session_state.min_method_for_upper_widget
-        param_max_method_upper = st.session_state.max_method_for_upper_widget
+        param_need_calc_method = st.session_state.need_calc_method_widget
+        param_need_stat_method = st.session_state.get("need_stat_method_widget")
+        param_need_manual = st.session_state.get("manual_need_values_widget")
+        param_upper_method = st.session_state.upper_calc_method_widget
+        param_upper_param = {
+            "fixed_value": st.session_state.get("upper_param_fixed_val"),
+            "factor": st.session_state.get("upper_param_factor_val"),
+            "percentile": st.session_state.get("upper_param_percentile_val"),
+        }
         param_ext_opts = st.session_state.ext_opts_multiselect_widget
         param_save_mode = st.session_state.save_mode_selectbox_widget
         param_std_work_hours = st.session_state.std_work_hours_widget
@@ -1144,15 +1107,20 @@ if run_button_clicked:
                     long_df,
                     out_dir_exec,
                     param_slot,
-                    ref_start_date_for_need=param_ref_start,
-                    ref_end_date_for_need=param_ref_end,
-                    need_statistic_method=param_need_stat,
-                    need_remove_outliers=param_need_outlier,
-                    need_adjustment_factor=param_need_adjustment_factor,
-                    need_iqr_multiplier=1.5,
-                    min_method=param_min_method_upper,
-                    max_method=param_max_method_upper,
+                    need_calc_method=param_need_calc_method,
+                    need_stat_method=param_need_stat_method,
+                    need_manual_values=param_need_manual,
+                    upper_calc_method=param_upper_method,
+                    upper_calc_param=param_upper_param,
                 )
+                if param_need_manual:
+                    from shift_suite.tasks.gap_analyzer import analyze_standards_gap
+
+                    heat_all_df = pd.read_excel(out_dir_exec / "heat_ALL.xlsx", index_col=0)
+                    gap_results = analyze_standards_gap(heat_all_df, param_need_manual)
+                    st.session_state.gap_analysis_results = gap_results
+                    gap_results["gap_summary"].to_excel(out_dir_exec / "gap_summary.xlsx", index=False)
+                    gap_results["gap_heatmap"].to_excel(out_dir_exec / "gap_heatmap.xlsx")
                 st.session_state.analysis_status["heatmap"] = "success"
                 st.success("✅ Heatmap生成完了")
             except Exception as e:
@@ -1753,8 +1721,8 @@ if run_button_clicked:
                         {
                             "sheets": param_selected_sheets,
                             "slot": param_slot,
-                            "need_ref": f"{param_ref_start} ~ {param_ref_end}",
-                            "stat": param_need_stat,
+                            "need_calc": param_need_calc_method,
+                            "stat": param_need_stat_method,
                             "ext_modules": param_ext_opts,
                         }
                     )
@@ -3738,10 +3706,31 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                             title="選択された集中日における職員の構成比（円グラフ）",
                         )
                         st.plotly_chart(
-                            fig_proportion_pie,
-                            use_container_width=True,
-                            key="selected_staff_pie_chart",
-                        )
+                        fig_proportion_pie,
+                        use_container_width=True,
+                        key="selected_staff_pie_chart",
+                    )
+
+
+def display_gap_analysis_tab(tab_container, data_dir):
+    with tab_container:
+        st.subheader(_("基準乖離分析"))
+        if 'gap_analysis_results' in st.session_state:
+            results = st.session_state.gap_analysis_results
+            st.info(
+                "「実態の必要人数」と「基準の必要人数」の差分を示します。値がプラスの場合、基準よりも多くの人員が実態として必要だったことを意味します。"
+            )
+            st.write("#### 職種別 月間総乖離時間")
+            st.dataframe(results['gap_summary'])
+            st.write("#### 時間帯・職種別 乖離ヒートマップ")
+            fig = px.imshow(
+                results['gap_heatmap'],
+                aspect="auto",
+                color_continuous_scale="RdBu_r",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("解析結果がありません。")
 
 
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
@@ -3811,6 +3800,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Forecast",
                 "Fairness",
                 "Leave Analysis",
+                "基準乖離分析",
                 "Cost Analysis",
                 "Hire Plan",
                 "Summary Report",
@@ -3827,6 +3817,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Forecast": display_forecast_tab,
                 "Fairness": display_fairness_tab,
                 "Leave Analysis": display_leave_analysis_tab,
+                "基準乖離分析": display_gap_analysis_tab,
                 "Cost Analysis": display_cost_tab,
                 "Hire Plan": display_hireplan_tab,
                 "Summary Report": display_summary_report_tab,
@@ -3911,6 +3902,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         "Forecast",
         "Fairness",
         "Leave Analysis",
+        "基準乖離分析",
         "Cost Analysis",
         "Hire Plan",
         "Summary Report",
@@ -3929,6 +3921,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Forecast": display_forecast_tab,
             "Fairness": display_fairness_tab,
             "Leave Analysis": display_leave_analysis_tab,
+            "基準乖離分析": display_gap_analysis_tab,
             "Cost Analysis": display_cost_tab,
             "Hire Plan": display_hireplan_tab,
             "Summary Report": display_summary_report_tab,
