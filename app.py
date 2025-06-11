@@ -3211,12 +3211,10 @@ def display_hireplan_tab(tab_container, data_dir):
                     st.info(_("Hiring plan data not available or in invalid format"))
                     return
 
-                try:
-                    df_plan = xls.parse("hire_plan")
-                    if not _valid_df(df_plan):
-                        st.info(_("Hiring plan data is empty"))
-                        return
-
+                df_plan = xls.parse("hire_plan")
+                if not _valid_df(df_plan):
+                    st.info(_("Hiring plan data is empty"))
+                else:
                     display_plan_df = df_plan.rename(
                         columns={"role": _("Role"), "hire_fte": _("hire_fte")}
                     )
@@ -3233,27 +3231,24 @@ def display_hireplan_tab(tab_container, data_dir):
                         st.plotly_chart(
                             fig_plan, use_container_width=True, key="hireplan_chart"
                         )
-                except AttributeError as e:
-                    log_and_display_error("Invalid data format in hire_plan.xlsx", e)
             except Exception as e:
                 log_and_display_error("hire_plan.xlsx 表示エラー", e)
         else:
             st.info(_("Hiring Plan") + " (hire_plan.xlsx) " + _("が見つかりません。"))
 
-
-def display_optimal_hire_plan_tab(tab_container, data_dir):
-    with tab_container:
+        # --- 最適採用計画のセクションをここに追加 ---
+        st.divider()
         st.subheader("最適採用計画")
-        fp = data_dir / "optimal_hire_plan.xlsx"
-        if fp.exists():
+        fp_optimal = data_dir / "optimal_hire_plan.xlsx"
+        if fp_optimal.exists():
             try:
-                df = load_excel_cached(
-                    str(fp),
+                df_optimal = load_excel_cached(
+                    str(fp_optimal),
                     sheet_name=0,
-                    file_mtime=_file_mtime(fp),
+                    file_mtime=_file_mtime(fp_optimal),
                 )
                 st.info("分析の結果、以下の具体的な採用計画を推奨します。")
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df_optimal, use_container_width=True, hide_index=True)
             except Exception as e:
                 log_and_display_error("最適採用計画ファイルの表示エラー", e)
         else:
@@ -3619,7 +3614,6 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Leave Analysis",
                 "Cost Analysis",
                 "Hire Plan",
-                "Optimal Hire Plan",
                 "Summary Report",
                 "PPT Report",
             ]
@@ -3636,7 +3630,6 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Leave Analysis": display_leave_analysis_tab,
                 "Cost Analysis": display_cost_tab,
                 "Hire Plan": display_hireplan_tab,
-                "Optimal Hire Plan": display_optimal_hire_plan_tab,
                 "Summary Report": display_summary_report_tab,
                 "PPT Report": display_ppt_tab,
             }
@@ -3721,7 +3714,6 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         "Leave Analysis",
         "Cost Analysis",
         "Hire Plan",
-        "Optimal Hire Plan",
         "Summary Report",
         "PPT Report",
     ]
@@ -3740,7 +3732,6 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Leave Analysis": display_leave_analysis_tab,
         "Cost Analysis": display_cost_tab,
         "Hire Plan": display_hireplan_tab,
-        "Optimal Hire Plan": display_optimal_hire_plan_tab,
         "Summary Report": display_summary_report_tab,
         "PPT Report": display_ppt_tab,
     }
