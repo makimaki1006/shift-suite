@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from app import load_excel_cached
+from app import load_data_cached
 
 
-def test_load_excel_cached_without_parse_dates(monkeypatch, tmp_path: Path):
+def test_load_data_cached_without_parse_dates(monkeypatch, tmp_path: Path):
     df = pd.DataFrame({"d": ["2024-01-01"], "v": [1]})
     fp = tmp_path / "test.xlsx"
     df.to_excel(fp, index=False)
@@ -19,7 +19,7 @@ def test_load_excel_cached_without_parse_dates(monkeypatch, tmp_path: Path):
 
     monkeypatch.setattr(pd, "read_excel", fake_read_excel)
 
-    result = load_excel_cached(str(fp), file_mtime=fp.stat().st_mtime)
+    result = load_data_cached(str(fp), file_mtime=fp.stat().st_mtime)
 
     assert "parse_dates" not in captured_kwargs
     pd.testing.assert_frame_equal(result, real_read_excel(fp))
