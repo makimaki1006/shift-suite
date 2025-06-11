@@ -3204,28 +3204,95 @@ def display_cost_tab(tab_container, data_dir):
                     str(fp),
                     sheet_name=0,
                     file_mtime=_file_mtime(fp),
+                    parse_dates=["date"],
                 )
                 if not _valid_df(df):
                     st.info(_("Cost simulation data not available or empty"))
                     return
 
-                try:
-                    # --- 既存の日別コスト棒グラフ ---
-                    if "date" in df.columns and "cost" in df.columns:
-                        st.subheader("日別コスト")
-                        fig_cost = px.bar(df, x="date", y="cost", title="日別発生人件費")
-                        st.plotly_chart(fig_cost, use_container_width=True, key="daily_cost_chart")
-                    st.dataframe(df, use_container_width=True, hide_index=True)
+                # --- ここからが追加・変更部分 ---
+                long_df = st.session_state.get("long_df")
 
-                    # --- ここから追加 ---
-                    st.divider()
-                    st.subheader("累計人件費の推移")
+                if (
+                    long_df is not None
+                    and not long_df.empty
+                    and "ds" in long_df.columns
+                ):
+                    daily_details = (
+                        long_df[long_df["parsed_slots_count"] > 0]
+                        .assign(date=lambda x: x["ds"].dt.normalize())
+                        .groupby("date")
+                        .agg(
+                            day_of_week=(
+                                "ds",
+                                lambda x: ["月", "火", "水", "木", "金", "土", "日"][x.iloc[0].weekday()],
+                            ),
+                            total_staff=("staff", "nunique"),
+                            role_breakdown=(
+                                "role",
+                                lambda x: ", ".join(
+                                    f"{role}:{count}"
+                                    for role, count in x.value_counts().items()
+                                ),
+                            ),
+                            staff_list=("staff", lambda x: ", ".join(sorted(x.unique()))),
+                        )
+                        .reset_index()
+                    )
 
-                    # 日付でソートしてから累計を計算
-                    df_sorted = df.sort_values(by="date").copy()
+                    def summarize_staff(staff_str, limit=5):
+                        staff_list = staff_str.split(", ")
+                        if len(staff_list) > limit:
+                            return ", ".join(staff_list[:limit]) + f", ...他{len(staff_list) - limit}名"
+                        return staff_str
+
+                    daily_details["staff_list_summary"] = daily_details["staff_list"].apply(
+                        summarize_staff
+                    )
+
+                    df = pd.merge(df, daily_details, on="date", how="left")
+
+                custom_data = [
+                    "day_of_week",
+                    "total_staff",
+                    "role_breakdown",
+                    "staff_list_summary",
+                ]
+
+                final_custom_data = [col for col in custom_data if col in df.columns]
+
+                hovertemplate = (
+                    "<b>%{x|%Y-%m-%d} (%{customdata[0]})</b><br><br>"
+                    "コスト: %{y:,.0f}円<br>"
+                    "構成人数: %{customdata[1]}人<br>"
+                    "職種一覧: %{customdata[2]}<br>"
+                    "スタッフ: %{customdata[3]}"
+                    "<extra></extra>"
+                )
+
+                st.subheader("日別コスト")
+                fig_cost = px.bar(
+                    df,
+                    x="date",
+                    y="cost",
+                    title="日別発生人件費",
+                    custom_data=final_custom_data if final_custom_data else None,
+                )
+
+                if final_custom_data:
+                    fig_cost.update_traces(hovertemplate=hovertemplate)
+
+                st.plotly_chart(fig_cost, use_container_width=True, key="daily_cost_chart_enhanced")
+
+                # --- 変更ここまで ---
+
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+                st.divider()
+                st.subheader("累計人件費の推移")
+                df_sorted = df.sort_values(by="date").copy()
+                if "cost" in df_sorted.columns:
                     df_sorted["cumulative_cost"] = df_sorted["cost"].cumsum()
-
-                    # 累計コストの折れ線グラフを作成
                     fig_cumulative = px.line(
                         df_sorted,
                         x="date",
@@ -3239,10 +3306,7 @@ def display_cost_tab(tab_container, data_dir):
                         xaxis_title="日付",
                     )
                     st.plotly_chart(fig_cumulative, use_container_width=True, key="cumulative_cost_chart")
-                    # --- 追加ここまで ---
 
-                except AttributeError as e:
-                    log_and_display_error("Invalid data format in daily_cost.xlsx", e)
             except Exception as e:
                 log_and_display_error("daily_cost.xlsx 表示エラー", e)
         else:
