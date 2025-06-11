@@ -27,7 +27,8 @@ class ShiftDataLoader:
             raise
 
         if "ds" not in df.columns:
-            log.warning("Column 'ds' missing in %s", self.csv_path)
+            log.error("Column 'ds' missing in %s", self.csv_path)
+            raise ValueError("Required column 'ds' not found")
 
         if df.empty:
             log.warning("CSV contains no rows: %s", self.csv_path)

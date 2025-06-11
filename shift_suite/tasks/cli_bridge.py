@@ -39,6 +39,9 @@ def main(argv: list[str] | None = None) -> list[Path]:
     )
     args = parser.parse_args(argv)
 
+    if args.threshold <= 0:
+        parser.error("--threshold must be a positive number")
+
     loader = ShiftDataLoader(args.csv)
     df = loader.load()
 
