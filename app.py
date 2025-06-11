@@ -140,9 +140,11 @@ def _patch_streamlit_watcher() -> None:
     _lsw.extract_paths = _safe_extract_paths
 
 
+# Call the watcher patch before configuring logging so that any modules
+# imported during setup won't trigger errors.
+_patch_streamlit_watcher()
 # ── ロガー設定 ─────────────────────────────────
 configure_logging()
-_patch_streamlit_watcher()
 log = logging.getLogger(__name__)
 
 
