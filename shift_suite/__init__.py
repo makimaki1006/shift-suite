@@ -34,6 +34,7 @@ utils = import_module("shift_suite.tasks.utils")
 
 excel_date = utils.excel_date
 to_hhmm = utils.to_hhmm
+save_df_xlsx = utils.save_df_xlsx
 
 
 def _lazy_func(module: str, func: str):
@@ -78,6 +79,7 @@ sys.modules["shift_suite.build_stats"] = import_module("shift_suite.tasks.build_
 __all__ = [
     "excel_date",
     "to_hhmm",
+    "save_df_xlsx",
     "ingest_excel",
     "build_heatmap",
     "shortage_and_brief",
