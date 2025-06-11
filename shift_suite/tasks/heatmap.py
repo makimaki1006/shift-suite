@@ -280,7 +280,7 @@ def build_heatmap(
     ref_end_date_for_need: dt.date | None = None,
     need_statistic_method: str | None = None,
     need_remove_outliers: bool | None = None,
-    need_iqr_multiplier: float | None = None,
+    need_iqr_multiplier: float | None = 1.5,
     need_adjustment_factor: float = 1.0,
     min_method: str = "p25",
     max_method: str = "p75",
@@ -482,11 +482,17 @@ def build_heatmap(
         else:
             actual_staff_for_need_input = pd.DataFrame(index=time_index_labels)
 
+    # app.pyから渡される新しい引数(need_stat_method)を優先し、
+    # legacy引数(need_statistic_method)があればバックアップとして使用する
+    final_statistic_method = (
+        need_stat_method if need_stat_method is not None else need_statistic_method
+    )
+
     dow_need_pattern_df = calculate_pattern_based_need(
         actual_staff_for_need_input,
         ref_start_date_for_need,
         ref_end_date_for_need,
-        need_statistic_method,
+        final_statistic_method,
         need_remove_outliers,
         need_iqr_multiplier,
         slot_minutes_for_empty=slot_minutes,
@@ -871,7 +877,7 @@ def build_heatmap(
         need_calculation_params={
             "ref_start_date": ref_start_date_for_need.isoformat(),
             "ref_end_date": ref_end_date_for_need.isoformat(),
-            "statistic_method": need_statistic_method,
+            "statistic_method": final_statistic_method,
             "remove_outliers": need_remove_outliers,
             "iqr_multiplier": need_iqr_multiplier if need_remove_outliers else None,
         },
