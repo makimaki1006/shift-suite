@@ -105,6 +105,7 @@ from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks.skill_nmf import build_skill_matrix
 from shift_suite.tasks.daily_cost import calculate_daily_cost  # <-- added
 from shift_suite.tasks.optimal_hire_plan import create_optimal_hire_plan
+
 # ★新規インポート
 from shift_suite.tasks.gap_analyzer import analyze_standards_gap
 
@@ -703,7 +704,10 @@ with st.sidebar:
     st.subheader("分析基準設定")
     need_calc_method = st.radio(
         _("最適ゾーンの下限値(Need)の算出方法"),
-        options=[_("過去の実績から統計的に推定する"), _("人員配置基準に基づき設定する")],
+        options=[
+            _("過去の実績から統計的に推定する"),
+            _("人員配置基準に基づき設定する"),
+        ],
         key="need_calc_method_widget",
         horizontal=True,
     )
@@ -730,10 +734,12 @@ with st.sidebar:
             key="need_adjustment_factor_widget",
         )
     else:
-        st.number_input(_("分析対象の平均利用者数"), min_value=0, key="avg_users_widget")
+        st.number_input(
+            _("分析対象の平均利用者数"), min_value=0, key="avg_users_widget"
+        )
         st.write("職種ごとの最低必要人数（配置基準）を入力してください:")
-        if 'long_df' in st.session_state and not st.session_state.long_df.empty:
-            roles = sorted(st.session_state.long_df['role'].unique())
+        if "long_df" in st.session_state and not st.session_state.long_df.empty:
+            roles = sorted(st.session_state.long_df["role"].unique())
             manual_need_values = {}
             for role in roles:
                 manual_need_values[role] = st.number_input(
@@ -755,11 +761,25 @@ with st.sidebar:
     )
 
     if upper_calc_method == _("下限値(Need) + 固定値"):
-        st.number_input(_("加算する人数"), min_value=0, step=1, key="upper_param_fixed_val")
+        st.number_input(
+            _("加算する人数"), min_value=0, step=1, key="upper_param_fixed_val"
+        )
     elif upper_calc_method == _("下限値(Need) * 固定係数"):
-        st.slider(_("乗算する係数"), min_value=1.0, max_value=2.0, value=1.2, step=0.05, key="upper_param_factor_val")
+        st.slider(
+            _("乗算する係数"),
+            min_value=1.0,
+            max_value=2.0,
+            value=1.2,
+            step=0.05,
+            key="upper_param_factor_val",
+        )
     else:
-        st.selectbox(_("パーセンタイル"), options=[75, 80, 85, 90, 95], index=3, key="upper_param_percentile_val")
+        st.selectbox(
+            _("パーセンタイル"),
+            options=[75, 80, 85, 90, 95],
+            index=3,
+            key="upper_param_percentile_val",
+        )
 
     st.divider()
     with st.expander("追加分析モジュール"):
@@ -1126,15 +1146,20 @@ if run_button_clicked:
                     upper_calc_method=param_upper_method,
                     upper_calc_param=param_upper_param,
                 )
-                if (
-                    _("基準乖離分析") in param_ext_opts
-                    and param_need_calc_method == _("人員配置基準に基づき設定する")
+                if _("基準乖離分析") in param_ext_opts and param_need_calc_method == _(
+                    "人員配置基準に基づき設定する"
                 ):
-                    heat_all_df = pd.read_excel(out_dir_exec / "heat_ALL.xlsx", index_col=0)
+                    heat_all_df = pd.read_excel(
+                        out_dir_exec / "heat_ALL.xlsx", index_col=0
+                    )
                     gap_results = analyze_standards_gap(heat_all_df, param_need_manual)
                     st.session_state.gap_analysis_results = gap_results
-                    gap_results["gap_summary"].to_excel(out_dir_exec / "gap_summary.xlsx", index=False)
-                    gap_results["gap_heatmap"].to_excel(out_dir_exec / "gap_heatmap.xlsx")
+                    gap_results["gap_summary"].to_excel(
+                        out_dir_exec / "gap_summary.xlsx", index=False
+                    )
+                    gap_results["gap_heatmap"].to_excel(
+                        out_dir_exec / "gap_heatmap.xlsx"
+                    )
                 st.session_state.analysis_status["heatmap"] = "success"
                 st.success("✅ Heatmap生成完了")
             except Exception as e:
@@ -3720,25 +3745,25 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                             title="選択された集中日における職員の構成比（円グラフ）",
                         )
                         st.plotly_chart(
-                        fig_proportion_pie,
-                        use_container_width=True,
-                        key="selected_staff_pie_chart",
-                    )
+                            fig_proportion_pie,
+                            use_container_width=True,
+                            key="selected_staff_pie_chart",
+                        )
 
 
 def display_gap_analysis_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("基準乖離分析"))
-        if 'gap_analysis_results' in st.session_state:
+        if "gap_analysis_results" in st.session_state:
             results = st.session_state.gap_analysis_results
             st.info(
                 "「実態の必要人数」と「基準の必要人数」の差分を示します。値がプラスの場合、基準よりも多くの人員が実態として必要だったことを意味します。"
             )
             st.write("#### 職種別 月間総乖離時間")
-            st.dataframe(results['gap_summary'])
+            st.dataframe(results["gap_summary"])
             st.write("#### 時間帯・職種別 乖離ヒートマップ")
             fig = px.imshow(
-                results['gap_heatmap'],
+                results["gap_heatmap"],
                 aspect="auto",
                 color_continuous_scale="RdBu_r",
             )
