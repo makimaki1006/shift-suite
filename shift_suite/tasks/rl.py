@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from stable_baselines3 import PPO
 
-from .utils import log, save_df_xlsx, write_meta
+from .utils import log, save_df_parquet, write_meta
 
 
 # ═════════════════ Env ═════════════════
@@ -183,7 +183,7 @@ def learn_roster(
         ds_col = ds_col.iloc[: len(roster)]
 
     out_df = pd.DataFrame({"ds": ds_col.values, "roster": roster})
-    save_df_xlsx(out_df, excel_out, sheet_name="rl_roster")
+    save_df_parquet(out_df, excel_out)
 
     # meta
     note = "model_predict" if use_saved_model else "ppo_train"

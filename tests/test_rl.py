@@ -40,8 +40,8 @@ def test_learn_roster_forecast_longer(monkeypatch, tmp_path):
     monkeypatch.setattr(rl, "PPO", DummyPPO)
 
     out = rl.learn_roster(
-        demand_fp, tmp_path / "out.xlsx", forecast_csv=fc_fp, shortage_csv=sh_fp
+        demand_fp, tmp_path / "out.parquet", forecast_csv=fc_fp, shortage_csv=sh_fp
     )
     assert out is not None
-    df_out = pd.read_excel(out)
+    df_out = pd.read_parquet(out)
     assert len(df_out) == len(fc_df)

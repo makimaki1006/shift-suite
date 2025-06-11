@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def test_learn_roster_generates_excel(tmp_path, monkeypatch):
+def test_learn_roster_generates_parquet(tmp_path, monkeypatch):
     # Stub gymnasium before importing rl
     fake_gym = types.SimpleNamespace()
 
@@ -61,12 +61,12 @@ def test_learn_roster_generates_excel(tmp_path, monkeypatch):
     forecast_csv = tmp_path / "forecast.csv"
     forecast_df.to_csv(forecast_csv, index=False)
 
-    excel_fp = tmp_path / "roster.xlsx"
+    excel_fp = tmp_path / "roster.parquet"
     horizon = 5
 
     out = learn_roster(demand_csv, excel_fp, forecast_csv=forecast_csv, horizon=horizon)
     assert out.exists()
-    roster_df = pd.read_excel(out)
+    roster_df = pd.read_parquet(out)
     assert len(roster_df) == horizon
 
 
@@ -127,7 +127,7 @@ def test_learn_roster_model_load_failure(tmp_path, monkeypatch):
     model_fp = tmp_path / "model.zip"
     model_fp.write_text("x")
 
-    excel_fp = tmp_path / "roster.xlsx"
+    excel_fp = tmp_path / "roster.parquet"
 
     out = learn_roster(
         demand_csv,

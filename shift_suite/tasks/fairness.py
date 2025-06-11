@@ -102,27 +102,13 @@ def run_fairness(
                 "night_ratio",
             ]
         )
-        pd.DataFrame({"metric": ["jain_index"], "value": [1.0]}).to_excel(
-            out_dir_path / "fairness_before.xlsx",
-            sheet_name="meta_summary",
+        pd.DataFrame({"metric": ["jain_index"], "value": [1.0]}).to_parquet(
+            out_dir_path / "fairness_before.parquet",
             index=False,
         )
-        empty_summary.to_excel(
-            out_dir_path / "fairness_before.xlsx",
-            sheet_name="before_summary",
+        empty_summary.to_parquet(
+            out_dir_path / "fairness_after.parquet",
             index=False,
-            mode="a",
-            if_sheet_exists="replace",
-        )
-        pd.DataFrame({"metric": ["jain_index"], "value": [1.0]}).to_excel(
-            out_dir_path / "fairness_after.xlsx", sheet_name="meta_summary", index=False
-        )
-        empty_summary.to_excel(
-            out_dir_path / "fairness_after.xlsx",
-            sheet_name="after_summary",
-            index=False,
-            mode="a",
-            if_sheet_exists="replace",
         )
         return
 
@@ -284,38 +270,22 @@ def run_fairness(
     log.debug(f"[fairness] summary_df sample:\n{summary_df.head()}")
 
     summary_df.attrs["jain_index"] = jain_index_val
-    before_fp_path = out_dir_path / "fairness_before.xlsx"
-    after_fp_path = out_dir_path / "fairness_after.xlsx"
+    before_fp_path = out_dir_path / "fairness_before.parquet"
+    after_fp_path = out_dir_path / "fairness_after.parquet"
 
     try:
-        with pd.ExcelWriter(before_fp_path, engine="openpyxl") as wb_before:
-            summary_df.to_excel(wb_before, sheet_name="before_summary", index=False)
-            meta_df_before = pd.DataFrame(
-                {
-                    "metric": [
-                        "jain_night_ratio",
-                        "jain_night_slots",
-                        "jain_total_slots",
-                    ],
-                    "value": [jain_night_ratio, jain_night_slots, jain_total_slots],
-                }
-            )
-            meta_df_before.to_excel(wb_before, sheet_name="meta_summary", index=False)
-        log.info(f"[fairness] fairness_before.xlsx 保存 (Jain: {jain_index_val:.3f})")
-
-        with pd.ExcelWriter(after_fp_path, engine="openpyxl") as wa_after:
-            summary_df.to_excel(wa_after, sheet_name="after_summary", index=False)
-            meta_df_after = pd.DataFrame(
-                {
-                    "metric": [
-                        "jain_night_ratio",
-                        "jain_night_slots",
-                        "jain_total_slots",
-                    ],
-                    "value": [jain_night_ratio, jain_night_slots, jain_total_slots],
-                }
-            )
-            meta_df_after.to_excel(wa_after, sheet_name="meta_summary", index=False)
-        log.info(f"[fairness] fairness_after.xlsx 保存 (Jain: {jain_index_val:.3f})")
+        meta_df = pd.DataFrame(
+            {
+                "metric": [
+                    "jain_night_ratio",
+                    "jain_night_slots",
+                    "jain_total_slots",
+                ],
+                "value": [jain_night_ratio, jain_night_slots, jain_total_slots],
+            }
+        )
+        meta_df.to_parquet(before_fp_path, index=False)
+        summary_df.to_parquet(after_fp_path, index=False)
+        log.info(f"[fairness] fairness_before.parquet / fairness_after.parquet 保存 (Jain: {jain_index_val:.3f})")
     except Exception as e:
-        log.error(f"[fairness] Excel書出エラー: {e}", exc_info=True)
+        log.error(f"[fairness] Parquet書出エラー: {e}", exc_info=True)
