@@ -2,7 +2,7 @@
 hire_plan.py  ── “必要な採用人数” を算出するユーティリティ
 -------------------------------------------------------------
 入力 : demand_series.csv（1 時間粒度 ─ y 列が必要人数）
-出力 : hire_plan.xlsx  （職種ごとの不足 h ・必要採用数）
+出力 : hire_plan.parquet  （職種ごとの不足 h ・必要採用数）
 呼出 : build_hire_plan(csv_path       = Path,
                         out_path       = Path,
                         std_work_hours = 160,   # 月あたり所定労働時間
@@ -35,7 +35,7 @@ def build_hire_plan(
     csv_path : Path
         demand_series.csv のパス（列: ds, role, y など）
     out_path : Path
-        hire_plan.xlsx の保存先
+        hire_plan.parquet の保存先
     std_work_hours : int, default 160
         月あたりの所定労働時間 [h]（24 日 × 8 h など）
         GUI から動的入力する場合は引数で渡す
@@ -70,15 +70,14 @@ def build_hire_plan(
     ).apply(lambda x: int(-(-x // 1)))  # 天井関数 (ceil)
 
     # 4. 保存
-    with pd.ExcelWriter(out_path) as writer:
-        summary.to_excel(writer, index=False, sheet_name="hire_plan")
-        # メタデータも同梱
-        meta = {
-            "std_work_hours": std_work_hours,
-            "safety_factor": safety_factor,
-            "target_coverage": target_coverage,
-        }
-        pd.DataFrame(meta, index=[0]).to_excel(writer, sheet_name="meta", index=False)
+    summary.to_parquet(out_path, index=False)
+    meta = {
+        "std_work_hours": std_work_hours,
+        "safety_factor": safety_factor,
+        "target_coverage": target_coverage,
+    }
+    meta_fp = out_path.with_name(out_path.stem + "_meta.parquet")
+    pd.DataFrame(meta, index=[0]).to_parquet(meta_fp, index=False)
 
     # text summary
     summary_fp = out_path.with_suffix(".txt")

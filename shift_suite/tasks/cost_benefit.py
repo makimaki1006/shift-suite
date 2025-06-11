@@ -49,16 +49,16 @@ def analyze_cost_benefit(
     pd.DataFrame
         シナリオ別コスト比較表
     """
-    kpi_fp = out_dir / "shortage_role.xlsx"
-    hire_fp = out_dir / "hire_plan.xlsx"
+    kpi_fp = out_dir / "shortage_role_summary.parquet"
+    hire_fp = out_dir / "hire_plan.parquet"
 
     if not (kpi_fp.exists() and hire_fp.exists()):
         raise FileNotFoundError(
             "必要な KPI / hire_plan ファイルが out フォルダに見つかりません"
         )
 
-    lack = pd.read_excel(kpi_fp)
-    plan = pd.read_excel(hire_fp, sheet_name="hire_plan")
+    lack = pd.read_parquet(kpi_fp)
+    plan = pd.read_parquet(hire_fp)
 
     lack_h_total = lack["lack_h"].sum()
     hire_need_total = plan["hire_need"].sum()
@@ -95,7 +95,7 @@ def analyze_cost_benefit(
     )
 
     # Excel 保存
-    df.to_excel(out_dir / "cost_benefit.xlsx")
+    df.to_parquet(out_dir / "cost_benefit.parquet")
 
     # text summary
     summary_fp = out_dir / "cost_benefit_summary.txt"

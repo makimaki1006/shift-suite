@@ -17,7 +17,7 @@ def _create_heatmaps(out_dir: Path) -> None:
 def test_shortage_employment_output(tmp_path: Path) -> None:
     _create_heatmaps(tmp_path)
     shortage_and_brief(tmp_path, slot=30)
-    fp = tmp_path / "shortage_employment.xlsx"
+    fp = tmp_path / "shortage_employment_summary.parquet"
     assert fp.exists()
-    df = pd.read_excel(fp, sheet_name="employment_summary")
+    df = pd.read_parquet(fp)
     assert "employment" in df.columns

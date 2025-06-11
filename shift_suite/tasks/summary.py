@@ -2,7 +2,7 @@
 shift_suite.summary  v0.3.1 (KeyError: 'name' 対応)
 ───────────────────────────────────────────────────────────
   make_summary : Heatmap → 時間帯×職種 別の統計 5 指標
-  build_staff_stats  : 長形式シフト → staff_stats.xlsx（個人統計＋要約）
+  build_staff_stats  : 長形式シフト → staff_stats.parquet（個人統計＋要約）
 ───────────────────────────────────────────────────────────
 """
 
@@ -87,7 +87,7 @@ def build_staff_stats(long_df: pd.DataFrame, out_dir: Path) -> Path:
     長形式シフト (= ingest_excel が返すもの) から
     * by_staff  : 個人単位の稼働統計
     * summary   : 列方向 5 数要約
-    を 2 シート構成の **staff_stats.xlsx** に出力する。
+    を 2 ファイル構成の **staff_stats.parquet** に出力する。
 
     Parameters
     ----------
@@ -101,7 +101,7 @@ def build_staff_stats(long_df: pd.DataFrame, out_dir: Path) -> Path:
     Path : 保存したファイルパス
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    fp = out_dir / "staff_stats.xlsx"
+    fp = out_dir / "staff_stats.parquet"
 
     if (
         "staff" not in long_df.columns
@@ -112,9 +112,7 @@ def build_staff_stats(long_df: pd.DataFrame, out_dir: Path) -> Path:
             "[build_staff_stats] long_dfに必要な列 (staff, code, ds) が不足しています。"
         )
         # 空のExcelファイルを作成して早期リターン
-        with pd.ExcelWriter(fp, engine="openpyxl") as ew:
-            pd.DataFrame().to_excel(ew, sheet_name="by_staff")
-            pd.DataFrame().to_excel(ew, sheet_name="summary")
+        pd.DataFrame().to_parquet(fp)
         return fp
 
     df = long_df.copy()
@@ -185,9 +183,8 @@ def build_staff_stats(long_df: pd.DataFrame, out_dir: Path) -> Path:
         summary_df = pd.DataFrame()  # 数値列がない場合は空のDataFrame
 
     # ---- 保存 ----
-    with pd.ExcelWriter(fp, engine="openpyxl") as ew:
-        staff_df.to_excel(ew, sheet_name="by_staff")
-        summary_df.to_excel(ew, sheet_name="summary")
+    staff_df.to_parquet(fp)
+    summary_df.to_parquet(out_dir / "staff_stats_summary.parquet")
 
-    log.info(f"[build_staff_stats] staff_stats.xlsx → {fp}")
+    log.info(f"[build_staff_stats] staff_stats.parquet → {fp}")
     return fp

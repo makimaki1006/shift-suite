@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 from sklearn.decomposition import NMF
 
-from .utils import log, save_df_xlsx
+from .utils import log, save_df_parquet
 
 
 def build_skill_matrix(long_df: pd.DataFrame, out_dir: Path):
@@ -16,7 +16,7 @@ def build_skill_matrix(long_df: pd.DataFrame, out_dir: Path):
             "[skill_nmf] long_dfに 'staff' または 'code' 列が見つかりません。処理をスキップします。"
         )
         empty_skill_df = pd.DataFrame(columns=["skill_score"])
-        save_df_xlsx(empty_skill_df, out_dir / "skill_matrix.xlsx", sheet_name="skill")
+        save_df_parquet(empty_skill_df, out_dir / "skill_matrix.parquet")
         log.info(
             "skill_nmf: 'staff'または'code'列がなかったため、空のskill_matrix.xlsxを作成しました。"
         )
@@ -30,7 +30,7 @@ def build_skill_matrix(long_df: pd.DataFrame, out_dir: Path):
             "[skill_nmf] NMFの入力となる行列が空または次元が0です。スキルスコアは計算されません。"
         )
         empty_skill_df = pd.DataFrame(columns=["skill_score"])
-        save_df_xlsx(empty_skill_df, out_dir / "skill_matrix.xlsx", sheet_name="skill")
+        save_df_parquet(empty_skill_df, out_dir / "skill_matrix.parquet")
         return empty_skill_df
 
     # n_components はサンプル数または特徴量の数の小さい方以下である必要がある
@@ -64,6 +64,6 @@ def build_skill_matrix(long_df: pd.DataFrame, out_dir: Path):
             )
             skill = pd.Series(0.0, index=mat.index, name="skill_score")
 
-    save_df_xlsx(skill.to_frame(), out_dir / "skill_matrix.xlsx", sheet_name="skill")
-    log.info(f"skill_nmf: matrix written to {out_dir / 'skill_matrix.xlsx'}")
+    save_df_parquet(skill.to_frame(), out_dir / "skill_matrix.parquet")
+    log.info(f"skill_nmf: matrix written to {out_dir / 'skill_matrix.parquet'}")
     return skill.to_frame()  # DataFrameを返す方が一貫性があるかも

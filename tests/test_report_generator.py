@@ -8,7 +8,7 @@ from shift_suite.tasks.report_generator import generate_summary_report
 def _create_sample_files(out_dir: Path) -> None:
     # heat_ALL.xlsx for date range detection
     heat_df = pd.DataFrame({"2024-06-01": [1], "2024-07-01": [2]})
-    heat_df.to_excel(out_dir / "heat_ALL.xlsx")
+    heat_df.to_parquet(out_dir / "heat_ALL.parquet")
 
     role_df = pd.DataFrame(
         {
@@ -20,16 +20,10 @@ def _create_sample_files(out_dir: Path) -> None:
             "estimated_excess_cost": [1000, 0],
         }
     )
-    role_df.to_excel(
-        out_dir / "shortage_role.xlsx", sheet_name="role_summary", index=False
-    )
+    role_df.to_parquet(out_dir / "shortage_role_summary.parquet", index=False)
 
     emp_df = pd.DataFrame({"employment": ["FT"], "lack_h": [3]})
-    emp_df.to_excel(
-        out_dir / "shortage_employment.xlsx",
-        sheet_name="employment_summary",
-        index=False,
-    )
+    emp_df.to_parquet(out_dir / "shortage_employment_summary.parquet", index=False)
 
     overall_df = pd.DataFrame({"summary_item": ["lack", "excess"], "value": [7, 3]})
     monthly_df = pd.DataFrame(
@@ -40,15 +34,14 @@ def _create_sample_files(out_dir: Path) -> None:
         }
     )
     alerts_df = pd.DataFrame({"alert": ["check A", "check B"]})
-    with pd.ExcelWriter(out_dir / "stats.xlsx") as writer:
-        overall_df.to_excel(writer, sheet_name="Overall_Summary", index=False)
-        monthly_df.to_excel(writer, sheet_name="Monthly_Summary", index=False)
-        alerts_df.to_excel(writer, sheet_name="alerts", index=False)
+    overall_df.to_parquet(out_dir / "stats_overall_summary.parquet", index=False)
+    monthly_df.to_parquet(out_dir / "stats_monthly_summary.parquet", index=False)
+    alerts_df.to_parquet(out_dir / "stats_alerts.parquet", index=False)
 
     wd_df = pd.DataFrame(
         {"weekday": ["Mon", "Tue"], "timeslot": ["09:00", "10:00"], "lack": [3, 1]}
     )
-    wd_df.to_excel(out_dir / "shortage_weekday_timeslot_summary.xlsx", index=False)
+    wd_df.to_parquet(out_dir / "shortage_weekday_timeslot_summary.parquet", index=False)
 
 
 def test_generate_summary_report(tmp_path: Path) -> None:

@@ -69,7 +69,7 @@ def build_stats(
         Penalty or opportunity cost per hour of shortage.
     """
     out_dir_path = Path(out_dir)
-    stats_fp = out_dir_path / "stats.xlsx"
+    stats_fp = out_dir_path / "stats_error.parquet"
     log.info(f"=== build_stats start (out_dir={out_dir_path}) ===")
 
     required_files = ["heat_ALL.xlsx"]
@@ -81,7 +81,7 @@ def build_stats(
         try:
             pd.DataFrame(
                 {"error": [f"Missing required files: {', '.join(missing)}"]}
-            ).to_excel(stats_fp, sheet_name="Error_Log", index=False)
+            ).to_parquet(stats_fp, index=False)
         except Exception as e_write_err:
             log.error(f"エラーログ用 stats.xlsx の書き出し失敗: {e_write_err}")
         return
@@ -96,8 +96,9 @@ def build_stats(
             f"heat_ALL.xlsx の読み込み中にエラーが発生しました: {e}", exc_info=True
         )
         try:
-            pd.DataFrame({"error": [f"Error reading heat_ALL.xlsx: {e}"]}).to_excel(
-                stats_fp, sheet_name="Error_Log", index=False
+            pd.DataFrame({"error": [f"Error reading heat_ALL.xlsx: {e}"]}).to_parquet(
+                stats_fp,
+                index=False,
             )
         except Exception as e_write_err_read:
             log.error(
@@ -261,8 +262,9 @@ def build_stats(
     if not daily_metrics_data_for_df:
         log.error("日次メトリクスの計算結果が空になりました。処理を中止します。")
         try:
-            pd.DataFrame({"error": ["No daily metrics were generated."]}).to_excel(
-                stats_fp, sheet_name="Error_Log", index=False
+            pd.DataFrame({"error": ["No daily metrics were generated."]}).to_parquet(
+                stats_fp,
+                index=False,
             )
         except Exception as e_write_err_dm:
             log.error(
@@ -738,26 +740,32 @@ def build_stats(
             monthly_df = pd.DataFrame({"message": ["Monthly summary data is empty."]})
 
     try:
-        with pd.ExcelWriter(stats_fp, engine="openpyxl", mode="w") as writer:
-            if not overall_df.empty:
-                overall_df.to_excel(writer, sheet_name="Overall_Summary", index=False)
-            if not monthly_df.empty:
-                monthly_df.to_excel(writer, sheet_name="Monthly_Summary", index=False)
-            if not daily_metrics_df.empty:
-                #  daily_metrics_df の parsed_date_debug 列はデバッグ用なので、最終的なExcel出力からは除外しても良い
-                cols_to_output_dm = [
-                    col
-                    for col in daily_metrics_df.columns
-                    if col != "parsed_date_debug"
-                ]
-                daily_metrics_df[cols_to_output_dm].to_excel(
-                    writer, sheet_name="Daily_Metrics_Raw", index=True
-                )
-            if not alerts_df.empty:
-                alerts_df.to_excel(writer, sheet_name="alerts", index=False)
-        log.info(f"✅ stats.xlsx を正常に作成/更新しました: {stats_fp}")
+        if not overall_df.empty:
+            overall_df.to_parquet(
+                out_dir_path / "stats_overall_summary.parquet",
+                index=False,
+            )
+        if not monthly_df.empty:
+            monthly_df.to_parquet(
+                out_dir_path / "stats_monthly_summary.parquet",
+                index=False,
+            )
+        if not daily_metrics_df.empty:
+            cols_to_output_dm = [
+                col for col in daily_metrics_df.columns if col != "parsed_date_debug"
+            ]
+            daily_metrics_df[cols_to_output_dm].to_parquet(
+                out_dir_path / "stats_daily_metrics_raw.parquet",
+                index=True,
+            )
+        if not alerts_df.empty:
+            alerts_df.to_parquet(
+                out_dir_path / "stats_alerts.parquet",
+                index=False,
+            )
+        log.info("✅ stats parquet files saved")
     except Exception as e:
-        log.error(f"stats.xlsx の書き出し中にエラーが発生しました: {e}", exc_info=True)
+        log.error(f"stats parquet export error: {e}", exc_info=True)
 
     # text summary
     try:

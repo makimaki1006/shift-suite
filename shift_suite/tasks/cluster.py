@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-from .utils import log, save_df_xlsx
+from .utils import log, save_df_parquet
 
 
 def cluster_staff(long_df: pd.DataFrame, out_dir: Path, k: int = 3):
@@ -17,7 +17,7 @@ def cluster_staff(long_df: pd.DataFrame, out_dir: Path, k: int = 3):
             "[cluster] long_dfに 'staff' 列が見つかりません。処理をスキップします。"
         )
         empty_cluster_df = pd.DataFrame(columns=["n_codes", "cluster"])
-        save_df_xlsx(empty_cluster_df, out_dir / "staff_cluster.xlsx", "cluster")
+        save_df_parquet(empty_cluster_df, out_dir / "staff_cluster.parquet")
         log.info(
             "cluster: 'staff'列がなかったため、空のstaff_cluster.xlsxを作成しました。"
         )
@@ -27,7 +27,7 @@ def cluster_staff(long_df: pd.DataFrame, out_dir: Path, k: int = 3):
             "[cluster] long_dfに 'code' 列が見つかりません。処理をスキップします。"
         )
         empty_cluster_df = pd.DataFrame(columns=["n_codes", "cluster"])
-        save_df_xlsx(empty_cluster_df, out_dir / "staff_cluster.xlsx", "cluster")
+        save_df_parquet(empty_cluster_df, out_dir / "staff_cluster.parquet")
         log.info(
             "cluster: 'code'列がなかったため、空のstaff_cluster.xlsxを作成しました。"
         )
@@ -42,7 +42,7 @@ def cluster_staff(long_df: pd.DataFrame, out_dir: Path, k: int = 3):
             "[cluster] 特徴量データ(feat)が空です。クラスタリングは実行されません。"
         )
         empty_cluster_df = pd.DataFrame(columns=["n_codes", "cluster"])
-        save_df_xlsx(empty_cluster_df, out_dir / "staff_cluster.xlsx", "cluster")
+        save_df_parquet(empty_cluster_df, out_dir / "staff_cluster.parquet")
         return empty_cluster_df
 
     # データが1行しかない場合、StandardScalerやKMeansでエラーになることがある
@@ -51,7 +51,7 @@ def cluster_staff(long_df: pd.DataFrame, out_dir: Path, k: int = 3):
             "[cluster] 特徴量データの行数が1のため、クラスタリングは実行せず、cluster 0 を割り当てます。"
         )
         feat["cluster"] = 0
-        save_df_xlsx(feat, out_dir / "staff_cluster.xlsx", "cluster")
+        save_df_parquet(feat, out_dir / "staff_cluster.parquet")
         log.info("cluster: k=1 (データ1行のため)")
         return feat
 
@@ -64,13 +64,13 @@ def cluster_staff(long_df: pd.DataFrame, out_dir: Path, k: int = 3):
             f"[cluster] 有効なクラスタ数 k ({actual_k}) が0以下です。クラスタリングは実行されません。"
         )
         feat["cluster"] = pd.NA  # または適切なデフォルト値
-        save_df_xlsx(feat, out_dir / "staff_cluster.xlsx", "cluster")
+        save_df_parquet(feat, out_dir / "staff_cluster.parquet")
         return feat
 
     km = KMeans(n_clusters=actual_k, random_state=0, n_init="auto").fit(
         X
     )  # n_init='auto'で警告抑制
     feat["cluster"] = km.labels_
-    save_df_xlsx(feat, out_dir / "staff_cluster.xlsx", "cluster")
+    save_df_parquet(feat, out_dir / "staff_cluster.parquet")
     log.info(f"cluster: k={km.n_clusters} でクラスタリング完了")
     return feat
