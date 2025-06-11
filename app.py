@@ -467,6 +467,7 @@ def run_import_wizard() -> None:
                 log.error(f"Wizard ingest failed: {e}", exc_info=True)
                 return
             st.session_state.analysis_results = {"preview": long_df.head()}
+            st.session_state.long_df = long_df
             if unknown_codes:
                 st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
             st.success("取り込み完了")
@@ -629,6 +630,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.wizard_sheet_names = []
     st.session_state.wizard_shift_sheets = []
     st.session_state.wizard_mapping = {}
+    st.session_state.long_df = pd.DataFrame()
     log.info("セッションステートを初期化しました。")
 
 run_import_wizard()
@@ -840,14 +842,31 @@ with st.sidebar:
 
     with st.expander(_("Cost & Hire Parameters")):
         st.subheader("人件費計算 設定")
-        st.session_state.cost_by_widget = st.radio(
-            "単価基準",
+        cost_by_key = st.radio(
+            _("Unit Price Standard"),
             options=["role", "employment", "staff"],
+            captions=[_("Role"), _("Employment"), _("Staff")],
             index=0,
             horizontal=True,
-            key="cost_by_radio",
+            key="cost_by_widget",
         )
-        st.session_state.wage_widgets_placeholder = st.empty()
+        if "long_df" in st.session_state and not st.session_state.long_df.empty:
+            if cost_by_key in st.session_state.long_df.columns:
+                unique_keys = sorted(st.session_state.long_df[cost_by_key].unique())
+                if "wage_config" not in st.session_state:
+                    st.session_state.wage_config = {}
+                for key in unique_keys:
+                    wage_key = f"wage_{cost_by_key}_{key}"
+                    if wage_key not in st.session_state:
+                        st.session_state[wage_key] = st.session_state.get(
+                            "default_wage", 1000
+                        )
+                    wage_val = st.number_input(
+                        f"{_('Hourly Wage')}: {key}",
+                        value=st.session_state[wage_key],
+                        key=wage_key,
+                    )
+                    st.session_state.wage_config[key] = wage_val
         st.divider()
         st.subheader("採用・コスト試算 設定")
         st.number_input(
@@ -1098,46 +1117,31 @@ if run_button_clicked:
                     st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
                     log.warning(f"Unknown shift codes encountered: {sorted(unknown_codes)}")
                 st.success("✅ Excelデータ読み込み完了")
+                st.session_state.long_df = long_df
             except Exception as e:
                 st.session_state.analysis_status["ingest"] = "failure"
                 log_and_display_error("Excelデータの読み込み中にエラーが発生しました", e)
 
-            if st.session_state.analysis_status.get("ingest") == "success" and not long_df.empty:
-                # --- 人件費UIの動的生成 ---
-                cost_by_key = st.session_state.get("cost_by_widget", "role")
-                if cost_by_key in long_df.columns:
-                    unique_keys = sorted(long_df[cost_by_key].unique())
-                    if "wage_config" not in st.session_state:
-                        st.session_state.wage_config = {}
-                    with st.session_state.wage_widgets_placeholder.container():
-                        for key in unique_keys:
-                            wage_key = f"wage_{cost_by_key}_{key}"
-                            if wage_key not in st.session_state:
-                                st.session_state[wage_key] = 1000
-                            wage_val = st.number_input(
-                                f"時給: {key}", value=st.session_state[wage_key], key=wage_key
-                            )
-                            st.session_state.wage_config[key] = wage_val
-                try:
-                    update_progress_exec_run("Heatmap: Generating heatmap...")
-                    build_heatmap(
-                        long_df,
-                        out_dir_exec,
-                        param_slot,
-                        ref_start_date_for_need=param_ref_start,
-                        ref_end_date_for_need=param_ref_end,
-                        need_statistic_method=param_need_stat,
-                        need_remove_outliers=param_need_outlier,
-                        need_adjustment_factor=param_need_adjustment_factor,
-                        need_iqr_multiplier=1.5,
-                        min_method=param_min_method_upper,
-                        max_method=param_max_method_upper,
-                    )
-                    st.session_state.analysis_status["heatmap"] = "success"
-                    st.success("✅ Heatmap生成完了")
-                except Exception as e:
-                    st.session_state.analysis_status["heatmap"] = "failure"
-                    log_and_display_error("Heatmapの生成中にエラーが発生しました", e)
+            try:
+                update_progress_exec_run("Heatmap: Generating heatmap...")
+                build_heatmap(
+                    long_df,
+                    out_dir_exec,
+                    param_slot,
+                    ref_start_date_for_need=param_ref_start,
+                    ref_end_date_for_need=param_ref_end,
+                    need_statistic_method=param_need_stat,
+                    need_remove_outliers=param_need_outlier,
+                    need_adjustment_factor=param_need_adjustment_factor,
+                    need_iqr_multiplier=1.5,
+                    min_method=param_min_method_upper,
+                    max_method=param_max_method_upper,
+                )
+                st.session_state.analysis_status["heatmap"] = "success"
+                st.success("✅ Heatmap生成完了")
+            except Exception as e:
+                st.session_state.analysis_status["heatmap"] = "failure"
+                log_and_display_error("Heatmapの生成中にエラーが発生しました", e)
 
             if st.session_state.analysis_status.get("heatmap") == "success":
                 try:
