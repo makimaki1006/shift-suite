@@ -25,6 +25,7 @@ from .utils import (
     gen_labels,
     log,
     safe_sheet,
+    save_df_xlsx,
     write_meta,
 )
 
@@ -568,6 +569,15 @@ def build_heatmap(
             exc_info=True,
         )
 
+    fp_all_xlsx_path = out_dir_path / "heat_ALL.xlsx"
+    try:
+        save_df_xlsx(pivot_to_excel_all, fp_all_xlsx_path, sheet_name="heat_ALL")
+    except Exception as e_xlsx_all:
+        log.error(
+            f"[heatmap.build_heatmap] heat_ALL.xlsx 作成エラー: {e_xlsx_all}",
+            exc_info=True,
+        )
+
     unique_roles_list_final_loop = sorted(
         list(set(df_for_heatmap_actuals[role_col_name]))
     )
@@ -692,6 +702,19 @@ def build_heatmap(
                 exc_info=True,
             )
 
+        fp_role_xlsx = out_dir_path / f"heat_{role_safe_name_final_loop}.xlsx"
+        try:
+            save_df_xlsx(
+                pivot_to_excel_role,
+                fp_role_xlsx,
+                sheet_name=f"heat_{role_safe_name_final_loop}",
+            )
+        except Exception as e_role_xlsx:
+            log.error(
+                f"heat_{role_safe_name_final_loop}.xlsx 作成エラー: {e_role_xlsx}",
+                exc_info=True,
+            )
+
     # ── Employment heatmaps ───────────────────────────────────────────────
     employment_col_name = "employment"
     unique_employments_list_final_loop = (
@@ -789,6 +812,19 @@ def build_heatmap(
         except Exception as e_emp_write:
             log.error(
                 f"heat_emp_{emp_safe_name_final_loop}.parquet 作成エラー: {e_emp_write}",
+                exc_info=True,
+            )
+
+        fp_emp_xlsx = out_dir_path / f"heat_emp_{emp_safe_name_final_loop}.xlsx"
+        try:
+            save_df_xlsx(
+                pivot_to_excel_emp,
+                fp_emp_xlsx,
+                sheet_name=f"heat_emp_{emp_safe_name_final_loop}",
+            )
+        except Exception as e_emp_xlsx:
+            log.error(
+                f"heat_emp_{emp_safe_name_final_loop}.xlsx 作成エラー: {e_emp_xlsx}",
                 exc_info=True,
             )
 
