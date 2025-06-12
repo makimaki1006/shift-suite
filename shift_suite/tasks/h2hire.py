@@ -66,8 +66,10 @@ def build_hire_plan(
 
     df = pd.read_parquet(shortage_fp)
 
-    if "lack_h" not in df.columns or "role" not in df.columns:
-        raise ValueError("shortage_role_summary.parquet に 'role' と 'lack_h' 列が必要です")
+    if "role" not in df.columns or "lack_h" not in df.columns:
+        raise ValueError(
+            "shortage_role_summary.parquet に 'role' と 'lack_h' 列が必要です"
+        )
 
     df_out = df.copy()
     lack_adjusted = df_out["lack_h"] * safety_factor
