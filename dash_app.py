@@ -63,34 +63,32 @@ try:
             RAW_ZMAX_DEFAULT_CALC = max(10.0, min(50.0, RAW_ZMAX_P95))
 
     shortage_time_df = (
-        pd.read_excel(DATA_DIR / "shortage_time.xlsx", index_col=0)
-        if (DATA_DIR / "shortage_time.xlsx").exists()
+        pd.read_parquet(DATA_DIR / "shortage_time.parquet")
+        if (DATA_DIR / "shortage_time.parquet").exists()
         else pd.DataFrame()
     )
     shortage_ratio_df = (
-        pd.read_excel(DATA_DIR / "shortage_ratio.xlsx", index_col=0)
-        if (DATA_DIR / "shortage_ratio.xlsx").exists()
+        pd.read_parquet(DATA_DIR / "shortage_ratio.parquet")
+        if (DATA_DIR / "shortage_ratio.parquet").exists()
         else pd.DataFrame()
     )
     kpi_lack_h = None
     jain_index_val = None
-    if (DATA_DIR / "shortage_role.xlsx").exists():
+    if (DATA_DIR / "shortage_role.parquet").exists():
         try:
-            df_sr = pd.read_excel(DATA_DIR / "shortage_role.xlsx")
+            df_sr = pd.read_parquet(DATA_DIR / "shortage_role.parquet")
             if "lack_h" in df_sr:
                 kpi_lack_h = float(df_sr["lack_h"].sum())
         except Exception as e:
-            log.error("shortage_role.xlsx 読込エラー: %s", e)
-    if (DATA_DIR / "fairness_before.xlsx").exists():
+            log.error("shortage_role.parquet 読込エラー: %s", e)
+    if (DATA_DIR / "fairness_before.parquet").exists():
         try:
-            df_fb = pd.read_excel(
-                DATA_DIR / "fairness_before.xlsx", sheet_name="meta_summary"
-            )
+            df_fb = pd.read_parquet(DATA_DIR / "fairness_before.parquet")
             row = df_fb[df_fb["metric"] == "jain_index"]
             if not row.empty:
                 jain_index_val = float(row["value"].iloc[0])
         except Exception as e:
-            log.error("fairness_before.xlsx 読込エラー: %s", e)
+            log.error("fairness_before.parquet 読込エラー: %s", e)
 
     leave_results = load_leave_results_from_dir(DATA_DIR)
 
@@ -262,7 +260,7 @@ def page_shortage():
                 html.H4(_("Shortage Ratio Data Not Found")),
                 html.P(
                     _(
-                        "Run analysis via the Streamlit app to generate shortage_ratio.xlsx"
+                        "Run analysis via the Streamlit app to generate shortage_ratio.parquet"
                     )
                 ),
             ]
