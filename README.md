@@ -287,6 +287,10 @@ Install the dependencies first:
 ./setup.sh  # or pip install -r requirements.txt
 ```
 
+Running the tests without installing these packages will result in import
+errors (for example ``pandas`` and ``numpy`` will be missing). Ensure the setup
+command completes successfully before invoking ``pytest``.
+
 Then execute the test suite with:
 
 ```bash
