@@ -578,6 +578,21 @@ def build_heatmap(
             exc_info=True,
         )
 
+    try:
+        log.info(f"{fp_all_xlsx_path.name} に書式を設定します。")
+        wb = openpyxl.load_workbook(fp_all_xlsx_path)
+        ws = wb.active
+
+        data_columns = pivot_to_excel_all.columns.drop(SUMMARY5, errors="ignore")
+
+        _apply_conditional_formatting_to_worksheet(ws, data_columns)
+        _apply_holiday_column_styling(ws, data_columns, holidays_set, _parse_as_date)
+
+        wb.save(fp_all_xlsx_path)
+        log.info(f"書式設定を {fp_all_xlsx_path.name} に保存しました。")
+    except Exception as e:
+        log.error(f"{fp_all_xlsx_path.name} への書式設定中にエラー: {e}", exc_info=True)
+
     unique_roles_list_final_loop = sorted(
         list(set(df_for_heatmap_actuals[role_col_name]))
     )
@@ -715,6 +730,17 @@ def build_heatmap(
                 exc_info=True,
             )
 
+        try:
+            log.info(f"{fp_role_xlsx.name} に書式を設定します。")
+            wb = openpyxl.load_workbook(fp_role_xlsx)
+            ws = wb.active
+            data_columns = pivot_to_excel_role.columns.drop(SUMMARY5, errors="ignore")
+            _apply_conditional_formatting_to_worksheet(ws, data_columns)
+            _apply_holiday_column_styling(ws, data_columns, holidays_set, _parse_as_date)
+            wb.save(fp_role_xlsx)
+        except Exception as e:
+            log.error(f"{fp_role_xlsx.name} への書式設定中にエラー: {e}", exc_info=True)
+
     # ── Employment heatmaps ───────────────────────────────────────────────
     employment_col_name = "employment"
     unique_employments_list_final_loop = (
@@ -827,6 +853,17 @@ def build_heatmap(
                 f"heat_emp_{emp_safe_name_final_loop}.xlsx 作成エラー: {e_emp_xlsx}",
                 exc_info=True,
             )
+
+        try:
+            log.info(f"{fp_emp_xlsx.name} に書式を設定します。")
+            wb = openpyxl.load_workbook(fp_emp_xlsx)
+            ws = wb.active
+            data_columns = pivot_to_excel_emp.columns.drop(SUMMARY5, errors="ignore")
+            _apply_conditional_formatting_to_worksheet(ws, data_columns)
+            _apply_holiday_column_styling(ws, data_columns, holidays_set, _parse_as_date)
+            wb.save(fp_emp_xlsx)
+        except Exception as e:
+            log.error(f"{fp_emp_xlsx.name} への書式設定中にエラー: {e}", exc_info=True)
 
     all_unique_roles_from_orig_long_df_meta = (
         sorted(list(set(long_df["role"]))) if "role" in long_df.columns else []
