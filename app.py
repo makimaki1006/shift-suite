@@ -3733,22 +3733,22 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
                     st.stop()
                 zf.extract(file_name, current_dash_tmp_dir)
             if (current_dash_tmp_dir / "out").exists() and (
-                current_dash_tmp_dir / "out" / "heat_ALL.xlsx"
+                current_dash_tmp_dir / "out" / "heat_ALL.parquet"
             ).exists():
                 extracted_data_dir = current_dash_tmp_dir / "out"
-            elif (current_dash_tmp_dir / "heat_ALL.xlsx").exists():
+            elif (current_dash_tmp_dir / "heat_ALL.parquet").exists():
                 extracted_data_dir = current_dash_tmp_dir
             else:
-                found_heat_all = list(current_dash_tmp_dir.rglob("heat_ALL.xlsx"))
+                found_heat_all = list(current_dash_tmp_dir.rglob("heat_ALL.parquet"))
                 if found_heat_all:
                     extracted_data_dir = found_heat_all[0].parent
                 else:
                     log_and_display_error(
-                        _("heat_ALL.xlsx not found in ZIP"),
-                        FileNotFoundError("heat_ALL.xlsx"),
+                        _("heat_ALL.parquet not found in ZIP"),
+                        FileNotFoundError("heat_ALL.parquet"),
                     )
                     log.error(
-                        f"ZIP展開後、heat_ALL.xlsx が見つかりません in {current_dash_tmp_dir}"
+                        f"ZIP展開後、heat_ALL.parquet が見つかりません in {current_dash_tmp_dir}"
                     )
                     st.stop()
         log.info(f"ダッシュボード表示用のデータディレクトリ: {extracted_data_dir}")
