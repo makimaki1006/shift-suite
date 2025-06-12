@@ -441,19 +441,43 @@ def build_heatmap(
 
     pivot_data_all_actual_staff = pd.DataFrame(index=time_index_labels)
     if not df_for_heatmap_actuals.empty:
-        pivot_data_all_actual_staff = (
-            df_for_heatmap_actuals.drop_duplicates(
-                subset=["date_lbl", "time", staff_col_name]
+        if len(df_for_heatmap_actuals) > 50000:
+            log.info("[heatmap.build_heatmap] Large dataset detected, using chunked processing")
+            chunk_size = 10000
+            pivot_chunks = []
+            
+            for i in range(0, len(df_for_heatmap_actuals), chunk_size):
+                chunk = df_for_heatmap_actuals.iloc[i:i+chunk_size]
+                chunk_pivot = (
+                    chunk.drop_duplicates(subset=["date_lbl", "time", staff_col_name])
+                    .pivot_table(
+                        index="time",
+                        columns="date_lbl", 
+                        values=staff_col_name,
+                        aggfunc="nunique",
+                        fill_value=0,
+                    )
+                )
+                pivot_chunks.append(chunk_pivot)
+            
+            if pivot_chunks:
+                pivot_data_all_actual_staff = pd.concat(pivot_chunks, axis=1)
+                pivot_data_all_actual_staff = pivot_data_all_actual_staff.groupby(level=0, axis=1).sum()
+                pivot_data_all_actual_staff = pivot_data_all_actual_staff.reindex(index=time_index_labels, fill_value=0)
+        else:
+            pivot_data_all_actual_staff = (
+                df_for_heatmap_actuals.drop_duplicates(
+                    subset=["date_lbl", "time", staff_col_name]
+                )
+                .pivot_table(
+                    index="time",
+                    columns="date_lbl",
+                    values=staff_col_name,
+                    aggfunc="nunique",
+                    fill_value=0,
+                )
+                .reindex(index=time_index_labels, fill_value=0)
             )
-            .pivot_table(
-                index="time",
-                columns="date_lbl",
-                values=staff_col_name,
-                aggfunc="nunique",
-                fill_value=0,
-            )
-            .reindex(index=time_index_labels, fill_value=0)
-        )
 
     actual_staff_for_need_input = pivot_data_all_actual_staff.copy()
     if not actual_staff_for_need_input.empty:

@@ -491,7 +491,7 @@ def run_import_wizard() -> None:
             st.dataframe(long_df.head(), use_container_width=True)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=3600)
 def load_data_cached(
     file_path: str,
     *,
@@ -507,8 +507,65 @@ def load_data_cached(
     if is_parquet:
         return pd.read_parquet(p)
 
-    # For Excel
     return safe_read_excel(file_path, **kwargs)
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def compute_heatmap_ratio_cached(heat_df: pd.DataFrame, need_series: pd.Series) -> pd.DataFrame:
+    """Cache expensive ratio calculations for heatmaps."""
+    if heat_df.empty or need_series.empty:
+        return pd.DataFrame()
+    
+    clean_df = heat_df.drop(columns=[c for c in SUMMARY5_CONST if c in heat_df.columns], errors="ignore")
+    need_series_safe = need_series.replace(0, np.nan)
+    return clean_df.div(need_series_safe, axis=0).clip(lower=0, upper=2)
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def prepare_heatmap_display_data(df_heat: pd.DataFrame, mode: str) -> pd.DataFrame:
+    """Cache heatmap display data preparation."""
+    if df_heat.empty:
+        return pd.DataFrame()
+    
+    if mode == "Ratio":
+        need_series = df_heat.get("need", pd.Series())
+        return compute_heatmap_ratio_cached(df_heat, need_series)
+    else:
+        return df_heat.drop(
+            columns=[c for c in SUMMARY5_CONST if c in df_heat.columns],
+            errors="ignore",
+        )
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def optimize_large_heatmap_display(df: pd.DataFrame, max_cells: int = 10000) -> pd.DataFrame:
+    """Optimize large heatmap display by intelligent sampling."""
+    if df.empty or df.shape[0] * df.shape[1] <= max_cells:
+        return df
+    
+    sample_step_rows = max(1, len(df) // 100)
+    sample_step_cols = max(1, len(df.columns) // 50)
+    return df.iloc[::sample_step_rows, ::sample_step_cols]
+
+
+@st.cache_data(show_spinner=False, ttl=900)
+def get_optimized_display_data(df_heat: pd.DataFrame, mode: str, max_display_cells: int = 15000) -> pd.DataFrame:
+    """Get optimized display data with intelligent sampling for large datasets."""
+    if df_heat.empty:
+        return pd.DataFrame()
+    
+    prepared_data = prepare_heatmap_display_data(df_heat, mode)
+    
+    if prepared_data.shape[0] * prepared_data.shape[1] > max_display_cells:
+        return optimize_large_heatmap_display(prepared_data, max_display_cells)
+    
+    return prepared_data
+
+
+@st.cache_data(show_spinner=False, ttl=600)
+def create_progress_indicator():
+    """Create reusable progress indicator components."""
+    return st.empty(), st.empty()
 
 
 st.set_page_config(
@@ -535,6 +592,16 @@ if "app_initialized" not in st.session_state:
     st.session_state.candidate_sheet_list_for_ui = []
     st.session_state.shift_sheets_multiselect_widget = []
     st.session_state._force_update_multiselect_flag = False
+    
+    if "display_data" not in st.session_state:
+        st.session_state.display_data = {}
+    
+    if "heatmap_cache_key" not in st.session_state:
+        st.session_state.heatmap_cache_key = None
+    
+    if "performance_mode" not in st.session_state:
+        st.session_state.performance_mode = "auto"
+
 
     st.session_state.need_ref_start_date_widget = today_val - datetime.timedelta(
         days=59
@@ -1997,29 +2064,51 @@ def display_heatmap_tab(tab_container, data_dir):
 
         # --- フォームが送信された後でのみ、データ読み込みとグラフ描画を実行 ---
         if submitted:
-            file_prefix_map = {
-                "overall": "ALL",
-                "role": f"role_{safe_sheet(sel_item, for_path=True)}",
-                "employment": f"emp_{safe_sheet(sel_item, for_path=True)}",
-            }
-            heat_key = f"heat_{file_prefix_map.get(scope)}"
-            display_data = st.session_state.get("display_data", {})
-            df_heat = display_data.get(heat_key)
+            with st.spinner("ヒートマップを生成中..."):
+                file_prefix_map = {
+                    "overall": "ALL",
+                    "role": f"role_{safe_sheet(sel_item, for_path=True)}",
+                    "employment": f"emp_{safe_sheet(sel_item, for_path=True)}",
+                }
+                heat_key = f"heat_{file_prefix_map.get(scope)}"
+                display_data = st.session_state.get("display_data", {})
+                df_heat = display_data.get(heat_key)
 
-            if isinstance(df_heat, pd.DataFrame) and not df_heat.empty:
-                # ↓↓↓ ここから下のグラフ表示ロジックは、元のdisplay_heatmap_tab関数からコピー＆ペーストしてください ↓↓↓
-                disp_df_heat = df_heat.drop(
-                    columns=[c for c in SUMMARY5_CONST if c in df_heat.columns],
-                    errors="ignore",
-                )
-                st.write(
-                    f"表示中: {scope_lbl} {f'({sel_item})' if sel_item else ''} - {mode_lbl}"
-                )
-                fig = px.imshow(disp_df_heat, aspect="auto")
-                st.plotly_chart(fig, use_container_width=True)
-                # ↑↑↑ ここまで元の表示ロジックを記述 ↑↑↑
-            else:
-                st.warning(f"ヒートマップデータが見つかりません: {heat_key}")
+                if isinstance(df_heat, pd.DataFrame) and not df_heat.empty:
+                    progress_container, status_text = create_progress_indicator()
+                    
+                    with progress_container.container():
+                        progress_bar = st.progress(0)
+                        status_text.text("データを処理中...")
+                        progress_bar.progress(25)
+                        
+                        mode = [k for k, v in mode_opts.items() if v == mode_lbl][0]
+                        
+                        status_text.text("ヒートマップを準備中...")
+                        progress_bar.progress(50)
+                        
+                        disp_df_heat = get_optimized_display_data(df_heat, mode)
+                        
+                        progress_bar.progress(75)
+                        
+                        if disp_df_heat.shape[0] * disp_df_heat.shape[1] > 10000:
+                            st.info("大きなデータセットのため、表示を最適化しています...")
+                        
+                        st.write(
+                            f"表示中: {scope_lbl} {f'({sel_item})' if sel_item else ''} - {mode_lbl}"
+                        )
+                        
+                        color_scale = "RdBu_r" if mode == "Ratio" else "Blues"
+                        fig = px.imshow(disp_df_heat, aspect="auto", color_continuous_scale=color_scale)
+                        
+                        progress_bar.progress(100)
+                        status_text.text("完了")
+                        
+                    progress_container.empty()
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                else:
+                    st.warning(f"ヒートマップデータが見つかりません: {heat_key}")
 
 
 def display_shortage_tab(tab_container, data_dir):
