@@ -1830,6 +1830,51 @@ if run_button_clicked:
 
 st.session_state.analysis_done = True
 
+# 分析が完了していて、かつ表示用データがまだ読み込まれていない場合に一度だけ実行
+if st.session_state.get("analysis_done") and "display_data" not in st.session_state:
+    st.session_state.display_data = {}
+    out_dir = Path(st.session_state.out_dir_path_str)
+    log.info(f"表示用データの読み込みを開始します。ディレクトリ: {out_dir}")
+
+    # 表示に必要なすべてのファイルを定義
+    files_to_load = {
+        "heat_all": "heat_ALL.parquet",
+        "shortage_role": "shortage_role_summary.parquet",
+        "shortage_emp": "shortage_employment_summary.parquet",
+        "shortage_time": "shortage_time.parquet",
+        "excess_time": "excess_time.parquet",
+        "shortage_ratio": "shortage_ratio.parquet",
+        "excess_ratio": "excess_ratio.parquet",
+        "shortage_freq": "shortage_freq.parquet",
+        "excess_freq": "excess_freq.parquet",
+        "shortage_leave": "shortage_leave.parquet",
+        "fatigue_score": "fatigue_score.parquet",
+        "fairness_before": "fairness_before.parquet",
+        "fairness_after": "fairness_after.parquet",
+        "forecast": "forecast.parquet",
+        "hire_plan": "hire_plan.parquet",
+        "optimal_hire_plan": "optimal_hire_plan.parquet",
+        "cost_benefit": "cost_benefit.parquet",
+        "daily_cost": "daily_cost.parquet",
+        "staff_stats": "staff_stats.parquet",
+        "stats_alerts": "stats_alerts.parquet",
+        "demand_series": "demand_series.csv",
+    }
+
+    for key, filename in files_to_load.items():
+        fp = out_dir / filename
+        if fp.exists():
+            try:
+                if filename.endswith(".csv"):
+                    st.session_state.display_data[key] = pd.read_csv(fp)
+                else:
+                    st.session_state.display_data[key] = pd.read_parquet(fp)
+                log.info(
+                    f"'{filename}'を読み込み、st.session_state.display_data['{key}']に格納しました。"
+                )
+            except Exception as e:
+                log.warning(f"{filename} の読み込みに失敗しました: {e}")
+
 # 完全修正版 - 休暇分析結果表示コード全体
 
 # Plotlyの全体問題を修正した休暇分析コード
@@ -1840,16 +1885,12 @@ st.session_state.analysis_done = True
 def display_overview_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Overview"))
-        kpi_fp = data_dir / "shortage_role_summary.parquet"
+        display_data = st.session_state.get("display_data", {})
+        df_sh_role = display_data.get("shortage_role")
         lack_h = 0.0
         excess_cost = lack_temp_cost = lack_penalty_cost = 0.0
-        if kpi_fp.exists():
+        if isinstance(df_sh_role, pd.DataFrame):
             try:
-                df_sh_role = load_data_cached(
-                    str(kpi_fp),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(kpi_fp),
-                )
                 lack_h = df_sh_role["lack_h"].sum() if "lack_h" in df_sh_role else 0.0
                 excess_cost = float(
                     df_sh_role.get("estimated_excess_cost", pd.Series()).sum()
@@ -1865,15 +1906,11 @@ def display_overview_tab(tab_container, data_dir):
             except Exception as e:
                 st.warning(f"shortage_role_summary.parquet 読込/集計エラー: {e}")
                 excess_cost = lack_temp_cost = lack_penalty_cost = 0.0
-        fair_fp_meta = data_dir / "fairness_before.parquet"
+
+        meta_df = display_data.get("fairness_before")
         jain_display = "N/A"
-        if fair_fp_meta.exists():
+        if isinstance(meta_df, pd.DataFrame):
             try:
-                meta_df = load_data_cached(
-                    str(fair_fp_meta),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fair_fp_meta),
-                )
                 jain_row = meta_df[meta_df["metric"] == "jain_index"]
                 if not jain_row.empty:
                     jain_display = f"{float(jain_row['value'].iloc[0]):.3f}"
@@ -1882,14 +1919,9 @@ def display_overview_tab(tab_container, data_dir):
 
         staff_count = 0
         avg_night_ratio = 0.0
-        staff_stats_fp = data_dir / "staff_stats.parquet"
-        if staff_stats_fp.exists():
+        df_staff = display_data.get("staff_stats")
+        if isinstance(df_staff, pd.DataFrame):
             try:
-                df_staff = load_data_cached(
-                    str(staff_stats_fp),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(staff_stats_fp),
-                )
                 staff_count = len(df_staff)
                 if (
                     "night_ratio" in df_staff.columns
@@ -1900,14 +1932,9 @@ def display_overview_tab(tab_container, data_dir):
                 pass
 
         alerts_count = 0
-        stats_fp = data_dir / "stats_alerts.parquet"
-        if stats_fp.exists():
+        df_alerts = display_data.get("stats_alerts")
+        if isinstance(df_alerts, pd.DataFrame):
             try:
-                df_alerts = load_data_cached(
-                    str(stats_fp),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(stats_fp),
-                )
                 if _valid_df(df_alerts):
                     alerts_count = len(df_alerts)
             except Exception:
@@ -1972,25 +1999,24 @@ def display_heatmap_tab(tab_container, data_dir):
                 "role": f"role_{safe_sheet(sel_item, for_path=True)}",
                 "employment": f"emp_{safe_sheet(sel_item, for_path=True)}",
             }
-            file_to_load = data_dir / f"heat_{file_prefix_map.get(scope)}.parquet"
+            heat_key = f"heat_{file_prefix_map.get(scope)}"
+            display_data = st.session_state.get("display_data", {})
+            df_heat = display_data.get(heat_key)
 
-            if file_to_load.exists():
-                df_heat = load_data_cached(str(file_to_load), is_parquet=True)
-
-                if not df_heat.empty:
-                    # ↓↓↓ ここから下のグラフ表示ロジックは、元のdisplay_heatmap_tab関数からコピー＆ペーストしてください ↓↓↓
-                    disp_df_heat = df_heat.drop(
-                        columns=[c for c in SUMMARY5_CONST if c in df_heat.columns],
-                        errors="ignore",
-                    )
-                    st.write(
-                        f"表示中: {scope_lbl} {f'({sel_item})' if sel_item else ''} - {mode_lbl}"
-                    )
-                    fig = px.imshow(disp_df_heat, aspect="auto")
-                    st.plotly_chart(fig, use_container_width=True)
-                    # ↑↑↑ ここまで元の表示ロジックを記述 ↑↑↑
+            if isinstance(df_heat, pd.DataFrame) and not df_heat.empty:
+                # ↓↓↓ ここから下のグラフ表示ロジックは、元のdisplay_heatmap_tab関数からコピー＆ペーストしてください ↓↓↓
+                disp_df_heat = df_heat.drop(
+                    columns=[c for c in SUMMARY5_CONST if c in df_heat.columns],
+                    errors="ignore",
+                )
+                st.write(
+                    f"表示中: {scope_lbl} {f'({sel_item})' if sel_item else ''} - {mode_lbl}"
+                )
+                fig = px.imshow(disp_df_heat, aspect="auto")
+                st.plotly_chart(fig, use_container_width=True)
+                # ↑↑↑ ここまで元の表示ロジックを記述 ↑↑↑
             else:
-                st.warning(f"ヒートマップデータが見つかりません: {file_to_load.name}")
+                st.warning(f"ヒートマップデータが見つかりません: {heat_key}")
 
 
 def display_shortage_tab(tab_container, data_dir):
@@ -2000,17 +2026,12 @@ def display_shortage_tab(tab_container, data_dir):
             return
         st.subheader(_("Shortage"))
         roles, employments = load_shortage_meta(data_dir)
-        fp_s_role = data_dir / "shortage_role_summary.parquet"
-        if fp_s_role.exists():
-            try:
-                df_s_role = load_data_cached(
-                    str(fp_s_role),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp_s_role),
-                )
-                if not _valid_df(df_s_role):
-                    st.info("Data not available")
-                    return
+        display_data = st.session_state.get("display_data", {})
+        df_s_role = display_data.get("shortage_role")
+        if isinstance(df_s_role, pd.DataFrame):
+            if not _valid_df(df_s_role):
+                st.info("Data not available")
+                return
                 display_role_df = df_s_role.rename(
                     columns={
                         "role": _("Role"),
@@ -2163,8 +2184,6 @@ def display_shortage_tab(tab_container, data_dir):
                             st.dataframe(
                                 df_month, use_container_width=True, hide_index=True
                             )
-            except Exception as e:
-                log_and_display_error("shortage_role_summary.parquet 表示エラー", e)
         else:
             st.info(_("Shortage") + " (shortage_role_summary.parquet) " + _("が見つかりません。"))
 
@@ -2965,46 +2984,41 @@ def display_optimization_tab(tab_container, data_dir):
 def display_fatigue_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Fatigue Score per Staff"))
-        fp = data_dir / "fatigue_score.parquet"
-        if fp.exists():
-            try:
-                df = load_data_cached(
-                    str(fp),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp),
-                )
-                if not _valid_df(df):
-                    st.info(_("Data not available or empty"))
-                    return
+        display_data = st.session_state.get("display_data", {})
+        df = display_data.get("fatigue_score")
+        if isinstance(df, pd.DataFrame):
+            if not _valid_df(df):
+                st.info(_("Data not available or empty"))
+                return
 
-                try:
-                    display_df = df.rename(
-                        columns={"staff": _("Staff"), "fatigue_score": _("Score")}
+            try:
+                display_df = df.rename(
+                    columns={"staff": _("Staff"), "fatigue_score": _("Score")}
+                )
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                if "fatigue_score" in df and "staff" in df:
+                    fig_fatigue = px.bar(
+                        df,
+                        x="staff",
+                        y="fatigue_score",
+                        labels={"staff": _("Staff"), "fatigue_score": _("Score")},
+                        color_discrete_sequence=["#FF8C00"],
+                        title="スタッフ別疲労スコア",
                     )
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
-                    if "fatigue_score" in df and "staff" in df:
-                        fig_fatigue = px.bar(
-                            df,
-                            x="staff",
-                            y="fatigue_score",
-                            labels={"staff": _("Staff"), "fatigue_score": _("Score")},
-                            color_discrete_sequence=["#FF8C00"],
-                            title="スタッフ別疲労スコア",
-                        )
-                        st.plotly_chart(
-                            fig_fatigue, use_container_width=True, key="fatigue_chart"
-                        )
-                        fig_fatigue_hist = dashboard.fatigue_distribution(df)
-                        fig_fatigue_hist.update_layout(title="疲労スコア分布")
-                        st.plotly_chart(
-                            fig_fatigue_hist,
-                            use_container_width=True,
-                            key="fatigue_hist",
-                        )
-                except AttributeError as e:
-                    log_and_display_error(
-                        "Invalid data format in fatigue_score.parquet", e
+                    st.plotly_chart(
+                        fig_fatigue, use_container_width=True, key="fatigue_chart"
                     )
+                    fig_fatigue_hist = dashboard.fatigue_distribution(df)
+                    fig_fatigue_hist.update_layout(title="疲労スコア分布")
+                    st.plotly_chart(
+                        fig_fatigue_hist,
+                        use_container_width=True,
+                        key="fatigue_hist",
+                    )
+            except AttributeError as e:
+                log_and_display_error(
+                    "Invalid data format in fatigue_score.parquet", e
+                )
             except Exception as e:
                 log_and_display_error("fatigue_score.parquet 表示エラー", e)
         else:
@@ -3014,56 +3028,50 @@ def display_fatigue_tab(tab_container, data_dir):
 def display_forecast_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Demand Forecast (yhat)"))
-        fp_fc = data_dir / "forecast.parquet"
-        if fp_fc.exists():
-            try:
-                df_fc = load_data_cached(
-                    str(fp_fc),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp_fc),
-                )
-                if not _valid_df(df_fc):
-                    st.info(_("Forecast data not available or empty"))
-                    return
+        display_data = st.session_state.get("display_data", {})
+        df_fc = display_data.get("forecast")
+        df_actual = display_data.get("demand_series")
+        if isinstance(df_fc, pd.DataFrame):
+            if not _valid_df(df_fc):
+                st.info(_("Forecast data not available or empty"))
+                return
 
-                try:
-                    fig = go.Figure()
-                    if "ds" in df_fc and "yhat" in df_fc:
+            try:
+                fig = go.Figure()
+                if "ds" in df_fc and "yhat" in df_fc:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df_fc["ds"],
+                            y=df_fc["yhat"],
+                            mode="lines+markers",
+                            name=_("Demand Forecast (yhat)"),
+                        )
+                    )
+                if isinstance(df_actual, pd.DataFrame):
+                    if (
+                        _valid_df(df_actual)
+                        and "ds" in df_actual
+                        and "y" in df_actual
+                    ):
                         fig.add_trace(
                             go.Scatter(
-                                x=df_fc["ds"],
-                                y=df_fc["yhat"],
-                                mode="lines+markers",
-                                name=_("Demand Forecast (yhat)"),
+                                x=df_actual["ds"],
+                                y=df_actual["y"],
+                                mode="lines",
+                                name=_("Actual (y)"),
+                                line=dict(dash="dash"),
                             )
                         )
-                    fp_demand = data_dir / "demand_series.csv"
-                    if fp_demand.exists():
-                        df_actual = pd.read_csv(fp_demand, parse_dates=["ds"])
-                        if (
-                            _valid_df(df_actual)
-                            and "ds" in df_actual
-                            and "y" in df_actual
-                        ):
-                            fig.add_trace(
-                                go.Scatter(
-                                    x=df_actual["ds"],
-                                    y=df_actual["y"],
-                                    mode="lines",
-                                    name=_("Actual (y)"),
-                                    line=dict(dash="dash"),
-                                )
-                            )
-                    fig.update_layout(
-                        title=_("Demand Forecast vs Actual"),
-                        xaxis_title=_("Date"),
-                        yaxis_title=_("Demand"),
-                    )
-                    st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
-                    with st.expander(_("Display forecast data")):
-                        st.dataframe(df_fc, use_container_width=True, hide_index=True)
-                except AttributeError as e:
-                    log_and_display_error("Invalid data format in forecast.parquet", e)
+                fig.update_layout(
+                    title=_("Demand Forecast vs Actual"),
+                    xaxis_title=_("Date"),
+                    yaxis_title=_("Demand"),
+                )
+                st.plotly_chart(fig, use_container_width=True, key="forecast_chart")
+                with st.expander(_("Display forecast data")):
+                    st.dataframe(df_fc, use_container_width=True, hide_index=True)
+            except AttributeError as e:
+                log_and_display_error("Invalid data format in forecast.parquet", e)
             except Exception as e:
                 log_and_display_error("forecast.parquet 表示エラー", e)
         else:
@@ -3073,58 +3081,53 @@ def display_forecast_tab(tab_container, data_dir):
 def display_fairness_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Fairness (Night Shift Ratio)"))
-        fp = data_dir / "fairness_after.parquet"
-        if fp.exists():
-            try:
-                df = load_data_cached(
-                    str(fp),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp),
-                )
-                if not _valid_df(df):
-                    st.info(_("Fairness data not available or empty"))
-                    return
+        display_data = st.session_state.get("display_data", {})
+        df = display_data.get("fairness_after")
+        if isinstance(df, pd.DataFrame):
+            if not _valid_df(df):
+                st.info(_("Fairness data not available or empty"))
+                return
 
-                try:
-                    rename_map = {
-                        "staff": _("Staff"),
-                        "night_ratio": _("Night Shift Ratio"),
-                    }
-                    if "fairness_score" in df.columns:
-                        rename_map["fairness_score"] = _("Fairness Score")
-                    display_df = df.rename(columns=rename_map)
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
-                    metric_col = (
-                        "fairness_score"
-                        if "fairness_score" in df.columns
-                        else "night_ratio"
+            try:
+                rename_map = {
+                    "staff": _("Staff"),
+                    "night_ratio": _("Night Shift Ratio"),
+                }
+                if "fairness_score" in df.columns:
+                    rename_map["fairness_score"] = _("Fairness Score")
+                display_df = df.rename(columns=rename_map)
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                metric_col = (
+                    "fairness_score"
+                    if "fairness_score" in df.columns
+                    else "night_ratio"
+                )
+                if "staff" in df and metric_col in df:
+                    fig_fair = px.bar(
+                        df,
+                        x="staff",
+                        y=metric_col,
+                        labels={
+                            "staff": _("Staff"),
+                            metric_col: _("Fairness Score")
+                            if metric_col == "fairness_score"
+                            else _("Night Shift Ratio"),
+                        },
+                        color_discrete_sequence=["#FF8C00"],
                     )
-                    if "staff" in df and metric_col in df:
-                        fig_fair = px.bar(
-                            df,
-                            x="staff",
-                            y=metric_col,
-                            labels={
-                                "staff": _("Staff"),
-                                metric_col: _("Fairness Score")
-                                if metric_col == "fairness_score"
-                                else _("Night Shift Ratio"),
-                            },
-                            color_discrete_sequence=["#FF8C00"],
-                        )
-                        st.plotly_chart(
-                            fig_fair, use_container_width=True, key="fairness_chart"
-                        )
-                        fig_hist = dashboard.fairness_histogram(df, metric=metric_col)
-                        st.plotly_chart(
-                            fig_hist,
-                            use_container_width=True,
-                            key="fairness_hist",
-                        )
-                except AttributeError as e:
-                    log_and_display_error(
-                        "Invalid data format in fairness_after.parquet", e
+                    st.plotly_chart(
+                        fig_fair, use_container_width=True, key="fairness_chart"
                     )
+                    fig_hist = dashboard.fairness_histogram(df, metric=metric_col)
+                    st.plotly_chart(
+                        fig_hist,
+                        use_container_width=True,
+                        key="fairness_hist",
+                    )
+            except AttributeError as e:
+                log_and_display_error(
+                    "Invalid data format in fairness_after.parquet", e
+                )
             except Exception as e:
                 log_and_display_error("fairness_after.parquet 表示エラー", e)
         else:
@@ -3134,18 +3137,14 @@ def display_fairness_tab(tab_container, data_dir):
 def display_cost_tab(tab_container, data_dir):
     with tab_container:
         st.subheader("人件費分析")
-        fp = data_dir / "daily_cost.parquet"
-        if fp.exists():
-            try:
-                df = load_data_cached(
-                    str(fp),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp),
-                )
-                if not _valid_df(df):
-                    st.info(_("Cost simulation data not available or empty"))
-                    return
+        display_data = st.session_state.get("display_data", {})
+        df = display_data.get("daily_cost")
+        if isinstance(df, pd.DataFrame):
+            if not _valid_df(df):
+                st.info(_("Cost simulation data not available or empty"))
+                return
 
+            try:
                 # --- ここからが追加・変更部分 ---
                 long_df = st.session_state.get("long_df")
 
@@ -3266,53 +3265,38 @@ def display_cost_tab(tab_container, data_dir):
 def display_hireplan_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Hiring Plan (Needed FTE)"))
-        fp = data_dir / "hire_plan.parquet"
-        if fp.exists():
-            try:
-                df_plan = load_data_cached(
-                    str(fp),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp),
+        display_data = st.session_state.get("display_data", {})
+        df_plan = display_data.get("hire_plan")
+        if isinstance(df_plan, pd.DataFrame):
+            if not _valid_df(df_plan):
+                st.info(_("Hiring plan data is empty"))
+            else:
+                display_plan_df = df_plan.rename(
+                    columns={"role": _("Role"), "hire_fte": _("hire_fte")}
                 )
-                if not _valid_df(df_plan):
-                    st.info(_("Hiring plan data is empty"))
-                else:
-                    display_plan_df = df_plan.rename(
-                        columns={"role": _("Role"), "hire_fte": _("hire_fte")}
+                st.dataframe(
+                    display_plan_df, use_container_width=True, hide_index=True
+                )
+                if "role" in df_plan and "hire_fte" in df_plan:
+                    fig_plan = px.bar(
+                        df_plan,
+                        x="role",
+                        y="hire_fte",
+                        labels={"role": _("Role"), "hire_fte": _("hire_fte")},
                     )
-                    st.dataframe(
-                        display_plan_df, use_container_width=True, hide_index=True
+                    st.plotly_chart(
+                        fig_plan, use_container_width=True, key="hireplan_chart"
                     )
-                    if "role" in df_plan and "hire_fte" in df_plan:
-                        fig_plan = px.bar(
-                            df_plan,
-                            x="role",
-                            y="hire_fte",
-                            labels={"role": _("Role"), "hire_fte": _("hire_fte")},
-                        )
-                        st.plotly_chart(
-                            fig_plan, use_container_width=True, key="hireplan_chart"
-                        )
-            except Exception as e:
-                log_and_display_error("hire_plan.parquet 表示エラー", e)
         else:
             st.info(_("Hiring Plan") + " (hire_plan.parquet) " + _("が見つかりません。"))
 
         # --- 最適採用計画のセクションをここに追加 ---
         st.divider()
         st.subheader("最適採用計画")
-        fp_optimal = data_dir / "optimal_hire_plan.parquet"
-        if fp_optimal.exists():
-            try:
-                df_optimal = load_data_cached(
-                    str(fp_optimal),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp_optimal),
-                )
-                st.info("分析の結果、以下の具体的な採用計画を推奨します。")
-                st.dataframe(df_optimal, use_container_width=True, hide_index=True)
-            except Exception as e:
-                log_and_display_error("最適採用計画ファイルの表示エラー", e)
+        df_optimal = display_data.get("optimal_hire_plan")
+        if isinstance(df_optimal, pd.DataFrame):
+            st.info("分析の結果、以下の具体的な採用計画を推奨します。")
+            st.dataframe(df_optimal, use_container_width=True, hide_index=True)
         else:
             st.info("最適採用計画の分析結果ファイルが見つかりません。")
 
