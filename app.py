@@ -583,6 +583,23 @@ if "app_initialized" not in st.session_state:
     st.session_state.out_dir_path_str = None
     st.session_state.current_step_for_progress = 0
 
+    # データ格納用の辞書を確実に初期化
+    st.session_state.display_data = {}
+    st.session_state.analysis_results = {}
+    st.session_state.analysis_status = {}
+    st.session_state.leave_analysis_results = {}
+
+    # パフォーマンス関連の初期化を確実に実行
+    if "heatmap_cache_key" not in st.session_state:
+        st.session_state.heatmap_cache_key = None
+
+    if "performance_mode" not in st.session_state:
+        st.session_state.performance_mode = "auto"
+
+    log.info(
+        "アプリケーションを初期化しました。全てのデータ格納用辞書を初期化。"
+    )
+
     today_val = datetime.date.today()
 
     # サイドバーのウィジェットのキーとデフォルト値をセッションステートに初期設定
@@ -592,15 +609,6 @@ if "app_initialized" not in st.session_state:
     st.session_state.candidate_sheet_list_for_ui = []
     st.session_state.shift_sheets_multiselect_widget = []
     st.session_state._force_update_multiselect_flag = False
-    
-    if "display_data" not in st.session_state:
-        st.session_state.display_data = {}
-    
-    if "heatmap_cache_key" not in st.session_state:
-        st.session_state.heatmap_cache_key = None
-    
-    if "performance_mode" not in st.session_state:
-        st.session_state.performance_mode = "auto"
 
 
     st.session_state.need_ref_start_date_widget = today_val - datetime.timedelta(
@@ -957,6 +965,22 @@ with st.sidebar:
             help="Need forecast モジュールで先読みする日数",
         )
 
+    st.markdown("---")
+    st.subheader("🚨 緊急対処")
+    if st.button("🔄 全データリセット", type="secondary"):
+        for key in list(st.session_state.keys()):
+            if key not in ["app_initialized"]:
+                del st.session_state[key]
+        try:
+            st.cache_data.clear()
+        except Exception:
+            pass
+        st.rerun()
+
+    if st.button("📊 display_data強制再読み込み", type="secondary"):
+        st.session_state.display_data = {}
+        st.rerun()
+
 # --- メインコンテンツエリア ---
 holiday_file_global_uploaded = st.file_uploader(
     _("Global holiday file (CSV or JSON)"),
@@ -1007,9 +1031,35 @@ if (
 
 # ─────────────────────────────  app.py  (Part 2 / 3)  ──────────────────────────
 if run_button_clicked:
+    # 完全なリセット処理
     st.session_state.analysis_done = False
     st.session_state.analysis_results = {}
     st.session_state.analysis_status = {}
+
+    # 表示用データも完全にクリア
+    st.session_state.display_data = {}
+
+    # 休暇分析結果もクリア
+    st.session_state.leave_analysis_results = {}
+
+    # その他の分析結果もクリア
+    st.session_state.rest_time_results = None
+    st.session_state.rest_time_monthly = None
+    st.session_state.work_pattern_results = None
+    st.session_state.work_pattern_monthly = None
+    st.session_state.attendance_results = None
+    st.session_state.combined_score_results = None
+    st.session_state.low_staff_load_results = None
+
+    # キャッシュクリア
+    try:
+        if hasattr(st, "cache_data"):
+            st.cache_data.clear()
+        log.info("キャッシュをクリアしました。")
+    except Exception as e:
+        log.warning(f"キャッシュクリアに失敗: {e}")
+
+    log.info("新しい分析を開始します。すべてのセッションデータをクリアしました。")
 
     holiday_dates_global_for_run = None
     holiday_dates_local_for_run = None
@@ -1896,54 +1946,67 @@ if run_button_clicked:
         }
 
 
-# 分析が完了していて、かつ表示用データがまだ読み込まれていない場合に一度だけ実行
-if st.session_state.get("analysis_done") and "display_data" not in st.session_state:
-    st.session_state.display_data = {}
+# 分析が完了している場合は常にdisplay_dataを更新
+if st.session_state.get("analysis_done"):
     out_dir_path = st.session_state.get("out_dir_path_str")
-    if not out_dir_path:
-        log.warning("分析結果ディレクトリが設定されていないため、表示用データの読み込みをスキップします。")
-    else:
+    if out_dir_path:
         out_dir = Path(out_dir_path)
-        log.info(f"表示用データの読み込みを開始します。ディレクトリ: {out_dir}")
+        if out_dir.exists():
+            log.info(f"表示用データの更新を開始します。ディレクトリ: {out_dir}")
 
-        # 表示に必要なすべてのファイルを定義
-        files_to_load = {
-            "heat_all": "heat_ALL.parquet",
-            "shortage_role": "shortage_role_summary.parquet",
-            "shortage_emp": "shortage_employment_summary.parquet",
-            "shortage_time": "shortage_time.parquet",
-            "excess_time": "excess_time.parquet",
-            "shortage_ratio": "shortage_ratio.parquet",
-            "excess_ratio": "excess_ratio.parquet",
-            "shortage_freq": "shortage_freq.parquet",
-            "excess_freq": "excess_freq.parquet",
-            "shortage_leave": "shortage_leave.parquet",
-            "fatigue_score": "fatigue_score.parquet",
-            "fairness_before": "fairness_before.parquet",
-            "fairness_after": "fairness_after.parquet",
-            "forecast": "forecast.parquet",
-            "hire_plan": "hire_plan.parquet",
-            "optimal_hire_plan": "optimal_hire_plan.parquet",
-            "cost_benefit": "cost_benefit.parquet",
-            "daily_cost": "daily_cost.parquet",
-            "staff_stats": "staff_stats.parquet",
-            "stats_alerts": "stats_alerts.parquet",
-            "demand_series": "demand_series.csv",
-        }
+            # 既存のdisplay_dataを完全にクリアして再構築
+            st.session_state.display_data = {}
 
-        for key, filename in files_to_load.items():
-            fp = out_dir / filename
-            if fp.exists():
-                try:
-                    if filename.endswith(".csv"):
-                        st.session_state.display_data[key] = pd.read_csv(fp)
-                    else:
-                        st.session_state.display_data[key] = pd.read_parquet(fp)
-                    log.info(
-                        f"'{filename}'を読み込み、st.session_state.display_data['{key}']に格納しました。"
-                    )
-                except Exception as e:
-                    log.warning(f"{filename} の読み込みに失敗しました: {e}")
+            # 表示に必要なすべてのファイルを定義
+            files_to_load = {
+                "heat_all": "heat_ALL.parquet",
+                "shortage_role": "shortage_role_summary.parquet",
+                "shortage_emp": "shortage_employment_summary.parquet",
+                "shortage_time": "shortage_time.parquet",
+                "excess_time": "excess_time.parquet",
+                "shortage_ratio": "shortage_ratio.parquet",
+                "excess_ratio": "excess_ratio.parquet",
+                "shortage_freq": "shortage_freq.parquet",
+                "excess_freq": "excess_freq.parquet",
+                "shortage_leave": "shortage_leave.parquet",
+                "fatigue_score": "fatigue_score.parquet",
+                "fairness_before": "fairness_before.parquet",
+                "fairness_after": "fairness_after.parquet",
+                "forecast": "forecast.parquet",
+                "hire_plan": "hire_plan.parquet",
+                "optimal_hire_plan": "optimal_hire_plan.parquet",
+                "cost_benefit": "cost_benefit.parquet",
+                "daily_cost": "daily_cost.parquet",
+                "staff_stats": "staff_stats.parquet",
+                "stats_alerts": "stats_alerts.parquet",
+                "demand_series": "demand_series.csv",
+            }
+
+            loaded_count = 0
+            for key, filename in files_to_load.items():
+                fp = out_dir / filename
+                if fp.exists():
+                    try:
+                        if filename.endswith(".csv"):
+                            st.session_state.display_data[key] = pd.read_csv(fp)
+                        else:
+                            st.session_state.display_data[key] = pd.read_parquet(fp)
+                        loaded_count += 1
+                        log.info(
+                            f"'{filename}'を読み込み、display_data['{key}']に格納しました。"
+                        )
+                    except Exception as e:
+                        log.warning(f"{filename} の読み込みに失敗しました: {e}")
+                else:
+                    log.debug(f"ファイルが存在しません: {fp}")
+
+            log.info(f"display_data更新完了: {loaded_count}個のファイルを読み込みました。")
+        else:
+            log.warning(f"出力ディレクトリが存在しません: {out_dir}")
+            st.warning(f"出力ディレクトリが見つかりません: {out_dir}")
+    else:
+        log.warning("出力ディレクトリパスが設定されていません。")
+        st.warning("分析結果のディレクトリパスが設定されていません。")
 
 # 完全修正版 - 休暇分析結果表示コード全体
 
@@ -3709,6 +3772,41 @@ def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
         else:
             st.markdown(_("Click button to generate report."))
 
+
+# Multi-file results display の直前に追加
+if st.session_state.get("analysis_done", False):
+    with st.expander("🔍 ダッシュボードデバッグ情報", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write("**セッションステート状況:**")
+            st.write(f"- analysis_done: {st.session_state.get('analysis_done', False)}")
+            st.write(
+                f"- out_dir_path_str: {st.session_state.get('out_dir_path_str', 'None')}"
+            )
+            st.write(
+                f"- analysis_results件数: {len(st.session_state.get('analysis_results', {}))}"
+            )
+            st.write(
+                f"- display_data件数: {len(st.session_state.get('display_data', {}))}"
+            )
+
+        with col2:
+            st.write("**利用可能なdisplay_dataキー:**")
+            display_keys = list(st.session_state.get("display_data", {}).keys())
+            if display_keys:
+                for key in display_keys:
+                    data = st.session_state.display_data[key]
+                    if hasattr(data, "shape"):
+                        st.write(f"- {key}: {data.shape}")
+                    else:
+                        st.write(f"- {key}: {type(data).__name__}")
+            else:
+                st.write("データが読み込まれていません")
+
+        if st.button("🔄 display_dataを強制更新"):
+            st.session_state.display_data = {}
+            st.rerun()
 
 # Multi-file results display
 if st.session_state.get("analysis_done", False) and st.session_state.analysis_results:
