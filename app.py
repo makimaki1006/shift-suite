@@ -1833,47 +1833,51 @@ st.session_state.analysis_done = True
 # 分析が完了していて、かつ表示用データがまだ読み込まれていない場合に一度だけ実行
 if st.session_state.get("analysis_done") and "display_data" not in st.session_state:
     st.session_state.display_data = {}
-    out_dir = Path(st.session_state.out_dir_path_str)
-    log.info(f"表示用データの読み込みを開始します。ディレクトリ: {out_dir}")
+    out_dir_path = st.session_state.get("out_dir_path_str")
+    if not out_dir_path:
+        log.warning("分析結果ディレクトリが設定されていないため、表示用データの読み込みをスキップします。")
+    else:
+        out_dir = Path(out_dir_path)
+        log.info(f"表示用データの読み込みを開始します。ディレクトリ: {out_dir}")
 
-    # 表示に必要なすべてのファイルを定義
-    files_to_load = {
-        "heat_all": "heat_ALL.parquet",
-        "shortage_role": "shortage_role_summary.parquet",
-        "shortage_emp": "shortage_employment_summary.parquet",
-        "shortage_time": "shortage_time.parquet",
-        "excess_time": "excess_time.parquet",
-        "shortage_ratio": "shortage_ratio.parquet",
-        "excess_ratio": "excess_ratio.parquet",
-        "shortage_freq": "shortage_freq.parquet",
-        "excess_freq": "excess_freq.parquet",
-        "shortage_leave": "shortage_leave.parquet",
-        "fatigue_score": "fatigue_score.parquet",
-        "fairness_before": "fairness_before.parquet",
-        "fairness_after": "fairness_after.parquet",
-        "forecast": "forecast.parquet",
-        "hire_plan": "hire_plan.parquet",
-        "optimal_hire_plan": "optimal_hire_plan.parquet",
-        "cost_benefit": "cost_benefit.parquet",
-        "daily_cost": "daily_cost.parquet",
-        "staff_stats": "staff_stats.parquet",
-        "stats_alerts": "stats_alerts.parquet",
-        "demand_series": "demand_series.csv",
-    }
+        # 表示に必要なすべてのファイルを定義
+        files_to_load = {
+            "heat_all": "heat_ALL.parquet",
+            "shortage_role": "shortage_role_summary.parquet",
+            "shortage_emp": "shortage_employment_summary.parquet",
+            "shortage_time": "shortage_time.parquet",
+            "excess_time": "excess_time.parquet",
+            "shortage_ratio": "shortage_ratio.parquet",
+            "excess_ratio": "excess_ratio.parquet",
+            "shortage_freq": "shortage_freq.parquet",
+            "excess_freq": "excess_freq.parquet",
+            "shortage_leave": "shortage_leave.parquet",
+            "fatigue_score": "fatigue_score.parquet",
+            "fairness_before": "fairness_before.parquet",
+            "fairness_after": "fairness_after.parquet",
+            "forecast": "forecast.parquet",
+            "hire_plan": "hire_plan.parquet",
+            "optimal_hire_plan": "optimal_hire_plan.parquet",
+            "cost_benefit": "cost_benefit.parquet",
+            "daily_cost": "daily_cost.parquet",
+            "staff_stats": "staff_stats.parquet",
+            "stats_alerts": "stats_alerts.parquet",
+            "demand_series": "demand_series.csv",
+        }
 
-    for key, filename in files_to_load.items():
-        fp = out_dir / filename
-        if fp.exists():
-            try:
-                if filename.endswith(".csv"):
-                    st.session_state.display_data[key] = pd.read_csv(fp)
-                else:
-                    st.session_state.display_data[key] = pd.read_parquet(fp)
-                log.info(
-                    f"'{filename}'を読み込み、st.session_state.display_data['{key}']に格納しました。"
-                )
-            except Exception as e:
-                log.warning(f"{filename} の読み込みに失敗しました: {e}")
+        for key, filename in files_to_load.items():
+            fp = out_dir / filename
+            if fp.exists():
+                try:
+                    if filename.endswith(".csv"):
+                        st.session_state.display_data[key] = pd.read_csv(fp)
+                    else:
+                        st.session_state.display_data[key] = pd.read_parquet(fp)
+                    log.info(
+                        f"'{filename}'を読み込み、st.session_state.display_data['{key}']に格納しました。"
+                    )
+                except Exception as e:
+                    log.warning(f"{filename} の読み込みに失敗しました: {e}")
 
 # 完全修正版 - 休暇分析結果表示コード全体
 
