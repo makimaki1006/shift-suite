@@ -1828,7 +1828,6 @@ if run_button_clicked:
             "low_staff_load_results": st.session_state.low_staff_load_results,
         }
 
-st.session_state.analysis_done = True
 
 # 分析が完了していて、かつ表示用データがまだ読み込まれていない場合に一度だけ実行
 if st.session_state.get("analysis_done") and "display_data" not in st.session_state:
