@@ -2171,10 +2171,6 @@ def display_heatmap_tab(tab_container, data_dir):
                     heat_key = f"heat_role_{safe_sheet(sel_item, for_path=True)}"
                 elif scope == "employment" and sel_item:
                     heat_key = f"heat_emp_{safe_sheet(sel_item, for_path=True)}"
-
-                st.info(f"🔍 デバッグ情報: scope={scope}, sel_item={sel_item}, heat_key={heat_key}")
-                st.info(f"📁 利用可能なキー: {list(heatmap_data.keys())}")
-
                 df_heat = heatmap_data.get(heat_key)
 
                 if isinstance(df_heat, pd.DataFrame) and not df_heat.empty:
