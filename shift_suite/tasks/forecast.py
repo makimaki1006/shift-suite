@@ -174,6 +174,9 @@ def build_demand_series(
             pivot = (
                 pivot.add_prefix("leave_").reset_index().rename(columns={"date": "ds"})
             )
+            # unify merge key dtype to avoid warnings
+            df["ds"] = pd.to_datetime(df["ds"])
+            pivot["ds"] = pd.to_datetime(pivot["ds"])
             df = df.merge(pivot, on="ds", how="left").fillna(0)
         except Exception as e:
             log.warning(f"[forecast] leave_csv load failed: {e}")
