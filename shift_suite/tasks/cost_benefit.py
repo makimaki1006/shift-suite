@@ -1,7 +1,7 @@
 """
 cost_benefit.py ── “採用 / 派遣 / 漏れ (罰金)” コストを試算するユーティリティ
 -------------------------------------------------------------------
-入力 : shortage_role.xlsx（不足 h）   hire_plan.xlsx（hire_need）
+入力 : shortage_role.xlsx（不足 h）   hire_plan.xlsx（hire_need または hire_fte）
 出力 : cost_benefit.xlsx（シナリオ別比較表）
 呼出 : analyze_cost_benefit(out_dir            = Path,
                             wage_direct        = 1500,
@@ -35,6 +35,7 @@ def analyze_cost_benefit(
     ----------
     out_dir : Path
         shortage_role.xlsx / hire_plan.xlsx が置かれている out フォルダ
+        hire_plan.parquet には hire_need あるいは hire_fte 列が必要
     wage_direct : int, default 1500
         正社員（常勤換算）1 h あたりの人件費
     wage_temp : int, default 2200
@@ -61,7 +62,12 @@ def analyze_cost_benefit(
     plan = pd.read_parquet(hire_fp)
 
     lack_h_total = lack["lack_h"].sum()
-    hire_need_total = plan["hire_need"].sum()
+    if "hire_need" in plan.columns:
+        hire_need_total = plan["hire_need"].sum()
+    elif "hire_fte" in plan.columns:
+        hire_need_total = plan["hire_fte"].sum()
+    else:
+        raise KeyError("hire_plan.parquet missing required column 'hire_need' or 'hire_fte'")
 
     # --- シナリオ試算 ----------------------------------------------------------
     scenarios = {}
