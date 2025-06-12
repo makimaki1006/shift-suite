@@ -650,6 +650,37 @@ def create_progress_indicator():
     return st.empty(), st.empty()
 
 
+@st.cache_data(show_spinner=False, ttl=3600)
+def generate_heatmap_figure(df_heat, mode, scope_info, max_display_cells=15000):
+    """Generate and cache heatmap figure."""
+    if not isinstance(df_heat, pd.DataFrame) or df_heat.empty:
+        return px.imshow(pd.DataFrame(), title=_("Data not available or empty"))
+
+    prepared_data = prepare_heatmap_display_data(df_heat, mode)
+
+    if prepared_data.shape[0] * prepared_data.shape[1] > max_display_cells:
+        display_df = optimize_large_heatmap_display(prepared_data, max_display_cells)
+        st.info("大きなデータセットのため、表示を最適化しています...")
+    else:
+        display_df = prepared_data
+
+    color_scale = "RdBu_r" if mode == "Ratio" else "Blues"
+    title = f"{scope_info} - {_('Heatmap') if mode != 'Ratio' else _('Ratio (staff ÷ need)')}"
+
+    fig = px.imshow(
+        display_df,
+        aspect="auto",
+        color_continuous_scale=color_scale,
+        title=title,
+        labels={"x": _("Date"), "y": _("Time"), "color": _(mode)},
+    )
+    fig.update_xaxes(
+        tickvals=list(range(len(display_df.columns))),
+        ticktext=[date_with_weekday(c) for c in display_df.columns],
+    )
+    return fig
+
+
 st.set_page_config(
     page_title="Shift-Suite", layout="wide", initial_sidebar_state="expanded"
 )
@@ -2122,21 +2153,22 @@ def display_heatmap_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Heatmap"))
 
+        heatmap_data = load_all_heatmap_files(data_dir)
         roles, employments = load_shortage_meta(data_dir)
+
         scope_opts = {"overall": _("Overall")}
         if roles:
             scope_opts["role"] = _("Role")
         if employments:
             scope_opts["employment"] = _("Employment")
 
-        # --- UIコントロールをフォームで囲む ---
+        # --- UIコントロール ---
         with st.form(key="heatmap_controls_form"):
             st.write("表示するヒートマップの範囲とモードを選択し、更新ボタンを押してください。")
+
             c1, c2 = st.columns(2)
             with c1:
-                scope_lbl = st.selectbox(
-                    "表示範囲", list(scope_opts.values()), key="heat_scope_form"
-                )
+                scope_lbl = st.selectbox("表示範囲", list(scope_opts.values()), key="heat_scope_form")
             scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
 
             sel_item = None
@@ -2144,9 +2176,7 @@ def display_heatmap_tab(tab_container, data_dir):
                 if scope == "role":
                     sel_item = st.selectbox(_("Role"), roles, key="heat_scope_role_form")
                 elif scope == "employment":
-                    sel_item = st.selectbox(
-                        _("Employment"), employments, key="heat_scope_emp_form"
-                    )
+                    sel_item = st.selectbox(_("Employment"), employments, key="heat_scope_emp_form")
 
             mode_opts = {"Raw": _("Raw Count"), "Ratio": _("Ratio (staff ÷ need)")}
             mode_lbl = st.radio(
@@ -2156,62 +2186,29 @@ def display_heatmap_tab(tab_container, data_dir):
                 key="dash_heat_mode_radio_form",
             )
 
-            # 更新ボタン
             submitted = st.form_submit_button("ヒートマップを更新")
 
-        # --- フォームが送信された後でのみ、データ読み込みとグラフ描画を実行 ---
+        # --- フォーム送信後にグラフを描画 ---
         if submitted:
-            with st.spinner("ヒートマップを生成中..."):
-                heatmap_data = load_all_heatmap_files(data_dir)
+            heat_key = None
+            scope_info_for_title = scope_lbl
+            if scope == "overall":
+                heat_key = "heat_all"
+            elif scope == "role" and sel_item:
+                heat_key = f"heat_role_{safe_sheet(sel_item, for_path=True)}"
+                scope_info_for_title += f" ({sel_item})"
+            elif scope == "employment" and sel_item:
+                heat_key = f"heat_emp_{safe_sheet(sel_item, for_path=True)}"
+                scope_info_for_title += f" ({sel_item})"
 
-                heat_key = None
-                if scope == "overall":
-                    heat_key = "heat_all"
-                elif scope == "role" and sel_item:
-                    heat_key = f"heat_role_{safe_sheet(sel_item, for_path=True)}"
-                elif scope == "employment" and sel_item:
-                    heat_key = f"heat_emp_{safe_sheet(sel_item, for_path=True)}"
+            df_heat = heatmap_data.get(heat_key)
+            mode = [k for k, v in mode_opts.items() if v == mode_lbl][0]
 
-                st.info(f"🔍 デバッグ情報: scope={scope}, sel_item={sel_item}, heat_key={heat_key}")
-                st.info(f"📁 利用可能なキー: {list(heatmap_data.keys())}")
-
-                df_heat = heatmap_data.get(heat_key)
-
-                if isinstance(df_heat, pd.DataFrame) and not df_heat.empty:
-                    progress_container, status_text = create_progress_indicator()
-                    
-                    with progress_container.container():
-                        progress_bar = st.progress(0)
-                        status_text.text("データを処理中...")
-                        progress_bar.progress(25)
-                        
-                        mode = [k for k, v in mode_opts.items() if v == mode_lbl][0]
-                        
-                        status_text.text("ヒートマップを準備中...")
-                        progress_bar.progress(50)
-                        
-                        disp_df_heat = get_optimized_display_data(df_heat, mode)
-                        
-                        progress_bar.progress(75)
-                        
-                        if disp_df_heat.shape[0] * disp_df_heat.shape[1] > 10000:
-                            st.info("大きなデータセットのため、表示を最適化しています...")
-                        
-                        st.write(
-                            f"表示中: {scope_lbl} {f'({sel_item})' if sel_item else ''} - {mode_lbl}"
-                        )
-                        
-                        color_scale = "RdBu_r" if mode == "Ratio" else "Blues"
-                        fig = px.imshow(disp_df_heat, aspect="auto", color_continuous_scale=color_scale)
-                        
-                        progress_bar.progress(100)
-                        status_text.text("完了")
-                        
-                    progress_container.empty()
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                else:
-                    st.warning(f"ヒートマップデータが見つかりません: {heat_key}")
+            if df_heat is not None and not df_heat.empty:
+                fig = generate_heatmap_figure(df_heat, mode, scope_info_for_title)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(f"ヒートマップデータが見つかりません: {heat_key}")
 
 
 def display_shortage_tab(tab_container, data_dir):
