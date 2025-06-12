@@ -548,6 +548,88 @@ def optimize_large_heatmap_display(df: pd.DataFrame, max_cells: int = 10000) -> 
     return df.iloc[::sample_step_rows, ::sample_step_cols]
 
 
+def load_all_heatmap_files(data_dir: Path) -> dict:
+    """Load all available heatmap parquet files dynamically."""
+    heatmap_data: dict[str, pd.DataFrame] = {}
+
+    base_files = {"heat_all": "heat_ALL.parquet"}
+
+    for key, filename in base_files.items():
+        fp = data_dir / filename
+        if fp.exists():
+            try:
+                heatmap_data[key] = pd.read_parquet(fp)
+                log.info("'%s'を読み込み、heatmap_data['%s']に格納しました。", filename, key)
+            except Exception as e:  # noqa: BLE001
+                log.warning("%s の読み込みに失敗しました: %s", filename, e)
+
+    for pattern in ["heat_role_*.parquet", "heat_emp_*.parquet"]:
+        for fp in data_dir.glob(pattern):
+            try:
+                if pattern.startswith("heat_role_"):
+                    key = f"heat_role_{fp.stem.replace('heat_role_', '')}"
+                else:
+                    key = f"heat_emp_{fp.stem.replace('heat_emp_', '')}"
+                heatmap_data[key] = pd.read_parquet(fp)
+                log.info("'%s'を読み込み、heatmap_data['%s']に格納しました。", fp.name, key)
+            except Exception as e:  # noqa: BLE001
+                log.warning("%s の読み込みに失敗しました: %s", fp.name, e)
+
+    return heatmap_data
+
+
+def update_display_data_with_heatmaps(out_dir: Path) -> None:
+    """Update ``display_data`` including dynamically loaded heatmap files."""
+    log.info(f"表示用データの更新を開始します。ディレクトリ: {out_dir}")
+
+    st.session_state.display_data = {}
+
+    files_to_load = {
+        "shortage_role": "shortage_role_summary.parquet",
+        "shortage_emp": "shortage_employment_summary.parquet",
+        "shortage_time": "shortage_time.parquet",
+        "excess_time": "excess_time.parquet",
+        "shortage_ratio": "shortage_ratio.parquet",
+        "excess_ratio": "excess_ratio.parquet",
+        "shortage_freq": "shortage_freq.parquet",
+        "excess_freq": "excess_freq.parquet",
+        "shortage_leave": "shortage_leave.parquet",
+        "fatigue_score": "fatigue_score.parquet",
+        "fairness_before": "fairness_before.parquet",
+        "fairness_after": "fairness_after.parquet",
+        "forecast": "forecast.parquet",
+        "hire_plan": "hire_plan.parquet",
+        "optimal_hire_plan": "optimal_hire_plan.parquet",
+        "cost_benefit": "cost_benefit.parquet",
+        "daily_cost": "daily_cost.parquet",
+        "staff_stats": "staff_stats.parquet",
+        "stats_alerts": "stats_alerts.parquet",
+        "demand_series": "demand_series.csv",
+    }
+
+    loaded_count = 0
+    for key, filename in files_to_load.items():
+        fp = out_dir / filename
+        if fp.exists():
+            try:
+                if filename.endswith(".csv"):
+                    st.session_state.display_data[key] = pd.read_csv(fp)
+                else:
+                    st.session_state.display_data[key] = pd.read_parquet(fp)
+                loaded_count += 1
+                log.info("'%s'を読み込み、display_data['%s']に格納しました。", filename, key)
+            except Exception as e:  # noqa: BLE001
+                log.warning("%s の読み込みに失敗しました: %s", filename, e)
+        else:
+            log.debug(f"ファイルが存在しません: {fp}")
+
+    heatmap_data = load_all_heatmap_files(out_dir)
+    st.session_state.display_data.update(heatmap_data)
+    loaded_count += len(heatmap_data)
+
+    log.info(f"display_data更新完了: {loaded_count}個のファイルを読み込みました。")
+
+
 @st.cache_data(show_spinner=False, ttl=900)
 def get_optimized_display_data(df_heat: pd.DataFrame, mode: str, max_display_cells: int = 15000) -> pd.DataFrame:
     """Get optimized display data with intelligent sampling for large datasets."""
@@ -1952,55 +2034,7 @@ if st.session_state.get("analysis_done"):
     if out_dir_path:
         out_dir = Path(out_dir_path)
         if out_dir.exists():
-            log.info(f"表示用データの更新を開始します。ディレクトリ: {out_dir}")
-
-            # 既存のdisplay_dataを完全にクリアして再構築
-            st.session_state.display_data = {}
-
-            # 表示に必要なすべてのファイルを定義
-            files_to_load = {
-                "heat_all": "heat_ALL.parquet",
-                "shortage_role": "shortage_role_summary.parquet",
-                "shortage_emp": "shortage_employment_summary.parquet",
-                "shortage_time": "shortage_time.parquet",
-                "excess_time": "excess_time.parquet",
-                "shortage_ratio": "shortage_ratio.parquet",
-                "excess_ratio": "excess_ratio.parquet",
-                "shortage_freq": "shortage_freq.parquet",
-                "excess_freq": "excess_freq.parquet",
-                "shortage_leave": "shortage_leave.parquet",
-                "fatigue_score": "fatigue_score.parquet",
-                "fairness_before": "fairness_before.parquet",
-                "fairness_after": "fairness_after.parquet",
-                "forecast": "forecast.parquet",
-                "hire_plan": "hire_plan.parquet",
-                "optimal_hire_plan": "optimal_hire_plan.parquet",
-                "cost_benefit": "cost_benefit.parquet",
-                "daily_cost": "daily_cost.parquet",
-                "staff_stats": "staff_stats.parquet",
-                "stats_alerts": "stats_alerts.parquet",
-                "demand_series": "demand_series.csv",
-            }
-
-            loaded_count = 0
-            for key, filename in files_to_load.items():
-                fp = out_dir / filename
-                if fp.exists():
-                    try:
-                        if filename.endswith(".csv"):
-                            st.session_state.display_data[key] = pd.read_csv(fp)
-                        else:
-                            st.session_state.display_data[key] = pd.read_parquet(fp)
-                        loaded_count += 1
-                        log.info(
-                            f"'{filename}'を読み込み、display_data['{key}']に格納しました。"
-                        )
-                    except Exception as e:
-                        log.warning(f"{filename} の読み込みに失敗しました: {e}")
-                else:
-                    log.debug(f"ファイルが存在しません: {fp}")
-
-            log.info(f"display_data更新完了: {loaded_count}個のファイルを読み込みました。")
+            update_display_data_with_heatmaps(out_dir)
         else:
             log.warning(f"出力ディレクトリが存在しません: {out_dir}")
             st.warning(f"出力ディレクトリが見つかりません: {out_dir}")
@@ -2128,14 +2162,20 @@ def display_heatmap_tab(tab_container, data_dir):
         # --- フォームが送信された後でのみ、データ読み込みとグラフ描画を実行 ---
         if submitted:
             with st.spinner("ヒートマップを生成中..."):
-                file_prefix_map = {
-                    "overall": "ALL",
-                    "role": f"role_{safe_sheet(sel_item, for_path=True)}",
-                    "employment": f"emp_{safe_sheet(sel_item, for_path=True)}",
-                }
-                heat_key = f"heat_{file_prefix_map.get(scope)}"
-                display_data = st.session_state.get("display_data", {})
-                df_heat = display_data.get(heat_key)
+                heatmap_data = load_all_heatmap_files(data_dir)
+
+                heat_key = None
+                if scope == "overall":
+                    heat_key = "heat_all"
+                elif scope == "role" and sel_item:
+                    heat_key = f"heat_role_{safe_sheet(sel_item, for_path=True)}"
+                elif scope == "employment" and sel_item:
+                    heat_key = f"heat_emp_{safe_sheet(sel_item, for_path=True)}"
+
+                st.info(f"🔍 デバッグ情報: scope={scope}, sel_item={sel_item}, heat_key={heat_key}")
+                st.info(f"📁 利用可能なキー: {list(heatmap_data.keys())}")
+
+                df_heat = heatmap_data.get(heat_key)
 
                 if isinstance(df_heat, pd.DataFrame) and not df_heat.empty:
                     progress_container, status_text = create_progress_indicator()
