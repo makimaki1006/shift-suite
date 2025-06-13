@@ -227,8 +227,9 @@ def create_heatmap_tab() -> html.Div:
                 html.Label("職種"),
                 dcc.Dropdown(
                     id='heatmap-role-filter',
-                    options=[{'label': r, 'value': r} for r in roles],
-                    value=None,
+                    options=[{'label': '全体', 'value': 'ALL'}]
+                    + [{'label': r, 'value': r} for r in roles],
+                    value='ALL',
                     placeholder="職種で絞り込み",
                 ),
             ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
@@ -236,8 +237,9 @@ def create_heatmap_tab() -> html.Div:
                 html.Label("雇用形態"),
                 dcc.Dropdown(
                     id='heatmap-employment-filter',
-                    options=[{'label': e, 'value': e} for e in employments],
-                    value=None,
+                    options=[{'label': '全体', 'value': 'ALL'}]
+                    + [{'label': e, 'value': e} for e in employments],
+                    value='ALL',
                     placeholder="雇用形態で絞り込み",
                 ),
             ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
@@ -439,6 +441,7 @@ def create_leave_analysis_tab() -> html.Div:
             labels={'value': '人数', 'variable': '項目', 'date': '日付'},
             markers=True
         )
+        fig_balance.update_xaxes(tickformat="%m/%d(%a)")
         content.append(dcc.Graph(figure=fig_balance))
         content.append(dash_table.DataTable(
             data=df_staff_balance.to_dict('records'),
@@ -455,6 +458,7 @@ def create_leave_analysis_tab() -> html.Div:
             title='日別 休暇取得者数（内訳）',
             labels={'date': '日付', 'total_leave_days': '休暇取得者数', 'leave_type': '休暇タイプ'}
         )
+        fig_breakdown.update_xaxes(tickformat="%m/%d(%a)")
         content.append(dcc.Graph(figure=fig_breakdown))
 
     if not df_ratio_breakdown.empty:
@@ -500,6 +504,7 @@ def create_leave_analysis_tab() -> html.Div:
             xaxis_title='日付',
             yaxis_title='申請者数'
         )
+        fig_conc.update_xaxes(tickformat="%m/%d(%a)")
         content.append(dcc.Graph(figure=fig_conc))
 
     return html.Div(content)
@@ -518,6 +523,36 @@ def create_cost_analysis_tab() -> html.Div:
 
     df_cost = DATA_STORE.get('daily_cost', pd.DataFrame())
     if not df_cost.empty:
+        if not {'day_of_week', 'total_staff', 'role_breakdown', 'staff_list_summary'} <= set(df_cost.columns):
+            long_df = DATA_STORE.get('long_df', pd.DataFrame())
+            if not long_df.empty and 'ds' in long_df.columns:
+                details = (
+                    long_df[long_df.get('parsed_slots_count', 1) > 0]
+                    .assign(date=lambda x: pd.to_datetime(x['ds']).dt.normalize())
+                    .groupby('date')
+                    .agg(
+                        day_of_week=(
+                            'ds',
+                            lambda x: ['月', '火', '水', '木', '金', '土', '日'][x.iloc[0].weekday()],
+                        ),
+                        total_staff=('staff', 'nunique'),
+                        role_breakdown=(
+                            'role',
+                            lambda s: ', '.join(f"{r}:{c}" for r, c in s.value_counts().items()),
+                        ),
+                        staff_list=('staff', lambda s: ', '.join(sorted(s.unique()))),
+                    )
+                    .reset_index()
+                )
+
+                def summarize(names: str, limit: int = 5) -> str:
+                    lst = names.split(', ')
+                    if len(lst) > limit:
+                        return ', '.join(lst[:limit]) + f", ...他{len(lst) - limit}名"
+                    return names
+
+                details['staff_list_summary'] = details['staff_list'].apply(summarize)
+                df_cost = pd.merge(df_cost, details, on='date', how='left')
         # 日別コストグラフ
         fig_daily = px.bar(
             df_cost,
@@ -526,15 +561,19 @@ def create_cost_analysis_tab() -> html.Div:
             title='日別発生人件費',
             labels={'date': '日付', 'cost': 'コスト(円)'}
         )
+        fig_daily.update_xaxes(tickformat="%m/%d(%a)")
 
         # カスタムホバーテンプレートを追加
-        if all(col in df_cost.columns for col in ['day_of_week', 'total_staff', 'role_breakdown']):
+        custom_cols = [c for c in ['day_of_week', 'total_staff', 'role_breakdown', 'staff_list_summary'] if c in df_cost.columns]
+        if set(['day_of_week', 'total_staff', 'role_breakdown']).issubset(custom_cols):
             fig_daily.update_traces(
-                customdata=df_cost[['day_of_week', 'total_staff', 'role_breakdown']],
+                customdata=df_cost[custom_cols],
                 hovertemplate='<b>%{x|%Y-%m-%d} (%{customdata[0]})</b><br><br>' +
                              'コスト: %{y:,.0f}円<br>' +
                              '構成人数: %{customdata[1]}人<br>' +
-                             '職種一覧: %{customdata[2]}<extra></extra>'
+                             '職種一覧: %{customdata[2]}<br>' +
+                             ('スタッフ: %{customdata[3]}' if 'staff_list_summary' in custom_cols else '') +
+                             '<extra></extra>'
             )
 
         content.append(dcc.Graph(figure=fig_daily))
@@ -552,6 +591,7 @@ def create_cost_analysis_tab() -> html.Div:
                 labels={'date': '日付', 'cumulative_cost': '累計人件費(円)'},
                 markers=True
             )
+            fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
             content.append(dcc.Graph(figure=fig_cumulative))
 
     return html.Div(content)
@@ -917,7 +957,8 @@ def process_upload(contents, filename):
             'daily_cost.parquet',
             'forecast.parquet',
             'cost_benefit.parquet',
-            'work_patterns.parquet'
+            'work_patterns.parquet',
+            'long_df.parquet'
         ]
 
         for file in parquet_files:
@@ -1112,9 +1153,9 @@ def update_heatmap_content(selected_role, selected_employment, mode):
     """ヒートマップコンテンツを更新"""
     # データキーを決定 (単一フィルタのみ対応)
     heat_key = 'heat_ALL'
-    if selected_role:
+    if selected_role and selected_role != 'ALL':
         heat_key = f'heat_{safe_filename(selected_role)}'
-    elif selected_employment:
+    elif selected_employment and selected_employment != 'ALL':
         heat_key = f'heat_emp_{safe_filename(selected_employment)}'
 
     df_heat = DATA_STORE.get(heat_key)
@@ -1134,7 +1175,7 @@ def update_heatmap_content(selected_role, selected_employment, mode):
         display_df = df_heat[date_cols] if date_cols else pd.DataFrame()
         title_scope = selected_role or selected_employment or "全体"
         title = f"人員配置ヒートマップ - {title_scope}"
-        color_scale = 'Blues'
+        color_scale = px.colors.sequential.Viridis
 
     if display_df.empty:
         return html.Div("表示可能なデータがありません")
@@ -1171,8 +1212,8 @@ def update_shortage_heatmap_detail(scope):
             html.Label("職種選択"),
             dcc.Dropdown(
                 id={'type': 'shortage-detail', 'index': 'role'},
-                options=[{'label': r, 'value': r} for r in roles],
-                value=roles[0] if roles else None,
+                options=[{'label': '全体', 'value': 'ALL'}] + [{'label': r, 'value': r} for r in roles],
+                value='ALL',
                 style={'width': '200px'}
             )
         ], style={'marginBottom': '10px'})
@@ -1182,8 +1223,8 @@ def update_shortage_heatmap_detail(scope):
             html.Label("雇用形態選択"),
             dcc.Dropdown(
                 id={'type': 'shortage-detail', 'index': 'employment'},
-                options=[{'label': e, 'value': e} for e in employments],
-                value=employments[0] if employments else None,
+                options=[{'label': '全体', 'value': 'ALL'}] + [{'label': e, 'value': e} for e in employments],
+                value='ALL',
                 style={'width': '200px'}
             )
         ], style={'marginBottom': '10px'})
@@ -1202,9 +1243,9 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         heat_key = 'heat_ALL'
     else:
         detail = detail_values[0] if detail_values else None
-        if not detail:
-            return html.Div("詳細を選択してください")
-        if scope == 'role':
+        if not detail or detail == 'ALL':
+            heat_key = 'heat_ALL'
+        elif scope == 'role':
             heat_key = f'heat_{safe_filename(detail)}'
         else:
             heat_key = f'heat_emp_{safe_filename(detail)}'
@@ -1268,8 +1309,8 @@ def update_opt_detail(scope):
             html.Label("職種選択"),
             dcc.Dropdown(
                 id={'type': 'opt-detail', 'index': 'role'},
-                options=[{'label': r, 'value': r} for r in roles],
-                value=roles[0] if roles else None,
+                options=[{'label': '全体', 'value': 'ALL'}] + [{'label': r, 'value': r} for r in roles],
+                value='ALL',
                 style={'width': '300px', 'marginBottom': '20px'}
             )
         ])
@@ -1279,8 +1320,8 @@ def update_opt_detail(scope):
             html.Label("雇用形態選択"),
             dcc.Dropdown(
                 id={'type': 'opt-detail', 'index': 'employment'},
-                options=[{'label': e, 'value': e} for e in employments],
-                value=employments[0] if employments else None,
+                options=[{'label': '全体', 'value': 'ALL'}] + [{'label': e, 'value': e} for e in employments],
+                value='ALL',
                 style={'width': '300px', 'marginBottom': '20px'}
             )
         ])
@@ -1299,9 +1340,9 @@ def update_optimization_content(scope, detail_values):
         heat_key = 'heat_ALL'
     else:
         detail = detail_values[0] if detail_values else None
-        if not detail:
-            return html.Div("詳細を選択してください")
-        if scope == 'role':
+        if not detail or detail == 'ALL':
+            heat_key = 'heat_ALL'
+        elif scope == 'role':
             heat_key = f'heat_{safe_filename(detail)}'
         else:
             heat_key = f'heat_emp_{safe_filename(detail)}'
