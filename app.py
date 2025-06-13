@@ -3513,6 +3513,7 @@ def display_cost_tab(tab_container, data_dir):
                     title="日別発生人件費",
                     custom_data=final_custom_data if final_custom_data else None,
                 )
+                fig_cost.update_xaxes(tickformat="%m/%d(%a)")
 
                 if final_custom_data:
                     fig_cost.update_traces(hovertemplate=hovertemplate)
@@ -3538,6 +3539,7 @@ def display_cost_tab(tab_container, data_dir):
                         labels={"date": "日付", "cumulative_cost": "累計人件費 (円)"},
                         markers=True,
                     )
+                    fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
                     fig_cumulative.update_layout(
                         yaxis_title="累計人件費 (円)",
                         xaxis_title="日付",
@@ -3673,6 +3675,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 },
                 title="スタッフバランスの推移",
             )
+            fig_bal.update_xaxes(tickformat="%m/%d(%a)")
             st.plotly_chart(
                 fig_bal, use_container_width=True, key="staff_balance_chart"
             )
@@ -3697,6 +3700,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                     },
                     title="日別 休暇取得者数（内訳）",
                 )
+                fig_breakdown.update_xaxes(tickformat="%m/%d(%a)")
                 st.plotly_chart(
                     fig_breakdown,
                     use_container_width=True,
@@ -3758,6 +3762,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 },
                 title="休暇タイプ別 取得者数の推移",
             )
+            fig_type.update_xaxes(tickformat="%m/%d(%a)")
             st.plotly_chart(
                 fig_type, use_container_width=True, key="leave_type_trend_chart"
             )
@@ -3811,6 +3816,7 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
                 xaxis_title="日付",
                 yaxis_title="申請者数",
             )
+            fig_conc.update_xaxes(tickformat="%m/%d(%a)")
 
             if plotly_events:
                 selected_points = plotly_events(
