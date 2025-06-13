@@ -442,28 +442,33 @@ def build_heatmap(
     pivot_data_all_actual_staff = pd.DataFrame(index=time_index_labels)
     if not df_for_heatmap_actuals.empty:
         if len(df_for_heatmap_actuals) > 50000:
-            log.info("[heatmap.build_heatmap] Large dataset detected, using chunked processing")
+            log.info(
+                "[heatmap.build_heatmap] Large dataset detected, using chunked processing"
+            )
             chunk_size = 10000
             pivot_chunks = []
-            
+
             for i in range(0, len(df_for_heatmap_actuals), chunk_size):
-                chunk = df_for_heatmap_actuals.iloc[i:i+chunk_size]
-                chunk_pivot = (
-                    chunk.drop_duplicates(subset=["date_lbl", "time", staff_col_name])
-                    .pivot_table(
-                        index="time",
-                        columns="date_lbl", 
-                        values=staff_col_name,
-                        aggfunc="nunique",
-                        fill_value=0,
-                    )
+                chunk = df_for_heatmap_actuals.iloc[i : i + chunk_size]
+                chunk_pivot = chunk.drop_duplicates(
+                    subset=["date_lbl", "time", staff_col_name]
+                ).pivot_table(
+                    index="time",
+                    columns="date_lbl",
+                    values=staff_col_name,
+                    aggfunc="nunique",
+                    fill_value=0,
                 )
                 pivot_chunks.append(chunk_pivot)
-            
+
             if pivot_chunks:
                 pivot_data_all_actual_staff = pd.concat(pivot_chunks, axis=1)
-                pivot_data_all_actual_staff = pivot_data_all_actual_staff.groupby(level=0, axis=1).sum()
-                pivot_data_all_actual_staff = pivot_data_all_actual_staff.reindex(index=time_index_labels, fill_value=0)
+                pivot_data_all_actual_staff = pivot_data_all_actual_staff.groupby(
+                    level=0, axis=1
+                ).sum()
+                pivot_data_all_actual_staff = pivot_data_all_actual_staff.reindex(
+                    index=time_index_labels, fill_value=0
+                )
         else:
             pivot_data_all_actual_staff = (
                 df_for_heatmap_actuals.drop_duplicates(
@@ -586,7 +591,9 @@ def build_heatmap(
     fp_all_path = out_dir_path / "heat_ALL.parquet"
     try:
         pivot_to_excel_all.to_parquet(fp_all_path)
-        log.info("[heatmap.build_heatmap] 全体ヒートマップ (heat_ALL.parquet) 作成完了。")
+        log.info(
+            "[heatmap.build_heatmap] 全体ヒートマップ (heat_ALL.parquet) 作成完了。"
+        )
     except Exception as e_write_all:
         log.error(
             f"[heatmap.build_heatmap] heat_ALL.parquet 作成エラー: {e_write_all}",
@@ -760,7 +767,9 @@ def build_heatmap(
             ws = wb.active
             data_columns = pivot_to_excel_role.columns.drop(SUMMARY5, errors="ignore")
             _apply_conditional_formatting_to_worksheet(ws, data_columns)
-            _apply_holiday_column_styling(ws, data_columns, holidays_set, _parse_as_date)
+            _apply_holiday_column_styling(
+                ws, data_columns, holidays_set, _parse_as_date
+            )
             wb.save(fp_role_xlsx)
         except Exception as e:
             log.error(f"{fp_role_xlsx.name} への書式設定中にエラー: {e}", exc_info=True)
@@ -884,7 +893,9 @@ def build_heatmap(
             ws = wb.active
             data_columns = pivot_to_excel_emp.columns.drop(SUMMARY5, errors="ignore")
             _apply_conditional_formatting_to_worksheet(ws, data_columns)
-            _apply_holiday_column_styling(ws, data_columns, holidays_set, _parse_as_date)
+            _apply_holiday_column_styling(
+                ws, data_columns, holidays_set, _parse_as_date
+            )
             wb.save(fp_emp_xlsx)
         except Exception as e:
             log.error(f"{fp_emp_xlsx.name} への書式設定中にエラー: {e}", exc_info=True)

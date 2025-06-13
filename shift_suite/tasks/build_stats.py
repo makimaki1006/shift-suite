@@ -96,7 +96,9 @@ def build_stats(
             f"heat_ALL.parquet の読み込み中にエラーが発生しました: {e}", exc_info=True
         )
         try:
-            pd.DataFrame({"error": [f"Error reading heat_ALL.parquet: {e}"]}).to_parquet(
+            pd.DataFrame(
+                {"error": [f"Error reading heat_ALL.parquet: {e}"]}
+            ).to_parquet(
                 stats_fp,
                 index=False,
             )

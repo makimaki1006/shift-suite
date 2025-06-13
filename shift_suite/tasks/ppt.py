@@ -78,7 +78,9 @@ def build_ppt(out_dir: Path) -> Path:
         subtitle = slide.placeholders[1]
         subtitle.text = str(out_dir)
 
-    shortage_fp = out_dir / "shortage_role_summary.parquet"  # ファイル名を .parquet に変更
+    shortage_fp = (
+        out_dir / "shortage_role_summary.parquet"
+    )  # ファイル名を .parquet に変更
     cost_fp = out_dir / "cost_benefit.parquet"  # ファイル名を .parquet に変更
 
     if shortage_fp.exists():

@@ -511,12 +511,16 @@ def load_data_cached(
 
 
 @st.cache_data(show_spinner=False, ttl=1800)
-def compute_heatmap_ratio_cached(heat_df: pd.DataFrame, need_series: pd.Series) -> pd.DataFrame:
+def compute_heatmap_ratio_cached(
+    heat_df: pd.DataFrame, need_series: pd.Series
+) -> pd.DataFrame:
     """Cache expensive ratio calculations for heatmaps."""
     if heat_df.empty or need_series.empty:
         return pd.DataFrame()
-    
-    clean_df = heat_df.drop(columns=[c for c in SUMMARY5_CONST if c in heat_df.columns], errors="ignore")
+
+    clean_df = heat_df.drop(
+        columns=[c for c in SUMMARY5_CONST if c in heat_df.columns], errors="ignore"
+    )
     need_series_safe = need_series.replace(0, np.nan)
     return clean_df.div(need_series_safe, axis=0).clip(lower=0, upper=2)
 
@@ -526,7 +530,7 @@ def prepare_heatmap_display_data(df_heat: pd.DataFrame, mode: str) -> pd.DataFra
     """Cache heatmap display data preparation."""
     if df_heat.empty:
         return pd.DataFrame()
-    
+
     if mode == "Ratio":
         need_series = df_heat.get("need", pd.Series())
         return compute_heatmap_ratio_cached(df_heat, need_series)
@@ -538,11 +542,13 @@ def prepare_heatmap_display_data(df_heat: pd.DataFrame, mode: str) -> pd.DataFra
 
 
 @st.cache_data(show_spinner=False, ttl=1800)
-def optimize_large_heatmap_display(df: pd.DataFrame, max_cells: int = 10000) -> pd.DataFrame:
+def optimize_large_heatmap_display(
+    df: pd.DataFrame, max_cells: int = 10000
+) -> pd.DataFrame:
     """Optimize large heatmap display by intelligent sampling."""
     if df.empty or df.shape[0] * df.shape[1] <= max_cells:
         return df
-    
+
     sample_step_rows = max(1, len(df) // 100)
     sample_step_cols = max(1, len(df.columns) // 50)
     return df.iloc[::sample_step_rows, ::sample_step_cols]
@@ -559,7 +565,9 @@ def load_all_heatmap_files(data_dir: Path) -> dict:
         if fp.exists():
             try:
                 heatmap_data[key] = pd.read_parquet(fp)
-                log.info("'%s'を読み込み、heatmap_data['%s']に格納しました。", filename, key)
+                log.info(
+                    "'%s'を読み込み、heatmap_data['%s']に格納しました。", filename, key
+                )
             except Exception as e:  # noqa: BLE001
                 log.warning("%s の読み込みに失敗しました: %s", filename, e)
 
@@ -571,7 +579,9 @@ def load_all_heatmap_files(data_dir: Path) -> dict:
                 else:
                     key = f"heat_emp_{fp.stem.replace('heat_emp_', '')}"
                 heatmap_data[key] = pd.read_parquet(fp)
-                log.info("'%s'を読み込み、heatmap_data['%s']に格納しました。", fp.name, key)
+                log.info(
+                    "'%s'を読み込み、heatmap_data['%s']に格納しました。", fp.name, key
+                )
             except Exception as e:  # noqa: BLE001
                 log.warning("%s の読み込みに失敗しました: %s", fp.name, e)
 
@@ -617,7 +627,9 @@ def update_display_data_with_heatmaps(out_dir: Path) -> None:
                 else:
                     st.session_state.display_data[key] = pd.read_parquet(fp)
                 loaded_count += 1
-                log.info("'%s'を読み込み、display_data['%s']に格納しました。", filename, key)
+                log.info(
+                    "'%s'を読み込み、display_data['%s']に格納しました。", filename, key
+                )
             except Exception as e:  # noqa: BLE001
                 log.warning("%s の読み込みに失敗しました: %s", filename, e)
         else:
@@ -631,16 +643,18 @@ def update_display_data_with_heatmaps(out_dir: Path) -> None:
 
 
 @st.cache_data(show_spinner=False, ttl=900)
-def get_optimized_display_data(df_heat: pd.DataFrame, mode: str, max_display_cells: int = 15000) -> pd.DataFrame:
+def get_optimized_display_data(
+    df_heat: pd.DataFrame, mode: str, max_display_cells: int = 15000
+) -> pd.DataFrame:
     """Get optimized display data with intelligent sampling for large datasets."""
     if df_heat.empty:
         return pd.DataFrame()
-    
+
     prepared_data = prepare_heatmap_display_data(df_heat, mode)
-    
+
     if prepared_data.shape[0] * prepared_data.shape[1] > max_display_cells:
         return optimize_large_heatmap_display(prepared_data, max_display_cells)
-    
+
     return prepared_data
 
 
@@ -709,9 +723,7 @@ if "app_initialized" not in st.session_state:
     if "performance_mode" not in st.session_state:
         st.session_state.performance_mode = "auto"
 
-    log.info(
-        "アプリケーションを初期化しました。全てのデータ格納用辞書を初期化。"
-    )
+    log.info("アプリケーションを初期化しました。全てのデータ格納用辞書を初期化。")
 
     today_val = datetime.date.today()
 
@@ -722,7 +734,6 @@ if "app_initialized" not in st.session_state:
     st.session_state.candidate_sheet_list_for_ui = []
     st.session_state.shift_sheets_multiselect_widget = []
     st.session_state._force_update_multiselect_flag = False
-
 
     st.session_state.need_ref_start_date_widget = today_val - datetime.timedelta(
         days=59
@@ -1368,9 +1379,7 @@ if run_button_clicked:
                 if _("基準乖離分析") in param_ext_opts and param_need_calc_method == _(
                     "人員配置基準に基づき設定する"
                 ):
-                    heat_all_df = pd.read_parquet(
-                        out_dir_exec / "heat_ALL.parquet"
-                    )
+                    heat_all_df = pd.read_parquet(out_dir_exec / "heat_ALL.parquet")
                     gap_results = analyze_standards_gap(heat_all_df, param_need_manual)
                     st.session_state.gap_analysis_results = gap_results
                     gap_results["gap_summary"].to_excel(
@@ -1751,8 +1760,12 @@ if run_button_clicked:
                             )
                         elif opt_module_name_exec_run == "Need forecast":
                             demand_csv_exec_run_fc = out_dir_exec / "demand_series.csv"
-                            forecast_xls_exec_run_fc = out_dir_exec / "forecast.parquet"  # 出力もparquetに
-                            heat_all_for_fc_exec_run_fc = out_dir_exec / "heat_ALL.parquet"  # 入力をparquetに
+                            forecast_xls_exec_run_fc = (
+                                out_dir_exec / "forecast.parquet"
+                            )  # 出力もparquetに
+                            heat_all_for_fc_exec_run_fc = (
+                                out_dir_exec / "heat_ALL.parquet"
+                            )  # 入力をparquetに
                             if not heat_all_for_fc_exec_run_fc.exists():
                                 st.warning(
                                     _("Need forecast")
@@ -2164,19 +2177,27 @@ def display_heatmap_tab(tab_container, data_dir):
 
         # --- UIコントロール ---
         with st.form(key="heatmap_controls_form"):
-            st.write("表示するヒートマップの範囲とモードを選択し、更新ボタンを押してください。")
+            st.write(
+                "表示するヒートマップの範囲とモードを選択し、更新ボタンを押してください。"
+            )
 
             c1, c2 = st.columns(2)
             with c1:
-                scope_lbl = st.selectbox("表示範囲", list(scope_opts.values()), key="heat_scope_form")
+                scope_lbl = st.selectbox(
+                    "表示範囲", list(scope_opts.values()), key="heat_scope_form"
+                )
             scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
 
             sel_item = None
             with c2:
                 if scope == "role":
-                    sel_item = st.selectbox(_("Role"), roles, key="heat_scope_role_form")
+                    sel_item = st.selectbox(
+                        _("Role"), roles, key="heat_scope_role_form"
+                    )
                 elif scope == "employment":
-                    sel_item = st.selectbox(_("Employment"), employments, key="heat_scope_emp_form")
+                    sel_item = st.selectbox(
+                        _("Employment"), employments, key="heat_scope_emp_form"
+                    )
 
             mode_opts = {"Raw": _("Raw Count"), "Ratio": _("Ratio (staff ÷ need)")}
             mode_lbl = st.radio(
@@ -2377,7 +2398,11 @@ def display_shortage_tab(tab_container, data_dir):
                                 df_month, use_container_width=True, hide_index=True
                             )
         else:
-            st.info(_("Shortage") + " (shortage_role_summary.parquet) " + _("が見つかりません。"))
+            st.info(
+                _("Shortage")
+                + " (shortage_role_summary.parquet) "
+                + _("が見つかりません。")
+            )
 
         fp_s_emp = data_dir / "shortage_employment_summary.parquet"
         if fp_s_emp.exists():
@@ -2502,10 +2527,14 @@ def display_shortage_tab(tab_container, data_dir):
                                 df_emp_month, use_container_width=True, hide_index=True
                             )
             except Exception as e:
-                log_and_display_error("shortage_employment_summary.parquet 表示エラー", e)
+                log_and_display_error(
+                    "shortage_employment_summary.parquet 表示エラー", e
+                )
         else:
             st.info(
-                _("Shortage") + " (shortage_employment_summary.parquet) " + _("が見つかりません。")
+                _("Shortage")
+                + " (shortage_employment_summary.parquet) "
+                + _("が見つかりません。")
             )
         st.markdown("---")
         fp_s_time = data_dir / "shortage_time.parquet"
@@ -2550,7 +2579,9 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("shortage_time.parquet 表示エラー", e)
         else:
-            st.info(_("Shortage") + " (shortage_time.parquet) " + _("が見つかりません。"))
+            st.info(
+                _("Shortage") + " (shortage_time.parquet) " + _("が見つかりません。")
+            )
 
         fp_e_time = data_dir / "excess_time.parquet"
         if fp_e_time.exists():
@@ -2620,14 +2651,18 @@ def display_shortage_tab(tab_container, data_dir):
         c1_short, c2_short, c3_short = st.columns(3)
         with c1_short:
             scope_lbl_s = st.selectbox(
-                "表示範囲", list(scope_opts_shortage.values()), key="shortage_heat_scope"
+                "表示範囲",
+                list(scope_opts_shortage.values()),
+                key="shortage_heat_scope",
             )
             scope_s = [k for k, v in scope_opts_shortage.items() if v == scope_lbl_s][0]
 
         sel_item_s = None
         with c2_short:
             if scope_s == "role":
-                sel_item_s = st.selectbox(_("Role"), roles, key="shortage_heat_scope_role")
+                sel_item_s = st.selectbox(
+                    _("Role"), roles, key="shortage_heat_scope_role"
+                )
             elif scope_s == "employment":
                 sel_item_s = st.selectbox(
                     _("Employment"), employments, key="shortage_heat_scope_emp"
@@ -2638,9 +2673,13 @@ def display_shortage_tab(tab_container, data_dir):
         if scope_s == "overall":
             heat_fp_s = data_dir / "heat_ALL.parquet"
         elif scope_s == "role" and sel_item_s:
-            heat_fp_s = data_dir / f"heat_role_{safe_sheet(sel_item_s, for_path=True)}.parquet"
+            heat_fp_s = (
+                data_dir / f"heat_role_{safe_sheet(sel_item_s, for_path=True)}.parquet"
+            )
         elif scope_s == "employment" and sel_item_s:
-            heat_fp_s = data_dir / f"heat_emp_{safe_sheet(sel_item_s, for_path=True)}.parquet"
+            heat_fp_s = (
+                data_dir / f"heat_emp_{safe_sheet(sel_item_s, for_path=True)}.parquet"
+            )
 
         if heat_fp_s and heat_fp_s.exists():
             role_df = load_data_cached(str(heat_fp_s), is_parquet=True)
@@ -2737,7 +2776,9 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("shortage_freq.parquet 表示エラー", e)
         else:
-            st.info(_("Shortage") + " (shortage_freq.parquet) " + _("が見つかりません。"))
+            st.info(
+                _("Shortage") + " (shortage_freq.parquet) " + _("が見つかりません。")
+            )
 
         fp_e_freq = data_dir / "excess_freq.parquet"
         if fp_e_freq.exists():
@@ -2801,7 +2842,9 @@ def display_shortage_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("shortage_leave.parquet 表示エラー", e)
         else:
-            st.info(_("Shortage") + " (shortage_leave.parquet) " + _("が見つかりません。"))
+            st.info(
+                _("Shortage") + " (shortage_leave.parquet) " + _("が見つかりません。")
+            )
 
         fp_cost = data_dir / "cost_benefit.parquet"
         if fp_cost.exists():
@@ -2845,9 +2888,7 @@ def display_shortage_tab(tab_container, data_dir):
                 if not df_alerts.empty:
                     st.markdown("---")
                     st.subheader(_("Alerts"))
-                    st.dataframe(
-                        df_alerts, use_container_width=True, hide_index=True
-                    )
+                    st.dataframe(df_alerts, use_container_width=True, hide_index=True)
             except Exception as e:
                 log_and_display_error("stats_alerts.parquet alerts表示エラー", e)
 
@@ -3056,7 +3097,9 @@ def display_optimization_tab(tab_container, data_dir):
                     file_mtime=_file_mtime(fp_heat),
                 )
         elif scope == "role" and sel_role:
-            fp_heat = data_dir / f"heat_role_{safe_sheet(sel_role, for_path=True)}.parquet"
+            fp_heat = (
+                data_dir / f"heat_role_{safe_sheet(sel_role, for_path=True)}.parquet"
+            )
             if fp_heat.exists():
                 base_heatmap_df = load_data_cached(
                     str(fp_heat),
@@ -3064,7 +3107,9 @@ def display_optimization_tab(tab_container, data_dir):
                     file_mtime=_file_mtime(fp_heat),
                 )
         elif scope == "employment" and sel_emp:
-            fp_heat = data_dir / f"heat_emp_{safe_sheet(sel_emp, for_path=True)}.parquet"
+            fp_heat = (
+                data_dir / f"heat_emp_{safe_sheet(sel_emp, for_path=True)}.parquet"
+            )
             if fp_heat.exists():
                 base_heatmap_df = load_data_cached(
                     str(fp_heat),
@@ -3208,13 +3253,13 @@ def display_fatigue_tab(tab_container, data_dir):
                         key="fatigue_hist",
                     )
             except AttributeError as e:
-                log_and_display_error(
-                    "Invalid data format in fatigue_score.parquet", e
-                )
+                log_and_display_error("Invalid data format in fatigue_score.parquet", e)
             except Exception as e:
                 log_and_display_error("fatigue_score.parquet 表示エラー", e)
         else:
-            st.info(_("Fatigue") + " (fatigue_score.parquet) " + _("が見つかりません。"))
+            st.info(
+                _("Fatigue") + " (fatigue_score.parquet) " + _("が見つかりません。")
+            )
 
 
 def display_forecast_tab(tab_container, data_dir):
@@ -3240,11 +3285,7 @@ def display_forecast_tab(tab_container, data_dir):
                         )
                     )
                 if isinstance(df_actual, pd.DataFrame):
-                    if (
-                        _valid_df(df_actual)
-                        and "ds" in df_actual
-                        and "y" in df_actual
-                    ):
+                    if _valid_df(df_actual) and "ds" in df_actual and "y" in df_actual:
                         fig.add_trace(
                             go.Scatter(
                                 x=df_actual["ds"],
@@ -3323,7 +3364,9 @@ def display_fairness_tab(tab_container, data_dir):
             except Exception as e:
                 log_and_display_error("fairness_after.parquet 表示エラー", e)
         else:
-            st.info(_("Fairness") + " (fairness_after.parquet) " + _("が見つかりません。"))
+            st.info(
+                _("Fairness") + " (fairness_after.parquet) " + _("が見つかりません。")
+            )
 
 
 def display_cost_tab(tab_container, data_dir):
@@ -3466,9 +3509,7 @@ def display_hireplan_tab(tab_container, data_dir):
                 display_plan_df = df_plan.rename(
                     columns={"role": _("Role"), "hire_fte": _("hire_fte")}
                 )
-                st.dataframe(
-                    display_plan_df, use_container_width=True, hide_index=True
-                )
+                st.dataframe(display_plan_df, use_container_width=True, hide_index=True)
                 if "role" in df_plan and "hire_fte" in df_plan:
                     fig_plan = px.bar(
                         df_plan,
@@ -3480,7 +3521,9 @@ def display_hireplan_tab(tab_container, data_dir):
                         fig_plan, use_container_width=True, key="hireplan_chart"
                     )
         else:
-            st.info(_("Hiring Plan") + " (hire_plan.parquet) " + _("が見つかりません。"))
+            st.info(
+                _("Hiring Plan") + " (hire_plan.parquet) " + _("が見つかりません。")
+            )
 
         # --- 最適採用計画のセクションをここに追加 ---
         st.divider()
@@ -3687,7 +3730,9 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             )
 
             focused_mask = conc_df.get("is_concentrated")
-            focused_df = conc_df[focused_mask] if focused_mask is not None else pd.DataFrame()
+            focused_df = (
+                conc_df[focused_mask] if focused_mask is not None else pd.DataFrame()
+            )
             if not focused_df.empty:
                 fig_conc.add_trace(
                     go.Scatter(
@@ -3711,7 +3756,9 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
             )
 
             if plotly_events:
-                selected_points = plotly_events(fig_conc, click_event=True, key="leave_conc_events")
+                selected_points = plotly_events(
+                    fig_conc, click_event=True, key="leave_conc_events"
+                )
             else:
                 st.plotly_chart(fig_conc, use_container_width=True)
                 selected_points = []
@@ -3740,10 +3787,16 @@ def display_leave_analysis_tab(tab_container, results_dict: dict | None = None):
 
                 all_names_in_selection = []
                 for selected_date in selected_dates:
-                    names_series = conc_df.loc[conc_df["date"] == selected_date, "staff_names"]
-                    if not names_series.empty and isinstance(names_series.iloc[0], list):
+                    names_series = conc_df.loc[
+                        conc_df["date"] == selected_date, "staff_names"
+                    ]
+                    if not names_series.empty and isinstance(
+                        names_series.iloc[0], list
+                    ):
                         names_list = names_series.iloc[0]
-                        st.markdown(f"**{selected_date.strftime('%Y-%m-%d')}**: {', '.join(names_list)}")
+                        st.markdown(
+                            f"**{selected_date.strftime('%Y-%m-%d')}**: {', '.join(names_list)}"
+                        )
                         all_names_in_selection.extend(names_list)
 
                 if all_names_in_selection:

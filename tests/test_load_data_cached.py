@@ -2,6 +2,7 @@ from pathlib import Path
 import pandas as pd
 from app import load_data_cached
 
+
 def test_load_data_cached_parquet(tmp_path: Path):
     df = pd.DataFrame({"a": [1, 2]})
     fp = tmp_path / "test.parquet"

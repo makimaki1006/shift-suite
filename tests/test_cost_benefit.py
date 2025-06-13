@@ -26,5 +26,3 @@ def test_analyze_cost_benefit_with_hire_fte(tmp_path: Path):
 
     result = analyze_cost_benefit(tmp_path)
     assert "Cost_JPY" in result.columns
-
-
