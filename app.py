@@ -66,7 +66,6 @@ from shift_suite.tasks.utils import (
     _parse_as_date,
     date_with_weekday,
 )
-from shift_suite import config
 
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
@@ -2210,8 +2209,9 @@ def display_heatmap_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Heatmap"))
 
-        heatmap_data = load_all_heatmap_files(data_dir)
-        roles, employments = load_shortage_meta(data_dir)
+        # 選択肢およびデータは事前に st.session_state に格納済み
+        roles = st.session_state.get("available_roles", [])
+        employments = st.session_state.get("available_employments", [])
 
         scope_opts = {"overall": _("Overall")}
         if roles:
@@ -2266,7 +2266,7 @@ def display_heatmap_tab(tab_container, data_dir):
                 heat_key = f"heat_emp_{safe_sheet(sel_item, for_path=True)}"
                 scope_info_for_title += f" ({sel_item})"
 
-            df_heat = heatmap_data.get(heat_key)
+            df_heat = st.session_state.display_data.get(heat_key)
             mode = [k for k, v in mode_opts.items() if v == mode_lbl][0]
 
             if df_heat is not None and not df_heat.empty:
@@ -2282,7 +2282,9 @@ def display_shortage_tab(tab_container, data_dir):
             st.warning("不足分析が正常に完了していないため、結果を表示できません。")
             return
         st.subheader(_("Shortage"))
-        roles, employments = load_shortage_meta(data_dir)
+        # メタデータはメモリ上の session_state から取得
+        roles = st.session_state.get("available_roles", [])
+        employments = st.session_state.get("available_employments", [])
         display_data = st.session_state.get("display_data", {})
         df_s_role = display_data.get("shortage_role")
         if isinstance(df_s_role, pd.DataFrame):
@@ -2685,7 +2687,8 @@ def display_shortage_tab(tab_container, data_dir):
             """
         )
 
-        roles, employments = load_shortage_meta(data_dir)
+        roles = st.session_state.get("available_roles", [])
+        employments = st.session_state.get("available_employments", [])
         scope_opts_shortage = {"overall": _("Overall")}
         if roles:
             scope_opts_shortage["role"] = _("Role")
@@ -2713,21 +2716,16 @@ def display_shortage_tab(tab_container, data_dir):
                 )
 
         df_ratio = pd.DataFrame()
-        heat_fp_s = None
+        ratio_key = None
         if scope_s == "overall":
-            heat_fp_s = data_dir / "heat_ALL.parquet"
+            ratio_key = "ratio_all"
         elif scope_s == "role" and sel_item_s:
-            heat_fp_s = (
-                data_dir / f"heat_role_{safe_sheet(sel_item_s, for_path=True)}.parquet"
-            )
+            ratio_key = f"ratio_role_{safe_sheet(sel_item_s, for_path=True)}"
         elif scope_s == "employment" and sel_item_s:
-            heat_fp_s = (
-                data_dir / f"heat_emp_{safe_sheet(sel_item_s, for_path=True)}.parquet"
-            )
+            ratio_key = f"ratio_emp_{safe_sheet(sel_item_s, for_path=True)}"
 
-        if heat_fp_s and heat_fp_s.exists():
-            role_df = load_data_cached(str(heat_fp_s), is_parquet=True)
-            df_ratio = calc_ratio_from_heatmap(role_df)
+        if ratio_key:
+            df_ratio = st.session_state.display_data.get(ratio_key, pd.DataFrame())
 
         if _valid_df(df_ratio):
             fig_ratio_heat = dashboard.shortage_heatmap(df_ratio)
@@ -3101,7 +3099,8 @@ def display_optimization_tab(tab_container, data_dir):
     with tab_container:
         st.subheader(_("Optimization Analysis"))
 
-        roles, employments = load_shortage_meta(data_dir)
+        roles = st.session_state.get("available_roles", [])
+        employments = st.session_state.get("available_employments", [])
 
         # --- UI Controls at the top ---
         c1, c2, c3 = st.columns(3)
@@ -3130,76 +3129,27 @@ def display_optimization_tab(tab_container, data_dir):
                     _("Employment"), employments, key="opt_scope_emp"
                 )
 
-        # --- Data Loading based on scope ---
-        base_heatmap_df = pd.DataFrame()
+        # --- Display data retrieval ---
+        base_key = None
         if scope == "overall":
-            fp_heat = data_dir / "heat_ALL.parquet"
-            if fp_heat.exists():
-                base_heatmap_df = load_data_cached(
-                    str(fp_heat),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp_heat),
-                )
+            base_key = "heat_all"
         elif scope == "role" and sel_role:
-            fp_heat = (
-                data_dir / f"heat_role_{safe_sheet(sel_role, for_path=True)}.parquet"
-            )
-            if fp_heat.exists():
-                base_heatmap_df = load_data_cached(
-                    str(fp_heat),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp_heat),
-                )
+            base_key = f"heat_role_{safe_sheet(sel_role, for_path=True)}"
         elif scope == "employment" and sel_emp:
-            fp_heat = (
-                data_dir / f"heat_emp_{safe_sheet(sel_emp, for_path=True)}.parquet"
-            )
-            if fp_heat.exists():
-                base_heatmap_df = load_data_cached(
-                    str(fp_heat),
-                    is_parquet=True,
-                    file_mtime=_file_mtime(fp_heat),
-                )
+            base_key = f"heat_emp_{safe_sheet(sel_emp, for_path=True)}"
 
-        if not _valid_df(base_heatmap_df):
-            st.warning("選択されたスコープのヒートマップデータが見つかりません。")
+        df_surplus = pd.DataFrame()
+        df_margin = pd.DataFrame()
+        df_score = pd.DataFrame()
+
+        if base_key:
+            df_surplus = st.session_state.display_data.get(base_key.replace("heat_", "surplus_"))
+            df_margin = st.session_state.display_data.get(base_key.replace("heat_", "margin_"))
+            df_score = st.session_state.display_data.get(base_key.replace("heat_", "score_"))
+
+        if not (_valid_df(df_surplus) and _valid_df(df_margin) and _valid_df(df_score)):
+            st.warning("選択されたスコープのデータが見つかりません。")
             return
-
-        # --- Dynamic Calculation for all 3 metrics ---
-        date_cols = [
-            c for c in base_heatmap_df.columns if _parse_as_date(str(c)) is not None
-        ]
-        if not date_cols:
-            st.warning("ヒートマップデータに有効な日付列がありません。")
-            return
-
-        staff_df = base_heatmap_df[date_cols].fillna(0)
-        need_df = pd.DataFrame(
-            np.repeat(
-                base_heatmap_df["need"].values[:, np.newaxis], len(date_cols), axis=1
-            ),
-            index=base_heatmap_df.index,
-            columns=date_cols,
-        )
-        upper_df = pd.DataFrame(
-            np.repeat(
-                base_heatmap_df["upper"].values[:, np.newaxis], len(date_cols), axis=1
-            ),
-            index=base_heatmap_df.index,
-            columns=date_cols,
-        )
-
-        # 1. Surplus vs Need
-        df_surplus = (staff_df - need_df).clip(lower=0).fillna(0).astype(int)
-
-        # 2. Margin vs Upper
-        df_margin = (upper_df - staff_df).clip(lower=0).fillna(0).astype(int)
-
-        # 3. Optimization Score
-        weights = config.get("optimization_weights", {"lack": 0.6, "excess": 0.4})
-        w_lack = float(weights.get("lack", 0.6))
-        w_excess = float(weights.get("excess", 0.4))
-        df_score = calc_opt_score_from_heatmap(base_heatmap_df, w_lack, w_excess)
 
         st.divider()
 
