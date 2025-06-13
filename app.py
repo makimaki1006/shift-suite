@@ -2022,6 +2022,9 @@ if run_button_clicked:
                     daily_cost_df.to_excel(
                         out_dir_exec / "daily_cost.xlsx", index=False
                     )
+                    daily_cost_df.to_parquet(
+                        out_dir_exec / "daily_cost.parquet", index=False
+                    )
                 except Exception as e_cost:
                     log.warning(f"daily cost calculation failed: {e_cost}")
 
