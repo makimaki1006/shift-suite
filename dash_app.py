@@ -7,6 +7,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import List, Tuple
+import unicodedata
 
 import dash
 import numpy as np
@@ -14,7 +15,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import dash_table, dcc, html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, ALL
 from dash.exceptions import PreventUpdate
 
 # ロガー設定
@@ -34,6 +35,13 @@ DATA_STORE = {}
 TEMP_DIR = None
 
 # --- ユーティリティ関数 ---
+def safe_filename(name: str) -> str:
+    """Normalize and sanitize strings for file keys"""
+    name = unicodedata.normalize("NFKC", name)
+    for ch in ["/", "\\", ":", "*", "?", "\"", "<", ">", "|", "・", "／", "＼"]:
+        name = name.replace(ch, "_")
+    return name
+
 def date_with_weekday(date_str: str) -> str:
     """日付文字列に曜日を追加"""
     try:
@@ -647,12 +655,12 @@ def process_upload(contents, filename):
         for p in data_dir.glob('heat_role_*.parquet'):
             df = safe_read_parquet(p)
             if not df.empty:
-                DATA_STORE[p.stem] = df
+                DATA_STORE[safe_filename(p.stem)] = df
 
         for p in data_dir.glob('heat_emp_*.parquet'):
             df = safe_read_parquet(p)
             if not df.empty:
-                DATA_STORE[p.stem] = df
+                DATA_STORE[safe_filename(p.stem)] = df
 
         # メタデータ読み込み
         roles, employments = load_shortage_meta(data_dir)
@@ -735,14 +743,13 @@ def update_heatmap_detail_options(scope):
     """ヒートマップの詳細選択オプションを更新"""
     if scope == 'overall':
         return [], {'display': 'none'}
-    elif scope == 'role':
+    if scope == 'role':
         roles = DATA_STORE.get('roles', [])
         return [{'label': r, 'value': r} for r in roles], {'display': 'block'}
-    elif scope == 'employment':
+    if scope == 'employment':
         employments = DATA_STORE.get('employments', [])
         return [{'label': e, 'value': e} for e in employments], {'display': 'block'}
-    else:
-        return [], {'display': 'none'}
+    return [], {'display': 'none'}
 
 
 @app.callback(
@@ -757,15 +764,23 @@ def update_heatmap_content(scope, detail, mode):
     if scope == 'overall':
         heat_key = 'heat_ALL'
     elif scope == 'role' and detail:
-        heat_key = f'heat_role_{detail}'
+        heat_key = f'heat_role_{safe_filename(detail)}'
     elif scope == 'employment' and detail:
-        heat_key = f'heat_emp_{detail}'
+        heat_key = f'heat_emp_{safe_filename(detail)}'
     else:
         return html.Div("データを選択してください")
 
-    df_heat = DATA_STORE.get(heat_key, pd.DataFrame())
-    if df_heat.empty:
-        return html.Div(f"データが見つかりません: {heat_key}")
+    df_heat = DATA_STORE.get(heat_key)
+    if df_heat is None:
+        for key in DATA_STORE.keys():
+            if key.startswith('heat_role_') and detail in key:
+                df_heat = DATA_STORE[key]
+                break
+            if key.startswith('heat_emp_') and detail in key:
+                df_heat = DATA_STORE[key]
+                break
+    if df_heat is None or df_heat.empty:
+        return html.Div(f"データが見つかりません: {detail}")
 
     # モードに応じて処理
     if mode == 'Ratio':
@@ -817,7 +832,7 @@ def update_shortage_heatmap_detail(scope):
         return html.Div([
             html.Label("職種選択"),
             dcc.Dropdown(
-                id='shortage-heatmap-role',
+                id={'type': 'shortage-detail', 'index': 'role'},
                 options=[{'label': r, 'value': r} for r in roles],
                 value=roles[0] if roles else None,
                 style={'width': '200px'}
@@ -828,7 +843,7 @@ def update_shortage_heatmap_detail(scope):
         return html.Div([
             html.Label("雇用形態選択"),
             dcc.Dropdown(
-                id='shortage-heatmap-employment',
+                id={'type': 'shortage-detail', 'index': 'employment'},
                 options=[{'label': e, 'value': e} for e in employments],
                 value=employments[0] if employments else None,
                 style={'width': '200px'}
@@ -840,23 +855,32 @@ def update_shortage_heatmap_detail(scope):
 @app.callback(
     Output('shortage-ratio-heatmap', 'children'),
     Input('shortage-heatmap-scope', 'value'),
-    Input('shortage-heatmap-role', 'value'),
-    Input('shortage-heatmap-employment', 'value')
+    Input({'type': 'shortage-detail', 'index': ALL}, 'value')
 )
-def update_shortage_ratio_heatmap(scope, role, employment):
+def update_shortage_ratio_heatmap(scope, detail_values):
     """不足率ヒートマップを更新"""
     # データキーを決定
     if scope == 'overall':
         heat_key = 'heat_ALL'
-    elif scope == 'role' and role:
-        heat_key = f'heat_role_{role}'
-    elif scope == 'employment' and employment:
-        heat_key = f'heat_emp_{employment}'
     else:
-        return None
+        detail = detail_values[0] if detail_values else None
+        if not detail:
+            return html.Div("詳細を選択してください")
+        if scope == 'role':
+            heat_key = f'heat_role_{safe_filename(detail)}'
+        else:
+            heat_key = f'heat_emp_{safe_filename(detail)}'
 
-    df_heat = DATA_STORE.get(heat_key, pd.DataFrame())
-    if df_heat.empty:
+    df_heat = DATA_STORE.get(heat_key)
+    if df_heat is None:
+        for key in DATA_STORE.keys():
+            if key.startswith('heat_role_') and detail in key:
+                df_heat = DATA_STORE[key]
+                break
+            if key.startswith('heat_emp_') and detail in key:
+                df_heat = DATA_STORE[key]
+                break
+    if df_heat is None or df_heat.empty:
         return html.Div("データが見つかりません")
 
     # 不足率を計算
@@ -866,10 +890,8 @@ def update_shortage_ratio_heatmap(scope, role, employment):
 
     # タイトル設定
     title = "不足率ヒートマップ"
-    if scope == 'role':
-        title += f" - 職種: {role}"
-    elif scope == 'employment':
-        title += f" - 雇用形態: {employment}"
+    if scope != 'overall' and detail_values:
+        title += f" - {detail_values[0]}"
 
     # ヒートマップ作成
     fig = px.imshow(
@@ -902,7 +924,7 @@ def update_opt_detail(scope):
         return html.Div([
             html.Label("職種選択"),
             dcc.Dropdown(
-                id='opt-role',
+                id={'type': 'opt-detail', 'index': 'role'},
                 options=[{'label': r, 'value': r} for r in roles],
                 value=roles[0] if roles else None,
                 style={'width': '300px', 'marginBottom': '20px'}
@@ -913,7 +935,7 @@ def update_opt_detail(scope):
         return html.Div([
             html.Label("雇用形態選択"),
             dcc.Dropdown(
-                id='opt-employment',
+                id={'type': 'opt-detail', 'index': 'employment'},
                 options=[{'label': e, 'value': e} for e in employments],
                 value=employments[0] if employments else None,
                 style={'width': '300px', 'marginBottom': '20px'}
@@ -925,23 +947,32 @@ def update_opt_detail(scope):
 @app.callback(
     Output('optimization-content', 'children'),
     Input('opt-scope', 'value'),
-    Input('opt-role', 'value'),
-    Input('opt-employment', 'value')
+    Input({'type': 'opt-detail', 'index': ALL}, 'value')
 )
-def update_optimization_content(scope, role, employment):
+def update_optimization_content(scope, detail_values):
     """最適化分析コンテンツを更新"""
     # データキーを決定
     if scope == 'overall':
         heat_key = 'heat_ALL'
-    elif scope == 'role' and role:
-        heat_key = f'heat_role_{role}'
-    elif scope == 'employment' and employment:
-        heat_key = f'heat_emp_{employment}'
     else:
-        return html.Div("データを選択してください")
+        detail = detail_values[0] if detail_values else None
+        if not detail:
+            return html.Div("詳細を選択してください")
+        if scope == 'role':
+            heat_key = f'heat_role_{safe_filename(detail)}'
+        else:
+            heat_key = f'heat_emp_{safe_filename(detail)}'
 
-    df_heat = DATA_STORE.get(heat_key, pd.DataFrame())
-    if df_heat.empty:
+    df_heat = DATA_STORE.get(heat_key)
+    if df_heat is None:
+        for key in DATA_STORE.keys():
+            if key.startswith('heat_role_') and detail in key:
+                df_heat = DATA_STORE[key]
+                break
+            if key.startswith('heat_emp_') and detail in key:
+                df_heat = DATA_STORE[key]
+                break
+    if df_heat is None or df_heat.empty:
         return html.Div("データが見つかりません")
 
     # 日付列を抽出
