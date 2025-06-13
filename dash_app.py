@@ -18,6 +18,8 @@ from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State, ALL
 from dash.exceptions import PreventUpdate
 from shift_suite.tasks.utils import safe_read_excel
+from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
+from shift_suite.tasks import over_shortage_log
 
 # ロガー設定
 logging.basicConfig(
@@ -352,6 +354,33 @@ def create_shortage_tab() -> html.Div:
         html.Div(id='shortage-heatmap-detail-container'),
         html.Div(id='shortage-ratio-heatmap')
     ]))
+
+    # Factor Analysis section
+    content.append(html.Hr())
+    content.append(html.H4('Factor Analysis (AI)', style={'marginTop': '30px'}))
+    content.append(html.Button('Train factor model', id='factor-train-button', n_clicks=0))
+    content.append(html.Div(id='factor-output'))
+
+    # Over/Short Log section
+    events_df = DATA_STORE.get('shortage_events', pd.DataFrame())
+    if not events_df.empty:
+        content.append(html.Hr())
+        content.append(html.H4('Over/Short Log', style={'marginTop': '30px'}))
+        content.append(dash_table.DataTable(
+            id='over-shortage-table',
+            data=events_df.to_dict('records'),
+            columns=[{'name': c, 'id': c, 'presentation': 'input'} for c in events_df.columns],
+            editable=True,
+        ))
+        content.append(dcc.RadioItems(
+            id='log-save-mode',
+            options=[{'label': 'Append', 'value': 'append'}, {'label': 'Overwrite', 'value': 'overwrite'}],
+            value='append',
+            inline=True,
+            style={'marginTop': '10px'}
+        ))
+        content.append(html.Button('Save log', id='save-log-button', n_clicks=0, style={'marginTop': '10px'}))
+        content.append(html.Div(id='save-log-msg'))
 
     return html.Div(content)
 
@@ -952,6 +981,23 @@ def process_upload(contents, filename):
         DATA_STORE['roles'] = roles
         DATA_STORE['employments'] = employments
 
+        # Over/Shortage events and log
+        events_df = over_shortage_log.list_events(data_dir)
+        if not events_df.empty:
+            log_fp = data_dir / 'over_shortage_log.csv'
+            existing = over_shortage_log.load_log(log_fp)
+            merged = events_df.merge(
+                existing,
+                on=['date', 'time', 'type'],
+                how='left',
+                suffixes=('', '_log'),
+            )
+            for col in ['reason', 'staff', 'memo']:
+                if col not in merged.columns:
+                    merged[col] = ''
+            DATA_STORE['shortage_events'] = merged
+            DATA_STORE['shortage_log_path'] = str(log_fp)
+
         kpi_data = {}
         df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
         if not df_shortage_role.empty and 'lack_h' in df_shortage_role.columns:
@@ -1464,6 +1510,53 @@ def update_hire_simulation(selected_pattern, added_fte, kpi_data):
     """
 
     return fig, dcc.Markdown(cost_text)
+
+
+@app.callback(
+    Output('factor-output', 'children'),
+    Input('factor-train-button', 'n_clicks')
+)
+def run_factor_analysis(n_clicks):
+    if not n_clicks:
+        raise PreventUpdate
+
+    heat_df = DATA_STORE.get('heat_ALL', pd.DataFrame())
+    short_df = DATA_STORE.get('shortage_time', pd.DataFrame())
+    leave_df = DATA_STORE.get('leave_analysis', pd.DataFrame())
+
+    if heat_df.empty or short_df.empty:
+        return html.Div('必要なデータがありません')
+
+    analyzer = ShortageFactorAnalyzer()
+    feat_df = analyzer.generate_features(pd.DataFrame(), heat_df, short_df, leave_df, set())
+    model, fi_df = analyzer.train_and_get_feature_importance(feat_df)
+    DATA_STORE['factor_features'] = feat_df
+    DATA_STORE['factor_importance'] = fi_df
+
+    table = dash_table.DataTable(
+        data=fi_df.head(5).to_dict('records'),
+        columns=[{'name': c, 'id': c} for c in fi_df.columns]
+    )
+    return html.Div([html.H5('Top factors'), table])
+
+
+@app.callback(
+    Output('save-log-msg', 'children'),
+    Input('save-log-button', 'n_clicks'),
+    State('over-shortage-table', 'data'),
+    State('log-save-mode', 'value')
+)
+def save_over_shortage_log(n_clicks, table_data, mode):
+    if not n_clicks:
+        raise PreventUpdate
+
+    log_path = DATA_STORE.get('shortage_log_path')
+    if not log_path:
+        return 'ログファイルパスが見つかりません'
+
+    df = pd.DataFrame(table_data)
+    over_shortage_log.save_log(df, log_path, mode=mode)
+    return 'ログを保存しました'
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
