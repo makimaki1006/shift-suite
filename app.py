@@ -635,11 +635,55 @@ def update_display_data_with_heatmaps(out_dir: Path) -> None:
         else:
             log.debug(f"ファイルが存在しません: {fp}")
 
+    # --- ヒートマップと派生データの事前計算を追加 ---
+
+    # 1. 全てのヒートマップを一括で読み込む
     heatmap_data = load_all_heatmap_files(out_dir)
     st.session_state.display_data.update(heatmap_data)
-    loaded_count += len(heatmap_data)
 
-    log.info(f"display_data更新完了: {loaded_count}個のファイルを読み込みました。")
+    # 2. メタデータ（職種・雇用形態リスト）を読み込む
+    roles, employments = load_shortage_meta(out_dir)
+    st.session_state.available_roles = roles
+    st.session_state.available_employments = employments
+
+    # 3. 読み込んだ各ヒートマップから派生データを計算して保存
+    for key, df_heat in heatmap_data.items():
+        if not isinstance(df_heat, pd.DataFrame) or df_heat.empty:
+            continue
+
+        # 不足率ヒートマップ
+        ratio_key = key.replace("heat_", "ratio_")
+        st.session_state.display_data[ratio_key] = calc_ratio_from_heatmap(df_heat)
+
+        # 最適化スコアヒートマップ
+        score_key = key.replace("heat_", "score_")
+        st.session_state.display_data[score_key] = calc_opt_score_from_heatmap(df_heat)
+
+        # 最適化分析タブ用のデータ (Surplus, Margin)
+        date_cols = [c for c in df_heat.columns if _parse_as_date(str(c)) is not None]
+        if not date_cols:
+            continue
+
+        staff_df = df_heat[date_cols].fillna(0)
+        need_df = pd.DataFrame(
+            np.repeat(df_heat["need"].values[:, np.newaxis], len(date_cols), axis=1),
+            index=df_heat.index,
+            columns=date_cols,
+        )
+        upper_df = pd.DataFrame(
+            np.repeat(df_heat["upper"].values[:, np.newaxis], len(date_cols), axis=1),
+            index=df_heat.index,
+            columns=date_cols,
+        )
+
+        surplus_key = key.replace("heat_", "surplus_")
+        st.session_state.display_data[surplus_key] = (staff_df - need_df).clip(lower=0).fillna(0).astype(int)
+
+        margin_key = key.replace("heat_", "margin_")
+        st.session_state.display_data[margin_key] = (upper_df - staff_df).clip(lower=0).fillna(0).astype(int)
+
+    loaded_count = len(st.session_state.display_data)
+    log.info(f"display_data更新完了: {loaded_count}個のデータをメモリに読み込みました。")
 
 
 @st.cache_data(show_spinner=False, ttl=900)
