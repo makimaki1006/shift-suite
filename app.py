@@ -239,6 +239,7 @@ def load_shortage_meta(data_dir: Path) -> tuple[list[str], list[str]]:
     return roles, employments
 
 
+@st.cache_data
 def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
     """Return shortage ratio DataFrame calculated from heatmap data."""
     if df is None or df.empty or "need" not in df.columns:
@@ -259,6 +260,7 @@ def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
     return ratio_df
 
 
+@st.cache_data
 def calc_opt_score_from_heatmap(
     df: pd.DataFrame, w_lack: float = 0.6, w_excess: float = 0.4
 ) -> pd.DataFrame:
@@ -484,6 +486,15 @@ def run_import_wizard() -> None:
                 return
             st.session_state.analysis_results = {"preview": long_df.head()}
             st.session_state.long_df = long_df
+            if not long_df.empty:
+                if "role" in long_df.columns:
+                    st.session_state.available_roles = (
+                        sorted(long_df["role"].astype(str).dropna().unique().tolist())
+                    )
+                if "employment" in long_df.columns:
+                    st.session_state.available_employments = (
+                        sorted(long_df["employment"].astype(str).dropna().unique().tolist())
+                    )
             if unknown_codes:
                 st.warning("未知の勤務コード: " + ", ".join(sorted(unknown_codes)))
             st.success("取り込み完了")
@@ -1398,6 +1409,15 @@ if run_button_clicked:
                     )
                 st.success("✅ Excelデータ読み込み完了")
                 st.session_state.long_df = long_df
+                if not long_df.empty:
+                    if "role" in long_df.columns:
+                        st.session_state.available_roles = (
+                            sorted(long_df["role"].astype(str).dropna().unique().tolist())
+                        )
+                    if "employment" in long_df.columns:
+                        st.session_state.available_employments = (
+                            sorted(long_df["employment"].astype(str).dropna().unique().tolist())
+                        )
             except Exception as e:
                 st.session_state.analysis_status["ingest"] = "failure"
                 log_and_display_error(
