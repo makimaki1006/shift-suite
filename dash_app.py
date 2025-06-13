@@ -1,9 +1,9 @@
 # dash_app.py (高速分析ビューア) - 機能完全再現版
 import base64
 import io
+import os
 import zipfile
 import logging
-import re
 
 import dash
 from dash import dcc, html, dash_table
@@ -85,7 +85,8 @@ def render_plot(title, plot_function, data_json, required_files, plot_args={}):
     """グラフ描画を試み、失敗した場合はエラーDivを返す汎用ラッパー"""
     try:
         for f in required_files:
-            if f not in data_json: return create_styled_div(f"「{f}」 - {TEXT['data_not_found']}", 'warning')
+            if f not in data_json:
+                return create_styled_div(f"「{f}」 - {TEXT['data_not_found']}", 'warning')
         log.debug(f"Rendering plot: {title}")
         content = plot_function(data_json, **plot_args)
         return html.Div([
@@ -113,16 +114,26 @@ def create_alerts_div(data_json):
     return html.Div([html.H3(TEXT["alerts"])] + alerts, style={'marginBottom': '20px'})
 
 def create_overview_tab(data_json):
-    return render_plot("分析概要", lambda data: dash_table.DataTable(
-        data=sanitize_dataframe(decode_data(data, 'summary.csv')).to_dict('records'),
-        columns=[{'name': i, 'id': i} for i in sanitize_dataframe(decode_data(data, 'summary.csv')).columns],
-        style_table={'overflowX': 'auto'}, style_cell={'textAlign': 'left'},
-        style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
-    ), data_json, ['summary.csv'])
+    return render_plot(
+        "分析概要",
+        lambda data: dash_table.DataTable(
+            data=sanitize_dataframe(decode_data(data, 'summary.parquet')).to_dict('records'),
+            columns=[
+                {'name': i, 'id': i}
+                for i in sanitize_dataframe(decode_data(data, 'summary.parquet')).columns
+            ],
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left'},
+            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+        ),
+        data_json,
+        ['summary.parquet'],
+    )
 
 def create_heatmap_tab(data_json):
     df_heat = decode_data(data_json, 'heat_ALL.parquet')
-    if df_heat.empty: return create_styled_div(TEXT['data_not_found'], 'warning')
+    if df_heat.empty:
+        return create_styled_div(TEXT['data_not_found'], 'warning')
     
     # 絞り込み対象の列が存在するか確認
     has_role = 'role' in df_heat.columns
@@ -166,30 +177,32 @@ def create_leave_tab(data_json):
     plots = [html.H3(TEXT["leave"])]
     
     def plot_leave_bar(data):
-        df = sanitize_dataframe(decode_data(data, 'leave_analysis.csv'), 'date')
+        df = sanitize_dataframe(decode_data(data, 'leave_analysis.parquet'), 'date')
         if not all(col in df.columns for col in ['date', 'actual', 'leave_count']):
-            return create_styled_div("leave_analysis.csvに必要な列がありません。", "error")
+            return create_styled_div('leave_analysis.parquet に必要な列がありません。', 'error')
         fig = go.Figure(data=[
             go.Bar(name='出勤者数', x=df['date'], y=df['actual']),
             go.Bar(name='休暇者数', x=df['date'], y=df['leave_count'])
         ]).update_layout(barmode='stack')
         return dcc.Graph(figure=fig)
-    plots.append(render_plot("日別出勤・休暇者数", plot_leave_bar, data_json, ['leave_analysis.csv']))
+    plots.append(render_plot('日別出勤・休暇者数', plot_leave_bar, data_json, ['leave_analysis.parquet']))
     
     def plot_leave_pie(data):
-        df = sanitize_dataframe(decode_data(data, 'leave_ratio_breakdown.csv'))
+        df = sanitize_dataframe(decode_data(data, 'leave_ratio_breakdown.parquet'))
         if not all(col in df.columns for col in ['reason', 'count']):
-             return create_styled_div("leave_ratio_breakdown.csvに必要な列がありません。", "error")
+            return create_styled_div('leave_ratio_breakdown.parquet に必要な列がありません。', 'error')
         return dcc.Graph(figure=px.pie(df, names='reason', values='count'))
-    plots.append(render_plot("休暇取得理由 内訳", plot_leave_pie, data_json, ['leave_ratio_breakdown.csv']))
+    plots.append(render_plot('休暇取得理由 内訳', plot_leave_pie, data_json, ['leave_ratio_breakdown.parquet']))
     
     return html.Div(plots)
 
 def create_fairness_tab(data_json):
     df = decode_data(data_json, 'fairness_after.parquet')
-    if df.empty: return create_file_not_found_div('fairness_after.parquet')
+    if df.empty:
+        return create_styled_div('fairness_after.parquet が見つかりません。', 'warning')
     df = sanitize_dataframe(df)
-    if 'metric' not in df.columns: return create_styled_div("公平性分析データに 'metric' 列が見つかりません。", 'error')
+    if 'metric' not in df.columns:
+        return create_styled_div("公平性分析データに 'metric' 列が見つかりません。", 'error')
     metrics = df['metric'].unique()
     return html.Div([
         html.H3(TEXT["fairness"]),
@@ -232,21 +245,21 @@ app.layout = html.Div(style={'backgroundColor': '#f0f2f5'}, children=[
 # --- コールバック関数 ---
 @app.callback(Output('analysis-data-store', 'data'), Input('upload-zip', 'contents'))
 def parse_zip_and_store_data(contents):
-    if contents is None: raise PreventUpdate
+    if contents is None:
+        raise PreventUpdate
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
     dataframes = {}
     try:
         with zipfile.ZipFile(io.BytesIO(decoded), 'r') as zf:
             for file_info in zf.infolist():
-                if file_info.is_dir(): continue
+                if file_info.is_dir():
+                    continue
                 fname = file_info.filename.replace('\\', '/')
                 with zf.open(fname) as f:
                     log.debug(f"Reading {fname} from zip...")
                     if fname.endswith('.parquet'):
-                        dataframes[fname] = pd.read_parquet(f)
-                    elif fname.endswith('.csv'):
-                        dataframes[fname] = pd.read_csv(f)
+                        dataframes[os.path.basename(fname)] = pd.read_parquet(f)
         json_data = {name: df.to_json(date_format='iso', orient='split') for name, df in dataframes.items()}
         log.info(f"Successfully processed zip file with {len(json_data)} files.")
         return json_data
@@ -260,13 +273,13 @@ def render_dashboard_and_alerts(data_json):
         return html.Div(TEXT["waiting_for_upload"], style={'textAlign': 'center', 'padding': '50px', 'fontSize': '1.2em'}), None
 
     tab_map = {
-        "overview": {"label": TEXT["overview"], "file": "summary.csv", "func": create_overview_tab},
+        "overview": {"label": TEXT["overview"], "file": "summary.parquet", "func": create_overview_tab},
         "heatmap": {"label": TEXT["heatmap"], "file": "heat_ALL.parquet", "func": create_heatmap_tab},
         "shortage": {"label": TEXT["shortage"], "file": "shortage_time.parquet", "func": create_shortage_tab},
         "optimization": {"label": TEXT["optimization"], "file": "optimization_score_time.parquet", "func": create_optimization_tab},
         "fatigue": {"label": TEXT["fatigue"], "file": "fatigue_score.parquet", "func": create_fatigue_tab},
         "fairness": {"label": TEXT["fairness"], "file": "fairness_after.parquet", "func": create_fairness_tab},
-        "leave": {"label": TEXT["leave"], "file": "leave_analysis.csv", "func": create_leave_tab},
+        "leave": {"label": TEXT["leave"], "file": "leave_analysis.parquet", "func": create_leave_tab},
         "cost": {"label": TEXT["cost"], "file": "daily_cost_summary.parquet", "func": create_cost_tab},
         "hire_plan": {"label": TEXT["hire_plan"], "file": "hire_plan.parquet", "func": create_hire_plan_tab},
     }
@@ -301,23 +314,20 @@ def update_heatmap(unit, target, data_json):
         raise PreventUpdate
 
     title = "ヒートマップ"
-    df_all = decode_data(data_json, 'heat_ALL.parquet')
-    if df_all.empty:
-        return create_styled_div("ヒートマップデータ(heat_ALL.parquet)が見つかりません。", 'warning')
-        
-    df_filtered = df_all.copy()
+    df_key = 'heat_ALL.parquet'
     if unit == 'role' and target:
-        if 'role' in df_filtered.columns:
-            df_filtered = df_filtered[df_filtered['role'] == target]
-            title += f" (職種: {target})"
+        df_key = f'heat_role_{target}.parquet'
+        title += f" (職種: {target})"
     elif unit == 'employment' and target:
-        if 'employment_type' in df_filtered.columns:
-            df_filtered = df_filtered[df_filtered['employment_type'] == target]
-            title += f" (雇用形態: {target})"
+        df_key = f'heat_emp_{target}.parquet'
+        title += f" (雇用形態: {target})"
+
+    df_filtered = decode_data(data_json, df_key)
+    if df_filtered.empty:
+        return create_styled_div(f"ヒートマップデータ({df_key})が見つかりません。", 'warning')
 
     try:
-        heatmap_df = df_filtered.pivot_table(index='time', columns='date', values='is_work', aggfunc='sum')
-        fig = px.imshow(heatmap_df, text_auto=False, aspect="auto", title=title)
+        fig = px.imshow(df_filtered, text_auto=False, aspect="auto", title=title)
         return dcc.Graph(figure=fig)
     except Exception as e:
         log.error(f"Error creating heatmap: {e}", exc_info=True)
@@ -325,7 +335,8 @@ def update_heatmap(unit, target, data_json):
 
 @app.callback(Output('fairness-graph', 'figure'), Input('fairness-metric-dropdown', 'value'), State('analysis-data-store', 'data'))
 def update_fairness_graph(selected_metric, data_json):
-    if not selected_metric or not data_json: raise PreventUpdate
+    if not selected_metric or not data_json:
+        raise PreventUpdate
     try:
         df = sanitize_dataframe(decode_data(data_json, 'fairness_after.parquet'), 'staff')
         if not all(col in df.columns for col in ['metric', 'staff', 'value']):
