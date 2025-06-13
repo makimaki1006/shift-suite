@@ -154,6 +154,13 @@ def create_overview_tab() -> html.Div:
     alerts_count = len(df_alerts) if not df_alerts.empty else 0
 
     return html.Div([
+        html.Div(id='overview-insights', style={
+            'padding': '15px',
+            'backgroundColor': '#e9f2fa',
+            'borderRadius': '8px',
+            'marginBottom': '20px',
+            'border': '1px solid #cce5ff'
+        }),
         html.H3("分析概要", style={'marginBottom': '20px'}),
         html.Div([
             html.Div([
@@ -196,6 +203,13 @@ def create_heatmap_tab() -> html.Div:
         scope_options.append({'label': '雇用形態別', 'value': 'employment'})
 
     return html.Div([
+        html.Div(id='heatmap-insights', style={
+            'padding': '15px',
+            'backgroundColor': '#e9f2fa',
+            'borderRadius': '8px',
+            'marginBottom': '20px',
+            'border': '1px solid #cce5ff'
+        }),
         html.H3("ヒートマップ", style={'marginBottom': '20px'}),
         html.Div([
             html.Div([
@@ -241,7 +255,14 @@ def create_shortage_tab() -> html.Div:
     df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
     df_shortage_emp = DATA_STORE.get('shortage_employment_summary', pd.DataFrame())
 
-    content = [html.H3("不足分析", style={'marginBottom': '20px'})]
+    content = [html.Div(id='shortage-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("不足分析", style={'marginBottom': '20px'})]
 
     # 職種別不足分析
     if not df_shortage_role.empty:
@@ -328,6 +349,13 @@ def create_shortage_tab() -> html.Div:
 def create_optimization_tab() -> html.Div:
     """最適化分析タブを作成"""
     return html.Div([
+        html.Div(id='optimization-insights', style={
+            'padding': '15px',
+            'backgroundColor': '#e9f2fa',
+            'borderRadius': '8px',
+            'marginBottom': '20px',
+            'border': '1px solid #cce5ff'
+        }),
         html.H3("最適化分析", style={'marginBottom': '20px'}),
         html.Div([
             html.Label("表示範囲"),
@@ -349,7 +377,14 @@ def create_optimization_tab() -> html.Div:
 
 def create_leave_analysis_tab() -> html.Div:
     """休暇分析タブを作成"""
-    content = [html.H3("休暇分析", style={'marginBottom': '20px'})]
+    content = [html.Div(id='leave-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("休暇分析", style={'marginBottom': '20px'})]
 
     # 基本的な休暇分析データ
     df_leave = DATA_STORE.get('leave_analysis', pd.DataFrame())
@@ -434,7 +469,14 @@ def create_leave_analysis_tab() -> html.Div:
 
 def create_cost_analysis_tab() -> html.Div:
     """コスト分析タブを作成"""
-    content = [html.H3("人件費分析", style={'marginBottom': '20px'})]
+    content = [html.Div(id='cost-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("人件費分析", style={'marginBottom': '20px'})]
 
     df_cost = DATA_STORE.get('daily_cost', pd.DataFrame())
     if not df_cost.empty:
@@ -479,9 +521,17 @@ def create_cost_analysis_tab() -> html.Div:
 
 def create_hire_plan_tab() -> html.Div:
     """採用計画タブを作成"""
-    content = [html.H3("採用計画", style={'marginBottom': '20px'})]
+    content = [html.Div(id='hire-plan-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("採用計画", style={'marginBottom': '20px'})]
 
     df_hire = DATA_STORE.get('hire_plan', pd.DataFrame())
+    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
     if not df_hire.empty:
         content.append(html.H4("必要FTE（職種別）"))
 
@@ -505,6 +555,28 @@ def create_hire_plan_tab() -> html.Div:
             )
             content.append(dcc.Graph(figure=fig_hire))
 
+    if not df_hire.empty and not df_shortage_role.empty:
+        content.append(html.Div([
+            html.H4("What-if 採用シミュレーション", style={'marginTop': '30px'}),
+            html.P("スライダーを動かして、追加採用による不足時間の削減効果とコストの変化を確認できます。"),
+            dcc.Dropdown(
+                id='sim-role-dropdown',
+                options=[{'label': i, 'value': i} for i in df_shortage_role['role'].unique()],
+                value=df_shortage_role['role'].iloc[0],
+                clearable=False,
+            ),
+            dcc.Slider(
+                id='sim-hire-fte-slider',
+                min=0,
+                max=10,
+                step=1,
+                value=0,
+                marks={i: str(i) for i in range(11)},
+            ),
+        ], style={'padding': '20px', 'backgroundColor': '#f0f0f0', 'borderRadius': '8px'}))
+        content.append(dcc.Graph(id='sim-shortage-graph'))
+        content.append(html.Div(id='sim-cost-text'))
+
     # 最適採用計画
     df_optimal = DATA_STORE.get('optimal_hire_plan', pd.DataFrame())
     if not df_optimal.empty:
@@ -522,7 +594,14 @@ def create_hire_plan_tab() -> html.Div:
 
 def create_fatigue_tab() -> html.Div:
     """疲労分析タブを作成"""
-    content = [html.H3("疲労分析", style={'marginBottom': '20px'})]
+    content = [html.Div(id='fatigue-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("疲労分析", style={'marginBottom': '20px'})]
     df_fatigue = DATA_STORE.get('fatigue_score', pd.DataFrame())
 
     if not df_fatigue.empty:
@@ -546,7 +625,14 @@ def create_fatigue_tab() -> html.Div:
 
 def create_forecast_tab() -> html.Div:
     """需要予測タブを作成"""
-    content = [html.H3("需要予測", style={'marginBottom': '20px'})]
+    content = [html.Div(id='forecast-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("需要予測", style={'marginBottom': '20px'})]
     df_fc = DATA_STORE.get('forecast', pd.DataFrame())
     df_actual = DATA_STORE.get('demand_series', pd.DataFrame())
 
@@ -570,7 +656,14 @@ def create_forecast_tab() -> html.Div:
 
 def create_fairness_tab() -> html.Div:
     """公平性タブを作成"""
-    content = [html.H3("公平性 (夜勤比率)", style={'marginBottom': '20px'})]
+    content = [html.Div(id='fairness-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("公平性 (夜勤比率)", style={'marginBottom': '20px'})]
     df_fair = DATA_STORE.get('fairness_after', pd.DataFrame())
 
     if not df_fair.empty:
@@ -595,7 +688,14 @@ def create_fairness_tab() -> html.Div:
 
 def create_gap_analysis_tab() -> html.Div:
     """基準乖離分析タブを作成"""
-    content = [html.H3("基準乖離分析", style={'marginBottom': '20px'})]
+    content = [html.Div(id='gap-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("基準乖離分析", style={'marginBottom': '20px'})]
     df_summary = DATA_STORE.get('gap_summary', pd.DataFrame())
     df_heat = DATA_STORE.get('gap_heatmap', pd.DataFrame())
 
@@ -620,7 +720,14 @@ def create_gap_analysis_tab() -> html.Div:
 
 def create_summary_report_tab() -> html.Div:
     """サマリーレポートタブを作成"""
-    content = [html.H3("Summary Report", style={'marginBottom': '20px'})]
+    content = [html.Div(id='summary-report-insights', style={
+        'padding': '15px',
+        'backgroundColor': '#e9f2fa',
+        'borderRadius': '8px',
+        'marginBottom': '20px',
+        'border': '1px solid #cce5ff'
+    }),
+        html.H3("Summary Report", style={'marginBottom': '20px'})]
     report_text = DATA_STORE.get('summary_report')
     if report_text:
         content.append(dcc.Markdown(report_text))
@@ -632,6 +739,13 @@ def create_summary_report_tab() -> html.Div:
 def create_ppt_report_tab() -> html.Div:
     """PowerPointレポートタブを作成"""
     return html.Div([
+        html.Div(id='ppt-report-insights', style={
+            'padding': '15px',
+            'backgroundColor': '#e9f2fa',
+            'borderRadius': '8px',
+            'marginBottom': '20px',
+            'border': '1px solid #cce5ff'
+        }),
         html.H3("PPT Report", style={'marginBottom': '20px'}),
         html.P("ボタンを押してPowerPointレポートを生成してください。"),
         html.Button('Generate PPT', id='ppt-generate', n_clicks=0)
@@ -639,6 +753,7 @@ def create_ppt_report_tab() -> html.Div:
 
 # --- メインレイアウト ---
 app.layout = html.Div([
+    dcc.Store(id='kpi-data-store', storage_type='memory'),
     dcc.Store(id='data-loaded', storage_type='memory'),
 
     # ヘッダー
@@ -685,6 +800,7 @@ app.layout = html.Div([
 
 # --- コールバック関数 ---
 @app.callback(
+    Output('kpi-data-store', 'data'),
     Output('data-loaded', 'data'),
     Input('upload-data', 'contents'),
     State('upload-data', 'filename')
@@ -724,7 +840,7 @@ def process_upload(contents, filename):
                 break
 
         if not data_dir:
-            return {'error': 'データファイルが見つかりません'}
+            return {}, {'error': 'データファイルが見つかりません'}
 
         # データを読み込む
         DATA_STORE = {}
@@ -810,12 +926,23 @@ def process_upload(contents, filename):
         DATA_STORE['roles'] = roles
         DATA_STORE['employments'] = employments
 
-        log.info(f"Loaded {len(DATA_STORE)} data files")
-        return {'success': True, 'files': len(DATA_STORE)}
+        kpi_data = {}
+        df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
+        if not df_shortage_role.empty and 'lack_h' in df_shortage_role.columns:
+            total_lack_h = df_shortage_role['lack_h'].sum()
+            most_lacking_role = df_shortage_role.loc[df_shortage_role['lack_h'].idxmax()]
+            kpi_data['total_lack_h'] = total_lack_h
+            kpi_data['most_lacking_role_name'] = most_lacking_role['role']
+            kpi_data['most_lacking_role_hours'] = most_lacking_role['lack_h']
+
+        log.info(
+            f"Loaded {len(DATA_STORE)} data files and calculated {len(kpi_data)} KPIs."
+        )
+        return kpi_data, {'success': True, 'files': len(DATA_STORE)}
 
     except Exception as e:
         log.error(f"Error processing ZIP: {e}", exc_info=True)
-        return {'error': str(e)}
+        return {}, {'error': str(e)}
 
 
 @app.callback(
@@ -1226,6 +1353,118 @@ def update_optimization_content(scope, detail_values):
     ]))
 
     return html.Div(content)
+
+
+@app.callback(
+    Output('overview-insights', 'children'),
+    Input('kpi-data-store', 'data'),
+)
+def update_overview_insights(kpi_data):
+    if not kpi_data:
+        return ""
+
+    total_lack_h = kpi_data.get('total_lack_h', 0)
+
+    if total_lack_h > 0:
+        most_lacking_role = kpi_data.get('most_lacking_role_name', 'N/A')
+        most_lacking_hours = kpi_data.get('most_lacking_role_hours', 0)
+        insight_text = f"""
+        #### 📈 分析ハイライト
+        - **総不足時間:** {total_lack_h:.1f} 時間
+        - **最重要課題:** **{most_lacking_role}** の不足が **{most_lacking_hours:.1f}時間** と最も深刻です。この職種の採用または配置転換が急務と考えられます。
+        """
+        return dcc.Markdown(insight_text)
+    return html.P(
+        "👍 人員不足は発生していません。素晴らしい勤務体制です！",
+        style={'fontWeight': 'bold'},
+    )
+
+
+@app.callback(
+    Output('shortage-insights', 'children'),
+    Input('kpi-data-store', 'data'),
+)
+def update_shortage_insights(kpi_data):
+    if not kpi_data:
+        return ""
+    lack = kpi_data.get('total_lack_h', 0)
+    if lack > 0:
+        role = kpi_data.get('most_lacking_role_name', 'N/A')
+        hours = kpi_data.get('most_lacking_role_hours', 0)
+        return dcc.Markdown(
+            f"不足合計 **{lack:.1f}h**。最も不足している職種は **{role}** ({hours:.1f}h)。"
+        )
+    return html.P("不足はありません。")
+
+
+@app.callback(
+    Output('hire-plan-insights', 'children'),
+    Input('kpi-data-store', 'data'),
+)
+def update_hire_plan_insights(kpi_data):
+    if not kpi_data:
+        return ""
+    total_lack_h = kpi_data.get('total_lack_h', 0)
+    if total_lack_h == 0:
+        return html.P("追加採用の必要はありません。")
+    role = kpi_data.get('most_lacking_role_name', 'N/A')
+    return dcc.Markdown(
+        f"最も不足している **{role}** の補充を優先的に検討してください。"
+    )
+
+
+@app.callback(
+    Output('sim-shortage-graph', 'figure'),
+    Output('sim-cost-text', 'children'),
+    Input('sim-role-dropdown', 'value'),
+    Input('sim-hire-fte-slider', 'value'),
+    State('kpi-data-store', 'data'),
+)
+def update_hire_simulation(selected_role, added_fte, kpi_data):
+    if not kpi_data:
+        raise PreventUpdate
+
+    from shift_suite.tasks.h2hire import (
+        AVG_HOURLY_WAGE,
+        MONTHLY_HOURS_FTE,
+        RECRUIT_COST_PER_HIRE,
+    )
+
+    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame()).copy()
+
+    reduction_hours = added_fte * MONTHLY_HOURS_FTE
+    role_index = df_shortage_role.index[df_shortage_role['role'] == selected_role]
+    if not role_index.empty:
+        original_hours = df_shortage_role.loc[role_index[0], 'lack_h']
+        df_shortage_role.loc[role_index[0], 'lack_h'] = max(0, original_hours - reduction_hours)
+
+    fig = px.bar(
+        df_shortage_role,
+        x='role',
+        y='lack_h',
+        title=f'シミュレーション後: {selected_role}に{added_fte}人追加採用した場合の残存不足時間',
+        labels={'lack_h': '残存不足時間(h)'},
+    )
+
+    new_total_lack_h = df_shortage_role['lack_h'].sum()
+    original_total_lack_h = kpi_data.get('total_lack_h', 0)
+
+    cost_before = original_total_lack_h * 2200
+    cost_after_temp = new_total_lack_h * 2200
+
+    added_labor_cost = reduction_hours * AVG_HOURLY_WAGE
+    added_recruit_cost = added_fte * RECRUIT_COST_PER_HIRE
+    cost_after_hire = cost_after_temp + added_labor_cost + added_recruit_cost
+
+    cost_text = f"""
+    #### シミュレーション結果
+    - **採用コスト:** {added_recruit_cost:,.0f} 円 (一時)
+    - **追加人件費:** {added_labor_cost:,.0f} 円 (期間中)
+    - **総コスト (採用シナリオ):** {cost_after_hire:,.0f} 円
+    - **比較 (全て派遣で補填した場合):** {cost_before:,.0f} 円
+    """
+
+    return fig, dcc.Markdown(cost_text)
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
