@@ -2027,25 +2027,39 @@ if run_button_clicked:
             st.balloons()
             st.success(_("All processes complete!"))
             st.session_state.analysis_done = True
-            st.success("✅ 分析が完了しました！")
-            st.info(
-                "以下のリンクをクリックすると、結果を高速ビューアで快適に閲覧できます。"
+            st.success("✅ 分析が完了しました。")
+            st.header("ステップ1: 分析結果をダウンロード")
+            st.write(
+                "以下のボタンをクリックして、分析結果がすべて入ったZIPファイルを手元のPCに保存してください。"
             )
+
+            zip_buffer = io.BytesIO()
+            out_dir = Path("./out")
+            if out_dir.exists():
+                with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zf:
+                    for f_path in out_dir.glob("**/*"):
+                        zf.write(f_path, f_path.relative_to(out_dir))
+
+                st.download_button(
+                    label="📥 analysis_results.zip をダウンロード",
+                    data=zip_buffer.getvalue(),
+                    file_name="analysis_results.zip",
+                    mime="application/zip",
+                    type="primary",
+                )
+            else:
+                st.error("分析結果ディレクトリが見つかりませんでした。")
+
+            st.header("ステップ2: 高速ビューアで結果を確認")
+            st.write(
+                "結果のダウンロード後、以下のリンクからビューアを開き、ダウンロードしたZIPファイルをアップロードしてください。"
+            )
+
+            DASH_APP_URL = "http://127.0.0.1:8050"
             st.markdown(
-                "### [📈 分析結果を高速ビューアで表示する](http://127.0.0.1:8050)",
+                f"### [📈 分析結果を高速ビューアで表示する]({DASH_APP_URL})",
                 unsafe_allow_html=True,
             )
-            st.caption(
-                "（注意: 上記リンクを利用するには、事前に別のターミナルで `python dash_app.py` を実行してビューアを起動しておく必要があります）"
-            )
-            if st.button("高速ビューアを起動する"):
-                try:
-                    subprocess.Popen(["python", "dash_app.py"])
-                    st.toast(
-                        "ビューアを新しいプロセスで起動しました。ブラウザで http://127.0.0.1:8050 を開いてください。"
-                    )
-                except Exception as e:
-                    st.error(f"ビューアの起動に失敗しました: {e}")
         except ValueError as ve_exec_run_main:
             log_and_display_error(
                 _("Error during analysis (ValueError)"), ve_exec_run_main
