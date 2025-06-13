@@ -42,6 +42,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import subprocess
 from streamlit.runtime import exists as st_runtime_exists
 
 try:
@@ -2026,6 +2027,25 @@ if run_button_clicked:
             st.balloons()
             st.success(_("All processes complete!"))
             st.session_state.analysis_done = True
+            st.success("✅ 分析が完了しました！")
+            st.info(
+                "以下のリンクをクリックすると、結果を高速ビューアで快適に閲覧できます。"
+            )
+            st.markdown(
+                "### [📈 分析結果を高速ビューアで表示する](http://127.0.0.1:8050)",
+                unsafe_allow_html=True,
+            )
+            st.caption(
+                "（注意: 上記リンクを利用するには、事前に別のターミナルで `python dash_app.py` を実行してビューアを起動しておく必要があります）"
+            )
+            if st.button("高速ビューアを起動する"):
+                try:
+                    subprocess.Popen(["python", "dash_app.py"])
+                    st.toast(
+                        "ビューアを新しいプロセスで起動しました。ブラウザで http://127.0.0.1:8050 を開いてください。"
+                    )
+                except Exception as e:
+                    st.error(f"ビューアの起動に失敗しました: {e}")
         except ValueError as ve_exec_run_main:
             log_and_display_error(
                 _("Error during analysis (ValueError)"), ve_exec_run_main
@@ -4092,6 +4112,24 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
                 with tabs_obj_dash[i]:
                     st.subheader(_(tab_key))
                     st.info(f"{_(tab_key)} の表示は現在準備中です。")
+
+        st.success("✅ 分析が完了しました！")
+        st.info("以下のリンクをクリックすると、結果を高速ビューアで快適に閲覧できます。")
+        st.markdown(
+            "### [📈 分析結果を高速ビューアで表示する](http://127.0.0.1:8050)",
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "（注意: 上記リンクを利用するには、事前に別のターミナルで `python dash_app.py` を実行してビューアを起動しておく必要があります）"
+        )
+        if st.button("高速ビューアを起動する"):
+            try:
+                subprocess.Popen(["python", "dash_app.py"])
+                st.toast(
+                    "ビューアを新しいプロセスで起動しました。ブラウザで http://127.0.0.1:8050 を開いてください。"
+                )
+            except Exception as e:
+                st.error(f"ビューアの起動に失敗しました: {e}")
     else:
         st.warning(
             "ダッシュボードを表示するためのデータがロードされていません。ZIPファイルをアップロードしてください。"
