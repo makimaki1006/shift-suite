@@ -942,7 +942,9 @@ def process_upload(contents, filename):
                     DATA_STORE[file.replace('.csv', '')] = df
 
         # 動的ヒートマップファイル
-        for p in data_dir.glob('heat_role_*.parquet'):
+        for p in data_dir.glob('heat_*.parquet'):
+            if p.name == 'heat_ALL.parquet' or p.name.startswith('heat_emp_'):
+                continue
             df = safe_read_parquet(p)
             if not df.empty:
                 DATA_STORE[safe_filename(p.stem)] = df
@@ -1107,7 +1109,7 @@ def update_heatmap_content(selected_role, selected_employment, mode):
     # データキーを決定 (単一フィルタのみ対応)
     heat_key = 'heat_ALL'
     if selected_role:
-        heat_key = f'heat_role_{safe_filename(selected_role)}'
+        heat_key = f'heat_{safe_filename(selected_role)}'
     elif selected_employment:
         heat_key = f'heat_emp_{safe_filename(selected_employment)}'
 
@@ -1199,14 +1201,19 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         if not detail:
             return html.Div("詳細を選択してください")
         if scope == 'role':
-            heat_key = f'heat_role_{safe_filename(detail)}'
+            heat_key = f'heat_{safe_filename(detail)}'
         else:
             heat_key = f'heat_emp_{safe_filename(detail)}'
 
     df_heat = DATA_STORE.get(heat_key)
     if df_heat is None:
         for key in DATA_STORE.keys():
-            if key.startswith('heat_role_') and detail in key:
+            if (
+                key.startswith('heat_')
+                and not key.startswith('heat_emp_')
+                and key != 'heat_ALL'
+                and detail in key
+            ):
                 df_heat = DATA_STORE[key]
                 break
             if key.startswith('heat_emp_') and detail in key:
@@ -1291,14 +1298,19 @@ def update_optimization_content(scope, detail_values):
         if not detail:
             return html.Div("詳細を選択してください")
         if scope == 'role':
-            heat_key = f'heat_role_{safe_filename(detail)}'
+            heat_key = f'heat_{safe_filename(detail)}'
         else:
             heat_key = f'heat_emp_{safe_filename(detail)}'
 
     df_heat = DATA_STORE.get(heat_key)
     if df_heat is None:
         for key in DATA_STORE.keys():
-            if key.startswith('heat_role_') and detail in key:
+            if (
+                key.startswith('heat_')
+                and not key.startswith('heat_emp_')
+                and key != 'heat_ALL'
+                and detail in key
+            ):
                 df_heat = DATA_STORE[key]
                 break
             if key.startswith('heat_emp_') and detail in key:
