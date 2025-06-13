@@ -222,11 +222,21 @@ def create_heatmap_tab() -> html.Div:
                 ),
             ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
             html.Div([
-                html.Label("詳細選択"),
+                html.Label("職種"),
                 dcc.Dropdown(
-                    id='heatmap-detail',
-                    options=[],
-                    value=None
+                    id='heatmap-role-filter',
+                    options=[{'label': r, 'value': r} for r in roles],
+                    value=None,
+                    placeholder="職種で絞り込み",
+                ),
+            ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
+            html.Div([
+                html.Label("雇用形態"),
+                dcc.Dropdown(
+                    id='heatmap-employment-filter',
+                    options=[{'label': e, 'value': e} for e in employments],
+                    value=None,
+                    placeholder="雇用形態で絞り込み",
                 ),
             ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
             html.Div([
@@ -386,54 +396,56 @@ def create_leave_analysis_tab() -> html.Div:
     }),
         html.H3("休暇分析", style={'marginBottom': '20px'})]
 
-    # 基本的な休暇分析データ
-    df_leave = DATA_STORE.get('leave_analysis', pd.DataFrame())
     df_staff_balance = DATA_STORE.get('staff_balance_daily', pd.DataFrame())
+    df_daily_summary = DATA_STORE.get('daily_summary', pd.DataFrame())
+    df_concentration = DATA_STORE.get('concentration_requested', pd.DataFrame())
+    df_ratio_breakdown = DATA_STORE.get('leave_ratio_breakdown', pd.DataFrame())
 
-    if not df_leave.empty:
-        # 勤務予定人数と休暇取得者数の推移
-        if not df_staff_balance.empty:
-            fig_balance = px.line(
-                df_staff_balance,
-                x='date',
-                y=['total_staff', 'leave_applicants_count', 'non_leave_staff'],
-                title='スタッフバランスの推移',
-                labels={
-                    'value': '人数',
-                    'variable': '項目',
-                    'date': '日付'
-                },
-                markers=True
-            )
-            content.append(dcc.Graph(figure=fig_balance))
+    if not df_staff_balance.empty:
+        fig_balance = px.line(
+            df_staff_balance,
+            x='date',
+            y=['total_staff', 'leave_applicants_count', 'non_leave_staff'],
+            title='勤務予定人数と全休暇取得者数の推移',
+            labels={'value': '人数', 'variable': '項目', 'date': '日付'},
+            markers=True
+        )
+        content.append(dcc.Graph(figure=fig_balance))
+        content.append(dash_table.DataTable(
+            data=df_staff_balance.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in df_staff_balance.columns]
+        ))
 
-    # 休暇タイプ別の分析
-    if 'leave_type' in df_leave.columns:
-        # 日別休暇取得者数（内訳）
+    if not df_daily_summary.empty:
         fig_breakdown = px.bar(
-            df_leave,
+            df_daily_summary,
             x='date',
             y='total_leave_days',
             color='leave_type',
+            barmode='stack',
             title='日別 休暇取得者数（内訳）',
-            labels={
-                'date': '日付',
-                'total_leave_days': '休暇取得者数',
-                'leave_type': '休暇タイプ'
-            },
-            barmode='stack'
+            labels={'date': '日付', 'total_leave_days': '休暇取得者数', 'leave_type': '休暇タイプ'}
         )
         content.append(dcc.Graph(figure=fig_breakdown))
 
-    # 休暇集中分析
-    df_concentration = DATA_STORE.get('concentration_requested', pd.DataFrame())
+    if not df_ratio_breakdown.empty:
+        fig_ratio_break = px.bar(
+            df_ratio_breakdown,
+            x='dayofweek',
+            y='leave_ratio',
+            color='leave_type',
+            facet_col='month_period',
+            category_orders={
+                'dayofweek': ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'],
+                'month_period': ['月初(1-10日)', '月中(11-20日)', '月末(21-末日)'],
+            },
+            labels={'dayofweek': '曜日', 'leave_ratio': '割合', 'leave_type': '休暇タイプ', 'month_period': '月期間'},
+            title='曜日・月期間別休暇取得率'
+        )
+        content.append(dcc.Graph(figure=fig_ratio_break))
+
     if not df_concentration.empty:
-        content.append(html.H4("休暇集中日分析", style={'marginTop': '30px'}))
-        content.append(html.P("閾値を超える休暇申請があった日を赤いダイヤモンドで表示します。"))
-
         fig_conc = go.Figure()
-
-        # 基本の線グラフ
         fig_conc.add_trace(go.Scatter(
             x=df_concentration['date'],
             y=df_concentration['leave_applicants_count'],
@@ -442,8 +454,6 @@ def create_leave_analysis_tab() -> html.Div:
             line=dict(shape='spline', smoothing=0.5),
             marker=dict(size=6)
         ))
-
-        # 集中日のマーカー
         if 'is_concentrated' in df_concentration.columns:
             concentrated = df_concentration[df_concentration['is_concentrated']]
             if not concentrated.empty:
@@ -461,7 +471,6 @@ def create_leave_analysis_tab() -> html.Div:
             xaxis_title='日付',
             yaxis_title='申請者数'
         )
-
         content.append(dcc.Graph(figure=fig_conc))
 
     return html.Div(content)
@@ -532,6 +541,7 @@ def create_hire_plan_tab() -> html.Div:
 
     df_hire = DATA_STORE.get('hire_plan', pd.DataFrame())
     df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
+    df_work_patterns = DATA_STORE.get('work_patterns', pd.DataFrame())
     if not df_hire.empty:
         content.append(html.H4("必要FTE（職種別）"))
 
@@ -560,9 +570,9 @@ def create_hire_plan_tab() -> html.Div:
             html.H4("What-if 採用シミュレーション", style={'marginTop': '30px'}),
             html.P("スライダーを動かして、追加採用による不足時間の削減効果とコストの変化を確認できます。"),
             dcc.Dropdown(
-                id='sim-role-dropdown',
-                options=[{'label': i, 'value': i} for i in df_shortage_role['role'].unique()],
-                value=df_shortage_role['role'].iloc[0],
+                id='sim-work-pattern-dropdown',
+                options=[{'label': i, 'value': i} for i in df_work_patterns['code'].unique()] if not df_work_patterns.empty else [],
+                value=df_work_patterns['code'].iloc[0] if not df_work_patterns.empty else None,
                 clearable=False,
             ),
             dcc.Slider(
@@ -605,8 +615,9 @@ def create_fatigue_tab() -> html.Div:
     df_fatigue = DATA_STORE.get('fatigue_score', pd.DataFrame())
 
     if not df_fatigue.empty:
+        df_fatigue_for_plot = df_fatigue.reset_index().rename(columns={'index': 'staff'})
         fig = px.bar(
-            df_fatigue,
+            df_fatigue_for_plot,
             x='staff',
             y='fatigue_score',
             title='スタッフ別疲労スコア',
@@ -614,8 +625,8 @@ def create_fatigue_tab() -> html.Div:
         )
         content.append(dcc.Graph(figure=fig))
         content.append(dash_table.DataTable(
-            data=df_fatigue.to_dict('records'),
-            columns=[{'name': i, 'id': i} for i in df_fatigue.columns]
+            data=df_fatigue_for_plot.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in df_fatigue_for_plot.columns]
         ))
     else:
         content.append(html.P("疲労分析データが見つかりません。"))
@@ -668,14 +679,25 @@ def create_fairness_tab() -> html.Div:
 
     if not df_fair.empty:
         metric_col = 'fairness_score' if 'fairness_score' in df_fair.columns else 'night_ratio'
-        fig = px.bar(
+        fig_bar = px.bar(
             df_fair,
             x='staff',
             y=metric_col,
             labels={'staff': 'スタッフ', metric_col: 'スコア'},
             color_discrete_sequence=['#FF8C00']
         )
-        content.append(dcc.Graph(figure=fig))
+        content.append(dcc.Graph(figure=fig_bar))
+
+        fig_hist = px.histogram(
+            df_fair,
+            x=metric_col,
+            nbins=20,
+            title="公平性スコア分布",
+            labels={metric_col: 'スコア'}
+        )
+        fig_hist.update_layout(yaxis_title="人数")
+        content.append(dcc.Graph(figure=fig_hist))
+
         content.append(dash_table.DataTable(
             data=df_fair.to_dict('records'),
             columns=[{'name': i, 'id': i} for i in df_fair.columns]
@@ -865,7 +887,8 @@ def process_upload(contents, filename):
             'optimal_hire_plan.parquet',
             'daily_cost.parquet',
             'forecast.parquet',
-            'cost_benefit.parquet'
+            'cost_benefit.parquet',
+            'work_patterns.parquet'
         ]
 
         for file in parquet_files:
@@ -877,6 +900,9 @@ def process_upload(contents, filename):
         # CSVファイル
         csv_files = [
             'leave_analysis.csv',
+            'staff_balance_daily.csv',
+            'concentration_requested.csv',
+            'leave_ratio_breakdown.csv',
             'demand_series.csv'
         ]
 
@@ -1022,74 +1048,41 @@ def update_tab_content(active_tab):
         return html.Div("タブが選択されていません")
 
 
-@app.callback(
-    Output('heatmap-detail', 'options'),
-    Output('heatmap-detail', 'value'),
-    Output('heatmap-detail', 'style'),
-    Input('heatmap-scope', 'value')
-)
-def update_heatmap_detail_options(scope):
-    """ヒートマップの詳細選択オプションとデフォルト値を更新"""
-    if scope == 'overall':
-        return [], None, {'display': 'none'}
-    if scope == 'role':
-        roles = DATA_STORE.get('roles', [])
-        options = [{'label': r, 'value': r} for r in roles]
-        default_value = roles[0] if roles else None
-        return options, default_value, {'display': 'block'}
-    if scope == 'employment':
-        employments = DATA_STORE.get('employments', [])
-        options = [{'label': e, 'value': e} for e in employments]
-        default_value = employments[0] if employments else None
-        return options, default_value, {'display': 'block'}
-    return [], None, {'display': 'none'}
 
 
 @app.callback(
     Output('heatmap-content', 'children'),
-    Input('heatmap-scope', 'value'),
-    Input('heatmap-detail', 'value'),
+    Input('heatmap-role-filter', 'value'),
+    Input('heatmap-employment-filter', 'value'),
     Input('heatmap-mode', 'value')
 )
-def update_heatmap_content(scope, detail, mode):
+def update_heatmap_content(selected_role, selected_employment, mode):
     """ヒートマップコンテンツを更新"""
-    # データキーを決定
-    if scope == 'overall':
-        heat_key = 'heat_ALL'
-    elif scope == 'role' and detail:
-        heat_key = f'heat_role_{safe_filename(detail)}'
-    elif scope == 'employment' and detail:
-        heat_key = f'heat_emp_{safe_filename(detail)}'
-    else:
-        return html.Div("データを選択してください")
+    # データキーを決定 (単一フィルタのみ対応)
+    heat_key = 'heat_ALL'
+    if selected_role:
+        heat_key = f'heat_role_{safe_filename(selected_role)}'
+    elif selected_employment:
+        heat_key = f'heat_emp_{safe_filename(selected_employment)}'
 
     df_heat = DATA_STORE.get(heat_key)
-    if df_heat is None:
-        for key in DATA_STORE.keys():
-            if key.startswith('heat_role_') and detail in key:
-                df_heat = DATA_STORE[key]
-                break
-            if key.startswith('heat_emp_') and detail in key:
-                df_heat = DATA_STORE[key]
-                break
     if df_heat is None or df_heat.empty:
-        return html.Div(f"データが見つかりません: {detail}")
+        return html.Div("データが見つかりません")
 
     # モードに応じて処理
     if mode == 'Ratio':
         # 不足率を計算
         display_df = calc_ratio_from_heatmap(df_heat)
-        title = f"充足率ヒートマップ - {scope}"
+        title_scope = selected_role or selected_employment or "全体"
+        title = f"充足率ヒートマップ - {title_scope}"
         color_scale = 'RdBu_r'
     else:
         # 生データから必要な列だけ抽出
         date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
         display_df = df_heat[date_cols] if date_cols else pd.DataFrame()
-        title = f"人員配置ヒートマップ - {scope}"
+        title_scope = selected_role or selected_employment or "全体"
+        title = f"人員配置ヒートマップ - {title_scope}"
         color_scale = 'Blues'
-
-    if detail:
-        title += f" ({detail})"
 
     if display_df.empty:
         return html.Div("表示可能なデータがありません")
@@ -1416,33 +1409,39 @@ def update_hire_plan_insights(kpi_data):
 @app.callback(
     Output('sim-shortage-graph', 'figure'),
     Output('sim-cost-text', 'children'),
-    Input('sim-role-dropdown', 'value'),
+    Input('sim-work-pattern-dropdown', 'value'),
     Input('sim-hire-fte-slider', 'value'),
     State('kpi-data-store', 'data'),
 )
-def update_hire_simulation(selected_role, added_fte, kpi_data):
-    if not kpi_data:
+def update_hire_simulation(selected_pattern, added_fte, kpi_data):
+    if not kpi_data or not selected_pattern:
         raise PreventUpdate
 
     from shift_suite.tasks.h2hire import (
         AVG_HOURLY_WAGE,
-        MONTHLY_HOURS_FTE,
         RECRUIT_COST_PER_HIRE,
     )
 
+    df_work_patterns = DATA_STORE.get('work_patterns', pd.DataFrame())
     df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame()).copy()
 
-    reduction_hours = added_fte * MONTHLY_HOURS_FTE
-    role_index = df_shortage_role.index[df_shortage_role['role'] == selected_role]
-    if not role_index.empty:
-        original_hours = df_shortage_role.loc[role_index[0], 'lack_h']
-        df_shortage_role.loc[role_index[0], 'lack_h'] = max(0, original_hours - reduction_hours)
+    pattern_info = df_work_patterns[df_work_patterns['code'] == selected_pattern]
+    if pattern_info.empty:
+        raise PreventUpdate
+    slots_per_day = pattern_info['parsed_slots_count'].iloc[0]
+    hours_per_day = slots_per_day * 0.5
+    reduction_hours = added_fte * hours_per_day * 20
+
+    if not df_shortage_role.empty:
+        most_lacking_role_index = df_shortage_role['lack_h'].idxmax()
+        original_hours = df_shortage_role.loc[most_lacking_role_index, 'lack_h']
+        df_shortage_role.loc[most_lacking_role_index, 'lack_h'] = max(0, original_hours - reduction_hours)
 
     fig = px.bar(
         df_shortage_role,
         x='role',
         y='lack_h',
-        title=f'シミュレーション後: {selected_role}に{added_fte}人追加採用した場合の残存不足時間',
+        title=f'シミュレーション後: {selected_pattern}勤務者を{added_fte}人追加採用した場合の残存不足時間',
         labels={'lack_h': '残存不足時間(h)'},
     )
 

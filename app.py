@@ -1399,6 +1399,9 @@ if run_button_clicked:
                     slot_minutes=param_slot,
                     year_month_cell_location=param_year_month_cell,
                 )
+                if wt_df is not None and not wt_df.empty:
+                    wt_df.to_parquet(out_dir_exec / "work_patterns.parquet", index=False)
+                    log.info("勤務区分情報を work_patterns.parquet に保存しました。")
                 parquet_fp = out_dir_exec / "intermediate_data.parquet"
                 long_df.to_parquet(parquet_fp)
                 st.session_state["intermediate_parquet_path"] = str(parquet_fp)
