@@ -564,6 +564,7 @@ def optimize_large_heatmap_display(
     return df.iloc[::sample_step_rows, ::sample_step_cols]
 
 
+@st.cache_data(show_spinner=False, ttl=1800)
 def load_all_heatmap_files(data_dir: Path) -> dict:
     """Load all available heatmap parquet files dynamically."""
     heatmap_data: dict[str, pd.DataFrame] = {}
@@ -627,7 +628,7 @@ def update_display_data_with_heatmaps(out_dir: Path) -> None:
         "demand_series": "demand_series.csv",
     }
 
-    loaded_count = 0
+    initial_loaded = 0
     for key, filename in files_to_load.items():
         fp = out_dir / filename
         if fp.exists():
@@ -636,7 +637,7 @@ def update_display_data_with_heatmaps(out_dir: Path) -> None:
                     st.session_state.display_data[key] = pd.read_csv(fp)
                 else:
                     st.session_state.display_data[key] = pd.read_parquet(fp)
-                loaded_count += 1
+                initial_loaded += 1
                 log.info(
                     "'%s'を読み込み、display_data['%s']に格納しました。", filename, key
                 )
@@ -693,7 +694,9 @@ def update_display_data_with_heatmaps(out_dir: Path) -> None:
         st.session_state.display_data[margin_key] = (upper_df - staff_df).clip(lower=0).fillna(0).astype(int)
 
     loaded_count = len(st.session_state.display_data)
-    log.info(f"display_data更新完了: {loaded_count}個のデータをメモリに読み込みました。")
+    log.info(
+        "display_data更新完了: %d個のデータをメモリに読み込みました。", loaded_count
+    )
 
 
 @st.cache_data(show_spinner=False, ttl=900)
