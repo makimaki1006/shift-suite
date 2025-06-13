@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State, ALL
 from dash.exceptions import PreventUpdate
+from shift_suite.tasks.utils import safe_read_excel
 
 # ロガー設定
 logging.basicConfig(
@@ -518,6 +519,124 @@ def create_hire_plan_tab() -> html.Div:
 
     return html.Div(content)
 
+
+def create_fatigue_tab() -> html.Div:
+    """疲労分析タブを作成"""
+    content = [html.H3("疲労分析", style={'marginBottom': '20px'})]
+    df_fatigue = DATA_STORE.get('fatigue_score', pd.DataFrame())
+
+    if not df_fatigue.empty:
+        fig = px.bar(
+            df_fatigue,
+            x='staff',
+            y='fatigue_score',
+            title='スタッフ別疲労スコア',
+            labels={'staff': 'スタッフ', 'fatigue_score': '疲労スコア'}
+        )
+        content.append(dcc.Graph(figure=fig))
+        content.append(dash_table.DataTable(
+            data=df_fatigue.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in df_fatigue.columns]
+        ))
+    else:
+        content.append(html.P("疲労分析データが見つかりません。"))
+
+    return html.Div(content)
+
+
+def create_forecast_tab() -> html.Div:
+    """需要予測タブを作成"""
+    content = [html.H3("需要予測", style={'marginBottom': '20px'})]
+    df_fc = DATA_STORE.get('forecast', pd.DataFrame())
+    df_actual = DATA_STORE.get('demand_series', pd.DataFrame())
+
+    if not df_fc.empty:
+        fig = go.Figure()
+        if {'ds', 'yhat'}.issubset(df_fc.columns):
+            fig.add_trace(go.Scatter(x=df_fc['ds'], y=df_fc['yhat'], mode='lines+markers', name='予測'))
+        if not df_actual.empty and {'ds', 'y'}.issubset(df_actual.columns):
+            fig.add_trace(go.Scatter(x=df_actual['ds'], y=df_actual['y'], mode='lines', name='実績', line=dict(dash='dash')))
+        fig.update_layout(title='需要予測と実績', xaxis_title='日付', yaxis_title='需要')
+        content.append(dcc.Graph(figure=fig))
+        content.append(dash_table.DataTable(
+            data=df_fc.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in df_fc.columns]
+        ))
+    else:
+        content.append(html.P("需要予測データが見つかりません。"))
+
+    return html.Div(content)
+
+
+def create_fairness_tab() -> html.Div:
+    """公平性タブを作成"""
+    content = [html.H3("公平性 (夜勤比率)", style={'marginBottom': '20px'})]
+    df_fair = DATA_STORE.get('fairness_after', pd.DataFrame())
+
+    if not df_fair.empty:
+        metric_col = 'fairness_score' if 'fairness_score' in df_fair.columns else 'night_ratio'
+        fig = px.bar(
+            df_fair,
+            x='staff',
+            y=metric_col,
+            labels={'staff': 'スタッフ', metric_col: 'スコア'},
+            color_discrete_sequence=['#FF8C00']
+        )
+        content.append(dcc.Graph(figure=fig))
+        content.append(dash_table.DataTable(
+            data=df_fair.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in df_fair.columns]
+        ))
+    else:
+        content.append(html.P("公平性データが見つかりません。"))
+
+    return html.Div(content)
+
+
+def create_gap_analysis_tab() -> html.Div:
+    """基準乖離分析タブを作成"""
+    content = [html.H3("基準乖離分析", style={'marginBottom': '20px'})]
+    df_summary = DATA_STORE.get('gap_summary', pd.DataFrame())
+    df_heat = DATA_STORE.get('gap_heatmap', pd.DataFrame())
+
+    if not df_summary.empty:
+        content.append(dash_table.DataTable(
+            data=df_summary.to_dict('records'),
+            columns=[{'name': c, 'id': c} for c in df_summary.columns]
+        ))
+    if not df_heat.empty:
+        fig = px.imshow(
+            df_heat,
+            aspect='auto',
+            color_continuous_scale='RdBu_r',
+            labels={'x': '時間帯', 'y': '職種', 'color': '乖離'}
+        )
+        content.append(dcc.Graph(figure=fig))
+    if df_summary.empty and df_heat.empty:
+        content.append(html.P("基準乖離データが見つかりません。"))
+
+    return html.Div(content)
+
+
+def create_summary_report_tab() -> html.Div:
+    """サマリーレポートタブを作成"""
+    content = [html.H3("Summary Report", style={'marginBottom': '20px'})]
+    report_text = DATA_STORE.get('summary_report')
+    if report_text:
+        content.append(dcc.Markdown(report_text))
+    else:
+        content.append(html.P("レポートが見つかりません。"))
+    return html.Div(content)
+
+
+def create_ppt_report_tab() -> html.Div:
+    """PowerPointレポートタブを作成"""
+    return html.Div([
+        html.H3("PPT Report", style={'marginBottom': '20px'}),
+        html.P("ボタンを押してPowerPointレポートを生成してください。"),
+        html.Button('Generate PPT', id='ppt-generate', n_clicks=0)
+    ])
+
 # --- メインレイアウト ---
 app.layout = html.Div([
     dcc.Store(id='data-loaded', storage_type='memory'),
@@ -662,6 +781,30 @@ def process_upload(contents, filename):
             if not df.empty:
                 DATA_STORE[safe_filename(p.stem)] = df
 
+        # Gap analysis files (excel or parquet)
+        for name in ['gap_summary', 'gap_heatmap']:
+            excel_fp = data_dir / f'{name}.xlsx'
+            parquet_fp = data_dir / f'{name}.parquet'
+            df = pd.DataFrame()
+            if excel_fp.exists():
+                try:
+                    df = safe_read_excel(excel_fp)
+                except Exception as e:  # noqa: BLE001
+                    log.warning(f'Failed to read {excel_fp}: {e}')
+            elif parquet_fp.exists():
+                df = safe_read_parquet(parquet_fp)
+            if not df.empty:
+                DATA_STORE[name] = df
+
+        # Summary report markdown
+        report_files = sorted(data_dir.glob('OverShortage_SummaryReport_*.md'))
+        if report_files:
+            latest = report_files[-1]
+            try:
+                DATA_STORE['summary_report'] = latest.read_text(encoding='utf-8')
+            except Exception as e:  # noqa: BLE001
+                log.warning(f'Failed to read {latest}: {e}')
+
         # メタデータ読み込み
         roles, employments = load_shortage_meta(data_dir)
         DATA_STORE['roles'] = roles
@@ -702,6 +845,12 @@ def update_main_content(data_status):
         dcc.Tab(label='休暇分析', value='leave'),
         dcc.Tab(label='コスト分析', value='cost'),
         dcc.Tab(label='採用計画', value='hire_plan'),
+        dcc.Tab(label='疲労分析', value='fatigue'),
+        dcc.Tab(label='需要予測', value='forecast'),
+        dcc.Tab(label='公平性', value='fairness'),
+        dcc.Tab(label='基準乖離分析', value='gap'),
+        dcc.Tab(label='Summary Report', value='summary_report'),
+        dcc.Tab(label='PPT Report', value='ppt_report'),
     ])
 
     return html.Div([
@@ -730,26 +879,43 @@ def update_tab_content(active_tab):
         return create_cost_analysis_tab()
     elif active_tab == 'hire_plan':
         return create_hire_plan_tab()
+    elif active_tab == 'fatigue':
+        return create_fatigue_tab()
+    elif active_tab == 'forecast':
+        return create_forecast_tab()
+    elif active_tab == 'fairness':
+        return create_fairness_tab()
+    elif active_tab == 'gap':
+        return create_gap_analysis_tab()
+    elif active_tab == 'summary_report':
+        return create_summary_report_tab()
+    elif active_tab == 'ppt_report':
+        return create_ppt_report_tab()
     else:
         return html.Div("タブが選択されていません")
 
 
 @app.callback(
     Output('heatmap-detail', 'options'),
+    Output('heatmap-detail', 'value'),
     Output('heatmap-detail', 'style'),
     Input('heatmap-scope', 'value')
 )
 def update_heatmap_detail_options(scope):
-    """ヒートマップの詳細選択オプションを更新"""
+    """ヒートマップの詳細選択オプションとデフォルト値を更新"""
     if scope == 'overall':
-        return [], {'display': 'none'}
+        return [], None, {'display': 'none'}
     if scope == 'role':
         roles = DATA_STORE.get('roles', [])
-        return [{'label': r, 'value': r} for r in roles], {'display': 'block'}
+        options = [{'label': r, 'value': r} for r in roles]
+        default_value = roles[0] if roles else None
+        return options, default_value, {'display': 'block'}
     if scope == 'employment':
         employments = DATA_STORE.get('employments', [])
-        return [{'label': e, 'value': e} for e in employments], {'display': 'block'}
-    return [], {'display': 'none'}
+        options = [{'label': e, 'value': e} for e in employments]
+        default_value = employments[0] if employments else None
+        return options, default_value, {'display': 'block'}
+    return [], None, {'display': 'none'}
 
 
 @app.callback(
