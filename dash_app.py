@@ -925,6 +925,10 @@ def process_upload(contents, filename):
                 df = safe_read_parquet(data_dir / file)
                 if not df.empty:
                     DATA_STORE[file.replace('.parquet', '')] = df
+            elif file == 'daily_cost.parquet' and (data_dir / 'daily_cost.xlsx').exists():
+                df = safe_read_excel(data_dir / 'daily_cost.xlsx')
+                if not df.empty:
+                    DATA_STORE['daily_cost'] = df
 
         # CSVファイル
         csv_files = [
