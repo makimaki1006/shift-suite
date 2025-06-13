@@ -286,6 +286,8 @@ def run_fairness(
         )
         meta_df.to_parquet(before_fp_path, index=False)
         summary_df.to_parquet(after_fp_path, index=False)
-        log.info(f"[fairness] fairness_before.parquet / fairness_after.parquet 保存 (Jain: {jain_index_val:.3f})")
+        log.info(
+            f"[fairness] fairness_before.parquet / fairness_after.parquet 保存 (Jain: {jain_index_val:.3f})"
+        )
     except Exception as e:
         log.error(f"[fairness] Parquet書出エラー: {e}", exc_info=True)

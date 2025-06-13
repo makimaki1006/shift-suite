@@ -23,10 +23,12 @@ DATA_DIR = pathlib.Path(__file__).resolve().parents[1] / "out"
 
 leave_results: dict[str, pd.DataFrame] = {}
 
+
 def drop_summary_cols(df: pd.DataFrame) -> pd.DataFrame:
     """need / upper / staff / lack / excess を除外した DF を返す"""
     cols_to_check = df.columns.str.strip().str.lower()
     return df.loc[:, ~cols_to_check.isin(SUMMARY5_CONST)]
+
 
 @lru_cache(maxsize=32)
 def get_cached_heatmap_data(mode: str, zmax_val: float, zmode: str, data_hash: str):
@@ -38,7 +40,7 @@ def get_cached_heatmap_data(mode: str, zmax_val: float, zmode: str, data_hash: s
             zmax_val = RAW_ZMAX_P95
         elif zmode == "p99":
             zmax_val = RAW_ZMAX_P99
-        
+
         slider_disabled = zmode != "manual"
         fig = px.imshow(
             heat_staff_data,
@@ -64,6 +66,7 @@ def get_cached_heatmap_data(mode: str, zmax_val: float, zmode: str, data_hash: s
         )
         return fig, True, zmax_val
 
+
 try:
     heat_all_df = pd.read_parquet(DATA_DIR / "heat_ALL.parquet")
     need_series_for_ratio = heat_all_df["need"].replace(0, np.nan)
@@ -72,8 +75,13 @@ try:
     ratio_calculated_df = heat_staff_data.div(need_series_for_ratio, axis=0).clip(
         lower=0, upper=2
     )
-    
-    data_hash = str(hash(str(heat_staff_data.values.tobytes()) + str(ratio_calculated_df.values.tobytes())))
+
+    data_hash = str(
+        hash(
+            str(heat_staff_data.values.tobytes())
+            + str(ratio_calculated_df.values.tobytes())
+        )
+    )
 
     RAW_ZMAX_DEFAULT_CALC = 10.0
     RAW_ZMAX_P90 = RAW_ZMAX_DEFAULT_CALC
@@ -98,7 +106,10 @@ try:
     if (DATA_DIR / "fairness_before.parquet").exists():
         try:
             fairness_before_df = pd.read_parquet(DATA_DIR / "fairness_before.parquet")
-            if not fairness_before_df.empty and "jain_index" in fairness_before_df.columns:
+            if (
+                not fairness_before_df.empty
+                and "jain_index" in fairness_before_df.columns
+            ):
                 jain_index_val = fairness_before_df["jain_index"].iloc[0]
         except Exception as e:
             log.error("fairness_before.parquet 読込エラー: %s", e)
@@ -134,151 +145,213 @@ except Exception as e:
 
 app = dash.Dash(__name__)
 
+
 def page_overview():
-    return html.Div([
-        html.H2("概要"),
-        html.P("このダッシュボードでは、シフト分析の結果を表示します。"),
-        html.Ul([
-            html.Li("ヒートマップ: スタッフ配置状況を可視化"),
-            html.Li("不足分析: 時間帯別の人員不足状況"),
-            html.Li("休暇分析: 休暇取得パターンの分析"),
-        ]),
-        html.Hr(),
-        html.P("データ読み込み状況:"),
-        html.Ul([
-            html.Li(f"ヒートマップデータ: {'✓' if not heat_staff_data.empty else '✗'}"),
-            html.Li(f"不足データ: {'✓' if not shortage_time_df.empty else '✗'}"),
-            html.Li(f"休暇データ: {'✓' if leave_results else '✗'}"),
-        ]),
-        html.P(f"Jain Index: {jain_index_val:.3f}" if jain_index_val is not None else "Jain Index: N/A"),
-    ])
+    return html.Div(
+        [
+            html.H2("概要"),
+            html.P("このダッシュボードでは、シフト分析の結果を表示します。"),
+            html.Ul(
+                [
+                    html.Li("ヒートマップ: スタッフ配置状況を可視化"),
+                    html.Li("不足分析: 時間帯別の人員不足状況"),
+                    html.Li("休暇分析: 休暇取得パターンの分析"),
+                ]
+            ),
+            html.Hr(),
+            html.P("データ読み込み状況:"),
+            html.Ul(
+                [
+                    html.Li(
+                        f"ヒートマップデータ: {'✓' if not heat_staff_data.empty else '✗'}"
+                    ),
+                    html.Li(
+                        f"不足データ: {'✓' if not shortage_time_df.empty else '✗'}"
+                    ),
+                    html.Li(f"休暇データ: {'✓' if leave_results else '✗'}"),
+                ]
+            ),
+            html.P(
+                f"Jain Index: {jain_index_val:.3f}"
+                if jain_index_val is not None
+                else "Jain Index: N/A"
+            ),
+        ]
+    )
+
 
 def page_heat():
-    return html.Div([
-        html.H2("ヒートマップ"),
-        html.Div([
-            html.Label("表示モード:"),
-            dcc.RadioItems(
-                id="hm-mode-radio",
-                options=[
-                    {"label": "Raw Count", "value": "raw"},
-                    {"label": "Ratio (staff ÷ need)", "value": "ratio"},
+    return html.Div(
+        [
+            html.H2("ヒートマップ"),
+            html.Div(
+                [
+                    html.Label("表示モード:"),
+                    dcc.RadioItems(
+                        id="hm-mode-radio",
+                        options=[
+                            {"label": "Raw Count", "value": "raw"},
+                            {"label": "Ratio (staff ÷ need)", "value": "ratio"},
+                        ],
+                        value="raw",
+                        inline=True,
+                    ),
                 ],
-                value="raw",
-                inline=True,
+                style={"margin": "10px"},
             ),
-        ], style={"margin": "10px"}),
-        
-        html.Div([
-            html.Label("Z軸最大値モード:"),
-            dcc.RadioItems(
-                id="hm-zmax-mode",
-                options=[
-                    {"label": "Manual", "value": "manual"},
-                    {"label": "P90", "value": "p90"},
-                    {"label": "P95", "value": "p95"},
-                    {"label": "P99", "value": "p99"},
+            html.Div(
+                [
+                    html.Label("Z軸最大値モード:"),
+                    dcc.RadioItems(
+                        id="hm-zmax-mode",
+                        options=[
+                            {"label": "Manual", "value": "manual"},
+                            {"label": "P90", "value": "p90"},
+                            {"label": "P95", "value": "p95"},
+                            {"label": "P99", "value": "p99"},
+                        ],
+                        value="p90",
+                        inline=True,
+                    ),
                 ],
-                value="p90",
-                inline=True,
+                style={"margin": "10px"},
             ),
-        ], style={"margin": "10px"}),
-        
-        html.Div([
-            html.Label("Z軸最大値 (Manual時のみ有効):"),
-            dcc.Slider(
-                id="hm-zmax-slider",
-                min=1,
-                max=50,
-                step=1,
-                value=10,
-                marks={i: str(i) for i in range(0, 51, 10)},
-                disabled=True,
+            html.Div(
+                [
+                    html.Label("Z軸最大値 (Manual時のみ有効):"),
+                    dcc.Slider(
+                        id="hm-zmax-slider",
+                        min=1,
+                        max=50,
+                        step=1,
+                        value=10,
+                        marks={i: str(i) for i in range(0, 51, 10)},
+                        disabled=True,
+                    ),
+                ],
+                style={"margin": "10px"},
             ),
-        ], style={"margin": "10px"}),
-        
-        dcc.Graph(id="hm-main-graph"),
-    ])
+            dcc.Graph(id="hm-main-graph"),
+        ]
+    )
+
 
 def page_shortage():
-    return html.Div([
-        html.H2("不足分析"),
-        html.Div([
-            html.Label("日付選択:"),
-            dcc.Dropdown(
-                id="hm-shortage-date-dropdown",
-                options=[{"label": col, "value": col} for col in shortage_time_df.columns] if not shortage_time_df.empty else [],
-                value=shortage_time_df.columns[0] if not shortage_time_df.empty else None,
-                placeholder="日付を選択してください",
+    return html.Div(
+        [
+            html.H2("不足分析"),
+            html.Div(
+                [
+                    html.Label("日付選択:"),
+                    dcc.Dropdown(
+                        id="hm-shortage-date-dropdown",
+                        options=[
+                            {"label": col, "value": col}
+                            for col in shortage_time_df.columns
+                        ]
+                        if not shortage_time_df.empty
+                        else [],
+                        value=shortage_time_df.columns[0]
+                        if not shortage_time_df.empty
+                        else None,
+                        placeholder="日付を選択してください",
+                    ),
+                ],
+                style={"margin": "10px"},
             ),
-        ], style={"margin": "10px"}),
-        
-        dcc.Graph(id="hm-shortage-bar-graph"),
-        
-        html.Hr(),
-        html.H3("不足率"),
-        html.Div([
-            html.Label("日付選択:"),
-            dcc.Dropdown(
-                id="shortage-ratio-date-dropdown",
-                options=[{"label": col, "value": col} for col in shortage_ratio_df.columns] if not shortage_ratio_df.empty else [],
-                value=shortage_ratio_df.columns[0] if not shortage_ratio_df.empty else None,
-                placeholder="日付を選択してください",
+            dcc.Graph(id="hm-shortage-bar-graph"),
+            html.Hr(),
+            html.H3("不足率"),
+            html.Div(
+                [
+                    html.Label("日付選択:"),
+                    dcc.Dropdown(
+                        id="shortage-ratio-date-dropdown",
+                        options=[
+                            {"label": col, "value": col}
+                            for col in shortage_ratio_df.columns
+                        ]
+                        if not shortage_ratio_df.empty
+                        else [],
+                        value=shortage_ratio_df.columns[0]
+                        if not shortage_ratio_df.empty
+                        else None,
+                        placeholder="日付を選択してください",
+                    ),
+                ],
+                style={"margin": "10px"},
             ),
-        ], style={"margin": "10px"}),
-        
-        dcc.Graph(id="shortage-ratio-bar-graph"),
-    ])
+            dcc.Graph(id="shortage-ratio-bar-graph"),
+        ]
+    )
+
 
 def page_leave():
     if not leave_results:
-        return html.Div([
-            html.H2("休暇分析"),
-            html.P("休暇データが見つかりません。"),
-        ])
-    
+        return html.Div(
+            [
+                html.H2("休暇分析"),
+                html.P("休暇データが見つかりません。"),
+            ]
+        )
+
     leave_tabs = []
     for key, df in leave_results.items():
         if df.empty:
             continue
         leave_tabs.append(
-            dcc.Tab(label=key, children=[
-                html.Div([
-                    html.H3(f"休暇分析: {key}"),
-                    html.P(f"データ件数: {len(df)}"),
-                    html.P("詳細な分析結果をここに表示予定"),
-                ])
-            ])
+            dcc.Tab(
+                label=key,
+                children=[
+                    html.Div(
+                        [
+                            html.H3(f"休暇分析: {key}"),
+                            html.P(f"データ件数: {len(df)}"),
+                            html.P("詳細な分析結果をここに表示予定"),
+                        ]
+                    )
+                ],
+            )
         )
-    
-    if not leave_tabs:
-        return html.Div([
-            html.H2("休暇分析"),
-            html.P("有効な休暇データが見つかりません。"),
-        ])
-    
-    return html.Div([
-        html.H2("休暇分析"),
-        dcc.Tabs(children=leave_tabs),
-    ])
 
-app.layout = html.Div([
-    html.H1("シフト分析ダッシュボード", style={"textAlign": "center"}),
-    
-    dcc.Tabs(id="main-tabs", value="overview", children=[
-        dcc.Tab(label="概要", value="overview"),
-        dcc.Tab(label="ヒートマップ", value="heat"),
-        dcc.Tab(label="不足分析", value="shortage"),
-        dcc.Tab(label="休暇分析", value="leave"),
-    ]),
-    
-    html.Div(id="tab-content"),
-])
+    if not leave_tabs:
+        return html.Div(
+            [
+                html.H2("休暇分析"),
+                html.P("有効な休暇データが見つかりません。"),
+            ]
+        )
+
+    return html.Div(
+        [
+            html.H2("休暇分析"),
+            dcc.Tabs(children=leave_tabs),
+        ]
+    )
+
+
+app.layout = html.Div(
+    [
+        html.H1("シフト分析ダッシュボード", style={"textAlign": "center"}),
+        dcc.Tabs(
+            id="main-tabs",
+            value="overview",
+            children=[
+                dcc.Tab(label="概要", value="overview"),
+                dcc.Tab(label="ヒートマップ", value="heat"),
+                dcc.Tab(label="不足分析", value="shortage"),
+                dcc.Tab(label="休暇分析", value="leave"),
+            ],
+        ),
+        html.Div(id="tab-content"),
+    ]
+)
+
 
 @callback(
     Output("tab-content", "children"),
     Input("main-tabs", "value"),
-    prevent_initial_call=False
+    prevent_initial_call=False,
 )
 def router(active_tab: str):
     if active_tab == "overview":
@@ -291,6 +364,7 @@ def router(active_tab: str):
         return page_leave()
     return html.Div("Unknown tab")
 
+
 @callback(
     Output("hm-main-graph", "figure"),
     Output("hm-zmax-slider", "disabled"),
@@ -298,7 +372,7 @@ def router(active_tab: str):
     Input("hm-mode-radio", "value"),
     Input("hm-zmax-slider", "value"),
     Input("hm-zmax-mode", "value"),
-    prevent_initial_call=False
+    prevent_initial_call=False,
 )
 def update_heatmap(mode: str, zmax_val: float, zmode: str):
     if heat_staff_data.empty and mode == "raw":
@@ -312,10 +386,11 @@ def update_heatmap(mode: str, zmax_val: float, zmode: str):
         logging.error(f"Heatmap generation error: {e}")
         return px.imshow(pd.DataFrame()), True, zmax_val
 
+
 @callback(
     Output("hm-shortage-bar-graph", "figure"),
     Input("hm-shortage-date-dropdown", "value"),
-    prevent_initial_call=False
+    prevent_initial_call=False,
 )
 def update_shortage_bar(selected_date_str: str | None):
     if (
@@ -334,15 +409,14 @@ def update_shortage_bar(selected_date_str: str | None):
         labels={"x": "時間帯", "y": "不足人数"},
         title=f"{selected_date_str} の時間帯別不足人数",
     )
-    fig.update_layout(
-        showlegend=False, xaxis_tickangle=-45, height=350
-    )
+    fig.update_layout(showlegend=False, xaxis_tickangle=-45, height=350)
     return fig
+
 
 @callback(
     Output("shortage-ratio-bar-graph", "figure"),
     Input("shortage-ratio-date-dropdown", "value"),
-    prevent_initial_call=False
+    prevent_initial_call=False,
 )
 def update_shortage_ratio_bar(date_str: str | None):
     if (
@@ -362,6 +436,7 @@ def update_shortage_ratio_bar(date_str: str | None):
     )
     fig.update_layout(showlegend=False, xaxis_tickangle=-45, height=350)
     return fig
+
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=8055)

@@ -61,7 +61,9 @@ def shortage_and_brief(
     try:
         heat_all_df = pd.read_parquet(fp_all_heatmap)
     except Exception as e:
-        log.error(f"[shortage] heat_ALL.parquet の読み込み中にエラー: {e}", exc_info=True)
+        log.error(
+            f"[shortage] heat_ALL.parquet の読み込み中にエラー: {e}", exc_info=True
+        )
         return None
 
     date_columns_in_heat_all = [

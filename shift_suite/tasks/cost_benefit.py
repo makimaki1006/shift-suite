@@ -67,7 +67,9 @@ def analyze_cost_benefit(
     elif "hire_fte" in plan.columns:
         hire_need_total = plan["hire_fte"].sum()
     else:
-        raise KeyError("hire_plan.parquet missing required column 'hire_need' or 'hire_fte'")
+        raise KeyError(
+            "hire_plan.parquet missing required column 'hire_need' or 'hire_fte'"
+        )
 
     # --- シナリオ試算 ----------------------------------------------------------
     scenarios = {}

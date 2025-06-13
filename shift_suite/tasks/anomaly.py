@@ -21,7 +21,9 @@ def detect_anomaly(out_dir: Path, contamination: float = 0.05):
     try:
         heat = pd.read_parquet(hp)
     except Exception as e:
-        log.error(f"[anomaly] heat_ALL.parquet の読み込み中にエラー: {e}", exc_info=True)
+        log.error(
+            f"[anomaly] heat_ALL.parquet の読み込み中にエラー: {e}", exc_info=True
+        )
         return None
 
     date_columns = [col for col in heat.columns if col not in SUMMARY5]
