@@ -305,7 +305,29 @@ def create_shortage_tab() -> html.Div:
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("不足分析", style={'marginBottom': '20px'})]
+        html.H3("不足分析", style={'marginBottom': '20px'}),
+        html.Div(
+            dcc.Markdown(
+                "\n".join(
+                    [
+                        "### 計算に使用したパラメータ",
+                        f"- Need算出方法: {DATA_STORE.get('need_method', 'N/A')}",
+                        f"- Upper算出方法: {DATA_STORE.get('upper_method', 'N/A')}",
+                        f"- 直接雇用単価: ¥{DATA_STORE.get('wage_direct', 0):,.0f}/h",
+                        f"- 派遣単価: ¥{DATA_STORE.get('wage_temp', 0):,.0f}/h",
+                        f"- 採用コスト: ¥{DATA_STORE.get('hiring_cost', 0):,}/人",
+                        f"- 不足ペナルティ: ¥{DATA_STORE.get('penalty_cost', 0):,.0f}/h",
+                    ]
+                )
+            ),
+            style={
+                'backgroundColor': '#e9f2fa',
+                'padding': '10px',
+                'borderRadius': '8px',
+                'border': '1px solid #cce5ff',
+                'marginBottom': '20px'
+            },
+        )]
 
     # 職種別不足分析
     if not df_shortage_role.empty:
@@ -1459,7 +1481,14 @@ def update_optimization_content(scope, detail_values):
         ).update_xaxes(
             ticktext=[date_with_weekday(c) for c in margin_df.columns],
             tickvals=list(range(len(margin_df.columns)))
-        ))
+        )),
+        dcc.Markdown(
+            "注: この余白は、過去の実績から算出された上限人数と実際の配置人数の差を示します。"\
+            "需要が低い日や休業日（例: 日曜日）は、過去のデータに基づく上限値が高めに算出"\
+            "されることで、見かけ上の余白が大きくなる場合があります。これは、潜在的な過"\
+            "剰人員やコスト発生の可能性を示唆しています。",
+            style={'marginTop': '10px'}
+        )
     ]))
 
     # 3. 最適化スコア
