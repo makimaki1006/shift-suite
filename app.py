@@ -3352,6 +3352,11 @@ def display_optimization_tab(tab_container, data_dir):
             title="上限人数までの余白ヒートマップ",
         )
         st.plotly_chart(fig_margin, use_container_width=True, key="margin_upper_heat")
+        st.info(
+            "注: この余白は、過去の実績から算出された上限人数と実際の配置人数の差を示します。"
+            "需要が低い日や休業日（例: 日曜日）は、過去のデータに基づく上限値が高めに算出されることで、"
+            "見かけ上の余白が大きくなる場合があります。これは、潜在的な過剰人員やコスト発生の可能性を示唆しています。"
+        )
 
         st.markdown("##### 3. 人員配置 最適化スコア")
         st.info(
