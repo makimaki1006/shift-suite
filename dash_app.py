@@ -794,11 +794,15 @@ def create_fairness_tab() -> html.Div:
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("公平性 (夜勤比率)", style={'marginBottom': '20px'})]
+        html.H3("公平性 (不公平感スコア)", style={'marginBottom': '20px'})]
     df_fair = DATA_STORE.get('fairness_after', pd.DataFrame())
 
     if not df_fair.empty:
-        metric_col = 'fairness_score' if 'fairness_score' in df_fair.columns else 'night_ratio'
+        metric_col = (
+            'unfairness_score'
+            if 'unfairness_score' in df_fair.columns
+            else ('fairness_score' if 'fairness_score' in df_fair.columns else 'night_ratio')
+        )
         fig_bar = px.bar(
             df_fair,
             x='staff',
@@ -806,6 +810,8 @@ def create_fairness_tab() -> html.Div:
             labels={'staff': 'スタッフ', metric_col: 'スコア'},
             color_discrete_sequence=['#FF8C00']
         )
+        avg_val = df_fair[metric_col].mean()
+        fig_bar.add_hline(y=avg_val, line_dash='dash', line_color='red')
         content.append(dcc.Graph(figure=fig_bar))
 
         fig_hist = px.histogram(
@@ -816,8 +822,17 @@ def create_fairness_tab() -> html.Div:
             labels={metric_col: 'スコア'}
         )
         fig_hist.update_layout(yaxis_title="人数")
+        fig_hist.add_vline(x=avg_val, line_dash='dash', line_color='red')
         content.append(dcc.Graph(figure=fig_hist))
 
+        if 'unfairness_score' in df_fair.columns:
+            ranking = df_fair.sort_values('unfairness_score', ascending=False)[['staff', 'unfairness_score']]
+            ranking.index += 1
+            content.append(html.H4('不公平感ランキング'))
+            content.append(dash_table.DataTable(
+                data=ranking.to_dict('records'),
+                columns=[{'name': i, 'id': i} for i in ranking.columns]
+            ))
         content.append(dash_table.DataTable(
             data=df_fair.to_dict('records'),
             columns=[{'name': i, 'id': i} for i in df_fair.columns]

@@ -49,3 +49,14 @@ class RestTimeAnalyzer:
         monthly = df.groupby(["staff", "month"])["rest_hours"].mean().reset_index()
         monthly["month"] = monthly["month"].astype(str)
         return monthly
+
+    def consecutive_leave_frequency(
+        self, daily_df: pd.DataFrame, threshold_hours: float = 48.0
+    ) -> pd.Series:
+        """Return frequency of rest periods above ``threshold_hours`` per staff."""
+        if daily_df.empty or not {"staff", "rest_hours"}.issubset(daily_df.columns):
+            return pd.Series(dtype=float)
+
+        df = daily_df.copy()
+        df["long_break"] = df["rest_hours"] >= threshold_hours
+        return df.groupby("staff")["long_break"].mean()

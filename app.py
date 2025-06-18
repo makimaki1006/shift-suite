@@ -3469,7 +3469,7 @@ def display_forecast_tab(tab_container, data_dir):
 
 def display_fairness_tab(tab_container, data_dir):
     with tab_container:
-        st.subheader(_("Fairness (Night Shift Ratio)"))
+        st.subheader(_("Fairness (Unfairness Score)"))
         display_data = st.session_state.get("display_data", {})
         df = display_data.get("fairness_after")
         if isinstance(df, pd.DataFrame):
@@ -3482,14 +3482,18 @@ def display_fairness_tab(tab_container, data_dir):
                     "staff": _("Staff"),
                     "night_ratio": _("Night Shift Ratio"),
                 }
+                if "unfairness_score" in df.columns:
+                    rename_map["unfairness_score"] = _("Unfairness Score")
                 if "fairness_score" in df.columns:
                     rename_map["fairness_score"] = _("Fairness Score")
                 display_df = df.rename(columns=rename_map)
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 metric_col = (
-                    "fairness_score"
-                    if "fairness_score" in df.columns
-                    else "night_ratio"
+                    "unfairness_score"
+                    if "unfairness_score" in df.columns
+                    else (
+                        "fairness_score" if "fairness_score" in df.columns else "night_ratio"
+                    )
                 )
                 if "staff" in df and metric_col in df:
                     fig_fair = px.bar(
@@ -3498,21 +3502,34 @@ def display_fairness_tab(tab_container, data_dir):
                         y=metric_col,
                         labels={
                             "staff": _("Staff"),
-                            metric_col: _("Fairness Score")
+                            metric_col: _("Unfairness Score")
+                            if metric_col == "unfairness_score"
+                            else _("Fairness Score")
                             if metric_col == "fairness_score"
                             else _("Night Shift Ratio"),
                         },
                         color_discrete_sequence=["#FF8C00"],
                     )
+                    avg_val = df[metric_col].mean()
+                    fig_fair.add_hline(y=avg_val, line_dash="dash", line_color="red")
                     st.plotly_chart(
                         fig_fair, use_container_width=True, key="fairness_chart"
                     )
                     fig_hist = dashboard.fairness_histogram(df, metric=metric_col)
+                    fig_hist.add_vline(x=avg_val, line_dash="dash", line_color="red")
                     st.plotly_chart(
                         fig_hist,
                         use_container_width=True,
                         key="fairness_hist",
                     )
+                if "unfairness_score" in df.columns:
+                    ranking = df.sort_values("unfairness_score", ascending=False)[[
+                        "staff",
+                        "unfairness_score",
+                    ]]
+                    ranking.index += 1
+                    st.subheader(_("Unfairness Ranking"))
+                    st.dataframe(ranking, use_container_width=True)
             except AttributeError as e:
                 log_and_display_error(
                     "Invalid data format in fairness_after.parquet", e

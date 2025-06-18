@@ -5,6 +5,9 @@ from typing import Optional
 
 import pandas as pd
 
+from .analyzers.rest_time import RestTimeAnalyzer
+from .leave_analyzer import approval_rate_by_staff
+
 log = logging.getLogger(__name__)
 
 
@@ -257,6 +260,38 @@ def run_fairness(
             1 - (summary_df["night_ratio"] - mean_ratio).abs() / mean_ratio
         )
     summary_df["fairness_score"] = summary_df["fairness_score"].clip(0, 1).round(3)
+
+    # -- Additional metrics -------------------------------------------------
+    work_slots_series = (
+        df_for_fairness[df_for_fairness.get("parsed_slots_count", 0) > 0]
+        .groupby(actual_staff_col_name)["parsed_slots_count"]
+        .sum()
+    )
+    summary_df["total_work_slots"] = summary_df[actual_staff_col_name].map(work_slots_series).fillna(0)
+
+    leave_rate_series = approval_rate_by_staff(long_df)
+    summary_df["approval_rate"] = summary_df[actual_staff_col_name].map(leave_rate_series).fillna(0)
+
+    rta = RestTimeAnalyzer()
+    rest_daily = rta.analyze(long_df)
+    consec_series = rta.consecutive_leave_frequency(rest_daily)
+    summary_df["consecutive_leave_freq"] = summary_df[actual_staff_col_name].map(consec_series).fillna(0)
+
+    # -- deviation from mean -----------------------------------------------
+    def _dev(s: pd.Series, mean_val: float) -> pd.Series:
+        if mean_val == 0:
+            return pd.Series(0.0, index=s.index)
+        return (s - mean_val).abs() / mean_val
+
+    summary_df["dev_night_ratio"] = _dev(summary_df["night_ratio"], summary_df["night_ratio"].mean())
+    summary_df["dev_work_slots"] = _dev(summary_df["total_work_slots"], summary_df["total_work_slots"].mean())
+    summary_df["dev_approval_rate"] = _dev(summary_df["approval_rate"], summary_df["approval_rate"].mean())
+    summary_df["dev_consecutive"] = _dev(summary_df["consecutive_leave_freq"], summary_df["consecutive_leave_freq"].mean())
+    summary_df["unfairness_score"] = (
+        summary_df[["dev_night_ratio", "dev_work_slots", "dev_approval_rate", "dev_consecutive"]].mean(axis=1)
+    )
+    summary_df["unfairness_rank"] = summary_df["unfairness_score"].rank(method="min", ascending=False).astype(int)
+    summary_df = summary_df.sort_values("unfairness_rank").reset_index(drop=True)
 
     jain_night_ratio = calculate_jain_index(summary_df["night_ratio"])
     jain_night_slots = calculate_jain_index(summary_df["night_slots"])
