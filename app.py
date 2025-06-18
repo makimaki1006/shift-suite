@@ -1112,6 +1112,56 @@ with st.sidebar:
         help="解析結果の保存方法を選択します。",
     )
 
+    with st.expander("疲労スコア重み設定"):
+        st.slider(
+            "① 勤務開始時刻ランダム性",
+            0.0,
+            2.0,
+            value=1.0,
+            step=0.1,
+            key="weight_start_var_widget",
+        )
+        st.slider(
+            "② 業務多様性",
+            0.0,
+            2.0,
+            value=1.0,
+            step=0.1,
+            key="weight_diversity_widget",
+        )
+        st.slider(
+            "③ 労働時間のランダム性",
+            0.0,
+            2.0,
+            value=1.0,
+            step=0.1,
+            key="weight_worktime_var_widget",
+        )
+        st.slider(
+            "④ 夜勤間の休息不足",
+            0.0,
+            2.0,
+            value=1.0,
+            step=0.1,
+            key="weight_short_rest_widget",
+        )
+        st.slider(
+            "⑤ 連勤日数",
+            0.0,
+            2.0,
+            value=1.0,
+            step=0.1,
+            key="weight_consecutive_widget",
+        )
+        st.slider(
+            "⑥ 夜勤比率",
+            0.0,
+            2.0,
+            value=1.0,
+            step=0.1,
+            key="weight_night_ratio_widget",
+        )
+
     with st.expander(_("Cost & Hire Parameters")):
         st.subheader("人件費計算 設定")
         cost_by_key = st.radio(
@@ -1783,7 +1833,15 @@ if run_button_clicked:
                         elif opt_module_name_exec_run == "Anomaly":
                             detect_anomaly(out_dir_exec)
                         elif opt_module_name_exec_run == "Fatigue":
-                            train_fatigue(long_df, out_dir_exec)
+                            fatigue_weights = {
+                                "start_var": st.session_state.get("weight_start_var_widget", 1.0),
+                                "diversity": st.session_state.get("weight_diversity_widget", 1.0),
+                                "worktime_var": st.session_state.get("weight_worktime_var_widget", 1.0),
+                                "short_rest": st.session_state.get("weight_short_rest_widget", 1.0),
+                                "consecutive": st.session_state.get("weight_consecutive_widget", 1.0),
+                                "night_ratio": st.session_state.get("weight_night_ratio_widget", 1.0),
+                            }
+                            train_fatigue(long_df, out_dir_exec, weights=fatigue_weights)
                         elif opt_module_name_exec_run == "Cluster":
                             cluster_staff(long_df, out_dir_exec)
                         elif opt_module_name_exec_run == "Skill":
