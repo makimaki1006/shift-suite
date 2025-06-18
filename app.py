@@ -2373,6 +2373,19 @@ def display_shortage_tab(tab_container, data_dir):
             st.warning("不足分析が正常に完了していないため、結果を表示できません。")
             return
         st.subheader(_("Shortage"))
+        st.info(
+            "\n".join(
+                [
+                    "### 計算に使用したパラメータ",
+                    f"- Need算出方法: {st.session_state.get('need_calc_method_widget')}",
+                    f"- Upper算出方法: {st.session_state.get('upper_calc_method_widget')}",
+                    f"- 直接雇用単価: ¥{st.session_state.get('wage_direct_widget', 0):,.0f}/h",
+                    f"- 派遣単価: ¥{st.session_state.get('wage_temp_widget', 0):,.0f}/h",
+                    f"- 採用コスト: ¥{st.session_state.get('hiring_cost_once_widget', 0):,}/人",
+                    f"- 不足ペナルティ: ¥{st.session_state.get('penalty_per_lack_widget', 0):,.0f}/h",
+                ]
+            )
+        )
         # メタデータはメモリ上の session_state から取得
         roles = st.session_state.get("available_roles", [])
         employments = st.session_state.get("available_employments", [])
