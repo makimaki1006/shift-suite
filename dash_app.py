@@ -1398,6 +1398,13 @@ def update_optimization_content(scope, detail_values):
 
     content = []
 
+    # Explanatory caption for need and upper
+    need_caption = (
+        "Needは分析時に設定した方法で算出した最低必要人数です。"
+        "UpperはNeedに余裕を加味して定めた上限人数で、両者の間が望ましい配置ゾーンとなります。"
+        "このゾーンを保つことでコストとサービス品質の調和を図ることが狙いです。"
+    )
+
     # 1. 必要人数に対する余剰
     content.append(html.Div([
         html.H4("1. 必要人数に対する余剰 (Surplus vs Need)"),
@@ -1411,7 +1418,8 @@ def update_optimization_content(scope, detail_values):
         ).update_xaxes(
             ticktext=[date_with_weekday(c) for c in surplus_df.columns],
             tickvals=list(range(len(surplus_df.columns)))
-        ))
+        )),
+        html.Small(need_caption)
     ]))
 
     # 2. 上限に対する余白
@@ -1427,7 +1435,8 @@ def update_optimization_content(scope, detail_values):
         ).update_xaxes(
             ticktext=[date_with_weekday(c) for c in margin_df.columns],
             tickvals=list(range(len(margin_df.columns)))
-        ))
+        )),
+        html.Small(need_caption)
     ]))
 
     # 3. 最適化スコア
@@ -1445,7 +1454,8 @@ def update_optimization_content(scope, detail_values):
         ).update_xaxes(
             ticktext=[date_with_weekday(c) for c in score_df.columns],
             tickvals=list(range(len(score_df.columns)))
-        ))
+        )),
+        html.Small(need_caption)
     ]))
 
     return html.Div(content)
