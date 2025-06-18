@@ -417,6 +417,33 @@ def get_staff_leave_list(
     return staff_leave_list_df
 
 
+def approval_rate_by_staff(long_df: pd.DataFrame) -> pd.Series:
+    """Return estimated approval rate of requested leave per staff."""
+    if long_df.empty or "staff" not in long_df.columns or "ds" not in long_df.columns:
+        return pd.Series(dtype=float)
+
+    df = long_df.copy()
+    df["date"] = pd.to_datetime(df["ds"]).dt.date
+
+    if "leave_requested" in df.columns:
+        total_req = (
+            df[df["leave_requested"] == 1].groupby("staff")["date"].nunique()
+        )
+        approved = (
+            df[df["holiday_type"] == LEAVE_TYPE_REQUESTED]
+            .groupby("staff")["date"].nunique()
+        )
+        rate = approved / total_req.replace(0, pd.NA)
+        return rate.fillna(0)
+
+    approved = (
+        df[df["holiday_type"] == LEAVE_TYPE_REQUESTED]
+        .groupby("staff")["date"].nunique()
+    )
+    total_days = df.groupby("staff")["date"].nunique()
+    return (approved / total_days.replace(0, pd.NA)).fillna(0)
+
+
 def leave_ratio_by_period_and_weekday(daily_summary_df: pd.DataFrame) -> pd.DataFrame:
     """Return leave ratios by month period and weekday for each leave type."""
     required_cols = {"date", "leave_type", "total_leave_days"}
