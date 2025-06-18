@@ -3246,6 +3246,18 @@ def display_optimization_tab(tab_container, data_dir):
 
         # --- Display Heatmaps Vertically ---
 
+        # Explain how need and upper were calculated
+        need_method = st.session_state.get("need_calc_method_widget", "")
+        need_stat = st.session_state.get("need_stat_method_widget")
+        upper_method = st.session_state.get("upper_calc_method_widget", "")
+        caption_txt = (
+            f"Needは{need_method}"
+            + (f" (指標: {need_stat})" if need_stat else "")
+            + "から算出した最低必要人数です。Upperは"
+            f"{upper_method}を基に設定した上限人数で、NeedとUpperの範囲を" "最適ゾーン" "とします。"
+            "このゾーンに収めることで人件費とサービス品質のバランスを図ることが狙いです。"
+        )
+
         st.markdown("##### 1. 必要人数に対する余剰 (Surplus vs Need)")
         st.info(
             """
@@ -3263,6 +3275,7 @@ def display_optimization_tab(tab_container, data_dir):
             title="必要人数に対する余剰人員ヒートマップ",
         )
         st.plotly_chart(fig_surplus, use_container_width=True, key="surplus_need_heat")
+        st.caption(caption_txt)
 
         st.markdown("##### 2. 上限に対する余白 (Margin to Upper)")
         st.info(
@@ -3281,6 +3294,7 @@ def display_optimization_tab(tab_container, data_dir):
             title="上限人数までの余白ヒートマップ",
         )
         st.plotly_chart(fig_margin, use_container_width=True, key="margin_upper_heat")
+        st.caption(caption_txt)
 
         st.markdown("##### 3. 人員配置 最適化スコア")
         st.info(
@@ -3301,6 +3315,7 @@ def display_optimization_tab(tab_container, data_dir):
             title="最適化スコア ヒートマップ",
         )
         st.plotly_chart(fig_score, use_container_width=True, key="optimization_heat")
+        st.caption(caption_txt)
 
 
 def display_fatigue_tab(tab_container, data_dir):
