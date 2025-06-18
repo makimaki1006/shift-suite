@@ -108,6 +108,35 @@ def load_shortage_meta(data_dir: Path) -> Tuple[List[str], List[str]]:
             log.debug(f"Failed to load shortage meta: {e}")
     return roles, employments
 
+
+def load_and_sum_heatmaps(data_dir: Path, keys: List[str]) -> pd.DataFrame:
+    """Load multiple heatmap files and aggregate them."""
+    dfs = []
+    for key in keys:
+        df = DATA_STORE.get(key)
+        if df is None and data_dir:
+            fp = Path(data_dir) / f"{key}.parquet"
+            if fp.exists():
+                df = safe_read_parquet(fp)
+                if not df.empty:
+                    DATA_STORE[key] = df
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            dfs.append(df)
+
+    if not dfs:
+        return pd.DataFrame()
+
+    total = dfs[0].copy()
+    for df in dfs[1:]:
+        total = total.add(df, fill_value=0)
+
+    if {"need", "staff"}.issubset(total.columns):
+        total["lack"] = (total["need"] - total["staff"]).clip(lower=0)
+    if {"staff", "upper"}.issubset(total.columns):
+        total["excess"] = (total["staff"] - total["upper"]).clip(lower=0)
+
+    return total
+
 # --- UIコンポーネント生成関数 ---
 def create_metric_card(label: str, value: str, color: str = "#1f77b4") -> html.Div:
     """メトリクスカードを作成"""
@@ -227,9 +256,9 @@ def create_heatmap_tab() -> html.Div:
                 html.Label("職種"),
                 dcc.Dropdown(
                     id='heatmap-role-filter',
-                    options=[{'label': '全体', 'value': 'ALL'}]
-                    + [{'label': r, 'value': r} for r in roles],
-                    value='ALL',
+                    options=[{'label': r, 'value': r} for r in roles],
+                    value=[],
+                    multi=True,
                     placeholder="職種で絞り込み",
                 ),
             ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
@@ -237,9 +266,9 @@ def create_heatmap_tab() -> html.Div:
                 html.Label("雇用形態"),
                 dcc.Dropdown(
                     id='heatmap-employment-filter',
-                    options=[{'label': '全体', 'value': 'ALL'}]
-                    + [{'label': e, 'value': e} for e in employments],
-                    value='ALL',
+                    options=[{'label': e, 'value': e} for e in employments],
+                    value=[],
+                    multi=True,
                     placeholder="雇用形態で絞り込み",
                 ),
             ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
@@ -1151,14 +1180,13 @@ def update_tab_content(active_tab):
 )
 def update_heatmap_content(selected_role, selected_employment, mode):
     """ヒートマップコンテンツを更新"""
-    # データキーを決定 (単一フィルタのみ対応)
-    heat_key = 'heat_ALL'
-    if selected_role and selected_role != 'ALL':
-        heat_key = f'heat_{safe_filename(selected_role)}'
-    elif selected_employment and selected_employment != 'ALL':
-        heat_key = f'heat_emp_{safe_filename(selected_employment)}'
+    heat_keys = ['heat_ALL']
+    if selected_role:
+        heat_keys = [f'heat_{safe_filename(r)}' for r in selected_role]
+    elif selected_employment:
+        heat_keys = [f'heat_emp_{safe_filename(e)}' for e in selected_employment]
 
-    df_heat = DATA_STORE.get(heat_key)
+    df_heat = load_and_sum_heatmaps(TEMP_DIR, heat_keys)
     if df_heat is None or df_heat.empty:
         return html.Div("データが見つかりません")
 
@@ -1166,14 +1194,18 @@ def update_heatmap_content(selected_role, selected_employment, mode):
     if mode == 'Ratio':
         # 不足率を計算
         display_df = calc_ratio_from_heatmap(df_heat)
-        title_scope = selected_role or selected_employment or "全体"
+        title_scope = ', '.join(selected_role) if selected_role else (
+            ', '.join(selected_employment) if selected_employment else "全体"
+        )
         title = f"充足率ヒートマップ - {title_scope}"
         color_scale = 'RdBu_r'
     else:
         # 生データから必要な列だけ抽出
         date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
         display_df = df_heat[date_cols] if date_cols else pd.DataFrame()
-        title_scope = selected_role or selected_employment or "全体"
+        title_scope = ', '.join(selected_role) if selected_role else (
+            ', '.join(selected_employment) if selected_employment else "全体"
+        )
         title = f"人員配置ヒートマップ - {title_scope}"
         color_scale = px.colors.sequential.Viridis
 

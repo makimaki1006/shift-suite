@@ -600,6 +600,36 @@ def load_all_heatmap_files(data_dir: Path) -> dict:
     return heatmap_data
 
 
+def load_and_sum_heatmaps(data_dir: Path, keys: list[str]) -> pd.DataFrame:
+    """Load multiple heatmap files and return their aggregated sum."""
+    dfs = []
+    for key in keys:
+        df = st.session_state.display_data.get(key)
+        if df is None:
+            fp = data_dir / f"{key}.parquet"
+            if fp.exists():
+                try:
+                    df = pd.read_parquet(fp)
+                    st.session_state.display_data[key] = df
+                except Exception as e:  # noqa: BLE001
+                    log.warning("%s の読み込みに失敗しました: %s", fp.name, e)
+                    df = None
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            dfs.append(df)
+    if not dfs:
+        return pd.DataFrame()
+
+    total = dfs[0].copy()
+    for df in dfs[1:]:
+        total = total.add(df, fill_value=0)
+
+    if {"need", "staff"}.issubset(total.columns):
+        total["lack"] = (total["need"] - total["staff"]).clip(lower=0)
+    if {"staff", "upper"}.issubset(total.columns):
+        total["excess"] = (total["staff"] - total["upper"]).clip(lower=0)
+    return total
+
+
 def update_display_data_with_heatmaps(out_dir: Path) -> None:
     """Update ``display_data`` including dynamically loaded heatmap files."""
     log.info(f"表示用データの更新を開始します。ディレクトリ: {out_dir}")
@@ -2295,14 +2325,14 @@ def display_heatmap_tab(tab_container, data_dir):
                 )
             scope = [k for k, v in scope_opts.items() if v == scope_lbl][0]
 
-            sel_item = None
+            sel_item = []
             with c2:
                 if scope == "role":
-                    sel_item = st.selectbox(
+                    sel_item = st.multiselect(
                         _("Role"), roles, key="heat_scope_role_form"
                     )
                 elif scope == "employment":
-                    sel_item = st.selectbox(
+                    sel_item = st.multiselect(
                         _("Employment"), employments, key="heat_scope_emp_form"
                     )
 
@@ -2318,25 +2348,23 @@ def display_heatmap_tab(tab_container, data_dir):
 
         # --- フォーム送信後にグラフを描画 ---
         if submitted:
-            heat_key = None
             scope_info_for_title = scope_lbl
-            if scope == "overall":
-                heat_key = "heat_all"
-            elif scope == "role" and sel_item:
-                heat_key = f"heat_role_{safe_sheet(sel_item, for_path=True)}"
-                scope_info_for_title += f" ({sel_item})"
+            heat_keys = ["heat_all"]
+            if scope == "role" and sel_item:
+                heat_keys = [f"heat_role_{safe_sheet(x, for_path=True)}" for x in sel_item]
+                scope_info_for_title += f" ({', '.join(sel_item)})"
             elif scope == "employment" and sel_item:
-                heat_key = f"heat_emp_{safe_sheet(sel_item, for_path=True)}"
-                scope_info_for_title += f" ({sel_item})"
+                heat_keys = [f"heat_emp_{safe_sheet(x, for_path=True)}" for x in sel_item]
+                scope_info_for_title += f" ({', '.join(sel_item)})"
 
-            df_heat = st.session_state.display_data.get(heat_key)
+            df_heat = load_and_sum_heatmaps(data_dir, heat_keys)
             mode = [k for k, v in mode_opts.items() if v == mode_lbl][0]
 
             if df_heat is not None and not df_heat.empty:
                 fig = generate_heatmap_figure(df_heat, mode, scope_info_for_title)
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning(f"ヒートマップデータが見つかりません: {heat_key}")
+                st.warning("ヒートマップデータが見つかりません")
 
 
 def display_shortage_tab(tab_container, data_dir):
