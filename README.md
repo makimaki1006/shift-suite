@@ -84,6 +84,11 @@ The GUI caches uploaded Excel or Parquet files using `load_data_cached()` with
    pip install -r requirements.txt
    ```
 
+   This installs optional packages like `statsmodels`.  If you skip
+   this step you may see errors such as
+   `ModuleNotFoundError: No module named 'statsmodels'` when running
+   `app.py`.
+
    The `requirements.txt` file pins `scikit-learn` to `1.4.1.post1` for
    compatibility with Python 3.12.
    It also installs `streamlit-plotly-events` so the leave analysis charts
