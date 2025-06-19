@@ -1057,8 +1057,7 @@ def process_upload(contents, filename):
             'daily_cost.parquet',
             'forecast.parquet',
             'cost_benefit.parquet',
-            'work_patterns.parquet',
-            'long_df.parquet'
+            'work_patterns.parquet'
         ]
 
         for file in parquet_files:
@@ -1098,6 +1097,19 @@ def process_upload(contents, filename):
             df = safe_read_parquet(p)
             if not df.empty:
                 DATA_STORE[safe_filename(p.stem)] = df
+
+        # long_df は intermediate_data.parquet から読み込む
+        intermediate_fp = data_dir / 'intermediate_data.parquet'
+        if intermediate_fp.exists():
+            log.info("intermediate_data.parquet を long_df として読み込みます。")
+            df = safe_read_parquet(intermediate_fp)
+            if not df.empty:
+                DATA_STORE['long_df'] = df
+        else:
+            DATA_STORE['long_df'] = None
+            log.warning(
+                '動的ヒートマップの元となる intermediate_data.parquet が見つかりませんでした。'
+            )
 
         # Gap analysis files (excel or parquet)
         for name in ['gap_summary', 'gap_heatmap']:
