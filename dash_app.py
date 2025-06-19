@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State, ALL
 from dash.exceptions import PreventUpdate
+from app import calc_opt_score_from_heatmap
 from shift_suite.tasks.utils import safe_read_excel
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
@@ -272,18 +273,6 @@ def create_heatmap_tab() -> html.Div:
                     placeholder="雇用形態で絞り込み",
                 ),
             ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
-            html.Div([
-                html.Label("表示モード"),
-                dcc.RadioItems(
-                    id='heatmap-mode',
-                    options=[
-                        {'label': '実数', 'value': 'Raw'},
-                        {'label': '充足率', 'value': 'Ratio'}
-                    ],
-                    value='Raw',
-                    inline=True
-                ),
-            ], style={'width': '36%', 'display': 'inline-block'}),
         ], style={'marginBottom': '20px'}),
         dcc.Loading(
             id="loading-heatmap",
@@ -1212,10 +1201,9 @@ def update_tab_content(active_tab):
 @app.callback(
     Output('heatmap-content', 'children'),
     Input('heatmap-role-filter', 'value'),
-    Input('heatmap-employment-filter', 'value'),
-    Input('heatmap-mode', 'value')
+    Input('heatmap-employment-filter', 'value')
 )
-def update_heatmap_content(selected_role, selected_employment, mode):
+def update_heatmap_content(selected_role, selected_employment):
     """ヒートマップコンテンツを更新"""
     heat_keys = ['heat_ALL']
     if selected_role:
@@ -1227,44 +1215,64 @@ def update_heatmap_content(selected_role, selected_employment, mode):
     if df_heat is None or df_heat.empty:
         return html.Div("データが見つかりません")
 
-    # モードに応じて処理
-    if mode == 'Ratio':
-        # 不足率を計算
-        display_df = calc_ratio_from_heatmap(df_heat)
-        title_scope = ', '.join(selected_role) if selected_role else (
-            ', '.join(selected_employment) if selected_employment else "全体"
-        )
-        title = f"充足率ヒートマップ - {title_scope}"
-        color_scale = 'RdBu_r'
-    else:
-        # 生データから必要な列だけ抽出
-        date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
-        display_df = df_heat[date_cols] if date_cols else pd.DataFrame()
-        title_scope = ', '.join(selected_role) if selected_role else (
-            ', '.join(selected_employment) if selected_employment else "全体"
-        )
-        title = f"人員配置ヒートマップ - {title_scope}"
-        color_scale = px.colors.sequential.Viridis
+    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
+    if not date_cols:
+        return html.Div("日付データが見つかりません")
 
-    if display_df.empty:
-        return html.Div("表示可能なデータがありません")
+    staff_df = df_heat[date_cols].fillna(0)
 
-    # ヒートマップ作成
-    fig = px.imshow(
-        display_df,
+    # 実数ヒートマップ
+    display_df_raw = staff_df
+    fig_raw = px.imshow(
+        display_df_raw,
         aspect='auto',
-        color_continuous_scale=color_scale,
-        title=title,
-        labels={'x': '日付', 'y': '時間', 'color': mode}
+        color_continuous_scale=px.colors.sequential.Viridis,
+        title='人員配置ヒートマップ（実数）',
+        labels={'x': '日付', 'y': '時間', 'color': '人数'},
+    )
+    fig_raw.update_xaxes(
+        ticktext=[date_with_weekday(c) for c in display_df_raw.columns],
+        tickvals=list(range(len(display_df_raw.columns)))
     )
 
-    # X軸ラベルに曜日を追加
-    fig.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in display_df.columns],
-        tickvals=list(range(len(display_df.columns)))
+    # 不足率ヒートマップ
+    df_ratio = calc_ratio_from_heatmap(df_heat)
+    fig_ratio = px.imshow(
+        df_ratio,
+        aspect='auto',
+        color_continuous_scale='RdBu_r',
+        title='不足率ヒートマップ',
+        labels={'x': '日付', 'y': '時間', 'color': '不足率'},
+    )
+    fig_ratio.update_xaxes(
+        ticktext=[date_with_weekday(c) for c in df_ratio.columns],
+        tickvals=list(range(len(df_ratio.columns)))
     )
 
-    return dcc.Graph(figure=fig)
+    # 最適化スコアヒートマップ
+    df_score = calc_opt_score_from_heatmap(df_heat)
+    fig_score = px.imshow(
+        df_score,
+        aspect='auto',
+        color_continuous_scale='RdYlGn',
+        zmin=0,
+        zmax=1,
+        title='最適化スコアヒートマップ',
+        labels={'x': '日付', 'y': '時間', 'color': 'スコア'},
+    )
+    fig_score.update_xaxes(
+        ticktext=[date_with_weekday(c) for c in df_score.columns],
+        tickvals=list(range(len(df_score.columns)))
+    )
+
+    return html.Div([
+        html.H4('人員配置ヒートマップ（実数）'),
+        dcc.Graph(figure=fig_raw),
+        html.H4('不足率ヒートマップ', style={'marginTop': '30px'}),
+        dcc.Graph(figure=fig_ratio),
+        html.H4('最適化スコアヒートマップ', style={'marginTop': '30px'}),
+        dcc.Graph(figure=fig_score),
+    ])
 
 
 @app.callback(
@@ -1337,31 +1345,72 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         return html.Div("データが見つかりません")
 
     # 不足率を計算
+    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
+    if not date_cols:
+        return html.Div("日付データが見つかりません")
+
+    staff_df = df_heat[date_cols].fillna(0)
+    need_series = df_heat.get('need', pd.Series()).fillna(0)
+    need_df = pd.DataFrame(
+        np.repeat(need_series.values[:, np.newaxis], len(date_cols), axis=1),
+        index=df_heat.index,
+        columns=date_cols,
+    )
+    upper_series = df_heat.get('upper', pd.Series()).fillna(0)
+    upper_df = pd.DataFrame(
+        np.repeat(upper_series.values[:, np.newaxis], len(date_cols), axis=1),
+        index=df_heat.index,
+        columns=date_cols,
+    )
+
+    lack_count_df = (need_df - staff_df).clip(lower=0)
+    excess_count_df = (staff_df - upper_df).clip(lower=0)
     ratio_df = calc_ratio_from_heatmap(df_heat)
-    if ratio_df.empty:
-        return html.Div("不足率の計算ができません")
 
-    # タイトル設定
-    title = "不足率ヒートマップ"
-    if scope != 'overall' and detail_values:
-        title += f" - {detail_values[0]}"
+    fig_lack = px.imshow(
+        lack_count_df,
+        aspect='auto',
+        color_continuous_scale='Oranges',
+        title='不足人数ヒートマップ',
+        labels={'x': '日付', 'y': '時間', 'color': '人数'},
+    )
+    fig_lack.update_xaxes(
+        ticktext=[date_with_weekday(c) for c in lack_count_df.columns],
+        tickvals=list(range(len(lack_count_df.columns)))
+    )
 
-    # ヒートマップ作成
-    fig = px.imshow(
+    fig_excess = px.imshow(
+        excess_count_df,
+        aspect='auto',
+        color_continuous_scale='Blues',
+        title='過剰人数ヒートマップ',
+        labels={'x': '日付', 'y': '時間', 'color': '人数'},
+    )
+    fig_excess.update_xaxes(
+        ticktext=[date_with_weekday(c) for c in excess_count_df.columns],
+        tickvals=list(range(len(excess_count_df.columns)))
+    )
+
+    fig_ratio = px.imshow(
         ratio_df,
         aspect='auto',
         color_continuous_scale='RdBu_r',
-        title=title,
-        labels={'x': '日付', 'y': '時間', 'color': '不足率'}
+        title='不足率ヒートマップ',
+        labels={'x': '日付', 'y': '時間', 'color': '不足率'},
     )
-
-    # X軸ラベルに曜日を追加
-    fig.update_xaxes(
+    fig_ratio.update_xaxes(
         ticktext=[date_with_weekday(c) for c in ratio_df.columns],
         tickvals=list(range(len(ratio_df.columns)))
     )
 
-    return dcc.Graph(figure=fig)
+    return html.Div([
+        html.H4('不足人数ヒートマップ'),
+        dcc.Graph(figure=fig_lack),
+        html.H4('過剰人数ヒートマップ', style={'marginTop': '30px'}),
+        dcc.Graph(figure=fig_excess),
+        html.H4('不足率ヒートマップ', style={'marginTop': '30px'}),
+        dcc.Graph(figure=fig_ratio),
+    ])
 
 
 @app.callback(
