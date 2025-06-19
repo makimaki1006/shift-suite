@@ -17,7 +17,6 @@ import plotly.graph_objects as go
 from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State, ALL
 from dash.exceptions import PreventUpdate
-from app import calc_opt_score_from_heatmap
 from shift_suite.tasks.utils import safe_read_excel
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
@@ -138,6 +137,30 @@ def load_and_sum_heatmaps(data_dir: Path, keys: List[str]) -> pd.DataFrame:
 
     return total
 
+
+def generate_heatmap_figure(df_heat: pd.DataFrame, title: str) -> go.Figure:
+    """指定されたデータフレームからヒートマップグラフを生成する"""
+    if df_heat is None or df_heat.empty:
+        return go.Figure().update_layout(title_text=f"{title}: データなし", height=300)
+
+    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
+    if not date_cols:
+        return go.Figure().update_layout(title_text=f"{title}: 表示可能な日付データなし", height=300)
+
+    display_df = df_heat[date_cols]
+
+    fig = px.imshow(
+        display_df,
+        aspect='auto',
+        color_continuous_scale=px.colors.sequential.Viridis,
+        title=title,
+    )
+    fig.update_xaxes(
+        ticktext=[date_with_weekday(c) for c in display_df.columns],
+        tickvals=list(range(len(display_df.columns)))
+    )
+    return fig
+
 # --- UIコンポーネント生成関数 ---
 def create_metric_card(label: str, value: str, color: str = "#1f77b4") -> html.Div:
     """メトリクスカードを作成"""
@@ -228,57 +251,48 @@ def create_heatmap_tab() -> html.Div:
     roles = DATA_STORE.get('roles', [])
     employments = DATA_STORE.get('employments', [])
 
-    scope_options = [{'label': '全体', 'value': 'overall'}]
-    if roles:
-        scope_options.append({'label': '職種別', 'value': 'role'})
-    if employments:
-        scope_options.append({'label': '雇用形態別', 'value': 'employment'})
+    def create_comparison_area(area_id: int):
+        return html.Div([
+            html.H4(
+                f"比較エリア {area_id}",
+                style={
+                    'marginTop': '20px',
+                    'borderTop': '2px solid #ddd',
+                    'paddingTop': '20px',
+                },
+            ),
+            html.Div([
+                dcc.Dropdown(
+                    id={'type': 'heatmap-filter-role', 'index': area_id},
+                    options=[{'label': r, 'value': r} for r in roles],
+                    placeholder="職種を選択...",
+                ),
+                dcc.Dropdown(
+                    id={'type': 'heatmap-filter-employment', 'index': area_id},
+                    options=[{'label': e, 'value': e} for e in employments],
+                    placeholder="雇用形態を選択...",
+                    style={'marginTop': '10px'},
+                ),
+            ], style={'marginBottom': '10px'}),
+            dcc.Loading(
+                id={'type': 'loading-heatmap', 'index': area_id},
+                type="default",
+                children=html.Div(id={'type': 'graph-output-heatmap', 'index': area_id}),
+            ),
+        ], style={
+            'padding': '10px',
+            'backgroundColor': '#f9f9f9',
+            'borderRadius': '5px',
+            'marginBottom': '10px',
+        })
 
     return html.Div([
-        html.Div(id='heatmap-insights', style={
-            'padding': '15px',
-            'backgroundColor': '#e9f2fa',
-            'borderRadius': '8px',
-            'marginBottom': '20px',
-            'border': '1px solid #cce5ff'
-        }),
-        html.H3("ヒートマップ", style={'marginBottom': '20px'}),
-        html.Div([
-            html.Div([
-                html.Label("表示範囲"),
-                dcc.Dropdown(
-                    id='heatmap-scope',
-                    options=scope_options,
-                    value='overall',
-                    clearable=False
-                ),
-            ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
-            html.Div([
-                html.Label("職種"),
-                dcc.Dropdown(
-                    id='heatmap-role-filter',
-                    options=[{'label': r, 'value': r} for r in roles],
-                    value=[],
-                    multi=True,
-                    placeholder="職種で絞り込み",
-                ),
-            ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
-            html.Div([
-                html.Label("雇用形態"),
-                dcc.Dropdown(
-                    id='heatmap-employment-filter',
-                    options=[{'label': e, 'value': e} for e in employments],
-                    value=[],
-                    multi=True,
-                    placeholder="雇用形態で絞り込み",
-                ),
-            ], style={'width': '30%', 'display': 'inline-block', 'marginRight': '2%'}),
-        ], style={'marginBottom': '20px'}),
-        dcc.Loading(
-            id="loading-heatmap",
-            type="default",
-            children=html.Div(id='heatmap-content')
+        html.H3("ヒートマップ比較分析", style={'marginBottom': '20px'}),
+        html.P(
+            "上下のドロップダウンでそれぞれ条件を選択し、ヒートマップを比較してください。条件を指定しない場合は「全体」が表示されます。"
         ),
+        create_comparison_area(1),
+        create_comparison_area(2),
     ])
 
 
@@ -1196,83 +1210,32 @@ def update_tab_content(active_tab):
         return html.Div("タブが選択されていません")
 
 
-
-
 @app.callback(
-    Output('heatmap-content', 'children'),
-    Input('heatmap-role-filter', 'value'),
-    Input('heatmap-employment-filter', 'value')
+    Output({'type': 'graph-output-heatmap', 'index': 1}, 'children'),
+    Output({'type': 'graph-output-heatmap', 'index': 2}, 'children'),
+    Input({'type': 'heatmap-filter-role', 'index': 1}, 'value'),
+    Input({'type': 'heatmap-filter-employment', 'index': 1}, 'value'),
+    Input({'type': 'heatmap-filter-role', 'index': 2}, 'value'),
+    Input({'type': 'heatmap-filter-employment', 'index': 2}, 'value'),
 )
-def update_heatmap_content(selected_role, selected_employment):
-    """ヒートマップコンテンツを更新"""
-    heat_keys = ['heat_ALL']
-    if selected_role:
-        heat_keys = [f'heat_{safe_filename(r)}' for r in selected_role]
-    elif selected_employment:
-        heat_keys = [f'heat_emp_{safe_filename(e)}' for e in selected_employment]
+def update_comparison_heatmaps(role1, emp1, role2, emp2):
+    """2つの比較エリアのヒートマップを更新"""
+    outputs: List[html.Div] = []
+    for role, emp in [(role1, emp1), (role2, emp2)]:
+        title_parts = []
+        heat_key = 'heat_ALL'
+        if role:
+            heat_key = f'heat_{safe_filename(role)}'
+            title_parts.append(f"職種: {role}")
+        elif emp:
+            heat_key = f'heat_emp_{safe_filename(emp)}'
+            title_parts.append(f"雇用形態: {emp}")
+        df_heat = DATA_STORE.get(heat_key)
+        title = " / ".join(title_parts) if title_parts else "全体"
+        fig = generate_heatmap_figure(df_heat, title)
+        outputs.append(dcc.Graph(figure=fig))
 
-    df_heat = load_and_sum_heatmaps(TEMP_DIR, heat_keys)
-    if df_heat is None or df_heat.empty:
-        return html.Div("データが見つかりません")
-
-    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
-    if not date_cols:
-        return html.Div("日付データが見つかりません")
-
-    staff_df = df_heat[date_cols].fillna(0)
-
-    # 実数ヒートマップ
-    display_df_raw = staff_df
-    fig_raw = px.imshow(
-        display_df_raw,
-        aspect='auto',
-        color_continuous_scale=px.colors.sequential.Viridis,
-        title='人員配置ヒートマップ（実数）',
-        labels={'x': '日付', 'y': '時間', 'color': '人数'},
-    )
-    fig_raw.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in display_df_raw.columns],
-        tickvals=list(range(len(display_df_raw.columns)))
-    )
-
-    # 不足率ヒートマップ
-    df_ratio = calc_ratio_from_heatmap(df_heat)
-    fig_ratio = px.imshow(
-        df_ratio,
-        aspect='auto',
-        color_continuous_scale='RdBu_r',
-        title='不足率ヒートマップ',
-        labels={'x': '日付', 'y': '時間', 'color': '不足率'},
-    )
-    fig_ratio.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in df_ratio.columns],
-        tickvals=list(range(len(df_ratio.columns)))
-    )
-
-    # 最適化スコアヒートマップ
-    df_score = calc_opt_score_from_heatmap(df_heat)
-    fig_score = px.imshow(
-        df_score,
-        aspect='auto',
-        color_continuous_scale='RdYlGn',
-        zmin=0,
-        zmax=1,
-        title='最適化スコアヒートマップ',
-        labels={'x': '日付', 'y': '時間', 'color': 'スコア'},
-    )
-    fig_score.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in df_score.columns],
-        tickvals=list(range(len(df_score.columns)))
-    )
-
-    return html.Div([
-        html.H4('人員配置ヒートマップ（実数）'),
-        dcc.Graph(figure=fig_raw),
-        html.H4('不足率ヒートマップ', style={'marginTop': '30px'}),
-        dcc.Graph(figure=fig_ratio),
-        html.H4('最適化スコアヒートマップ', style={'marginTop': '30px'}),
-        dcc.Graph(figure=fig_score),
-    ])
+    return outputs[0], outputs[1]
 
 
 @app.callback(
