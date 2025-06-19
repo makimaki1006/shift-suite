@@ -154,6 +154,7 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str) -> go.Figure:
         aspect='auto',
         color_continuous_scale=px.colors.sequential.Viridis,
         title=title,
+        labels={'x': '日付', 'y': '時間', 'color': '人数'}
     )
     fig.update_xaxes(
         ticktext=[date_with_weekday(c) for c in display_df.columns],
@@ -247,52 +248,50 @@ def create_overview_tab() -> html.Div:
 
 
 def create_heatmap_tab() -> html.Div:
-    """ヒートマップタブを作成"""
+    """ヒートマップタブのレイアウトを生成します。上下2つの比較エリアを持ちます。"""
     roles = DATA_STORE.get('roles', [])
     employments = DATA_STORE.get('employments', [])
 
+    # 比較エリアを1つ生成するヘルパー関数
     def create_comparison_area(area_id: int):
         return html.Div([
-            html.H4(
-                f"比較エリア {area_id}",
-                style={
-                    'marginTop': '20px',
-                    'borderTop': '2px solid #ddd',
-                    'paddingTop': '20px',
-                },
-            ),
+            html.H4(f"比較エリア {area_id}", style={'marginTop': '20px', 'borderTop': '2px solid #ddd', 'paddingTop': '20px'}),
+
+            # --- 各エリアに職種と雇用形態の両方のフィルターを設置 ---
             html.Div([
-                dcc.Dropdown(
-                    id={'type': 'heatmap-filter-role', 'index': area_id},
-                    options=[{'label': r, 'value': r} for r in roles],
-                    placeholder="職種を選択...",
-                ),
-                dcc.Dropdown(
-                    id={'type': 'heatmap-filter-employment', 'index': area_id},
-                    options=[{'label': e, 'value': e} for e in employments],
-                    placeholder="雇用形態を選択...",
-                    style={'marginTop': '10px'},
-                ),
+                html.Div([
+                    html.Label("職種フィルター"),
+                    dcc.Dropdown(
+                        id={'type': 'heatmap-filter-role', 'index': area_id},
+                        options=[{'label': 'すべて', 'value': 'all'}] + [{'label': r, 'value': r} for r in roles],
+                        value='all',
+                        clearable=False
+                    )
+                ], style={'width': '48%', 'display': 'inline-block', 'marginRight': '4%'}),
+
+                html.Div([
+                    html.Label("雇用形態フィルター"),
+                    dcc.Dropdown(
+                        id={'type': 'heatmap-filter-employment', 'index': area_id},
+                        options=[{'label': 'すべて', 'value': 'all'}] + [{'label': e, 'value': e} for e in employments],
+                        value='all',
+                        clearable=False
+                    )
+                ], style={'width': '48%', 'display': 'inline-block'}),
             ], style={'marginBottom': '10px'}),
+
+            # --- グラフ描画領域 ---
             dcc.Loading(
                 id={'type': 'loading-heatmap', 'index': area_id},
-                type="default",
-                children=html.Div(id={'type': 'graph-output-heatmap', 'index': area_id}),
-            ),
-        ], style={
-            'padding': '10px',
-            'backgroundColor': '#f9f9f9',
-            'borderRadius': '5px',
-            'marginBottom': '10px',
-        })
+                children=html.Div(id={'type': 'graph-output-heatmap', 'index': area_id})
+            )
+        ], style={'padding': '10px', 'backgroundColor': '#f9f9f9', 'borderRadius': '5px', 'marginBottom': '10px'})
 
     return html.Div([
         html.H3("ヒートマップ比較分析", style={'marginBottom': '20px'}),
-        html.P(
-            "上下のドロップダウンでそれぞれ条件を選択し、ヒートマップを比較してください。条件を指定しない場合は「全体」が表示されます。"
-        ),
+        html.P("上下のエリアでそれぞれ「職種」と「雇用形態」の組み合わせを選択し、ヒートマップを比較してください。"),
         create_comparison_area(1),
-        create_comparison_area(2),
+        create_comparison_area(2)
     ])
 
 
@@ -1219,23 +1218,56 @@ def update_tab_content(active_tab):
     Input({'type': 'heatmap-filter-employment', 'index': 2}, 'value'),
 )
 def update_comparison_heatmaps(role1, emp1, role2, emp2):
-    """2つの比較エリアのヒートマップを更新"""
-    outputs: List[html.Div] = []
-    for role, emp in [(role1, emp1), (role2, emp2)]:
-        title_parts = []
-        heat_key = 'heat_ALL'
-        if role:
-            heat_key = f'heat_{safe_filename(role)}'
-            title_parts.append(f"職種: {role}")
-        elif emp:
-            heat_key = f'heat_emp_{safe_filename(emp)}'
-            title_parts.append(f"雇用形態: {emp}")
-        df_heat = DATA_STORE.get(heat_key)
-        title = " / ".join(title_parts) if title_parts else "全体"
-        fig = generate_heatmap_figure(df_heat, title)
-        outputs.append(dcc.Graph(figure=fig))
+    """【新ロジック】生データから動的にヒートマップを生成し、2エリアを更新"""
 
-    return outputs[0], outputs[1]
+    # 分析の元となる生データをDATA_STOREから取得
+    long_df = DATA_STORE.get('long_df')
+    if long_df is None or long_df.empty:
+        error_message = html.Div("ヒートマップの元となる生データ(long_df)が見つかりません。")
+        return error_message, error_message
+
+    # 'ds' 列をdatetime型に変換し、'time' と 'date_lbl' 列を準備
+    if 'date_lbl' not in long_df.columns:
+        long_df['ds'] = pd.to_datetime(long_df['ds'])
+        long_df['time'] = long_df['ds'].dt.strftime('%H:%M')
+        long_df['date_lbl'] = long_df['ds'].dt.strftime('%Y-%m-%d')
+
+    def generate_dynamic_heatmap(selected_role, selected_emp):
+        """選択された条件でlong_dfをフィルタし、ピボットテーブルを作成する内部関数"""
+
+        filtered_df = long_df.copy()
+        title_parts = []
+
+        # 職種でフィルタリング
+        if selected_role and selected_role != 'all':
+            filtered_df = filtered_df[filtered_df['role'] == selected_role]
+            title_parts.append(f"職種: {selected_role}")
+
+        # 雇用形態でフィルタリング
+        if selected_emp and selected_emp != 'all':
+            filtered_df = filtered_df[filtered_df['employment'] == selected_emp]
+            title_parts.append(f"雇用形態: {selected_emp}")
+
+        title = " AND ".join(title_parts) if title_parts else "全体"
+
+        if filtered_df.empty:
+            return generate_heatmap_figure(pd.DataFrame(), f"{title} (データなし)")
+
+        dynamic_heatmap_df = filtered_df.pivot_table(
+            index='time',
+            columns='date_lbl',
+            values='staff',
+            aggfunc='nunique',
+            fill_value=0
+        )
+
+        fig = generate_heatmap_figure(dynamic_heatmap_df, title)
+        return dcc.Graph(figure=fig)
+
+    output1 = generate_dynamic_heatmap(role1, emp1)
+    output2 = generate_dynamic_heatmap(role2, emp2)
+
+    return output1, output2
 
 
 @app.callback(
