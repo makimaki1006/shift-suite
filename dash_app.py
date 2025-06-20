@@ -1282,7 +1282,14 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
     def generate_dynamic_heatmap(selected_role, selected_emp):
         """選択された条件でlong_dfをフィルタし、ピボットテーブルを作成する内部関数"""
 
-        filtered_df = long_df.copy()
+        # 1. 勤務時間があるレコードのみを最初に抽出する
+        if 'parsed_slots_count' not in long_df.columns:
+            return generate_heatmap_figure(pd.DataFrame(), "エラー: 'parsed_slots_count'列がありません")
+
+        work_df = long_df[long_df['parsed_slots_count'] > 0].copy()
+
+        # 2. 以降の処理は、この work_df をベースに行う
+        filtered_df = work_df
         title_parts = []
 
         # 職種でフィルタリング
@@ -1298,7 +1305,11 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
         title = " AND ".join(title_parts) if title_parts else "全体"
 
         if filtered_df.empty:
-            return generate_heatmap_figure(pd.DataFrame(), f"{title} (データなし)")
+            # データがない場合も、完全な時間軸を持つ空のグラフを返す
+            time_labels = gen_labels(30)
+            all_dates = sorted(work_df['date_lbl'].unique()) if not work_df.empty else []
+            empty_heatmap = pd.DataFrame(index=time_labels, columns=all_dates).fillna(0)
+            return generate_heatmap_figure(empty_heatmap, f"{title} (勤務データなし)")
 
         dynamic_heatmap_df = filtered_df.pivot_table(
             index='time',
@@ -1307,8 +1318,11 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
             aggfunc='nunique',
             fill_value=0
         )
+
+        # 24時間表示を保証するためにreindex
         time_labels = gen_labels(30)
-        dynamic_heatmap_df = dynamic_heatmap_df.reindex(time_labels, fill_value=0)
+        all_dates = sorted(work_df['date_lbl'].unique())
+        dynamic_heatmap_df = dynamic_heatmap_df.reindex(index=time_labels, columns=all_dates, fill_value=0)
 
         fig = generate_heatmap_figure(dynamic_heatmap_df, title)
         return dcc.Graph(figure=fig)
