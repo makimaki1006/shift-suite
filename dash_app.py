@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State, ALL
 from dash.exceptions import PreventUpdate
-from shift_suite.tasks.utils import safe_read_excel
+from shift_suite.tasks.utils import safe_read_excel, gen_labels
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
 
@@ -148,6 +148,8 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str) -> go.Figure:
         return go.Figure().update_layout(title_text=f"{title}: 表示可能な日付データなし", height=300)
 
     display_df = df_heat[date_cols]
+    time_labels = gen_labels(30)
+    display_df = display_df.reindex(time_labels, fill_value=0)
 
     fig = px.imshow(
         display_df,
@@ -576,6 +578,7 @@ def create_cost_analysis_tab() -> html.Div:
 
     df_cost = DATA_STORE.get('daily_cost', pd.DataFrame())
     if not df_cost.empty:
+        df_cost['date'] = pd.to_datetime(df_cost['date'])
         if not {'day_of_week', 'total_staff', 'role_breakdown', 'staff_list_summary'} <= set(df_cost.columns):
             long_df = DATA_STORE.get('long_df', pd.DataFrame())
             if not long_df.empty and 'ds' in long_df.columns:
@@ -1304,6 +1307,8 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
             aggfunc='nunique',
             fill_value=0
         )
+        time_labels = gen_labels(30)
+        dynamic_heatmap_df = dynamic_heatmap_df.reindex(time_labels, fill_value=0)
 
         fig = generate_heatmap_figure(dynamic_heatmap_df, title)
         return dcc.Graph(figure=fig)
@@ -1388,23 +1393,25 @@ def update_shortage_ratio_heatmap(scope, detail_values):
     if not date_cols:
         return html.Div("日付データが見つかりません")
 
-    staff_df = df_heat[date_cols].fillna(0)
+    time_labels = gen_labels(30)
+    staff_df = df_heat[date_cols].fillna(0).reindex(time_labels, fill_value=0)
     need_series = df_heat.get('need', pd.Series()).fillna(0)
     need_df = pd.DataFrame(
         np.repeat(need_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=df_heat.index,
+        index=time_labels,
         columns=date_cols,
     )
     upper_series = df_heat.get('upper', pd.Series()).fillna(0)
     upper_df = pd.DataFrame(
         np.repeat(upper_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=df_heat.index,
+        index=time_labels,
         columns=date_cols,
     )
 
     lack_count_df = (need_df - staff_df).clip(lower=0)
     excess_count_df = (staff_df - upper_df).clip(lower=0)
     ratio_df = calc_ratio_from_heatmap(df_heat)
+    ratio_df = ratio_df.reindex(time_labels, fill_value=0)
 
     fig_lack = px.imshow(
         lack_count_df,
@@ -1526,32 +1533,36 @@ def update_optimization_content(scope, detail_values):
     if not date_cols:
         return html.Div("日付データが見つかりません")
 
+    time_labels = gen_labels(30)
     # 必要なデータを計算
-    staff_df = df_heat[date_cols].fillna(0)
+    staff_df = df_heat[date_cols].fillna(0).reindex(time_labels, fill_value=0)
     need_series = df_heat.get('need', pd.Series()).fillna(0)
     upper_series = df_heat.get('upper', pd.Series()).fillna(0)
 
     # DataFrameに変換
     need_df = pd.DataFrame(
         np.repeat(need_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=df_heat.index,
+        index=time_labels,
         columns=date_cols
     )
     upper_df = pd.DataFrame(
         np.repeat(upper_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=df_heat.index,
+        index=time_labels,
         columns=date_cols
     )
 
     # 各指標を計算
     surplus_df = (staff_df - need_df).clip(lower=0)
     margin_df = (upper_df - staff_df).clip(lower=0)
+    surplus_df = surplus_df.reindex(time_labels, fill_value=0)
+    margin_df = margin_df.reindex(time_labels, fill_value=0)
 
     # スコア計算（不足と過剰のペナルティ）
     lack_ratio = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
     excess_ratio = ((staff_df - upper_df) / upper_df.replace(0, np.nan)).clip(lower=0).fillna(0)
     score_df = 1 - (0.6 * lack_ratio + 0.4 * excess_ratio)
     score_df = score_df.clip(lower=0, upper=1)
+    score_df = score_df.reindex(time_labels, fill_value=0)
 
     content = []
 
