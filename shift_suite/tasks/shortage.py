@@ -802,28 +802,28 @@ def shortage_and_brief(
 def merge_shortage_leave(
     out_dir: Path | str,
     *,
-    shortage_xlsx: str | Path = "shortage_time.xlsx",
+    shortage_xlsx: str | Path = "shortage_time.parquet",
     leave_csv: str | Path = "leave_analysis.csv",
-    out_excel: str | Path = "shortage_leave.parquet",
+    out_excel: str | Path = "shortage_leave.csv",
 ) -> Path | None:
-    """Combine shortage_time.xlsx with leave counts.
+    """Combine shortage_time.parquet with leave counts.
 
     Parameters
     ----------
     out_dir:
         Directory containing shortage and leave files.
     shortage_xlsx:
-        Name of ``shortage_time.xlsx``. Must exist under ``out_dir``.
+        Name of ``shortage_time.parquet``. Must exist under ``out_dir``.
     leave_csv:
         Optional ``leave_analysis.csv`` with columns ``date`` and
         ``total_leave_days``. If missing, leave counts are treated as ``0``.
     out_excel:
-        Output parquet filename.
+        Output CSV filename.
 
     Returns
     -------
     Path | None
-        Path to the saved Excel file or ``None`` if shortage data missing.
+        Path to the saved CSV file or ``None`` if shortage data missing.
     """
 
     out_dir_path = Path(out_dir)
@@ -833,7 +833,7 @@ def merge_shortage_leave(
         return None
 
     try:
-        shortage_df = pd.read_excel(shortage_fp, index_col=0)
+        shortage_df = pd.read_parquet(shortage_fp)
     except Exception as e:
         log.error(f"[shortage] failed to read {shortage_fp}: {e}")
         return None
@@ -868,7 +868,8 @@ def merge_shortage_leave(
         lower=0
     )
 
-    out_fp = save_df_parquet(long_df, out_dir_path / out_excel, index=False)
+    out_fp = out_dir_path / out_excel
+    long_df.to_csv(out_fp, index=False)
     return out_fp
 
 
