@@ -184,6 +184,10 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
         DATA_STORE['long_df'] = None
         log.warning('動的ヒートマップの元となる intermediate_data.parquet が見つかりませんでした。')
 
+    pre_aggr_fp = data_dir / 'pre_aggregated_data.parquet'
+    if pre_aggr_fp.exists():
+        DATA_STORE['pre_aggregated_data'] = safe_read_parquet(pre_aggr_fp)
+
     for name in ['gap_summary', 'gap_heatmap']:
         excel_fp = data_dir / f'{name}.xlsx'
         parquet_fp = data_dir / f'{name}.parquet'
@@ -1120,9 +1124,13 @@ app.layout = html.Div([
     ], style={'padding': '0 20px'}),
 
     html.Div([
-        html.H3('分析シナリオ選択'),
-        dcc.Dropdown(id='scenario-dropdown')
-    ], style={'padding': '0 20px', 'width': '50%', 'margin': 'auto'}),
+        html.H3("分析シナリオ選択", style={'textAlign': 'center'}),
+        dcc.Dropdown(
+            id='scenario-dropdown',
+            placeholder="まず分析結果のZIPファイルをアップロードしてください",
+            style={'width': '60%', 'margin': 'auto'}
+        )
+    ], id='scenario-selector-div', style={'display': 'none'}),
 
     # メインコンテンツ
     html.Div(id='main-content', style={'padding': '20px'}),
@@ -1131,15 +1139,15 @@ app.layout = html.Div([
 
 # --- コールバック関数 ---
 @app.callback(
-    Output('kpi-data-store', 'data'),
     Output('data-loaded', 'data'),
     Output('scenario-dropdown', 'options'),
     Output('scenario-dropdown', 'value'),
+    Output('scenario-selector-div', 'style'),
     Input('upload-data', 'contents'),
     State('upload-data', 'filename')
 )
 def process_upload(contents, filename):
-    """ZIPファイルをアップロード・処理"""
+    """ZIPファイルをアップロードしてシナリオを検出"""
     if contents is None:
         raise PreventUpdate
 
@@ -1161,51 +1169,47 @@ def process_upload(contents, filename):
             zf.extractall(TEMP_DIR)
 
         scenarios = [d.name for d in TEMP_DIR.iterdir() if d.is_dir() and d.name.startswith('out_')]
-        if scenarios:
-            data_dir = TEMP_DIR / scenarios[0]
-        else:
-            data_dir = None
-            if (TEMP_DIR / 'out').exists():
-                data_dir = TEMP_DIR / 'out'
-            elif (TEMP_DIR / 'heat_ALL.parquet').exists():
-                data_dir = TEMP_DIR
-            else:
-                for p in TEMP_DIR.rglob('heat_ALL.parquet'):
-                    data_dir = p.parent
-                    break
+        if not scenarios:
+            return {'error': '分析シナリオのフォルダが見つかりません'}, [], None, {'display': 'none'}
 
-        if not data_dir:
-            return {}, {'error': 'データファイルが見つかりません'}, [], None
-
-        kpi_data, status = load_data_from_dir(data_dir)
-        scenario_options = [{'label': s.replace('out_', ''), 'value': s} for s in scenarios] if scenarios else []
-        first_scenario = scenarios[0] if scenarios else None
-        return kpi_data, status, scenario_options, first_scenario
+        scenario_options = [{'label': s.replace('out_', ''), 'value': s} for s in scenarios]
+        first_scenario = scenarios[0]
+        return {'success': True}, scenario_options, first_scenario, {'display': 'block'}
 
     except Exception as e:
         log.error(f"Error processing ZIP: {e}", exc_info=True)
-        return {}, {'error': str(e)}, [], None
+        return {'error': str(e)}, [], None, {'display': 'none'}
 
 
 @app.callback(
+    Output('kpi-data-store', 'data'),
     Output('main-content', 'children'),
-    Input('data-loaded', 'data')
+    Input('scenario-dropdown', 'value'),
+    State('data-loaded', 'data')
 )
-def update_main_content(data_status):
-    """メインコンテンツを更新"""
-    if not data_status:
-        return html.Div([
-            html.P("分析結果のZIPファイルをアップロードしてください。",
-                  style={'textAlign': 'center', 'fontSize': '18px', 'color': '#666'})
-        ])
+def update_content_for_scenario(selected_scenario, data_status):
+    """シナリオ選択に応じてデータを読み込み、メインUIを更新"""
+    if not selected_scenario or not data_status or 'success' not in data_status:
+        raise PreventUpdate
 
-    if 'error' in data_status:
-        return html.Div([
-            html.P(f"エラー: {data_status['error']}",
-                  style={'color': 'red', 'textAlign': 'center'})
-        ])
+    if TEMP_DIR is None:
+        raise PreventUpdate
 
-    # タブを作成
+    data_dir = TEMP_DIR / selected_scenario
+    if not data_dir.exists():
+        raise PreventUpdate
+
+    # 既存データをクリアし読み込み直す
+    global DATA_STORE
+    kpi_data, _ = load_data_from_dir(data_dir)
+
+    # 高速化用の事前集計データを読み込み
+    aggregated_fp = data_dir / 'pre_aggregated_data.parquet'
+    if aggregated_fp.exists():
+        DATA_STORE['pre_aggregated_data'] = pd.read_parquet(aggregated_fp)
+    else:
+        return kpi_data, html.Div(f"エラー: {aggregated_fp} が見つかりません。")
+
     tabs = dcc.Tabs(id='main-tabs', value='overview', children=[
         dcc.Tab(label='概要', value='overview'),
         dcc.Tab(label='ヒートマップ', value='heatmap'),
@@ -1222,28 +1226,12 @@ def update_main_content(data_status):
         dcc.Tab(label='PPT Report', value='ppt_report'),
     ])
 
-    return html.Div([
+    main_layout = html.Div([
         tabs,
         html.Div(id='tab-content', style={'marginTop': '20px'})
     ])
 
-
-@app.callback(
-    Output('kpi-data-store', 'data'),
-    Output('data-loaded', 'data'),
-    Input('scenario-dropdown', 'value'),
-    prevent_initial_call=True,
-)
-def update_for_scenario(selected_scenario):
-    if not selected_scenario:
-        raise PreventUpdate
-    if TEMP_DIR is None:
-        raise PreventUpdate
-    data_dir = TEMP_DIR / selected_scenario
-    if not data_dir.exists():
-        raise PreventUpdate
-    kpi_data, status = load_data_from_dir(data_dir)
-    return kpi_data, status
+    return kpi_data, main_layout
 
 
 @app.callback(
@@ -1291,39 +1279,23 @@ def update_tab_content(active_tab):
     Input({'type': 'heatmap-filter-employment', 'index': 2}, 'value'),
 )
 def update_comparison_heatmaps(role1, emp1, role2, emp2):
-    """【新ロジック】生データから動的にヒートマップを生成し、2エリアを更新"""
+    """事前集計データから動的にヒートマップを生成し、2エリアを更新"""
 
-    # 分析の元となる生データをDATA_STOREから取得
-    long_df = DATA_STORE.get('long_df')
-    if long_df is None or long_df.empty:
-        error_message = html.Div("ヒートマップの元となる生データ(long_df)が見つかりません。")
+    aggregated_df = DATA_STORE.get('pre_aggregated_data')
+    if aggregated_df is None or aggregated_df.empty:
+        error_message = html.Div("ヒートマップの元データが見つかりません。")
         return error_message, error_message
 
-    # 'ds' 列をdatetime型に変換し、'time' と 'date_lbl' 列を準備
-    if 'date_lbl' not in long_df.columns:
-        long_df['ds'] = pd.to_datetime(long_df['ds'])
-        long_df['time'] = long_df['ds'].dt.strftime('%H:%M')
-        long_df['date_lbl'] = long_df['ds'].dt.strftime('%Y-%m-%d')
-
     def generate_dynamic_heatmap(selected_role, selected_emp):
-        """選択された条件でlong_dfをフィルタし、ピボットテーブルを作成する内部関数"""
+        """選択された条件で事前集計データをフィルタしピボット化"""
 
-        # 1. 勤務時間があるレコードのみを最初に抽出する
-        if 'parsed_slots_count' not in long_df.columns:
-            return generate_heatmap_figure(pd.DataFrame(), "エラー: 'parsed_slots_count'列がありません")
-
-        work_df = long_df[long_df['parsed_slots_count'] > 0].copy()
-
-        # 2. 以降の処理は、この work_df をベースに行う
-        filtered_df = work_df
+        filtered_df = aggregated_df.copy()
         title_parts = []
 
-        # 職種でフィルタリング
         if selected_role and selected_role != 'all':
             filtered_df = filtered_df[filtered_df['role'] == selected_role]
             title_parts.append(f"職種: {selected_role}")
 
-        # 雇用形態でフィルタリング
         if selected_emp and selected_emp != 'all':
             filtered_df = filtered_df[filtered_df['employment'] == selected_emp]
             title_parts.append(f"雇用形態: {selected_emp}")
@@ -1331,23 +1303,21 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
         title = " AND ".join(title_parts) if title_parts else "全体"
 
         if filtered_df.empty:
-            # データがない場合も、完全な時間軸を持つ空のグラフを返す
             time_labels = gen_labels(30)
-            all_dates = sorted(work_df['date_lbl'].unique()) if not work_df.empty else []
+            all_dates = sorted(aggregated_df['date_lbl'].unique())
             empty_heatmap = pd.DataFrame(index=time_labels, columns=all_dates).fillna(0)
             return generate_heatmap_figure(empty_heatmap, f"{title} (勤務データなし)")
 
         dynamic_heatmap_df = filtered_df.pivot_table(
             index='time',
             columns='date_lbl',
-            values='staff',
-            aggfunc='nunique',
-            fill_value=0
+            values='staff_count',
+            aggfunc='sum',
+            fill_value=0,
         )
 
-        # 24時間表示を保証するためにreindex
         time_labels = gen_labels(30)
-        all_dates = sorted(work_df['date_lbl'].unique())
+        all_dates = sorted(aggregated_df['date_lbl'].unique())
         dynamic_heatmap_df = dynamic_heatmap_df.reindex(index=time_labels, columns=all_dates, fill_value=0)
 
         fig = generate_heatmap_figure(dynamic_heatmap_df, title)
