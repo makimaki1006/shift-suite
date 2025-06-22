@@ -109,6 +109,138 @@ def load_shortage_meta(data_dir: Path) -> Tuple[List[str], List[str]]:
     return roles, employments
 
 
+def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
+    """Load analysis data from the given directory into DATA_STORE."""
+    global DATA_STORE
+    DATA_STORE = {}
+
+    # Parquet files
+    parquet_files = [
+        'heat_ALL.parquet',
+        'shortage_role_summary.parquet',
+        'shortage_employment_summary.parquet',
+        'shortage_time.parquet',
+        'shortage_ratio.parquet',
+        'shortage_freq.parquet',
+        'excess_time.parquet',
+        'excess_ratio.parquet',
+        'excess_freq.parquet',
+        'fatigue_score.parquet',
+        'fairness_before.parquet',
+        'fairness_after.parquet',
+        'staff_stats.parquet',
+        'stats_alerts.parquet',
+        'hire_plan.parquet',
+        'optimal_hire_plan.parquet',
+        'daily_cost.parquet',
+        'forecast.parquet',
+        'cost_benefit.parquet',
+        'work_patterns.parquet',
+    ]
+
+    for file in parquet_files:
+        if (data_dir / file).exists():
+            df = safe_read_parquet(data_dir / file)
+            if not df.empty:
+                DATA_STORE[file.replace('.parquet', '')] = df
+        elif file == 'daily_cost.parquet' and (data_dir / 'daily_cost.xlsx').exists():
+            df = safe_read_excel(data_dir / 'daily_cost.xlsx')
+            if not df.empty:
+                DATA_STORE['daily_cost'] = df
+
+    csv_files = [
+        'leave_analysis.csv',
+        'staff_balance_daily.csv',
+        'concentration_requested.csv',
+        'leave_ratio_breakdown.csv',
+        'demand_series.csv',
+    ]
+
+    for file in csv_files:
+        if (data_dir / file).exists():
+            df = safe_read_csv(data_dir / file)
+            if not df.empty:
+                DATA_STORE[file.replace('.csv', '')] = df
+
+    for p in data_dir.glob('heat_*.parquet'):
+        if p.name == 'heat_ALL.parquet' or p.name.startswith('heat_emp_'):
+            continue
+        df = safe_read_parquet(p)
+        if not df.empty:
+            DATA_STORE[safe_filename(p.stem)] = df
+
+    for p in data_dir.glob('heat_emp_*.parquet'):
+        df = safe_read_parquet(p)
+        if not df.empty:
+            DATA_STORE[safe_filename(p.stem)] = df
+
+    intermediate_fp = data_dir / 'intermediate_data.parquet'
+    if intermediate_fp.exists():
+        log.info('intermediate_data.parquet を long_df として読み込みます。')
+        df = safe_read_parquet(intermediate_fp)
+        if not df.empty:
+            DATA_STORE['long_df'] = df
+    else:
+        DATA_STORE['long_df'] = None
+        log.warning('動的ヒートマップの元となる intermediate_data.parquet が見つかりませんでした。')
+
+    for name in ['gap_summary', 'gap_heatmap']:
+        excel_fp = data_dir / f'{name}.xlsx'
+        parquet_fp = data_dir / f'{name}.parquet'
+        df = pd.DataFrame()
+        if excel_fp.exists():
+            try:
+                df = safe_read_excel(excel_fp)
+            except Exception as e:
+                log.warning(f'Failed to read {excel_fp}: {e}')
+        elif parquet_fp.exists():
+            df = safe_read_parquet(parquet_fp)
+        if not df.empty:
+            DATA_STORE[name] = df
+
+    report_files = sorted(data_dir.glob('OverShortage_SummaryReport_*.md'))
+    if report_files:
+        latest = report_files[-1]
+        try:
+            DATA_STORE['summary_report'] = latest.read_text(encoding='utf-8')
+        except Exception as e:
+            log.warning(f'Failed to read {latest}: {e}')
+
+    roles, employments = load_shortage_meta(data_dir)
+    DATA_STORE['roles'] = roles
+    DATA_STORE['employments'] = employments
+
+    events_df = over_shortage_log.list_events(data_dir)
+    if not events_df.empty:
+        log_fp = data_dir / 'over_shortage_log.csv'
+        existing = over_shortage_log.load_log(log_fp)
+        merged = events_df.merge(
+            existing,
+            on=['date', 'time', 'type'],
+            how='left',
+            suffixes=('', '_log'),
+        )
+        for col in ['reason', 'staff', 'memo']:
+            if col not in merged.columns:
+                merged[col] = ''
+        DATA_STORE['shortage_events'] = merged
+        DATA_STORE['shortage_log_path'] = str(log_fp)
+
+    kpi_data = {}
+    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
+    if not df_shortage_role.empty and 'lack_h' in df_shortage_role.columns:
+        total_lack_h = df_shortage_role['lack_h'].sum()
+        most_lacking_role = df_shortage_role.loc[df_shortage_role['lack_h'].idxmax()]
+        kpi_data['total_lack_h'] = total_lack_h
+        kpi_data['most_lacking_role_name'] = most_lacking_role['role']
+        kpi_data['most_lacking_role_hours'] = most_lacking_role['lack_h']
+
+    log.info(
+        f"Loaded {len(DATA_STORE)} data files and calculated {len(kpi_data)} KPIs."
+    )
+    return kpi_data, {'success': True, 'files': len(DATA_STORE)}
+
+
 def load_and_sum_heatmaps(data_dir: Path, keys: List[str]) -> pd.DataFrame:
     """Load multiple heatmap files and aggregate them."""
     dfs = []
@@ -987,6 +1119,11 @@ app.layout = html.Div([
         ),
     ], style={'padding': '0 20px'}),
 
+    html.Div([
+        html.H3('分析シナリオ選択'),
+        dcc.Dropdown(id='scenario-dropdown')
+    ], style={'padding': '0 20px', 'width': '50%', 'margin': 'auto'}),
+
     # メインコンテンツ
     html.Div(id='main-content', style={'padding': '20px'}),
 
@@ -996,6 +1133,8 @@ app.layout = html.Div([
 @app.callback(
     Output('kpi-data-store', 'data'),
     Output('data-loaded', 'data'),
+    Output('scenario-dropdown', 'options'),
+    Output('scenario-dropdown', 'value'),
     Input('upload-data', 'contents'),
     State('upload-data', 'filename')
 )
@@ -1021,162 +1160,31 @@ def process_upload(contents, filename):
         with zipfile.ZipFile(io.BytesIO(decoded)) as zf:
             zf.extractall(TEMP_DIR)
 
-        # データディレクトリを探す
-        data_dir = None
-        if (TEMP_DIR / 'out').exists():
-            data_dir = TEMP_DIR / 'out'
-        elif (TEMP_DIR / 'heat_ALL.parquet').exists():
-            data_dir = TEMP_DIR
+        scenarios = [d.name for d in TEMP_DIR.iterdir() if d.is_dir() and d.name.startswith('out_')]
+        if scenarios:
+            data_dir = TEMP_DIR / scenarios[0]
         else:
-            # 再帰的に探す
-            for p in TEMP_DIR.rglob('heat_ALL.parquet'):
-                data_dir = p.parent
-                break
+            data_dir = None
+            if (TEMP_DIR / 'out').exists():
+                data_dir = TEMP_DIR / 'out'
+            elif (TEMP_DIR / 'heat_ALL.parquet').exists():
+                data_dir = TEMP_DIR
+            else:
+                for p in TEMP_DIR.rglob('heat_ALL.parquet'):
+                    data_dir = p.parent
+                    break
 
         if not data_dir:
-            return {}, {'error': 'データファイルが見つかりません'}
+            return {}, {'error': 'データファイルが見つかりません'}, [], None
 
-        # データを読み込む
-        DATA_STORE = {}
-
-        # Parquetファイル
-        parquet_files = [
-            'heat_ALL.parquet',
-            'shortage_role_summary.parquet',
-            'shortage_employment_summary.parquet',
-            'shortage_time.parquet',
-            'shortage_ratio.parquet',
-            'shortage_freq.parquet',
-            'excess_time.parquet',
-            'excess_ratio.parquet',
-            'excess_freq.parquet',
-            'fatigue_score.parquet',
-            'fairness_before.parquet',
-            'fairness_after.parquet',
-            'staff_stats.parquet',
-            'stats_alerts.parquet',
-            'hire_plan.parquet',
-            'optimal_hire_plan.parquet',
-            'daily_cost.parquet',
-            'forecast.parquet',
-            'cost_benefit.parquet',
-            'work_patterns.parquet'
-        ]
-
-        for file in parquet_files:
-            if (data_dir / file).exists():
-                df = safe_read_parquet(data_dir / file)
-                if not df.empty:
-                    DATA_STORE[file.replace('.parquet', '')] = df
-            elif file == 'daily_cost.parquet' and (data_dir / 'daily_cost.xlsx').exists():
-                df = safe_read_excel(data_dir / 'daily_cost.xlsx')
-                if not df.empty:
-                    DATA_STORE['daily_cost'] = df
-
-        # CSVファイル
-        csv_files = [
-            'leave_analysis.csv',
-            'staff_balance_daily.csv',
-            'concentration_requested.csv',
-            'leave_ratio_breakdown.csv',
-            'demand_series.csv'
-        ]
-
-        for file in csv_files:
-            if (data_dir / file).exists():
-                df = safe_read_csv(data_dir / file)
-                if not df.empty:
-                    DATA_STORE[file.replace('.csv', '')] = df
-
-        # 動的ヒートマップファイル
-        for p in data_dir.glob('heat_*.parquet'):
-            if p.name == 'heat_ALL.parquet' or p.name.startswith('heat_emp_'):
-                continue
-            df = safe_read_parquet(p)
-            if not df.empty:
-                DATA_STORE[safe_filename(p.stem)] = df
-
-        for p in data_dir.glob('heat_emp_*.parquet'):
-            df = safe_read_parquet(p)
-            if not df.empty:
-                DATA_STORE[safe_filename(p.stem)] = df
-
-        # long_df は intermediate_data.parquet から読み込む
-        intermediate_fp = data_dir / 'intermediate_data.parquet'
-        if intermediate_fp.exists():
-            log.info("intermediate_data.parquet を long_df として読み込みます。")
-            df = safe_read_parquet(intermediate_fp)
-            if not df.empty:
-                DATA_STORE['long_df'] = df
-        else:
-            DATA_STORE['long_df'] = None
-            log.warning(
-                '動的ヒートマップの元となる intermediate_data.parquet が見つかりませんでした。'
-            )
-
-        # Gap analysis files (excel or parquet)
-        for name in ['gap_summary', 'gap_heatmap']:
-            excel_fp = data_dir / f'{name}.xlsx'
-            parquet_fp = data_dir / f'{name}.parquet'
-            df = pd.DataFrame()
-            if excel_fp.exists():
-                try:
-                    df = safe_read_excel(excel_fp)
-                except Exception as e:  # noqa: BLE001
-                    log.warning(f'Failed to read {excel_fp}: {e}')
-            elif parquet_fp.exists():
-                df = safe_read_parquet(parquet_fp)
-            if not df.empty:
-                DATA_STORE[name] = df
-
-        # Summary report markdown
-        report_files = sorted(data_dir.glob('OverShortage_SummaryReport_*.md'))
-        if report_files:
-            latest = report_files[-1]
-            try:
-                DATA_STORE['summary_report'] = latest.read_text(encoding='utf-8')
-            except Exception as e:  # noqa: BLE001
-                log.warning(f'Failed to read {latest}: {e}')
-
-        # メタデータ読み込み
-        roles, employments = load_shortage_meta(data_dir)
-        DATA_STORE['roles'] = roles
-        DATA_STORE['employments'] = employments
-
-        # Over/Shortage events and log
-        events_df = over_shortage_log.list_events(data_dir)
-        if not events_df.empty:
-            log_fp = data_dir / 'over_shortage_log.csv'
-            existing = over_shortage_log.load_log(log_fp)
-            merged = events_df.merge(
-                existing,
-                on=['date', 'time', 'type'],
-                how='left',
-                suffixes=('', '_log'),
-            )
-            for col in ['reason', 'staff', 'memo']:
-                if col not in merged.columns:
-                    merged[col] = ''
-            DATA_STORE['shortage_events'] = merged
-            DATA_STORE['shortage_log_path'] = str(log_fp)
-
-        kpi_data = {}
-        df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
-        if not df_shortage_role.empty and 'lack_h' in df_shortage_role.columns:
-            total_lack_h = df_shortage_role['lack_h'].sum()
-            most_lacking_role = df_shortage_role.loc[df_shortage_role['lack_h'].idxmax()]
-            kpi_data['total_lack_h'] = total_lack_h
-            kpi_data['most_lacking_role_name'] = most_lacking_role['role']
-            kpi_data['most_lacking_role_hours'] = most_lacking_role['lack_h']
-
-        log.info(
-            f"Loaded {len(DATA_STORE)} data files and calculated {len(kpi_data)} KPIs."
-        )
-        return kpi_data, {'success': True, 'files': len(DATA_STORE)}
+        kpi_data, status = load_data_from_dir(data_dir)
+        scenario_options = [{'label': s.replace('out_', ''), 'value': s} for s in scenarios] if scenarios else []
+        first_scenario = scenarios[0] if scenarios else None
+        return kpi_data, status, scenario_options, first_scenario
 
     except Exception as e:
         log.error(f"Error processing ZIP: {e}", exc_info=True)
-        return {}, {'error': str(e)}
+        return {}, {'error': str(e)}, [], None
 
 
 @app.callback(
@@ -1218,6 +1226,24 @@ def update_main_content(data_status):
         tabs,
         html.Div(id='tab-content', style={'marginTop': '20px'})
     ])
+
+
+@app.callback(
+    Output('kpi-data-store', 'data'),
+    Output('data-loaded', 'data'),
+    Input('scenario-dropdown', 'value'),
+    prevent_initial_call=True,
+)
+def update_for_scenario(selected_scenario):
+    if not selected_scenario:
+        raise PreventUpdate
+    if TEMP_DIR is None:
+        raise PreventUpdate
+    data_dir = TEMP_DIR / selected_scenario
+    if not data_dir.exists():
+        raise PreventUpdate
+    kpi_data, status = load_data_from_dir(data_dir)
+    return kpi_data, status
 
 
 @app.callback(
