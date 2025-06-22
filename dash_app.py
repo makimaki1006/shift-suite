@@ -1271,6 +1271,39 @@ def update_tab_content(active_tab):
 
 
 @app.callback(
+    Output({'type': 'heatmap-filter-employment', 'index': ALL}, 'options'),
+    Output({'type': 'heatmap-filter-employment', 'index': ALL}, 'value'),
+    Input({'type': 'heatmap-filter-role', 'index': ALL}, 'value'),
+)
+def update_employment_options(selected_roles):
+    """職種選択に応じて雇用形態フィルターを更新"""
+    aggregated_df = DATA_STORE.get('pre_aggregated_data')
+    if aggregated_df is None or aggregated_df.empty:
+        default_options = [{'label': 'すべて', 'value': 'all'}]
+        return [default_options, default_options], ['all', 'all']
+
+    output_options = []
+    for role in selected_roles:
+        if role and role != 'all':
+            employments = aggregated_df[aggregated_df['role'] == role][
+                'employment'
+            ].unique()
+            new_options = (
+                [{'label': 'すべて', 'value': 'all'}]
+                + [{'label': emp, 'value': emp} for emp in sorted(employments)]
+            )
+        else:
+            all_employments = aggregated_df['employment'].unique()
+            new_options = (
+                [{'label': 'すべて', 'value': 'all'}]
+                + [{'label': emp, 'value': emp} for emp in sorted(all_employments)]
+            )
+        output_options.append(new_options)
+
+    return output_options, ['all', 'all']
+
+
+@app.callback(
     Output({'type': 'graph-output-heatmap', 'index': 1}, 'children'),
     Output({'type': 'graph-output-heatmap', 'index': 2}, 'children'),
     Input({'type': 'heatmap-filter-role', 'index': 1}, 'value'),
