@@ -48,7 +48,7 @@ def safe_filename(name: str) -> str:
 
 def date_with_weekday(date_str: str) -> str:
     """日付文字列に曜日を追加"""
-    try:
+    try:  # noqa: E722
         date = pd.to_datetime(date_str)
         weekdays = ['月', '火', '水', '木', '金', '土', '日']
         return f"{date.strftime('%m/%d')}({weekdays[date.weekday()]})"
@@ -59,7 +59,7 @@ def date_with_weekday(date_str: str) -> str:
 def safe_read_parquet(filepath: Path) -> pd.DataFrame:
     """Parquetファイルを安全に読み込む"""
     try:
-        return pd.read_parquet(filepath)
+        return pd.read_parquet(filepath)  # type: ignore
     except Exception as e:
         log.warning(f"Failed to read {filepath}: {e}")
         return pd.DataFrame()
@@ -68,7 +68,7 @@ def safe_read_parquet(filepath: Path) -> pd.DataFrame:
 def safe_read_csv(filepath: Path) -> pd.DataFrame:
     """CSVファイルを安全に読み込む"""
     try:
-        return pd.read_csv(filepath)
+        return pd.read_csv(filepath)  # type: ignore
     except Exception as e:
         log.warning(f"Failed to read {filepath}: {e}")
         return pd.DataFrame()
@@ -305,12 +305,12 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str) -> go.Figure:
 def create_metric_card(label: str, value: str, color: str = "#1f77b4") -> html.Div:
     """メトリクスカードを作成"""
     return html.Div([
-        html.Div(label, style={
+        html.Div(label, style={  # type: ignore
             'fontSize': '14px',
             'color': '#666',
             'marginBottom': '5px'
         }),
-        html.Div(value, style={
+        html.Div(value, style={  # type: ignore
             'fontSize': '24px',
             'fontWeight': 'bold',
             'color': color
@@ -349,15 +349,15 @@ def create_overview_tab() -> html.Div:
     alerts_count = len(df_alerts) if not df_alerts.empty else 0
 
     return html.Div([
-        html.Div(id='overview-insights', style={
+        html.Div(id='overview-insights', style={  # type: ignore
             'padding': '15px',
             'backgroundColor': '#e9f2fa',
             'borderRadius': '8px',
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
         }),
-        html.H3("分析概要", style={'marginBottom': '20px'}),
-        html.Div([
+        html.H3("分析概要", style={'marginBottom': '20px'}),  # type: ignore
+        html.Div([  # type: ignore
             html.Div([
                 create_metric_card("総不足時間(h)", f"{lack_h:.1f}"),
             ], style={'width': '12.5%', 'display': 'inline-block', 'padding': '5px'}),
@@ -393,13 +393,13 @@ def create_heatmap_tab() -> html.Div:
 
     # 比較エリアを1つ生成するヘルパー関数
     def create_comparison_area(area_id: int):
-        return html.Div([
-            html.H4(f"比較エリア {area_id}", style={'marginTop': '20px', 'borderTop': '2px solid #ddd', 'paddingTop': '20px'}),
+        return html.Div([  # type: ignore
+            html.H4(f"比較エリア {area_id}", style={'marginTop': '20px', 'borderTop': '2px solid #ddd', 'paddingTop': '20px'}),  # type: ignore
 
             # --- 各エリアに職種と雇用形態の両方のフィルターを設置 ---
-            html.Div([
-                html.Div([
-                    html.Label("職種フィルター"),
+            html.Div([  # type: ignore
+                html.Div([  # type: ignore
+                    html.Label("職種フィルター"),  # type: ignore
                     dcc.Dropdown(
                         id={'type': 'heatmap-filter-role', 'index': area_id},
                         options=[{'label': 'すべて', 'value': 'all'}] + [{'label': r, 'value': r} for r in roles],
@@ -408,8 +408,8 @@ def create_heatmap_tab() -> html.Div:
                     )
                 ], style={'width': '48%', 'display': 'inline-block', 'marginRight': '4%'}),
 
-                html.Div([
-                    html.Label("雇用形態フィルター"),
+                html.Div([  # type: ignore
+                    html.Label("雇用形態フィルター"),  # type: ignore
                     dcc.Dropdown(
                         id={'type': 'heatmap-filter-employment', 'index': area_id},
                         options=[{'label': 'すべて', 'value': 'all'}] + [{'label': e, 'value': e} for e in employments],
@@ -427,8 +427,8 @@ def create_heatmap_tab() -> html.Div:
         ], style={'padding': '10px', 'backgroundColor': '#f9f9f9', 'borderRadius': '5px', 'marginBottom': '10px'})
 
     return html.Div([
-        html.H3("ヒートマップ比較分析", style={'marginBottom': '20px'}),
-        html.P("上下のエリアでそれぞれ「職種」と「雇用形態」の組み合わせを選択し、ヒートマップを比較してください。"),
+        html.H3("ヒートマップ比較分析", style={'marginBottom': '20px'}),  # type: ignore
+        html.P("上下のエリアでそれぞれ「職種」と「雇用形態」の組み合わせを選択し、ヒートマップを比較してください。"),  # type: ignore
         create_comparison_area(1),
         create_comparison_area(2)
     ])
@@ -439,15 +439,15 @@ def create_shortage_tab() -> html.Div:
     df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
     df_shortage_emp = DATA_STORE.get('shortage_employment_summary', pd.DataFrame())
 
-    content = [html.Div(id='shortage-insights', style={
+    content = [html.Div(id='shortage-insights', style={  # type: ignore
         'padding': '15px',
         'backgroundColor': '#e9f2fa',
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("不足分析", style={'marginBottom': '20px'}),
-        html.Div(
+        html.H3("不足分析", style={'marginBottom': '20px'}),  # type: ignore
+        html.Div(  # type: ignore
             dcc.Markdown(
                 "\n".join(
                     [
@@ -472,7 +472,7 @@ def create_shortage_tab() -> html.Div:
 
     # 職種別不足分析
     if not df_shortage_role.empty:
-        content.append(html.H4("職種別不足時間"))
+        content.append(html.H4("職種別不足時間"))  # type: ignore
 
         # サマリーメトリクス
         total_lack = df_shortage_role['lack_h'].sum() if 'lack_h' in df_shortage_role.columns else 0
@@ -486,7 +486,7 @@ def create_shortage_tab() -> html.Div:
             for i, row in enumerate(top_roles.itertuples(index=False)):
                 metrics.append(
                     html.Div([
-                        create_metric_card(f"不足Top{i+1}", f"{row.role}: {row.lack_h:.1f}h")
+                        create_metric_card(f"不足Top{i+1}", f"{row.role}: {row.lack_h:.1f}h")  # type: ignore
                     ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'})
                 )
             content.append(html.Div(metrics, style={'marginBottom': '20px'}))
@@ -516,7 +516,7 @@ def create_shortage_tab() -> html.Div:
 
     # 雇用形態別不足分析
     if not df_shortage_emp.empty:
-        content.append(html.H4("雇用形態別不足時間", style={'marginTop': '30px'}))
+        content.append(html.H4("雇用形態別不足時間", style={'marginTop': '30px'}))  # type: ignore
 
         fig_emp_lack = px.bar(
             df_shortage_emp,
@@ -530,10 +530,10 @@ def create_shortage_tab() -> html.Div:
 
     # 不足率ヒートマップセクション
     content.append(html.Div([
-        html.H4("不足率ヒートマップ", style={'marginTop': '30px'}),
-        html.P("各時間帯で必要人数に対してどれくらいの割合で人員が不足していたかを示します。"),
-        html.Div([
-            html.Label("表示範囲"),
+        html.H4("不足率ヒートマップ", style={'marginTop': '30px'}),  # type: ignore
+        html.P("各時間帯で必要人数に対してどれくらいの割合で人員が不足していたかを示します。"),  # type: ignore
+        html.Div([  # type: ignore
+            html.Label("表示範囲"),  # type: ignore
             dcc.Dropdown(
                 id='shortage-heatmap-scope',
                 options=[
@@ -551,15 +551,15 @@ def create_shortage_tab() -> html.Div:
 
     # Factor Analysis section
     content.append(html.Hr())
-    content.append(html.H4('Factor Analysis (AI)', style={'marginTop': '30px'}))
-    content.append(html.Button('Train factor model', id='factor-train-button', n_clicks=0))
-    content.append(html.Div(id='factor-output'))
+    content.append(html.H4('要因分析 (AI)', style={'marginTop': '30px'}))  # type: ignore
+    content.append(html.Button('要因分析モデルを学習', id='factor-train-button', n_clicks=0))  # type: ignore
+    content.append(html.Div(id='factor-output'))  # type: ignore
 
     # Over/Short Log section
     events_df = DATA_STORE.get('shortage_events', pd.DataFrame())
     if not events_df.empty:
-        content.append(html.Hr())
-        content.append(html.H4('Over/Short Log', style={'marginTop': '30px'}))
+        content.append(html.Hr())  # type: ignore
+        content.append(html.H4('過不足手動ログ', style={'marginTop': '30px'}))  # type: ignore
         content.append(dash_table.DataTable(
             id='over-shortage-table',
             data=events_df.to_dict('records'),
@@ -568,20 +568,20 @@ def create_shortage_tab() -> html.Div:
         ))
         content.append(dcc.RadioItems(
             id='log-save-mode',
-            options=[{'label': 'Append', 'value': 'append'}, {'label': 'Overwrite', 'value': 'overwrite'}],
-            value='append',
+            options=[{'label': '追記', 'value': 'append'}, {'label': '上書き', 'value': 'overwrite'}],
+            value='追記',
             inline=True,
             style={'marginTop': '10px'}
         ))
-        content.append(html.Button('Save log', id='save-log-button', n_clicks=0, style={'marginTop': '10px'}))
-        content.append(html.Div(id='save-log-msg'))
+        content.append(html.Button('ログを保存', id='save-log-button', n_clicks=0, style={'marginTop': '10px'}))  # type: ignore
+        content.append(html.Div(id='save-log-msg'))  # type: ignore
 
     return html.Div(content)
 
 
 def create_optimization_tab() -> html.Div:
     """最適化分析タブを作成"""
-    return html.Div([
+    return html.Div([  # type: ignore
         html.Div(id='optimization-insights', style={
             'padding': '15px',
             'backgroundColor': '#e9f2fa',
@@ -589,9 +589,9 @@ def create_optimization_tab() -> html.Div:
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
         }),
-        html.H3("最適化分析", style={'marginBottom': '20px'}),
-        html.Div([
-            html.Label("表示範囲"),
+        html.H3("最適化分析", style={'marginBottom': '20px'}),  # type: ignore
+        html.Div([  # type: ignore
+            html.Label("表示範囲"),  # type: ignore
             dcc.Dropdown(
                 id='opt-scope',
                 options=[
@@ -603,21 +603,21 @@ def create_optimization_tab() -> html.Div:
                 clearable=False
             ),
         ], style={'width': '30%', 'marginBottom': '20px'}),
-        html.Div(id='opt-detail-container'),
-        html.Div(id='optimization-content')
+        html.Div(id='opt-detail-container'),  # type: ignore
+        html.Div(id='optimization-content')  # type: ignore
     ])
 
 
 def create_leave_analysis_tab() -> html.Div:
     """休暇分析タブを作成"""
-    content = [html.Div(id='leave-insights', style={
+    content = [html.Div(id='leave-insights', style={  # type: ignore
         'padding': '15px',
         'backgroundColor': '#e9f2fa',
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("休暇分析", style={'marginBottom': '20px'})]
+        html.H3("休暇分析", style={'marginBottom': '20px'})]  # type: ignore
 
     df_staff_balance = DATA_STORE.get('staff_balance_daily', pd.DataFrame())
     df_daily_summary = DATA_STORE.get('daily_summary', pd.DataFrame())
@@ -704,14 +704,14 @@ def create_leave_analysis_tab() -> html.Div:
 
 def create_cost_analysis_tab() -> html.Div:
     """コスト分析タブを作成"""
-    content = [html.Div(id='cost-insights', style={
+    content = [html.Div(id='cost-insights', style={  # type: ignore
         'padding': '15px',
         'backgroundColor': '#e9f2fa',
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("人件費分析", style={'marginBottom': '20px'})]
+        html.H3("人件費分析", style={'marginBottom': '20px'})]  # type: ignore
 
     df_cost = DATA_STORE.get('daily_cost', pd.DataFrame())
     if not df_cost.empty:
@@ -788,7 +788,7 @@ def create_cost_analysis_tab() -> html.Div:
             content.append(dcc.Graph(figure=fig_cumulative))
 
     # --- 動的再計算UI ---
-    content.append(html.H4("動的コストシミュレーション", style={'marginTop': '30px'}))
+    content.append(html.H4("動的コストシミュレーション", style={'marginTop': '30px'}))  # type: ignore
     content.append(dcc.RadioItems(
         id='cost-by-radio',
         options=[
@@ -807,20 +807,20 @@ def create_cost_analysis_tab() -> html.Div:
 
 def create_hire_plan_tab() -> html.Div:
     """採用計画タブを作成"""
-    content = [html.Div(id='hire-plan-insights', style={
+    content = [html.Div(id='hire-plan-insights', style={  # type: ignore
         'padding': '15px',
         'backgroundColor': '#e9f2fa',
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("採用計画", style={'marginBottom': '20px'})]
+        html.H3("採用計画", style={'marginBottom': '20px'})]  # type: ignore
 
     df_hire = DATA_STORE.get('hire_plan', pd.DataFrame())
     df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
     df_work_patterns = DATA_STORE.get('work_patterns', pd.DataFrame())
     if not df_hire.empty:
-        content.append(html.H4("必要FTE（職種別）"))
+        content.append(html.H4("必要FTE（職種別）"))  # type: ignore
 
         # テーブル表示
         content.append(dash_table.DataTable(
@@ -844,8 +844,8 @@ def create_hire_plan_tab() -> html.Div:
 
     if not df_hire.empty and not df_shortage_role.empty:
         content.append(html.Div([
-            html.H4("What-if 採用シミュレーション", style={'marginTop': '30px'}),
-            html.P("スライダーを動かして、追加採用による不足時間の削減効果とコストの変化を確認できます。"),
+            html.H4("What-if 採用シミュレーション", style={'marginTop': '30px'}),  # type: ignore
+            html.P("スライダーを動かして、追加採用による不足時間の削減効果とコストの変化を確認できます。"),  # type: ignore
             dcc.Dropdown(
                 id='sim-work-pattern-dropdown',
                 options=[{'label': i, 'value': i} for i in df_work_patterns['code'].unique()] if not df_work_patterns.empty else [],
@@ -862,12 +862,12 @@ def create_hire_plan_tab() -> html.Div:
             ),
         ], style={'padding': '20px', 'backgroundColor': '#f0f0f0', 'borderRadius': '8px'}))
         content.append(dcc.Graph(id='sim-shortage-graph'))
-        content.append(html.Div(id='sim-cost-text'))
+        content.append(html.Div(id='sim-cost-text'))  # type: ignore
 
     # 最適採用計画
     df_optimal = DATA_STORE.get('optimal_hire_plan', pd.DataFrame())
     if not df_optimal.empty:
-        content.append(html.H4("最適採用計画", style={'marginTop': '30px'}))
+        content.append(html.H4("最適採用計画", style={'marginTop': '30px'}))  # type: ignore
         content.append(html.P("分析の結果、以下の具体的な採用計画を推奨します。"))
         content.append(dash_table.DataTable(
             data=df_optimal.to_dict('records'),
@@ -894,7 +894,7 @@ def create_fatigue_tab() -> html.Div:
     *デフォルトでは、これらの要素は均等な重み（各1.0）で評価されます。*
     """
     content = [
-        html.Div(
+        html.Div(  # type: ignore
             dcc.Markdown(explanation),
             style={
                 'padding': '15px',
@@ -904,7 +904,7 @@ def create_fatigue_tab() -> html.Div:
                 'border': '1px solid #cce5ff',
             },
         ),
-        html.H3("疲労分析", style={'marginBottom': '20px'}),
+        html.H3("疲労分析", style={'marginBottom': '20px'}),  # type: ignore
     ]
     df_fatigue = DATA_STORE.get('fatigue_score', pd.DataFrame())
 
@@ -923,21 +923,21 @@ def create_fatigue_tab() -> html.Div:
             columns=[{'name': i, 'id': i} for i in df_fatigue_for_plot.columns]
         ))
     else:
-        content.append(html.P("疲労分析データが見つかりません。"))
+        content.append(html.P("疲労分析データが見つかりません。"))  # type: ignore
 
     return html.Div(content)
 
 
 def create_forecast_tab() -> html.Div:
     """需要予測タブを作成"""
-    content = [html.Div(id='forecast-insights', style={
+    content = [html.Div(id='forecast-insights', style={  # type: ignore
         'padding': '15px',
         'backgroundColor': '#e9f2fa',
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("需要予測", style={'marginBottom': '20px'})]
+        html.H3("需要予測", style={'marginBottom': '20px'})]  # type: ignore
     df_fc = DATA_STORE.get('forecast', pd.DataFrame())
     df_actual = DATA_STORE.get('demand_series', pd.DataFrame())
 
@@ -954,7 +954,7 @@ def create_forecast_tab() -> html.Div:
             columns=[{'name': i, 'id': i} for i in df_fc.columns]
         ))
     else:
-        content.append(html.P("需要予測データが見つかりません。"))
+        content.append(html.P("需要予測データが見つかりません。"))  # type: ignore
 
     return html.Div(content)
 
@@ -972,7 +972,7 @@ def create_fairness_tab() -> html.Div:
     *スコアが高いほど、これらの要素において平均からの乖離が大きい（＝不公平感を感じやすい可能性がある）ことを示します。*
     """
     content = [
-        html.Div(
+        html.Div(  # type: ignore
             dcc.Markdown(explanation),
             style={
                 'padding': '15px',
@@ -982,7 +982,7 @@ def create_fairness_tab() -> html.Div:
                 'border': '1px solid #ddd',
             },
         ),
-        html.H3("公平性 (不公平感スコア)", style={'marginBottom': '20px'}),
+        html.H3("公平性 (不公平感スコア)", style={'marginBottom': '20px'}),  # type: ignore
     ]
     df_fair = DATA_STORE.get('fairness_after', pd.DataFrame())
 
@@ -1017,7 +1017,7 @@ def create_fairness_tab() -> html.Div:
         if 'unfairness_score' in df_fair.columns:
             ranking = df_fair.sort_values('unfairness_score', ascending=False)[['staff', 'unfairness_score']]
             ranking.index += 1
-            content.append(html.H4('不公平感ランキング'))
+            content.append(html.H4('不公平感ランキング'))  # type: ignore
             content.append(dash_table.DataTable(
                 data=ranking.to_dict('records'),
                 columns=[{'name': i, 'id': i} for i in ranking.columns]
@@ -1034,14 +1034,14 @@ def create_fairness_tab() -> html.Div:
 
 def create_gap_analysis_tab() -> html.Div:
     """基準乖離分析タブを作成"""
-    content = [html.Div(id='gap-insights', style={
+    content = [html.Div(id='gap-insights', style={  # type: ignore
         'padding': '15px',
         'backgroundColor': '#e9f2fa',
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("基準乖離分析", style={'marginBottom': '20px'})]
+        html.H3("基準乖離分析", style={'marginBottom': '20px'})]  # type: ignore
     df_summary = DATA_STORE.get('gap_summary', pd.DataFrame())
     df_heat = DATA_STORE.get('gap_heatmap', pd.DataFrame())
 
@@ -1059,21 +1059,21 @@ def create_gap_analysis_tab() -> html.Div:
         )
         content.append(dcc.Graph(figure=fig))
     if df_summary.empty and df_heat.empty:
-        content.append(html.P("基準乖離データが見つかりません。"))
+        content.append(html.P("基準乖離データが見つかりません。"))  # type: ignore
 
     return html.Div(content)
 
 
 def create_summary_report_tab() -> html.Div:
     """サマリーレポートタブを作成"""
-    content = [html.Div(id='summary-report-insights', style={
+    content = [html.Div(id='summary-report-insights', style={  # type: ignore
         'padding': '15px',
         'backgroundColor': '#e9f2fa',
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
     }),
-        html.H3("Summary Report", style={'marginBottom': '20px'})]
+        html.H3("サマリーレポート", style={'marginBottom': '20px'})]  # type: ignore
     report_text = DATA_STORE.get('summary_report')
     if report_text:
         content.append(dcc.Markdown(report_text))
@@ -1084,7 +1084,7 @@ def create_summary_report_tab() -> html.Div:
 
 def create_ppt_report_tab() -> html.Div:
     """PowerPointレポートタブを作成"""
-    return html.Div([
+    return html.Div([  # type: ignore
         html.Div(id='ppt-report-insights', style={
             'padding': '15px',
             'backgroundColor': '#e9f2fa',
@@ -1092,9 +1092,9 @@ def create_ppt_report_tab() -> html.Div:
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
         }),
-        html.H3("PPT Report", style={'marginBottom': '20px'}),
-        html.P("ボタンを押してPowerPointレポートを生成してください。"),
-        html.Button('Generate PPT', id='ppt-generate', n_clicks=0)
+        html.H3("PowerPointレポート", style={'marginBottom': '20px'}),  # type: ignore
+        html.P("ボタンを押してPowerPointレポートを生成してください。"),  # type: ignore
+        html.Button('PPTレポートを生成', id='ppt-generate', n_clicks=0)  # type: ignore
     ])
 
 # --- メインレイアウト ---
@@ -1103,7 +1103,7 @@ app.layout = html.Div([
     dcc.Store(id='data-loaded', storage_type='memory'),
 
     # ヘッダー
-    html.Div([
+    html.Div([  # type: ignore
         html.H1("🗂️ Shift-Suite 高速分析ビューア", style={
             'textAlign': 'center',
             'color': 'white',
@@ -1116,7 +1116,7 @@ app.layout = html.Div([
     }),
 
     # アップロードエリア
-    html.Div([
+    html.Div([  # type: ignore
         dcc.Upload(
             id='upload-data',
             children=html.Div([
@@ -1139,7 +1139,7 @@ app.layout = html.Div([
         ),
     ], style={'padding': '0 20px'}),
 
-    html.Div([
+    html.Div([  # type: ignore
         html.H3("分析シナリオ選択", style={'textAlign': 'center'}),
         dcc.Dropdown(
             id='scenario-dropdown',
@@ -1149,7 +1149,7 @@ app.layout = html.Div([
     ], id='scenario-selector-div', style={'display': 'none'}),
 
     # メインコンテンツ
-    html.Div(id='main-content', style={'padding': '20px'}),
+    html.Div(id='main-content', style={'padding': '20px'}),  # type: ignore
 
 ], style={'backgroundColor': '#f5f5f5', 'minHeight': '100vh'})
 
@@ -1224,7 +1224,7 @@ def update_content_for_scenario(selected_scenario, data_status):
     if aggregated_fp.exists():
         DATA_STORE['pre_aggregated_data'] = pd.read_parquet(aggregated_fp)
     else:
-        return kpi_data, html.Div(f"エラー: {aggregated_fp} が見つかりません。")
+        return kpi_data, html.Div(f"エラー: {aggregated_fp} が見つかりません。")  # type: ignore
 
     tabs = dcc.Tabs(id='main-tabs', value='overview', children=[
         dcc.Tab(label='概要', value='overview'),
@@ -1238,8 +1238,8 @@ def update_content_for_scenario(selected_scenario, data_status):
         dcc.Tab(label='需要予測', value='forecast'),
         dcc.Tab(label='公平性', value='fairness'),
         dcc.Tab(label='基準乖離分析', value='gap'),
-        dcc.Tab(label='Summary Report', value='summary_report'),
-        dcc.Tab(label='PPT Report', value='ppt_report'),
+        dcc.Tab(label='サマリーレポート', value='summary_report'),
+        dcc.Tab(label='PPTレポート', value='ppt_report'),
     ])
 
     main_layout = html.Div([
@@ -1281,7 +1281,7 @@ def update_tab_content(active_tab):
     elif active_tab == 'summary_report':
         return create_summary_report_tab()
     elif active_tab == 'ppt_report':
-        return create_ppt_report_tab()
+        return create_ppt_report_tab()  # type: ignore
     else:
         return html.Div("タブが選択されていません")
 
@@ -1332,7 +1332,7 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
 
     aggregated_df = DATA_STORE.get('pre_aggregated_data')
     if aggregated_df is None or aggregated_df.empty:
-        error_message = html.Div("ヒートマップの元データが見つかりません。")
+        error_message = html.Div("ヒートマップの元データが見つかりません。")  # type: ignore
         return error_message, error_message
 
     def generate_dynamic_heatmap(selected_role, selected_emp):
@@ -1388,8 +1388,8 @@ def update_shortage_heatmap_detail(scope):
         return None
     elif scope == 'role':
         roles = DATA_STORE.get('roles', [])
-        return html.Div([
-            html.Label("職種選択"),
+        return html.Div([  # type: ignore
+            html.Label("職種選択"),  # type: ignore
             dcc.Dropdown(
                 id={'type': 'shortage-detail', 'index': 'role'},
                 options=[{'label': '全体', 'value': 'ALL'}] + [{'label': r, 'value': r} for r in roles],
@@ -1399,8 +1399,8 @@ def update_shortage_heatmap_detail(scope):
         ], style={'marginBottom': '10px'})
     elif scope == 'employment':
         employments = DATA_STORE.get('employments', [])
-        return html.Div([
-            html.Label("雇用形態選択"),
+        return html.Div([  # type: ignore
+            html.Label("雇用形態選択"),  # type: ignore
             dcc.Dropdown(
                 id={'type': 'shortage-detail', 'index': 'employment'},
                 options=[{'label': '全体', 'value': 'ALL'}] + [{'label': e, 'value': e} for e in employments],
@@ -1445,12 +1445,12 @@ def update_shortage_ratio_heatmap(scope, detail_values):
                 df_heat = DATA_STORE[key]
                 break
     if df_heat is None or df_heat.empty:
-        return html.Div("データが見つかりません")
+        return html.Div("データが見つかりません")  # type: ignore
 
     # 不足率を計算
     date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
     if not date_cols:
-        return html.Div("日付データが見つかりません")
+        return html.Div("日付データが見つかりません")  # type: ignore
 
     time_labels = gen_labels(30)
     staff_df = df_heat[date_cols].fillna(0).reindex(time_labels, fill_value=0)
@@ -1508,12 +1508,12 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         tickvals=list(range(len(ratio_df.columns)))
     )
 
-    return html.Div([
-        html.H4('不足人数ヒートマップ'),
+    return html.Div([  # type: ignore
+        html.H4('不足人数ヒートマップ'),  # type: ignore
         dcc.Graph(figure=fig_lack),
-        html.H4('過剰人数ヒートマップ', style={'marginTop': '30px'}),
+        html.H4('過剰人数ヒートマップ', style={'marginTop': '30px'}),  # type: ignore
         dcc.Graph(figure=fig_excess),
-        html.H4('不足率ヒートマップ', style={'marginTop': '30px'}),
+        html.H4('不足率ヒートマップ', style={'marginTop': '30px'}),  # type: ignore
         dcc.Graph(figure=fig_ratio),
     ])
 
@@ -1528,8 +1528,8 @@ def update_opt_detail(scope):
         return None
     elif scope == 'role':
         roles = DATA_STORE.get('roles', [])
-        return html.Div([
-            html.Label("職種選択"),
+        return html.Div([  # type: ignore
+            html.Label("職種選択"),  # type: ignore
             dcc.Dropdown(
                 id={'type': 'opt-detail', 'index': 'role'},
                 options=[{'label': '全体', 'value': 'ALL'}] + [{'label': r, 'value': r} for r in roles],
@@ -1539,8 +1539,8 @@ def update_opt_detail(scope):
         ])
     elif scope == 'employment':
         employments = DATA_STORE.get('employments', [])
-        return html.Div([
-            html.Label("雇用形態選択"),
+        return html.Div([  # type: ignore
+            html.Label("雇用形態選択"),  # type: ignore
             dcc.Dropdown(
                 id={'type': 'opt-detail', 'index': 'employment'},
                 options=[{'label': '全体', 'value': 'ALL'}] + [{'label': e, 'value': e} for e in employments],
@@ -1585,12 +1585,12 @@ def update_optimization_content(scope, detail_values):
                 df_heat = DATA_STORE[key]
                 break
     if df_heat is None or df_heat.empty:
-        return html.Div("データが見つかりません")
+        return html.Div("データが見つかりません")  # type: ignore
 
     # 日付列を抽出
     date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
     if not date_cols:
-        return html.Div("日付データが見つかりません")
+        return html.Div("日付データが見つかりません")  # type: ignore
 
     time_labels = gen_labels(30)
     # 必要なデータを計算
@@ -1706,7 +1706,7 @@ def update_overview_insights(kpi_data):
         return dcc.Markdown(insight_text)
     return html.P(
         "👍 人員不足は発生していません。素晴らしい勤務体制です！",
-        style={'fontWeight': 'bold'},
+        style={'fontWeight': 'bold'},  # type: ignore
     )
 
 
@@ -1794,7 +1794,7 @@ def update_wage_inputs(by_key):
     if long_df is None or long_df.empty or by_key not in long_df.columns:
         return html.P("単価設定のためのデータがありません。")
 
-    unique_keys = sorted(long_df[by_key].dropna().unique())
+    unique_keys: list[str] = sorted(long_df[by_key].dropna().unique())
     inputs = []
     for key in unique_keys:
         inputs.append(html.Div([
@@ -1908,11 +1908,11 @@ def run_factor_analysis(n_clicks):
     if not n_clicks:
         raise PreventUpdate
 
-    heat_df = DATA_STORE.get('heat_ALL', pd.DataFrame())
-    short_df = DATA_STORE.get('shortage_time', pd.DataFrame())
-    leave_df = DATA_STORE.get('leave_analysis', pd.DataFrame())
+    heat_df = DATA_STORE.get('heat_ALL')
+    short_df = DATA_STORE.get('shortage_time')
+    leave_df = DATA_STORE.get('leave_analysis')
 
-    if heat_df.empty or short_df.empty:
+    if heat_df is None or heat_df.empty or short_df is None or short_df.empty:
         return html.Div('必要なデータがありません')
 
     analyzer = ShortageFactorAnalyzer()
@@ -1925,7 +1925,7 @@ def run_factor_analysis(n_clicks):
         data=fi_df.head(5).to_dict('records'),
         columns=[{'name': c, 'id': c} for c in fi_df.columns]
     )
-    return html.Div([html.H5('Top factors'), table])
+    return html.Div([html.H5('影響度の高い要因 トップ5'), table])  # type: ignore
 
 
 @app.callback(
@@ -1940,7 +1940,7 @@ def save_over_shortage_log(n_clicks, table_data, mode):
 
     log_path = DATA_STORE.get('shortage_log_path')
     if not log_path:
-        return 'ログファイルパスが見つかりません'
+        return 'ログファイルパスが見つかりません'  # type: ignore
 
     df = pd.DataFrame(table_data)
     over_shortage_log.save_log(df, log_path, mode=mode)
