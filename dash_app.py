@@ -20,6 +20,7 @@ from dash.exceptions import PreventUpdate
 from shift_suite.tasks.utils import safe_read_excel, gen_labels
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
+from shift_suite.tasks.daily_cost import calculate_daily_cost
 
 # ロガー設定
 logging.basicConfig(
@@ -785,6 +786,21 @@ def create_cost_analysis_tab() -> html.Div:
             )
             fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
             content.append(dcc.Graph(figure=fig_cumulative))
+
+    # --- 動的再計算UI ---
+    content.append(html.H4("動的コストシミュレーション", style={'marginTop': '30px'}))
+    content.append(dcc.RadioItems(
+        id='cost-by-radio',
+        options=[
+            {'label': '職種別', 'value': 'role'},
+            {'label': '雇用形態別', 'value': 'employment'},
+            {'label': 'スタッフ別', 'value': 'staff'},
+        ],
+        value='role',
+        inline=True,
+    ))
+    content.append(html.Div(id='wage-input-container'))
+    content.append(dcc.Graph(id='dynamic-cost-graph'))
 
     return html.Div(content)
 
@@ -1766,6 +1782,62 @@ def update_cost_insights(kpi_data):
     日々の人件費は、各スタッフの勤務時間（スロット数 × スロット長）に、サイドバーで設定した単価基準（職種別、雇用形態別など）の時給を乗じて算出されます。
     """
     return dcc.Markdown(explanation)
+
+
+@app.callback(
+    Output('wage-input-container', 'children'),
+    Input('cost-by-radio', 'value')
+)
+def update_wage_inputs(by_key):
+    """単価入力欄を生成"""
+    long_df = DATA_STORE.get('long_df')
+    if long_df is None or long_df.empty or by_key not in long_df.columns:
+        return html.P("単価設定のためのデータがありません。")
+
+    unique_keys = sorted(long_df[by_key].dropna().unique())
+    inputs = []
+    for key in unique_keys:
+        inputs.append(html.Div([
+            html.Label(f'時給: {key}'),
+            dcc.Input(
+                id={'type': 'wage-input', 'index': key},
+                value=1500,
+                type='number',
+                debounce=True,
+            )
+        ], style={'padding': '5px', 'display': 'inline-block'}))
+    return inputs
+
+
+@app.callback(
+    Output('dynamic-cost-graph', 'figure'),
+    Input('cost-by-radio', 'value'),
+    Input({'type': 'wage-input', 'index': ALL}, 'value'),
+    State({'type': 'wage-input', 'index': ALL}, 'id'),
+)
+def update_dynamic_cost_graph(by_key, all_wages, all_wage_ids):
+    """単価変更に応じてコストグラフを更新"""
+    long_df = DATA_STORE.get('long_df')
+    if long_df is None or long_df.empty or not all_wages:
+        raise PreventUpdate
+
+    wages = {
+        wage_id['index']: (wage_val or 0) for wage_id, wage_val in zip(all_wage_ids, all_wages)
+    }
+
+    cost_df = calculate_daily_cost(long_df, wages, by=by_key)
+    if cost_df.empty:
+        return go.Figure().update_layout(title='コスト計算結果がありません')
+
+    fig = px.bar(
+        cost_df,
+        x='date',
+        y='cost',
+        title=f'【シミュレーション】日別発生人件費 ({by_key}別単価)',
+        labels={'date': '日付', 'cost': 'コスト(円)'},
+    )
+    fig.update_xaxes(tickformat='%m/%d(%a)')
+    return fig
 
 
 @app.callback(
