@@ -51,7 +51,16 @@ def build_hire_plan(
         role / lack_h / hire_need などを含む DF
     """
     # 1. データ読み込み
-    df = pd.read_csv(csv_path, parse_dates=["ds"])
+    if not csv_path.exists():
+        raise FileNotFoundError(f"demand file not found: {csv_path}")
+    try:
+        df = pd.read_csv(csv_path, parse_dates=["ds"])
+    except Exception as e:  # pragma: no cover - unexpected read error
+        msg = f"failed to read {csv_path}: {e}"
+        log.error(msg)
+        raise ValueError(msg) from e
+    if "y" not in df.columns:
+        raise ValueError("column 'y' is required in demand csv")
     if "role" not in df.columns:
         df["role"] = "all"
 
@@ -70,6 +79,7 @@ def build_hire_plan(
     ).apply(lambda x: int(-(-x // 1)))  # 天井関数 (ceil)
 
     # 4. 保存
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     summary.to_parquet(out_path, index=False)
     meta = {
         "std_work_hours": std_work_hours,
