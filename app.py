@@ -1313,6 +1313,13 @@ if run_button_clicked:
     st.session_state.combined_score_results = None
     st.session_state.low_staff_load_results = None
 
+    # 1. 比較したい分析シナリオを定義
+    analysis_scenarios = {
+        "median_based": {"name": "中央値ベース", "need_stat_method": "中央値"},
+        "mean_based": {"name": "平均値ベース", "need_stat_method": "平均値"},
+        "p25_based": {"name": "25パーセンタイルベース", "need_stat_method": "25パーセンタイル"},
+    }
+
     # キャッシュクリア
     try:
         if hasattr(st, "cache_data"):
@@ -1373,6 +1380,7 @@ if run_button_clicked:
         out_dir_exec = Path(st.session_state.out_dir_path_str)
         out_dir_exec.mkdir(parents=True, exist_ok=True)
         log.info(f"解析出力ディレクトリ: {out_dir_exec} (file: {file_name})")
+        base_work_dir = Path(st.session_state.work_root_path_str)
 
         # --- 実行時のUIの値をセッションステートから取得 ---
         param_selected_sheets = st.session_state.shift_sheets_multiselect_widget
@@ -1511,44 +1519,48 @@ if run_button_clicked:
                     "Excelデータの読み込み中にエラーが発生しました", e
                 )
 
-            try:
-                update_progress_exec_run("Heatmap: Generating heatmap...")
-                build_heatmap(
-                    long_df,
-                    out_dir_exec,
-                    param_slot,
-                    need_calc_method=param_need_calc_method,
-                    ref_start_date_for_need=param_need_ref_start,
-                    ref_end_date_for_need=param_need_ref_end,
-                    need_stat_method=param_need_stat_method,
-                    need_manual_values=param_need_manual,
-                    need_remove_outliers=param_need_remove_outliers,
-                    upper_calc_method=param_upper_method,
-                    upper_calc_param=param_upper_param,
-                )
-                if _("基準乖離分析") in param_ext_opts and param_need_calc_method == _(
-                    "人員配置基準に基づき設定する"
-                ):
-                    heat_all_df = pd.read_parquet(out_dir_exec / "heat_ALL.parquet")
-                    gap_results = analyze_standards_gap(heat_all_df, param_need_manual)
-                    st.session_state.gap_analysis_results = gap_results
-                    gap_results["gap_summary"].to_excel(
-                        out_dir_exec / "gap_summary.xlsx", index=False
+            for scenario_key, scenario_params in analysis_scenarios.items():
+                st.info(f"シナリオ '{scenario_params['name']}' の分析を開始...")
+                scenario_out_dir = base_work_dir / f"out_{scenario_key}"
+                scenario_out_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    update_progress_exec_run("Heatmap: Generating heatmap...")
+                    build_heatmap(
+                        long_df,
+                        scenario_out_dir,
+                        param_slot,
+                        need_calc_method=param_need_calc_method,
+                        ref_start_date_for_need=param_need_ref_start,
+                        ref_end_date_for_need=param_need_ref_end,
+                        need_stat_method=scenario_params["need_stat_method"],
+                        need_manual_values=param_need_manual,
+                        need_remove_outliers=param_need_remove_outliers,
+                        upper_calc_method=param_upper_method,
+                        upper_calc_param=param_upper_param,
                     )
-                    gap_results["gap_heatmap"].to_excel(
-                        out_dir_exec / "gap_heatmap.xlsx"
-                    )
-                st.session_state.analysis_status["heatmap"] = "success"
-                st.success("✅ Heatmap生成完了")
-            except Exception as e:
-                st.session_state.analysis_status["heatmap"] = "failure"
-                log_and_display_error("Heatmapの生成中にエラーが発生しました", e)
+                    if _("基準乖離分析") in param_ext_opts and param_need_calc_method == _(
+                        "人員配置基準に基づき設定する"
+                    ):
+                        heat_all_df = pd.read_parquet(scenario_out_dir / "heat_ALL.parquet")
+                        gap_results = analyze_standards_gap(heat_all_df, param_need_manual)
+                        st.session_state.gap_analysis_results = gap_results
+                        gap_results["gap_summary"].to_excel(
+                            scenario_out_dir / "gap_summary.xlsx", index=False
+                        )
+                        gap_results["gap_heatmap"].to_excel(
+                            scenario_out_dir / "gap_heatmap.xlsx"
+                        )
+                    st.session_state.analysis_status["heatmap"] = "success"
+                    st.success(f"✅ Heatmap生成完了 ({scenario_key})")
+                except Exception as e:
+                    st.session_state.analysis_status["heatmap"] = "failure"
+                    log_and_display_error("Heatmapの生成中にエラーが発生しました", e)
+                    continue
 
-            if st.session_state.analysis_status.get("heatmap") == "success":
                 try:
                     update_progress_exec_run("Shortage: Analyzing shortage...")
                     shortage_result_exec_run = shortage_and_brief(
-                        out_dir_exec,
+                        scenario_out_dir,
                         param_slot,
                         holidays=(holiday_dates_global_for_run or [])
                         + (holiday_dates_local_for_run or []),
@@ -1562,11 +1574,11 @@ if run_button_clicked:
                             "Shortage (不足分析) の一部または全てが完了しませんでした。"
                         )
                     else:
-                        st.success("✅ Shortage (不足分析) 完了")
+                        st.success(f"✅ Shortage (不足分析) 完了 ({scenario_key})")
                         if "Hire plan" in param_ext_opts:
                             try:
                                 build_hire_plan_from_kpi(
-                                    out_dir_exec,
+                                    scenario_out_dir,
                                     monthly_hours_fte=param_std_work_hours,
                                     hourly_wage=param_wage_direct,
                                     recruit_cost=param_hiring_cost,
@@ -1577,6 +1589,28 @@ if run_button_clicked:
                 except Exception as e:
                     st.session_state.analysis_status["shortage"] = "failure"
                     log_and_display_error("不足分析の処理中にエラーが発生しました", e)
+
+                # 4. dash_app.py用の「中間サマリーテーブル」を生成
+                work_records = long_df[long_df.get("parsed_slots_count", 1) > 0].copy()
+                work_records["date_lbl"] = work_records["ds"].dt.strftime("%Y-%m-%d")
+                work_records["time"] = work_records["ds"].dt.strftime("%H:%M")
+                pre_aggregated_df = (
+                    work_records.groupby([
+                        "date_lbl",
+                        "time",
+                        "role",
+                        "employment",
+                    ])["staff"]
+                    .nunique()
+                    .reset_index()
+                    .rename(columns={"staff": "staff_count"})
+                )
+                pre_aggregated_df.to_parquet(
+                    scenario_out_dir / "pre_aggregated_data.parquet",
+                    index=False,
+                )
+                log.info(f"シナリオ '{scenario_params['name']}' 用の中間サマリーを保存しました。")
+                st.success(f"シナリオ '{scenario_params['name']}' の分析が完了しました。")
 
             # ----- 休暇分析モジュールの実行 -----
             # "休暇分析" (日本語) が選択されているか確認
@@ -2218,16 +2252,17 @@ if run_button_clicked:
                                 "w",
                                 zipfile.ZIP_DEFLATED,
                             ) as zf_dl_exec_main_run:
-                                for (
-                                    file_to_zip_dl_exec_main_run
-                                ) in out_dir_to_save_exec_main_run.rglob("*"):
-                                    if file_to_zip_dl_exec_main_run.is_file():
-                                        zf_dl_exec_main_run.write(
-                                            file_to_zip_dl_exec_main_run,
-                                            file_to_zip_dl_exec_main_run.relative_to(
-                                                out_dir_to_save_exec_main_run
-                                            ),
-                                        )
+                                base_dir = Path(st.session_state.work_root_path_str)
+                                scenario_dirs = sorted(base_dir.glob("out_*"))
+                                if not scenario_dirs:
+                                    scenario_dirs = [out_dir_to_save_exec_main_run]
+                                for s_dir in scenario_dirs:
+                                    for file_to_zip_dl_exec_main_run in s_dir.rglob("*"):
+                                        if file_to_zip_dl_exec_main_run.is_file():
+                                            zf_dl_exec_main_run.write(
+                                                file_to_zip_dl_exec_main_run,
+                                                file_to_zip_dl_exec_main_run.relative_to(base_dir),
+                                            )
                             with open(
                                 zip_path_obj_to_download_exec_main_run, "rb"
                             ) as fp_zip_data_to_download_dl_exec_main_run:
