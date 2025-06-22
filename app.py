@@ -1812,7 +1812,9 @@ if run_button_clicked:
 
                                 # Also generate shortage_leave.xlsx for the Shortage tab
                                 merge_shortage_leave(out_dir_exec, leave_csv=leave_csv)
-                            except Exception as e_save:
+                            except FileNotFoundError:
+                                log.warning("shortage_time.parquet not found for merge, skipping.")
+                            except Exception as e_save:  # noqa: BLE001
                                 log.warning(
                                     f"leave_analysis.csv 書き出しまたは shortage_leave.xlsx 生成中にエラー: {e_save}"
                                 )

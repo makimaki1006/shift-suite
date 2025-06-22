@@ -187,9 +187,7 @@ def summarize_leave_by_day_count(
         return pd.DataFrame()
 
     summary = (
-        df_to_agg.groupby(["period_unit", "leave_type"], observed=False)[
-            "leave_day_flag"
-        ]
+        df_to_agg.groupby(["period_unit", "leave_type"])["leave_day_flag"]
         .sum()
         .reset_index(name="total_leave_days")
     )
@@ -198,7 +196,7 @@ def summarize_leave_by_day_count(
     unique_dates = (
         df_to_agg[["period_unit", "date"]]
         .drop_duplicates()
-        .groupby("period_unit")
+        .groupby("period_unit", observed=False)
         .size()
         .reset_index(name="num_days_in_period_unit")
     )
