@@ -715,6 +715,8 @@ def create_cost_analysis_tab() -> html.Div:
     df_cost = DATA_STORE.get('daily_cost', pd.DataFrame())
     if not df_cost.empty:
         df_cost['date'] = pd.to_datetime(df_cost['date'])
+
+        # long_dfから詳細情報を取得して結合
         if not {'day_of_week', 'total_staff', 'role_breakdown', 'staff_list_summary'} <= set(df_cost.columns):
             long_df = DATA_STORE.get('long_df', pd.DataFrame())
             if not long_df.empty and 'ds' in long_df.columns:
@@ -745,17 +747,18 @@ def create_cost_analysis_tab() -> html.Div:
 
                 details['staff_list_summary'] = details['staff_list'].apply(summarize)
                 df_cost = pd.merge(df_cost, details, on='date', how='left')
-        # 日別コストグラフ
+
+        # 1. 既存の日別総コスト棒グラフ
         fig_daily = px.bar(
             df_cost,
             x='date',
             y='cost',
-            title='日別発生人件費',
-            labels={'date': '日付', 'cost': 'コスト(円)'}
+            title='日別発生人件費（総額）',
+            labels={'date': '日付', 'cost': 'コスト(円)'},
+            color_discrete_sequence=['#1f77b4']
         )
         fig_daily.update_xaxes(tickformat="%m/%d(%a)")
 
-        # カスタムホバーテンプレートを追加
         custom_cols = [c for c in ['day_of_week', 'total_staff', 'role_breakdown', 'staff_list_summary'] if c in df_cost.columns]
         if set(['day_of_week', 'total_staff', 'role_breakdown']).issubset(custom_cols):
             fig_daily.update_traces(
@@ -770,7 +773,77 @@ def create_cost_analysis_tab() -> html.Div:
 
         content.append(dcc.Graph(figure=fig_daily))
 
-        # 累計コストグラフ
+        # 2. 職種別積み上げグラフ
+        if 'role_breakdown' in df_cost.columns:
+            role_data = []
+            for _, row in df_cost.iterrows():
+                if pd.notna(row.get('role_breakdown')):
+                    date_total_cost = row['cost']
+                    role_counts: dict[str, int] = {}
+                    total_count = 0
+                    for role_count in row['role_breakdown'].split(', '):
+                        if ':' in role_count:
+                            role, count = role_count.split(':')
+                            role_counts[role] = int(count)
+                            total_count += int(count)
+
+                    for role, count in role_counts.items():
+                        role_cost = (count / total_count) * date_total_cost if total_count > 0 else 0
+                        role_data.append({'date': row['date'], 'role': role, 'count': count, 'cost': role_cost})
+
+            if role_data:
+                role_df = pd.DataFrame(role_data)
+
+                fig_stacked = px.bar(
+                    role_df,
+                    x='date',
+                    y='cost',
+                    color='role',
+                    title='日別人件費（職種別内訳）',
+                    labels={'date': '日付', 'cost': 'コスト(円)', 'role': '職種'},
+                    hover_data=['count']
+                )
+                fig_stacked.update_xaxes(tickformat="%m/%d(%a)")
+                fig_stacked.update_traces(
+                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>' +
+                                 '職種: %{fullData.name}<br>' +
+                                 'コスト: %{y:,.0f}円<br>' +
+                                 '人数: %{customdata[0]}人' +
+                                 '<extra></extra>'
+                )
+                content.append(dcc.Graph(figure=fig_stacked))
+
+                # 3. 月次職種別積み上げグラフ
+                role_df['month'] = pd.to_datetime(role_df['date']).dt.to_period('M').astype(str)
+                monthly_role = role_df.groupby(['month', 'role'])['cost'].sum().reset_index()
+
+                fig_monthly = px.bar(
+                    monthly_role,
+                    x='month',
+                    y='cost',
+                    color='role',
+                    title='月次人件費（職種別内訳）',
+                    labels={'month': '月', 'cost': 'コスト(円)', 'role': '職種'}
+                )
+                content.append(dcc.Graph(figure=fig_monthly))
+
+                # 4. 職種別コスト比率の円グラフ
+                total_by_role = role_df.groupby('role')['cost'].sum().reset_index()
+
+                fig_pie = px.pie(
+                    total_by_role,
+                    values='cost',
+                    names='role',
+                    title='職種別コスト構成比（全期間）'
+                )
+                fig_pie.update_traces(
+                    textposition='inside',
+                    textinfo='percent+label',
+                    hovertemplate='%{label}<br>%{value:,.0f}円<br>%{percent}<extra></extra>'
+                )
+                content.append(dcc.Graph(figure=fig_pie))
+
+        # 5. 累計コストグラフ
         if 'cost' in df_cost.columns:
             df_cost_sorted = df_cost.sort_values('date').copy()
             df_cost_sorted['cumulative_cost'] = df_cost_sorted['cost'].cumsum()
@@ -785,6 +858,35 @@ def create_cost_analysis_tab() -> html.Div:
             )
             fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
             content.append(dcc.Graph(figure=fig_cumulative))
+
+            # 6. 統計情報のサマリーカード
+            total_cost = df_cost['cost'].sum()
+            avg_daily_cost = df_cost['cost'].mean()
+            max_cost_date = df_cost.loc[df_cost['cost'].idxmax()]
+            min_cost_date = df_cost.loc[df_cost['cost'].idxmin()]
+
+            stats_cards = html.Div([
+                html.Div([
+                    create_metric_card("総人件費", f"¥{total_cost:,.0f}"),
+                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
+                html.Div([
+                    create_metric_card("日平均", f"¥{avg_daily_cost:,.0f}"),
+                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
+                html.Div([
+                    create_metric_card(
+                        "最高額日",
+                        f"{max_cost_date['date'].strftime('%m/%d')}: ¥{max_cost_date['cost']:,.0f}"
+                    ),
+                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
+                html.Div([
+                    create_metric_card(
+                        "最低額日",
+                        f"{min_cost_date['date'].strftime('%m/%d')}: ¥{min_cost_date['cost']:,.0f}"
+                    ),
+                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
+            ], style={'marginTop': '20px', 'marginBottom': '20px'})
+
+            content.insert(2, stats_cards)
 
     # --- 動的再計算UI ---
     content.append(html.H4("動的コストシミュレーション", style={'marginTop': '30px'}))  # type: ignore
