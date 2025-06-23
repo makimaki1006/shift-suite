@@ -1786,6 +1786,20 @@ if run_button_clicked:
                                 leave_results_temp
                             )
 
+                            # Save each analysis output as individual CSV files
+                            if "staff_balance_daily" in leave_results_temp:
+                                leave_results_temp["staff_balance_daily"].to_csv(
+                                    scenario_out_dir / "staff_balance_daily.csv",
+                                    index=False,
+                                )
+                            if "concentration_requested" in leave_results_temp:
+                                leave_results_temp[
+                                    "concentration_requested"
+                                ].to_csv(
+                                    scenario_out_dir / "concentration_requested.csv",
+                                    index=False,
+                                )
+
                             # Save summary by date for external use
                             try:
                                 daily_summary = (
@@ -1896,13 +1910,28 @@ if run_button_clicked:
                                 "consecutive": st.session_state.get("weight_consecutive_widget", 1.0),
                                 "night_ratio": st.session_state.get("weight_night_ratio_widget", 1.0),
                             }
-                            train_fatigue(long_df, scenario_out_dir, weights=fatigue_weights)
+                            result_df = train_fatigue(
+                                long_df, scenario_out_dir, weights=fatigue_weights
+                            )
+                            if result_df is not None and not getattr(result_df, "empty", True):
+                                result_df.to_parquet(
+                                    scenario_out_dir / "fatigue_score.parquet"
+                                )
                         elif opt_module_name_exec_run == "Cluster":
                             cluster_staff(long_df, scenario_out_dir)
                         elif opt_module_name_exec_run == "Skill":
                             build_skill_matrix(long_df, scenario_out_dir)
                         elif opt_module_name_exec_run == "Fairness":
                             run_fairness(long_df, scenario_out_dir)
+                            fairness_xlsx = scenario_out_dir / "fairness_after.xlsx"
+                            if fairness_xlsx.exists():
+                                try:
+                                    fairness_df = pd.read_excel(fairness_xlsx)
+                                    fairness_df.to_parquet(
+                                        scenario_out_dir / "fairness_after.parquet"
+                                    )
+                                except Exception as e_conv:
+                                    log.warning(f"fairness_after.xlsx conversion failed: {e_conv}")
                         elif opt_module_name_exec_run == "Rest Time Analysis":
                             rta = RestTimeAnalyzer()
                             st.session_state.rest_time_results = rta.analyze(
@@ -2005,6 +2034,14 @@ if run_button_clicked:
                                         + (holiday_dates_local_for_run or []),
                                         log_csv=scenario_out_dir / "forecast_history.csv",
                                     )
+                                    if forecast_xls_exec_run_fc.exists() and forecast_xls_exec_run_fc.suffix.lower() in {".xlsx", ".xls"}:
+                                        try:
+                                            forecast_df = pd.read_excel(forecast_xls_exec_run_fc)
+                                            forecast_df.to_parquet(
+                                                scenario_out_dir / "forecast.parquet"
+                                            )
+                                        except Exception as e_conv:
+                                            log.warning(f"forecast parquet conversion error: {e_conv}")
                                 else:
                                     st.warning(
                                         _("Need forecast")
