@@ -515,6 +515,8 @@ def build_heatmap(
         need_stat_method if need_stat_method is not None else need_statistic_method
     )
 
+    final_holidays_to_use = holidays_set.union(estimated_holidays_set)
+
     dow_need_pattern_df = calculate_pattern_based_need(
         actual_staff_for_need_input,
         ref_start_date_for_need,
@@ -523,7 +525,7 @@ def build_heatmap(
         need_remove_outliers,
         need_iqr_multiplier,
         slot_minutes_for_empty=slot_minutes,
-        holidays=holidays_set,
+        holidays=final_holidays_to_use,
         adjustment_factor=need_adjustment_factor,
     )
 
