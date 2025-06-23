@@ -1382,9 +1382,6 @@ if run_button_clicked:
         log.info(f"解析出力ディレクトリ: {out_dir_exec} (file: {file_name})")
         base_work_dir = Path(st.session_state.work_root_path_str)
 
-        primary_scenario_key = "median_based"
-        primary_out_dir = base_work_dir / f"out_{primary_scenario_key}"
-
         # --- 実行時のUIの値をセッションステートから取得 ---
         param_selected_sheets = st.session_state.shift_sheets_multiselect_widget
         param_header_row = st.session_state.header_row_input_widget
@@ -1615,6 +1612,15 @@ if run_button_clicked:
                 log.info(f"シナリオ '{scenario_params['name']}' 用の中間サマリーを保存しました。")
                 st.success(f"シナリオ '{scenario_params['name']}' の分析が完了しました。")
 
+            primary_scenario_key = "median_based"
+            primary_out_dir = base_work_dir / f"out_{primary_scenario_key}"
+
+            if not primary_out_dir.exists():
+                st.error(
+                    f"主要シナリオ '{primary_scenario_key}' の出力ディレクトリが見つかりません。"
+                )
+                st.stop()
+
             # ----- 休暇分析モジュールの実行 -----
             # "休暇分析" (日本語) が選択されているか確認
             if _("Leave Analysis") in param_ext_opts:
@@ -1838,14 +1844,6 @@ if run_button_clicked:
             # ----- 休暇分析モジュールの実行ここまで -----
 
             # 他の追加モジュールの実行
-            primary_scenario_key = "median_based"
-            primary_out_dir = base_work_dir / f"out_{primary_scenario_key}"
-
-            if not primary_out_dir.exists():
-                st.error(
-                    f"主要シナリオ '{primary_scenario_key}' の出力ディレクトリが見つかりません。"
-                )
-                st.stop()
 
             for opt_module_name_exec_run in st.session_state.available_ext_opts_widget:
                 if (
