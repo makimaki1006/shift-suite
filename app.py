@@ -1382,6 +1382,9 @@ if run_button_clicked:
         log.info(f"解析出力ディレクトリ: {out_dir_exec} (file: {file_name})")
         base_work_dir = Path(st.session_state.work_root_path_str)
 
+        primary_scenario_key = "median_based"
+        primary_out_dir = base_work_dir / f"out_{primary_scenario_key}"
+
         # --- 実行時のUIの値をセッションステートから取得 ---
         param_selected_sheets = st.session_state.shift_sheets_multiselect_widget
         param_header_row = st.session_state.header_row_input_widget
@@ -1811,7 +1814,7 @@ if run_button_clicked:
                                 daily_summary.to_csv(leave_csv, index=False)
 
                                 # Also generate shortage_leave.xlsx for the Shortage tab
-                                merge_shortage_leave(out_dir_exec, leave_csv=leave_csv)
+                                merge_shortage_leave(primary_out_dir, leave_csv=leave_csv)
                             except FileNotFoundError:
                                 log.warning("shortage_time.parquet not found for merge, skipping.")
                             except Exception as e_save:  # noqa: BLE001
