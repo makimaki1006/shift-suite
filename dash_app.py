@@ -287,18 +287,17 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str) -> go.Figure:
     display_df = df_heat[date_cols]
     time_labels = gen_labels(30)
     display_df = display_df.reindex(time_labels, fill_value=0)
+    display_df_renamed = display_df.copy()
+    display_df_renamed.columns = [date_with_weekday(c) for c in display_df.columns]
 
     fig = px.imshow(
-        display_df,
+        display_df_renamed,
         aspect='auto',
         color_continuous_scale=px.colors.sequential.Viridis,
         title=title,
         labels={'x': '日付', 'y': '時間', 'color': '人数'}
     )
-    fig.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in display_df.columns],
-        tickvals=list(range(len(display_df.columns)))
-    )
+    fig.update_xaxes(tickvals=list(range(len(display_df.columns))))
     return fig
 
 # --- UIコンポーネント生成関数 ---
@@ -1472,41 +1471,38 @@ def update_shortage_ratio_heatmap(scope, detail_values):
     ratio_df = calc_ratio_from_heatmap(df_heat)
     ratio_df = ratio_df.reindex(time_labels, fill_value=0)
 
+    lack_count_df_renamed = lack_count_df.copy()
+    lack_count_df_renamed.columns = [date_with_weekday(c) for c in lack_count_df.columns]
     fig_lack = px.imshow(
-        lack_count_df,
+        lack_count_df_renamed,
         aspect='auto',
         color_continuous_scale='Oranges',
         title='不足人数ヒートマップ',
         labels={'x': '日付', 'y': '時間', 'color': '人数'},
     )
-    fig_lack.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in lack_count_df.columns],
-        tickvals=list(range(len(lack_count_df.columns)))
-    )
+    fig_lack.update_xaxes(tickvals=list(range(len(lack_count_df.columns))))
 
+    excess_count_df_renamed = excess_count_df.copy()
+    excess_count_df_renamed.columns = [date_with_weekday(c) for c in excess_count_df.columns]
     fig_excess = px.imshow(
-        excess_count_df,
+        excess_count_df_renamed,
         aspect='auto',
         color_continuous_scale='Blues',
         title='過剰人数ヒートマップ',
         labels={'x': '日付', 'y': '時間', 'color': '人数'},
     )
-    fig_excess.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in excess_count_df.columns],
-        tickvals=list(range(len(excess_count_df.columns)))
-    )
+    fig_excess.update_xaxes(tickvals=list(range(len(excess_count_df.columns))))
 
+    ratio_df_renamed = ratio_df.copy()
+    ratio_df_renamed.columns = [date_with_weekday(c) for c in ratio_df.columns]
     fig_ratio = px.imshow(
-        ratio_df,
+        ratio_df_renamed,
         aspect='auto',
         color_continuous_scale='RdBu_r',
         title='不足率ヒートマップ',
         labels={'x': '日付', 'y': '時間', 'color': '不足率'},
     )
-    fig_ratio.update_xaxes(
-        ticktext=[date_with_weekday(c) for c in ratio_df.columns],
-        tickvals=list(range(len(ratio_df.columns)))
-    )
+    fig_ratio.update_xaxes(tickvals=list(range(len(ratio_df.columns))))
 
     return html.Div([  # type: ignore
         html.H4('不足人数ヒートマップ'),  # type: ignore
@@ -1626,33 +1622,35 @@ def update_optimization_content(scope, detail_values):
     content = []
 
     # 1. 必要人数に対する余剰
+    surplus_df_renamed = surplus_df.copy()
+    surplus_df_renamed.columns = [date_with_weekday(c) for c in surplus_df.columns]
     content.append(html.Div([
         html.H4("1. 必要人数に対する余剰 (Surplus vs Need)"),
         html.P("各時間帯で必要人数（need）に対して何人多くスタッフがいたかを示します。"),
         dcc.Graph(figure=px.imshow(
-            surplus_df,
+            surplus_df_renamed,
             aspect='auto',
             color_continuous_scale='Blues',
             title='必要人数に対する余剰人員ヒートマップ',
             labels={'x': '日付', 'y': '時間', 'color': '余剰人数'}
         ).update_xaxes(
-            ticktext=[date_with_weekday(c) for c in surplus_df.columns],
             tickvals=list(range(len(surplus_df.columns)))
         ))
     ]))
 
     # 2. 上限に対する余白
+    margin_df_renamed = margin_df.copy()
+    margin_df_renamed.columns = [date_with_weekday(c) for c in margin_df.columns]
     content.append(html.Div([
         html.H4("2. 上限に対する余白 (Margin to Upper)", style={'marginTop': '30px'}),
         html.P("各時間帯で配置人数の上限（upper）まであと何人の余裕があったかを示します。"),
         dcc.Graph(figure=px.imshow(
-            margin_df,
+            margin_df_renamed,
             aspect='auto',
             color_continuous_scale='Greens',
             title='上限人数までの余白ヒートマップ',
             labels={'x': '日付', 'y': '時間', 'color': '余白人数'}
         ).update_xaxes(
-            ticktext=[date_with_weekday(c) for c in margin_df.columns],
             tickvals=list(range(len(margin_df.columns)))
         )),
         dcc.Markdown(
@@ -1665,11 +1663,13 @@ def update_optimization_content(scope, detail_values):
     ]))
 
     # 3. 最適化スコア
+    score_df_renamed = score_df.copy()
+    score_df_renamed.columns = [date_with_weekday(c) for c in score_df.columns]
     content.append(html.Div([
         html.H4("3. 人員配置 最適化スコア", style={'marginTop': '30px'}),
         html.P("人員配置の効率性を0から1のスコアで示します（1が最も良い）。"),
         dcc.Graph(figure=px.imshow(
-            score_df,
+            score_df_renamed,
             aspect='auto',
             color_continuous_scale='RdYlGn',
             zmin=0,
@@ -1677,7 +1677,6 @@ def update_optimization_content(scope, detail_values):
             title='最適化スコア ヒートマップ',
             labels={'x': '日付', 'y': '時間', 'color': 'スコア'}
         ).update_xaxes(
-            ticktext=[date_with_weekday(c) for c in score_df.columns],
             tickvals=list(range(len(score_df.columns)))
         ))
     ]))
