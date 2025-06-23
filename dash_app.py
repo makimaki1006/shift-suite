@@ -1470,7 +1470,8 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
             time_labels = gen_labels(30)
             all_dates = sorted(aggregated_df['date_lbl'].unique())
             empty_heatmap = pd.DataFrame(index=time_labels, columns=all_dates).fillna(0)
-            return generate_heatmap_figure(empty_heatmap, f"{title} (勤務データなし)")
+            fig_empty = generate_heatmap_figure(empty_heatmap, f"{title} (勤務データなし)")
+            return dcc.Graph(figure=fig_empty)
 
         dynamic_heatmap_df = filtered_df.pivot_table(
             index='time',
