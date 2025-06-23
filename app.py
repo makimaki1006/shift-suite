@@ -1612,14 +1612,6 @@ if run_button_clicked:
                 log.info(f"シナリオ '{scenario_params['name']}' 用の中間サマリーを保存しました。")
                 st.success(f"シナリオ '{scenario_params['name']}' の分析が完了しました。")
 
-            primary_scenario_key = "median_based"
-            primary_out_dir = base_work_dir / f"out_{primary_scenario_key}"
-
-            if not primary_out_dir.exists():
-                st.error(
-                    f"主要シナリオ '{primary_scenario_key}' の出力ディレクトリが見つかりません。"
-                )
-                st.stop()
 
             # ----- 休暇分析モジュールの実行 -----
             # "休暇分析" (日本語) が選択されているか確認
@@ -1797,7 +1789,7 @@ if run_button_clicked:
                                 ] = ratio_df
                                 try:
                                     ratio_df.to_csv(
-                                        out_dir_exec / "leave_ratio_breakdown.csv",
+                                        scenario_out_dir / "leave_ratio_breakdown.csv",
                                         index=False,
                                     )
                                 except Exception as e_ratio:
@@ -1816,11 +1808,11 @@ if run_button_clicked:
                                     log.warning(
                                         f"concentration_both generation error: {e_both}"
                                     )
-                                leave_csv = out_dir_exec / "leave_analysis.csv"
+                                leave_csv = scenario_out_dir / "leave_analysis.csv"
                                 daily_summary.to_csv(leave_csv, index=False)
 
                                 # Also generate shortage_leave.xlsx for the Shortage tab
-                                merge_shortage_leave(primary_out_dir, leave_csv=leave_csv)
+                                merge_shortage_leave(scenario_out_dir, leave_csv=leave_csv)
                             except FileNotFoundError:
                                 log.warning("shortage_time.parquet not found for merge, skipping.")
                             except Exception as e_save:  # noqa: BLE001
@@ -1862,7 +1854,7 @@ if run_button_clicked:
                             ):
                                 update_progress_exec_run("Stats: Processing...")
                                 build_stats(
-                                    primary_out_dir,
+                                    scenario_out_dir,
                                     holidays=(holiday_dates_global_for_run or [])
                                     + (holiday_dates_local_for_run or []),
                                     wage_direct=param_wage_direct,
@@ -1877,7 +1869,7 @@ if run_button_clicked:
                                     "Heatmap生成が失敗したため、Stats処理をスキップしました。"
                                 )
                         elif opt_module_name_exec_run == "Anomaly":
-                            detect_anomaly(primary_out_dir)
+                            detect_anomaly(scenario_out_dir)
                         elif opt_module_name_exec_run == "Fatigue":
                             fatigue_weights = {
                                 "start_var": st.session_state.get("weight_start_var_widget", 1.0),
@@ -1887,40 +1879,40 @@ if run_button_clicked:
                                 "consecutive": st.session_state.get("weight_consecutive_widget", 1.0),
                                 "night_ratio": st.session_state.get("weight_night_ratio_widget", 1.0),
                             }
-                            train_fatigue(long_df, primary_out_dir, weights=fatigue_weights)
+                            train_fatigue(long_df, scenario_out_dir, weights=fatigue_weights)
                         elif opt_module_name_exec_run == "Cluster":
-                            cluster_staff(long_df, primary_out_dir)
+                            cluster_staff(long_df, scenario_out_dir)
                         elif opt_module_name_exec_run == "Skill":
-                            build_skill_matrix(long_df, primary_out_dir)
+                            build_skill_matrix(long_df, scenario_out_dir)
                         elif opt_module_name_exec_run == "Fairness":
-                            run_fairness(long_df, primary_out_dir)
+                            run_fairness(long_df, scenario_out_dir)
                         elif opt_module_name_exec_run == "Rest Time Analysis":
                             rta = RestTimeAnalyzer()
                             st.session_state.rest_time_results = rta.analyze(
                                 long_df, slot_minutes=param_slot
                             )
                             st.session_state.rest_time_results.to_csv(
-                                primary_out_dir / "rest_time.csv", index=False
+                                scenario_out_dir / "rest_time.csv", index=False
                             )
                             st.session_state.rest_time_monthly = rta.monthly(
                                 st.session_state.rest_time_results
                             )
                             if st.session_state.rest_time_monthly is not None:
                                 st.session_state.rest_time_monthly.to_csv(
-                                    primary_out_dir / "rest_time_monthly.csv", index=False
+                                    scenario_out_dir / "rest_time_monthly.csv", index=False
                                 )
                         elif opt_module_name_exec_run == "Work Pattern Analysis":
                             wpa = WorkPatternAnalyzer()
                             st.session_state.work_pattern_results = wpa.analyze(long_df)
                             st.session_state.work_pattern_results.to_csv(
-                                primary_out_dir / "work_patterns.csv", index=False
+                                scenario_out_dir / "work_patterns.csv", index=False
                             )
                             st.session_state.work_pattern_monthly = wpa.analyze_monthly(
                                 long_df
                             )
                             if st.session_state.work_pattern_monthly is not None:
                                 st.session_state.work_pattern_monthly.to_csv(
-                                    primary_out_dir / "work_pattern_monthly.csv",
+                                    scenario_out_dir / "work_pattern_monthly.csv",
                                     index=False,
                                 )
                         elif opt_module_name_exec_run == "Attendance Analysis":
@@ -1928,7 +1920,7 @@ if run_button_clicked:
                                 AttendanceBehaviorAnalyzer().analyze(long_df)
                             )
                             st.session_state.attendance_results.to_csv(
-                                primary_out_dir / "attendance.csv", index=False
+                                scenario_out_dir / "attendance.csv", index=False
                             )
                         elif opt_module_name_exec_run == "Low Staff Load":
                             lsl = LowStaffLoadAnalyzer()
@@ -1936,7 +1928,7 @@ if run_button_clicked:
                                 long_df, threshold=0.25
                             )
                             st.session_state.low_staff_load_results.to_csv(
-                                primary_out_dir / "low_staff_load.csv", index=False
+                                scenario_out_dir / "low_staff_load.csv", index=False
                             )
                         elif opt_module_name_exec_run == "Combined Score":
                             rest_df = (
@@ -1960,15 +1952,15 @@ if run_button_clicked:
                                 )
                             )
                             st.session_state.combined_score_results.to_csv(
-                                primary_out_dir / "combined_score.csv", index=False
+                                scenario_out_dir / "combined_score.csv", index=False
                             )
                         elif opt_module_name_exec_run == "Need forecast":
-                            demand_csv_exec_run_fc = primary_out_dir / "demand_series.csv"
+                            demand_csv_exec_run_fc = scenario_out_dir / "demand_series.csv"
                             forecast_xls_exec_run_fc = (
-                                primary_out_dir / "forecast.parquet"
+                                scenario_out_dir / "forecast.parquet"
                             )  # 出力もparquetに
                             heat_all_for_fc_exec_run_fc = (
-                                primary_out_dir / "heat_ALL.parquet"
+                                scenario_out_dir / "heat_ALL.parquet"
                             )  # 入力をparquetに
                             if not heat_all_for_fc_exec_run_fc.exists():
                                 st.warning(
@@ -1979,12 +1971,12 @@ if run_button_clicked:
                                 build_demand_series(
                                     heat_all_for_fc_exec_run_fc,
                                     demand_csv_exec_run_fc,
-                                    leave_csv=primary_out_dir / "leave_analysis.csv"
-                                    if (primary_out_dir / "leave_analysis.csv").exists()
+                                    leave_csv=scenario_out_dir / "leave_analysis.csv"
+                                    if (scenario_out_dir / "leave_analysis.csv").exists()
                                     else None,
                                 )
                                 if demand_csv_exec_run_fc.exists():
-                                    fc_leave = primary_out_dir / "leave_analysis.csv"
+                                    fc_leave = scenario_out_dir / "leave_analysis.csv"
                                     forecast_need(
                                         demand_csv_exec_run_fc,
                                         forecast_xls_exec_run_fc,
@@ -1994,7 +1986,7 @@ if run_button_clicked:
                                         else None,
                                         holidays=(holiday_dates_global_for_run or [])
                                         + (holiday_dates_local_for_run or []),
-                                        log_csv=primary_out_dir / "forecast_history.csv",
+                                        log_csv=scenario_out_dir / "forecast_history.csv",
                                     )
                                 else:
                                     st.warning(
@@ -2003,12 +1995,12 @@ if run_button_clicked:
                                     )
                         elif opt_module_name_exec_run == "RL roster (PPO)":
                             demand_csv_rl_exec_run_rl = (
-                                primary_out_dir / "demand_series.csv"
+                                scenario_out_dir / "demand_series.csv"
                             )
-                            rl_roster_xls_exec_run_rl = primary_out_dir / "rl_roster.xlsx"
-                            model_zip_rl = primary_out_dir / "ppo_model.zip"
-                            fc_xls = primary_out_dir / "forecast.xlsx"
-                            shortage_xlsx = primary_out_dir / "shortage_time.xlsx"
+                            rl_roster_xls_exec_run_rl = scenario_out_dir / "rl_roster.xlsx"
+                            model_zip_rl = scenario_out_dir / "ppo_model.zip"
+                            fc_xls = scenario_out_dir / "forecast.xlsx"
+                            shortage_xlsx = scenario_out_dir / "shortage_time.xlsx"
                             if demand_csv_rl_exec_run_rl.exists():
                                 learn_roster(
                                     demand_csv_rl_exec_run_rl,
@@ -2026,12 +2018,12 @@ if run_button_clicked:
                                 )
                         elif opt_module_name_exec_run == "RL roster (model)":
                             demand_csv_rl_exec_run_rl = (
-                                primary_out_dir / "demand_series.csv"
+                                scenario_out_dir / "demand_series.csv"
                             )
-                            rl_roster_xls_use = primary_out_dir / "rl_roster.xlsx"
-                            model_zip_rl = primary_out_dir / "ppo_model.zip"
-                            fc_xls = primary_out_dir / "forecast.xlsx"
-                            shortage_xlsx = primary_out_dir / "shortage_time.xlsx"
+                            rl_roster_xls_use = scenario_out_dir / "rl_roster.xlsx"
+                            model_zip_rl = scenario_out_dir / "ppo_model.zip"
+                            fc_xls = scenario_out_dir / "forecast.xlsx"
+                            shortage_xlsx = scenario_out_dir / "shortage_time.xlsx"
                             if model_zip_rl.exists() and fc_xls.exists():
                                 learn_roster(
                                     demand_csv_rl_exec_run_rl
@@ -2052,9 +2044,9 @@ if run_button_clicked:
                                 )
                         elif opt_module_name_exec_run == "Hire plan":
                             demand_csv_hp_exec_run_hp = (
-                                primary_out_dir / "demand_series.csv"
+                                scenario_out_dir / "demand_series.csv"
                             )
-                            hire_xls_exec_run_hp = primary_out_dir / "hire_plan.xlsx"
+                            hire_xls_exec_run_hp = scenario_out_dir / "hire_plan.xlsx"
                             if demand_csv_hp_exec_run_hp.exists():
                                 build_hire_plan(
                                     demand_csv_hp_exec_run_hp,
@@ -2070,7 +2062,7 @@ if run_button_clicked:
                                 )
                         elif opt_module_name_exec_run == "Cost / Benefit":
                             analyze_cost_benefit(
-                                primary_out_dir,
+                                scenario_out_dir,
                                 param_wage_direct,
                                 param_wage_temp,
                                 param_hiring_cost,
@@ -2086,10 +2078,10 @@ if run_button_clicked:
                                         "最適採用計画のためのサマリーファイルを生成します。"
                                     )
                                     weekday_summary_df = weekday_timeslot_summary(
-                                        primary_out_dir
+                                        scenario_out_dir
                                     )
                                     summary_fp = (
-                                        primary_out_dir
+                                        scenario_out_dir
                                         / "shortage_weekday_timeslot_summary.xlsx"
                                     )
                                     weekday_summary_df.to_excel(summary_fp, index=False)
@@ -2105,7 +2097,7 @@ if run_button_clicked:
                                         )["path"]
                                     )
                                     create_optimal_hire_plan(
-                                        primary_out_dir, original_excel_path
+                                        scenario_out_dir, original_excel_path
                                     )
                                     st.success("✅ 最適採用計画 生成完了")
                                 except Exception as e_opt_hire:
