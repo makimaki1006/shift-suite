@@ -33,6 +33,7 @@ os.environ.setdefault("STREAMLIT_WATCHER_TYPE", "poll")
 import re
 import tempfile
 import zipfile
+import shutil
 from pathlib import Path
 from typing import IO, Optional
 import json
@@ -1487,12 +1488,12 @@ if run_button_clicked:
                     slot_minutes=param_slot,
                     year_month_cell_location=param_year_month_cell,
                 )
+                intermediate_parquet_path = work_root_exec / "intermediate_data.parquet"
+                long_df.to_parquet(intermediate_parquet_path)
                 if wt_df is not None and not wt_df.empty:
-                    wt_df.to_parquet(out_dir_exec / "work_patterns.parquet", index=False)
+                    wt_df.to_parquet(work_root_exec / "work_patterns.parquet", index=False)
                     log.info("勤務区分情報を work_patterns.parquet に保存しました。")
-                parquet_fp = out_dir_exec / "intermediate_data.parquet"
-                long_df.to_parquet(parquet_fp)
-                st.session_state["intermediate_parquet_path"] = str(parquet_fp)
+                st.session_state["intermediate_parquet_path"] = str(intermediate_parquet_path)
                 st.session_state.analysis_status["ingest"] = "success"
                 log.info(
                     f"Ingest完了. long_df shape: {long_df.shape}, wt_df shape: {wt_df.shape if wt_df is not None else 'N/A'}"
@@ -1523,6 +1524,22 @@ if run_button_clicked:
                 st.info(f"シナリオ '{scenario_params['name']}' の分析を開始...")
                 scenario_out_dir = base_work_dir / f"out_{scenario_key}"
                 scenario_out_dir.mkdir(parents=True, exist_ok=True)
+
+                try:
+                    shutil.copy(intermediate_parquet_path, scenario_out_dir / "intermediate_data.parquet")
+                    log.info(f"Copied intermediate_data.parquet to {scenario_out_dir}")
+                    if (work_root_exec / "work_patterns.parquet").exists():
+                        shutil.copy(
+                            work_root_exec / "work_patterns.parquet",
+                            scenario_out_dir / "work_patterns.parquet",
+                        )
+                except Exception as e:
+                    log_and_display_error(
+                        f"Failed to copy intermediate files to {scenario_out_dir}",
+                        e,
+                    )
+                    continue
+
                 try:
                     update_progress_exec_run("Heatmap: Generating heatmap...")
                     build_heatmap(
