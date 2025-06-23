@@ -111,9 +111,13 @@ def load_shortage_meta(data_dir: Path) -> Tuple[List[str], List[str]]:
 
 
 def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
-    """Load analysis data from the given directory into DATA_STORE."""
+    """Load analysis data from the given directory and its base directory."""
     global DATA_STORE
     DATA_STORE = {}
+
+    base_dir = data_dir.parent
+    search_dirs = [data_dir, base_dir]
+    log.info(f"データ読み込み開始: {search_dirs}")
 
     # Parquet files
     parquet_files = [
@@ -140,14 +144,18 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
     ]
 
     for file in parquet_files:
-        if (data_dir / file).exists():
-            df = safe_read_parquet(data_dir / file)
-            if not df.empty:
-                DATA_STORE[file.replace('.parquet', '')] = df
-        elif file == 'daily_cost.parquet' and (data_dir / 'daily_cost.xlsx').exists():
-            df = safe_read_excel(data_dir / 'daily_cost.xlsx')
-            if not df.empty:
-                DATA_STORE['daily_cost'] = df
+        for directory in search_dirs:
+            fp = directory / file
+            if fp.exists():
+                df = safe_read_parquet(fp)
+                if not df.empty:
+                    DATA_STORE[file.replace('.parquet', '')] = df
+                break
+            elif file == 'daily_cost.parquet' and (directory / 'daily_cost.xlsx').exists():
+                df = safe_read_excel(directory / 'daily_cost.xlsx')
+                if not df.empty:
+                    DATA_STORE['daily_cost'] = df
+                break
 
     csv_files = [
         'leave_analysis.csv',
@@ -158,11 +166,14 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
     ]
 
     for file in csv_files:
-        if (data_dir / file).exists():
-            df = safe_read_csv(data_dir / file)
-            if not df.empty:
-                key = file.replace('.csv', '')
-                DATA_STORE[key] = df
+        for directory in search_dirs:
+            fp = directory / file
+            if fp.exists():
+                df = safe_read_csv(fp)
+                if not df.empty:
+                    key = file.replace('.csv', '')
+                    DATA_STORE[key] = df
+                break
 
     # Fallback: extract from leave_analysis.csv if others are missing
     if 'leave_analysis' in DATA_STORE and 'staff_balance_daily' not in DATA_STORE:
@@ -757,7 +768,34 @@ def create_cost_analysis_tab() -> html.Div:
                 details['staff_list_summary'] = details['staff_list'].apply(summarize)
                 df_cost = pd.merge(df_cost, details, on='date', how='left')
 
-        # 1. 既存の日別総コスト棒グラフ
+        df_cost = df_cost.sort_values('date')
+
+        total_cost = df_cost['cost'].sum()
+        avg_daily_cost = df_cost['cost'].mean()
+        max_cost_day = df_cost.loc[df_cost['cost'].idxmax()]
+
+        summary_cards = html.Div([
+            create_metric_card("総コスト", f"¥{total_cost:,.0f}"),
+            create_metric_card("日平均コスト", f"¥{avg_daily_cost:,.0f}"),
+            create_metric_card(
+                "最高コスト日",
+                f"{max_cost_day['date'].strftime('%m/%d')}<br>¥{max_cost_day['cost']:,.0f}"
+            ),
+        ], style={'display': 'flex', 'justifyContent': 'space-around', 'marginBottom': '20px'})
+        content.append(summary_cards)
+
+        df_cost['cumulative_cost'] = df_cost['cost'].cumsum()
+        fig_cumulative = px.area(
+            df_cost,
+            x='date',
+            y='cumulative_cost',
+            title='累計人件費の推移',
+            labels={'date': '日付', 'cumulative_cost': '累計コスト (円)'},
+        )
+        fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
+        content.append(dcc.Graph(figure=fig_cumulative))
+
+        # 既存の日別総コスト棒グラフ
         fig_daily = px.bar(
             df_cost,
             x='date',
@@ -852,50 +890,7 @@ def create_cost_analysis_tab() -> html.Div:
                 )
                 content.append(dcc.Graph(figure=fig_pie))
 
-        # 5. 累計コストグラフ
-        if 'cost' in df_cost.columns:
-            df_cost_sorted = df_cost.sort_values('date').copy()
-            df_cost_sorted['cumulative_cost'] = df_cost_sorted['cost'].cumsum()
-
-            fig_cumulative = px.line(
-                df_cost_sorted,
-                x='date',
-                y='cumulative_cost',
-                title='日別累計人件費',
-                labels={'date': '日付', 'cumulative_cost': '累計人件費(円)'},
-                markers=True
-            )
-            fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
-            content.append(dcc.Graph(figure=fig_cumulative))
-
-            # 6. 統計情報のサマリーカード
-            total_cost = df_cost['cost'].sum()
-            avg_daily_cost = df_cost['cost'].mean()
-            max_cost_date = df_cost.loc[df_cost['cost'].idxmax()]
-            min_cost_date = df_cost.loc[df_cost['cost'].idxmin()]
-
-            stats_cards = html.Div([
-                html.Div([
-                    create_metric_card("総人件費", f"¥{total_cost:,.0f}"),
-                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
-                html.Div([
-                    create_metric_card("日平均", f"¥{avg_daily_cost:,.0f}"),
-                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
-                html.Div([
-                    create_metric_card(
-                        "最高額日",
-                        f"{max_cost_date['date'].strftime('%m/%d')}: ¥{max_cost_date['cost']:,.0f}"
-                    ),
-                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
-                html.Div([
-                    create_metric_card(
-                        "最低額日",
-                        f"{min_cost_date['date'].strftime('%m/%d')}: ¥{min_cost_date['cost']:,.0f}"
-                    ),
-                ], style={'width': '25%', 'display': 'inline-block', 'padding': '5px'}),
-            ], style={'marginTop': '20px', 'marginBottom': '20px'})
-
-            content.insert(2, stats_cards)
+        # 累計コストグラフは上で生成済み
 
     # --- 動的再計算UI ---
     content.append(html.H4("動的コストシミュレーション", style={'marginTop': '30px'}))  # type: ignore

@@ -1520,9 +1520,78 @@ if run_button_clicked:
                     "Excelデータの読み込み中にエラーが発生しました", e
                 )
 
+            base_out_dir = Path(st.session_state.work_root_path_str) / "out"
+            base_out_dir.mkdir(parents=True, exist_ok=True)
+
+            # --- 共通分析をシナリオループの前に実行 ---
+            try:
+                if "Fairness" in param_ext_opts:
+                    run_fairness(long_df, base_out_dir)
+                    fairness_xlsx = base_out_dir / "fairness_after.xlsx"
+                    if fairness_xlsx.exists():
+                        try:
+                            fairness_df = pd.read_excel(fairness_xlsx)
+                            fairness_df.to_parquet(base_out_dir / "fairness_after.parquet")
+                        except Exception as e_conv:
+                            log.warning(f"fairness_after.xlsx conversion failed: {e_conv}")
+                if "Fatigue" in param_ext_opts:
+                    fatigue_weights = {
+                        "start_var": st.session_state.get("weight_start_var_widget", 1.0),
+                        "diversity": st.session_state.get("weight_diversity_widget", 1.0),
+                        "worktime_var": st.session_state.get("weight_worktime_var_widget", 1.0),
+                        "short_rest": st.session_state.get("weight_short_rest_widget", 1.0),
+                        "consecutive": st.session_state.get("weight_consecutive_widget", 1.0),
+                        "night_ratio": st.session_state.get("weight_night_ratio_widget", 1.0),
+                    }
+                    train_fatigue(long_df, base_out_dir, weights=fatigue_weights)
+                if _("Leave Analysis") in param_ext_opts:
+                    daily_leave_df = leave_analyzer.get_daily_leave_counts(long_df, target_leave_types=param_leave_target_types)
+                    if not daily_leave_df.empty:
+                        staff_balance = (
+                            long_df[long_df["parsed_slots_count"] > 0]
+                            .assign(date=lambda df: pd.to_datetime(df["ds"]).dt.normalize())
+                            .groupby("date")["staff"]
+                            .nunique()
+                            .reset_index(name="total_staff")
+                        )
+                        leave_counts = (
+                            leave_analyzer.summarize_leave_by_day_count(daily_leave_df.copy(), period="date")
+                            .groupby("date")["total_leave_days"]
+                            .sum()
+                            .reset_index(name="leave_applicants_count")
+                        )
+                        staff_balance = staff_balance.merge(leave_counts, on="date", how="left")
+                        staff_balance["leave_applicants_count"] = staff_balance["leave_applicants_count"].fillna(0).astype(int)
+                        staff_balance["non_leave_staff"] = staff_balance["total_staff"] - staff_balance["leave_applicants_count"]
+                        staff_balance["leave_ratio"] = staff_balance["leave_applicants_count"] / staff_balance["total_staff"]
+                        staff_balance.to_csv(base_out_dir / "staff_balance_daily.csv", index=False)
+
+                        summary = leave_analyzer.summarize_leave_by_day_count(daily_leave_df.copy(), period="date")
+                        summary.to_csv(base_out_dir / "leave_analysis.csv", index=False)
+                        ratio_df = leave_analyzer.leave_ratio_by_period_and_weekday(summary.copy())
+                        ratio_df.to_csv(base_out_dir / "leave_ratio_breakdown.csv", index=False)
+
+                        if LEAVE_TYPE_REQUESTED in param_leave_target_types:
+                            req_daily = daily_leave_df[daily_leave_df["leave_type"] == LEAVE_TYPE_REQUESTED]
+                            if not req_daily.empty:
+                                applicants = leave_analyzer.summarize_leave_by_day_count(req_daily.copy(), period="date")
+                                conc = leave_analyzer.analyze_leave_concentration(
+                                    applicants,
+                                    leave_type_to_analyze=LEAVE_TYPE_REQUESTED,
+                                    concentration_threshold=param_leave_concentration_threshold,
+                                    daily_leave_df=req_daily.copy(),
+                                )
+                                conc.to_csv(base_out_dir / "concentration_requested.csv", index=False)
+                if "Cluster" in param_ext_opts:
+                    cluster_staff(long_df, base_out_dir)
+                if "Skill" in param_ext_opts:
+                    build_skill_matrix(long_df, base_out_dir)
+            except Exception as e_common:
+                log.warning(f"common analysis failed: {e_common}")
+
             for scenario_key, scenario_params in analysis_scenarios.items():
                 st.info(f"シナリオ '{scenario_params['name']}' の分析を開始...")
-                scenario_out_dir = base_work_dir / f"out_{scenario_key}"
+                scenario_out_dir = base_out_dir / f"out_{scenario_key}"
                 scenario_out_dir.mkdir(parents=True, exist_ok=True)
 
                 try:
@@ -1868,9 +1937,11 @@ if run_button_clicked:
 
             # 他の追加モジュールの実行
 
+            skip_opts = {"Fairness", "Fatigue", "Cluster", "Skill"}
             for opt_module_name_exec_run in st.session_state.available_ext_opts_widget:
                 if (
                     opt_module_name_exec_run in param_ext_opts
+                    and opt_module_name_exec_run not in skip_opts
                     and opt_module_name_exec_run != _("Leave Analysis")
                 ):
                     progress_key_exec_run = f"{opt_module_name_exec_run}: Processing..."
@@ -2220,11 +2291,11 @@ if run_button_clicked:
             )
 
             zip_buffer = io.BytesIO()
-            out_dir = Path("./out")
-            if out_dir.exists():
+            zip_base = Path(st.session_state.work_root_path_str) / "out"
+            if zip_base.exists():
                 with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zf:
-                    for f_path in out_dir.glob("**/*"):
-                        zf.write(f_path, f_path.relative_to(out_dir))
+                    for f_path in zip_base.glob("**/*"):
+                        zf.write(f_path, f_path.relative_to(zip_base))
 
                 st.download_button(
                     label="📥 analysis_results.zip をダウンロード",
