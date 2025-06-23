@@ -161,7 +161,14 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
         if (data_dir / file).exists():
             df = safe_read_csv(data_dir / file)
             if not df.empty:
-                DATA_STORE[file.replace('.csv', '')] = df
+                key = file.replace('.csv', '')
+                DATA_STORE[key] = df
+
+    # Fallback: extract from leave_analysis.csv if others are missing
+    if 'leave_analysis' in DATA_STORE and 'staff_balance_daily' not in DATA_STORE:
+        leave_df = DATA_STORE['leave_analysis']
+        if 'leave_type' in leave_df.columns:
+            DATA_STORE['daily_summary'] = leave_df
 
     for p in data_dir.glob('heat_*.parquet'):
         if p.name == 'heat_ALL.parquet' or p.name.startswith('heat_emp_'):
@@ -240,6 +247,8 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
         kpi_data['most_lacking_role_name'] = most_lacking_role['role']
         kpi_data['most_lacking_role_hours'] = most_lacking_role['lack_h']
 
+    log.info(f"Loaded files: {list(DATA_STORE.keys())}")
+    log.info(f"Available in {data_dir}: {[f.name for f in data_dir.iterdir() if f.is_file()]}")
     log.info(
         f"Loaded {len(DATA_STORE)} data files and calculated {len(kpi_data)} KPIs."
     )
