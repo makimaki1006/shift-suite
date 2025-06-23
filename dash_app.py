@@ -1187,7 +1187,17 @@ def process_upload(contents, filename):
         if not scenarios:
             return {'error': '分析シナリオのフォルダが見つかりません'}, [], None, {'display': 'none'}
 
-        scenario_options = [{'label': s.replace('out_', ''), 'value': s} for s in scenarios]
+        # 日本語ラベル用のマッピング
+        scenario_name_map = {
+            'out_median_based': '中央値ベース',
+            'out_mean_based': '平均値ベース',
+            'out_p25_based': '25パーセンタイルベース',
+        }
+
+        scenario_options = [
+            {'label': scenario_name_map.get(s, s.replace('out_', '')), 'value': s}
+            for s in scenarios
+        ]
         first_scenario = scenarios[0]
         return {'success': True}, scenario_options, first_scenario, {'display': 'block'}
 
