@@ -7,7 +7,7 @@ from shift_suite.tasks.shortage import (
     weekday_timeslot_summary,
     monthperiod_timeslot_summary,
 )
-from shift_suite.tasks.utils import gen_labels
+from shift_suite.tasks.utils import gen_labels, write_meta
 
 
 def _create_heatmap(out_dir: Path) -> None:
@@ -22,6 +22,14 @@ def _create_heatmap(out_dir: Path) -> None:
         index=labels,
     )
     df.to_parquet(out_dir / "heat_ALL.parquet")
+    write_meta(
+        out_dir / "heatmap.meta.json",
+        slot=30,
+        dates=["2024-06-01", "2024-06-11", "2024-06-21"],
+        summary_columns=["need", "upper", "staff", "lack", "excess"],
+        estimated_holidays=[],
+        dow_need_pattern=[{"time": t, **{str(i): 1 for i in range(7)}} for t in labels],
+    )
 
 
 def test_weekday_timeslot_summary(tmp_path: Path) -> None:
