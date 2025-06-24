@@ -141,7 +141,7 @@ def shortage_and_brief(
                 .astype(float)
             )
         else:
-            # パターンが存在しない曜日の必要人数は0とする
+            # If no specific pattern exists for the day of the week, assume need is 0.
             need_df_all[col] = 0
 
     lack_count_overall_df = (
