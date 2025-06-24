@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
-import json
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
 import numpy as np
@@ -112,56 +111,20 @@ def shortage_and_brief(
         d in estimated_holidays_set if d else False for d in parsed_date_list_all
     ]
 
-    dow_need_pattern_df = pd.DataFrame()
-    meta_fp = out_dir_path / "heatmap.meta.json"
-    if meta_fp.exists():
-        try:
-            meta = json.loads(meta_fp.read_text(encoding="utf-8"))
-            records = meta.get("dow_need_pattern", [])
-            if records:
-                dow_need_pattern_df = pd.DataFrame(records).set_index("time")
-        except Exception as e:
-            log.debug(f"failed reading meta file for need pattern: {e}")
-
-    if not dow_need_pattern_df.empty:
-        log.info("\n[DEBUG] dow_need_pattern_df の内容:")
-        log.info(f"  列（曜日）: {dow_need_pattern_df.columns.tolist()}")
-        log.info(f"  行数（時間帯）: {len(dow_need_pattern_df)}")
-        if '6' in dow_need_pattern_df.columns:
-            sunday_pattern = dow_need_pattern_df['6']
-            log.info("  日曜日パターンのサンプル（最初の10時間帯）:")
-            for idx, (time, value) in enumerate(sunday_pattern.head(10).items()):
-                log.info(f"    {time}: {value}")
-
-    need_df_all = pd.DataFrame(index=time_labels, columns=staff_actual_data_all_df.columns, dtype=float)
-    for col, parsed_date in zip(staff_actual_data_all_df.columns, parsed_date_list_all, strict=True):
-        if parsed_date is None:
-            need_df_all[col] = need_series_per_time_overall_orig
-            continue
-        if parsed_date in estimated_holidays_set:
-            need_df_all[col] = 0
-            continue
-        dow = parsed_date.weekday()
-        dow_col = str(dow)
-
-        # デバッグ: 日曜日の処理を詳細に記録
-        if dow == 6:  # 日曜日
-            log.info(f"\n[DEBUG] 日曜日 {parsed_date} の処理:")
-            log.info(f"  曜日インデックス: {dow}")
-            log.info(f"  dow_need_pattern_df に列 '{dow_col}' が存在: {'6' in dow_need_pattern_df.columns}")
-
-        if not dow_need_pattern_df.empty and dow_col in dow_need_pattern_df.columns:
-            need_values = dow_need_pattern_df[dow_col].reindex(index=time_labels).fillna(0).astype(float)
-            need_df_all[col] = need_values
-
-            if dow == 6:  # 日曜日
-                log.info(f"  パターンから設定したneed値の合計: {need_values.sum()}")
-                log.info(f"  パターンから設定したneed値の最大: {need_values.max()}")
-        else:
-            # If no specific pattern exists for the day of the week, assume need is 0.
-            need_df_all[col] = 0
-            if dow == 6:  # 日曜日
-                log.info("  パターンが存在しないため、need = 0 に設定")
+    # ヒートマップのneed列をそのまま使用して各日付列の形状に合わせる
+    need_df_all = pd.DataFrame(
+        np.repeat(
+            need_series_per_time_overall_orig.values[:, np.newaxis],
+            len(staff_actual_data_all_df.columns),
+            axis=1,
+        ),
+        index=need_series_per_time_overall_orig.index,
+        columns=staff_actual_data_all_df.columns,
+    )
+    if any(holiday_mask_all):
+        for col, is_h in zip(need_df_all.columns, holiday_mask_all, strict=True):
+            if is_h:
+                need_df_all[col] = 0
 
     lack_count_overall_df = (
         (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
