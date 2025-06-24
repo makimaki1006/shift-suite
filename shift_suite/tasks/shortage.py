@@ -141,7 +141,8 @@ def shortage_and_brief(
                 .astype(float)
             )
         else:
-            need_df_all[col] = need_series_per_time_overall_orig
+            # パターンが存在しない曜日の必要人数は0とする
+            need_df_all[col] = 0
 
     lack_count_overall_df = (
         (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
@@ -914,11 +915,13 @@ def _summary_by_period(df: pd.DataFrame, *, period: str) -> pd.DataFrame:
 
     data = df[date_cols].copy()
     data.columns = pd.to_datetime(data.columns)
-    long = (
-        data.reset_index()
-        .melt(id_vars=data.index.name, var_name="date", value_name="count")
-        .rename(columns={data.index.name: "timeslot"})
+    df_for_melt = data.reset_index()
+    # reset_index() で生成されたインデックス列の名前を動的に取得
+    index_col_name = df_for_melt.columns[0]
+    long = df_for_melt.melt(
+        id_vars=[index_col_name], var_name="date", value_name="count"
     )
+    long.rename(columns={index_col_name: "timeslot"}, inplace=True)
 
     long["date"] = pd.to_datetime(long["date"])
 

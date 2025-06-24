@@ -484,6 +484,11 @@ def build_heatmap(
                 .reindex(index=time_index_labels, fill_value=0)
             )
 
+    # 欠落している日付列を0で補完
+    pivot_data_all_actual_staff = pivot_data_all_actual_staff.reindex(
+        columns=all_date_labels_in_period_str, fill_value=0
+    )
+
     actual_staff_for_need_input = pivot_data_all_actual_staff.copy()
     if not actual_staff_for_need_input.empty:
         new_column_map_for_need_input = {}
