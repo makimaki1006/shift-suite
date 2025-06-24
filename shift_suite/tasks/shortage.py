@@ -14,6 +14,8 @@ import datetime as dt
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -66,6 +68,33 @@ def shortage_and_brief(
         )
         return None
 
+    dow_need_pattern_df = pd.DataFrame()
+    meta_fp = out_dir_path / "heatmap.meta.json"
+    if meta_fp.exists():
+        try:
+            meta = json.loads(meta_fp.read_text(encoding="utf-8"))
+            estimated_holidays_set.update(
+                {
+                    d
+                    for d in (
+                        _parse_as_date(h) for h in meta.get("estimated_holidays", [])
+                    )
+                    if d
+                }
+            )
+            pattern_records = meta.get("dow_need_pattern", [])
+            if pattern_records:
+                tmp_df = pd.DataFrame(pattern_records)
+                if "time" in tmp_df.columns:
+                    tmp_df = tmp_df.set_index("time")
+                tmp_df.rename(
+                    columns={str(c): int(c) for c in tmp_df.columns if str(c).isdigit()},
+                    inplace=True,
+                )
+                dow_need_pattern_df = tmp_df
+        except Exception as e_meta:  # noqa: BLE001
+            log.warning(f"[shortage] heatmap.meta.json 解析エラー: {e_meta}")
+
     date_columns_in_heat_all = [
         str(col)
         for col in heat_all_df.columns
@@ -99,32 +128,28 @@ def shortage_and_brief(
         .fillna(0)
     )
 
-    need_series_per_time_overall_orig = (
-        heat_all_df.get("need", pd.Series(dtype=float))
-        .reindex(index=time_labels)
-        .fillna(0)
-        .clip(lower=0)
-    )
 
     parsed_date_list_all = [_parse_as_date(c) for c in staff_actual_data_all_df.columns]
     holiday_mask_all = [
         d in estimated_holidays_set if d else False for d in parsed_date_list_all
     ]
 
-    # ヒートマップのneed列をそのまま使用して各日付列の形状に合わせる
-    need_df_all = pd.DataFrame(
-        np.repeat(
-            need_series_per_time_overall_orig.values[:, np.newaxis],
-            len(staff_actual_data_all_df.columns),
-            axis=1,
-        ),
-        index=need_series_per_time_overall_orig.index,
-        columns=staff_actual_data_all_df.columns,
-    )
-    if any(holiday_mask_all):
-        for col, is_h in zip(need_df_all.columns, holiday_mask_all, strict=True):
-            if is_h:
-                need_df_all[col] = 0
+    # needを曜日パターンに基づいて生成
+    need_df_all = pd.DataFrame(index=time_labels, columns=staff_actual_data_all_df.columns, dtype=float)
+    for col, d, is_h in zip(need_df_all.columns, parsed_date_list_all, holiday_mask_all, strict=True):
+        if is_h:
+            need_df_all[col] = 0
+            continue
+        dow_col = d.weekday() if d else None
+        if d and not dow_need_pattern_df.empty and dow_col in dow_need_pattern_df.columns:
+            need_df_all[col] = (
+                dow_need_pattern_df[dow_col]
+                .reindex(index=time_labels)
+                .fillna(0)
+                .astype(float)
+            )
+        else:
+            need_df_all[col] = 0
 
     lack_count_overall_df = (
         (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
