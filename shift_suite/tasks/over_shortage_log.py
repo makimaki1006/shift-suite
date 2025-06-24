@@ -22,11 +22,11 @@ def list_events(out_dir: Path | str) -> pd.DataFrame:
             log.warning("Failed to read %s [%s]: %s", fp, sheet, e)
             return
 
-        long = (
-            df.reset_index()
-            .melt(id_vars=df.index.name, var_name="date", value_name="count")
-            .rename(columns={df.index.name: "time"})
-        )
+        # ``melt`` can mis-handle the index when ``df.index.name`` is None.
+        # These parquet files always use ``time`` as the index name, so be
+        # explicit to avoid accidentally turning the index into a data column.
+        df_reset = df.reset_index()
+        long = df_reset.melt(id_vars="time", var_name="date", value_name="count")
         long["date"] = pd.to_datetime(long["date"]).dt.date
         long = long[long["count"] > 0]
         if not long.empty:
