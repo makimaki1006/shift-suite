@@ -21,7 +21,6 @@ from shift_suite.i18n import translate as _
 from .utils import (
     _parse_as_date,
     derive_max_staff,
-    derive_min_staff,
     gen_labels,
     log,
     safe_sheet,
@@ -761,28 +760,51 @@ def build_heatmap(
             except Exception as e_sort_r:
                 log.warning(f"職種 '{role_item_final_loop}' 日付ソート失敗: {e_sort_r}")
 
-        if need_calc_method == _("過去の実績から統計的に推定する"):
-            if need_stat_method == "中央値":
-                need_r_series = pivot_data_role_actual.median(axis=1).round()
-            elif need_stat_method == "平均値":
-                need_r_series = pivot_data_role_actual.mean(axis=1).round()
-            elif need_stat_method == "25パーセンタイル":
-                need_r_series = pivot_data_role_actual.quantile(0.25, axis=1).round()
-            elif need_stat_method == "10パーセンタイル":
-                need_r_series = pivot_data_role_actual.quantile(0.10, axis=1).round()
+        actual_staff_for_role_need_input = pivot_data_role_actual.copy()
+        if not actual_staff_for_role_need_input.empty:
+            new_column_map_for_role_need = {}
+            for col_str_role in actual_staff_for_role_need_input.columns:
+                dt_obj_role = _parse_as_date(str(col_str_role))
+                if dt_obj_role:
+                    new_column_map_for_role_need[col_str_role] = dt_obj_role
+
+            if new_column_map_for_role_need:
+                valid_keys_for_role_rename = [
+                    k
+                    for k in new_column_map_for_role_need.keys()
+                    if k in actual_staff_for_role_need_input.columns
+                ]
+                actual_staff_for_role_need_input = actual_staff_for_role_need_input[
+                    valid_keys_for_role_rename
+                ].rename(columns=new_column_map_for_role_need)
             else:
-                need_r_series = derive_min_staff(pivot_data_role_actual, min_method)
-        elif (
-            need_calc_method == _("人員配置基準に基づき設定する") and need_manual_values
-        ):
-            const_val = need_manual_values.get(role_item_final_loop, 0)
-            need_r_series = pd.Series(const_val, index=time_index_labels)
-        else:
-            need_r_series = (
-                derive_min_staff(pivot_data_role_actual, min_method)
-                if not pivot_data_role_actual.empty
-                else pd.Series(0, index=time_index_labels)
-            )
+                actual_staff_for_role_need_input = pd.DataFrame(index=time_index_labels)
+
+        dow_need_pattern_role_df = calculate_pattern_based_need(
+            actual_staff_for_role_need_input,
+            ref_start_date_for_need,
+            ref_end_date_for_need,
+            final_statistic_method,
+            need_remove_outliers,
+            need_iqr_multiplier,
+            slot_minutes_for_empty=slot_minutes,
+            holidays=final_holidays_to_use,
+            adjustment_factor=need_adjustment_factor,
+        )
+
+        need_df_role_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_role_final.columns, dtype=float).fillna(0)
+        for date_str_col_map in pivot_data_role_final.columns:
+            current_date_obj_map = dt.datetime.strptime(date_str_col_map, "%Y-%m-%d").date()
+            if current_date_obj_map in holidays_set:
+                need_df_role_final[date_str_col_map] = 0
+            else:
+                day_of_week_map = current_date_obj_map.weekday()
+                if day_of_week_map in dow_need_pattern_role_df.columns:
+                    need_df_role_final[date_str_col_map] = dow_need_pattern_role_df[day_of_week_map]
+                else:
+                    need_df_role_final[date_str_col_map] = 0
+
+        need_r_series = need_df_role_final.mean(axis=1).round()
 
         if upper_calc_method == _("下限値(Need) + 固定値"):
             fixed_val = (upper_calc_param or {}).get("fixed_value", 0)
@@ -917,11 +939,51 @@ def build_heatmap(
                     f"雇用形態 '{emp_item_final_loop}' 日付ソート失敗: {e_sort_e}"
                 )
 
-        need_e_series = (
-            derive_min_staff(pivot_data_emp_actual, min_method)
-            if not pivot_data_emp_actual.empty
-            else pd.Series(0, index=time_index_labels)
+        actual_staff_for_emp_need_input = pivot_data_emp_actual.copy()
+        if not actual_staff_for_emp_need_input.empty:
+            new_column_map_for_emp_need = {}
+            for col_str_emp in actual_staff_for_emp_need_input.columns:
+                dt_obj_emp = _parse_as_date(str(col_str_emp))
+                if dt_obj_emp:
+                    new_column_map_for_emp_need[col_str_emp] = dt_obj_emp
+
+            if new_column_map_for_emp_need:
+                valid_keys_for_emp_rename = [
+                    k
+                    for k in new_column_map_for_emp_need.keys()
+                    if k in actual_staff_for_emp_need_input.columns
+                ]
+                actual_staff_for_emp_need_input = actual_staff_for_emp_need_input[
+                    valid_keys_for_emp_rename
+                ].rename(columns=new_column_map_for_emp_need)
+            else:
+                actual_staff_for_emp_need_input = pd.DataFrame(index=time_index_labels)
+
+        dow_need_pattern_emp_df = calculate_pattern_based_need(
+            actual_staff_for_emp_need_input,
+            ref_start_date_for_need,
+            ref_end_date_for_need,
+            final_statistic_method,
+            need_remove_outliers,
+            need_iqr_multiplier,
+            slot_minutes_for_empty=slot_minutes,
+            holidays=final_holidays_to_use,
+            adjustment_factor=need_adjustment_factor,
         )
+
+        need_df_emp_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_emp_final.columns, dtype=float).fillna(0)
+        for date_str_col_map in pivot_data_emp_final.columns:
+            current_date_obj_map = dt.datetime.strptime(date_str_col_map, "%Y-%m-%d").date()
+            if current_date_obj_map in holidays_set:
+                need_df_emp_final[date_str_col_map] = 0
+            else:
+                day_of_week_map = current_date_obj_map.weekday()
+                if day_of_week_map in dow_need_pattern_emp_df.columns:
+                    need_df_emp_final[date_str_col_map] = dow_need_pattern_emp_df[day_of_week_map]
+                else:
+                    need_df_emp_final[date_str_col_map] = 0
+
+        need_e_series = need_df_emp_final.mean(axis=1).round()
         upper_e_series = (
             derive_max_staff(pivot_data_emp_actual, max_method)
             if not pivot_data_emp_actual.empty
