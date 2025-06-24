@@ -74,6 +74,11 @@ def safe_read_csv(filepath: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def _valid_df(df: pd.DataFrame) -> bool:
+    """Return True if ``df`` is a non-empty :class:`~pandas.DataFrame`."""
+    return isinstance(df, pd.DataFrame) and not df.empty
+
+
 def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
     """ヒートマップデータから不足率を計算"""
     if df.empty or "need" not in df.columns:
@@ -1534,62 +1539,15 @@ def update_shortage_heatmap_detail(scope):
 )
 def update_shortage_ratio_heatmap(scope, detail_values):
     """不足率ヒートマップを更新"""
-    # データキーを決定
-    if scope == 'overall':
-        heat_key = 'heat_ALL'
-    else:
-        detail = detail_values[0] if detail_values else None
-        if not detail or detail == 'ALL':
-            heat_key = 'heat_ALL'
-        elif scope == 'role':
-            heat_key = f'heat_{safe_filename(detail)}'
-        else:
-            heat_key = f'heat_emp_{safe_filename(detail)}'
+    lack_count_df = DATA_STORE.get('shortage_time', pd.DataFrame())
+    excess_count_df = DATA_STORE.get('excess_time', pd.DataFrame())
+    ratio_df = DATA_STORE.get('shortage_ratio', pd.DataFrame())
 
-    df_heat = DATA_STORE.get(heat_key)
-    if df_heat is None:
-        for key in DATA_STORE.keys():
-            if (
-                key.startswith('heat_')
-                and not key.startswith('heat_emp_')
-                and key != 'heat_ALL'
-                and detail in key
-            ):
-                df_heat = DATA_STORE[key]
-                break
-            if key.startswith('heat_emp_') and detail in key:
-                df_heat = DATA_STORE[key]
-                break
-    if df_heat is None or df_heat.empty:
-        return html.Div("データが見つかりません")  # type: ignore
-
-    # 不足率を計算
-    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
-    if not date_cols:
-        return html.Div("日付データが見つかりません")  # type: ignore
-
-    time_labels = gen_labels(30)
-    staff_df = df_heat[date_cols].fillna(0).reindex(time_labels, fill_value=0)
-    need_series = df_heat.get('need', pd.Series()).fillna(0)
-    need_df = pd.DataFrame(
-        np.repeat(need_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=time_labels,
-        columns=date_cols,
-    )
-    upper_series = df_heat.get('upper', pd.Series()).fillna(0)
-    upper_df = pd.DataFrame(
-        np.repeat(upper_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=time_labels,
-        columns=date_cols,
-    )
-
-    lack_count_df = (need_df - staff_df).clip(lower=0)
-    excess_count_df = (staff_df - upper_df).clip(lower=0)
-    ratio_df = calc_ratio_from_heatmap(df_heat)
-    ratio_df = ratio_df.reindex(time_labels, fill_value=0)
+    if lack_count_df.empty:
+        return html.Div("不足分析データが見つかりません")  # type: ignore
 
     lack_count_df_renamed = lack_count_df.copy()
-    lack_count_df_renamed.columns = [date_with_weekday(c) for c in lack_count_df.columns]
+    lack_count_df_renamed.columns = [date_with_weekday(c) for c in lack_count_df_renamed.columns]
     fig_lack = px.imshow(
         lack_count_df_renamed,
         aspect='auto',
@@ -1599,34 +1557,38 @@ def update_shortage_ratio_heatmap(scope, detail_values):
     )
     fig_lack.update_xaxes(tickvals=list(range(len(lack_count_df.columns))))
 
-    excess_count_df_renamed = excess_count_df.copy()
-    excess_count_df_renamed.columns = [date_with_weekday(c) for c in excess_count_df.columns]
-    fig_excess = px.imshow(
-        excess_count_df_renamed,
-        aspect='auto',
-        color_continuous_scale='Blues',
-        title='過剰人数ヒートマップ',
-        labels={'x': '日付', 'y': '時間', 'color': '人数'},
-    )
-    fig_excess.update_xaxes(tickvals=list(range(len(excess_count_df.columns))))
+    fig_excess = go.Figure()
+    if not excess_count_df.empty:
+        excess_count_df_renamed = excess_count_df.copy()
+        excess_count_df_renamed.columns = [date_with_weekday(c) for c in excess_count_df_renamed.columns]
+        fig_excess = px.imshow(
+            excess_count_df_renamed,
+            aspect='auto',
+            color_continuous_scale='Blues',
+            title='過剰人数ヒートマップ',
+            labels={'x': '日付', 'y': '時間', 'color': '人数'},
+        )
+        fig_excess.update_xaxes(tickvals=list(range(len(excess_count_df.columns))))
 
-    ratio_df_renamed = ratio_df.copy()
-    ratio_df_renamed.columns = [date_with_weekday(c) for c in ratio_df.columns]
-    fig_ratio = px.imshow(
-        ratio_df_renamed,
-        aspect='auto',
-        color_continuous_scale='RdBu_r',
-        title='不足率ヒートマップ',
-        labels={'x': '日付', 'y': '時間', 'color': '不足率'},
-    )
-    fig_ratio.update_xaxes(tickvals=list(range(len(ratio_df.columns))))
+    fig_ratio = go.Figure()
+    if not ratio_df.empty:
+        ratio_df_renamed = ratio_df.copy()
+        ratio_df_renamed.columns = [date_with_weekday(c) for c in ratio_df_renamed.columns]
+        fig_ratio = px.imshow(
+            ratio_df_renamed,
+            aspect='auto',
+            color_continuous_scale='RdBu_r',
+            title='不足率ヒートマップ',
+            labels={'x': '日付', 'y': '時間', 'color': '不足率'},
+        )
+        fig_ratio.update_xaxes(tickvals=list(range(len(ratio_df.columns))))
 
     return html.Div([  # type: ignore
-        html.H4('不足人数ヒートマップ'),  # type: ignore
+        html.H4('不足人数ヒートマップ'),
         dcc.Graph(figure=fig_lack),
-        html.H4('過剰人数ヒートマップ', style={'marginTop': '30px'}),  # type: ignore
+        html.H4('過剰人数ヒートマップ', style={'marginTop': '30px'}),
         dcc.Graph(figure=fig_excess),
-        html.H4('不足率ヒートマップ', style={'marginTop': '30px'}),  # type: ignore
+        html.H4('不足率ヒートマップ', style={'marginTop': '30px'}),
         dcc.Graph(figure=fig_ratio),
     ])
 
@@ -1663,7 +1625,6 @@ def update_opt_detail(scope):
         ])
     return None
 
-
 @app.callback(
     Output('optimization-content', 'children'),
     Input('opt-scope', 'value'),
@@ -1671,132 +1632,65 @@ def update_opt_detail(scope):
 )
 def update_optimization_content(scope, detail_values):
     """最適化分析コンテンツを更新"""
-    # データキーを決定
-    if scope == 'overall':
-        heat_key = 'heat_ALL'
-    else:
-        detail = detail_values[0] if detail_values else None
-        if not detail or detail == 'ALL':
-            heat_key = 'heat_ALL'
-        elif scope == 'role':
-            heat_key = f'heat_{safe_filename(detail)}'
-        else:
-            heat_key = f'heat_emp_{safe_filename(detail)}'
+    df_surplus = DATA_STORE.get('surplus_vs_need_time', pd.DataFrame())
+    df_margin = DATA_STORE.get('margin_vs_upper_time', pd.DataFrame())
+    df_score = DATA_STORE.get('optimization_score_time', pd.DataFrame())
 
-    df_heat = DATA_STORE.get(heat_key)
-    if df_heat is None:
-        for key in DATA_STORE.keys():
-            if (
-                key.startswith('heat_')
-                and not key.startswith('heat_emp_')
-                and key != 'heat_ALL'
-                and detail in key
-            ):
-                df_heat = DATA_STORE[key]
-                break
-            if key.startswith('heat_emp_') and detail in key:
-                df_heat = DATA_STORE[key]
-                break
-    if df_heat is None or df_heat.empty:
-        return html.Div("データが見つかりません")  # type: ignore
+    if not (_valid_df(df_surplus) and _valid_df(df_margin) and _valid_df(df_score)):
+        return html.Div("最適化分析データが見つかりません。")
 
-    # 日付列を抽出
-    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
-    if not date_cols:
-        return html.Div("日付データが見つかりません")  # type: ignore
+    surplus_df_renamed = df_surplus.copy()
+    surplus_df_renamed.columns = [date_with_weekday(c) for c in surplus_df_renamed.columns]
 
-    time_labels = gen_labels(30)
-    # 必要なデータを計算
-    staff_df = df_heat[date_cols].fillna(0).reindex(time_labels, fill_value=0)
-    need_series = df_heat.get('need', pd.Series()).fillna(0)
-    upper_series = df_heat.get('upper', pd.Series()).fillna(0)
+    margin_df_renamed = df_margin.copy()
+    margin_df_renamed.columns = [date_with_weekday(c) for c in margin_df_renamed.columns]
 
-    # DataFrameに変換
-    need_df = pd.DataFrame(
-        np.repeat(need_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=time_labels,
-        columns=date_cols
-    )
-    upper_df = pd.DataFrame(
-        np.repeat(upper_series.values[:, np.newaxis], len(date_cols), axis=1),
-        index=time_labels,
-        columns=date_cols
-    )
+    score_df_renamed = df_score.copy()
+    score_df_renamed.columns = [date_with_weekday(c) for c in score_df_renamed.columns]
 
-    # 各指標を計算
-    surplus_df = (staff_df - need_df).clip(lower=0)
-    margin_df = (upper_df - staff_df).clip(lower=0)
-    surplus_df = surplus_df.reindex(time_labels, fill_value=0)
-    margin_df = margin_df.reindex(time_labels, fill_value=0)
-
-    # スコア計算（不足と過剰のペナルティ）
-    lack_ratio = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
-    excess_ratio = ((staff_df - upper_df) / upper_df.replace(0, np.nan)).clip(lower=0).fillna(0)
-    score_df = 1 - (0.6 * lack_ratio + 0.4 * excess_ratio)
-    score_df = score_df.clip(lower=0, upper=1)
-    score_df = score_df.reindex(time_labels, fill_value=0)
-
-    content = []
-
-    # 1. 必要人数に対する余剰
-    surplus_df_renamed = surplus_df.copy()
-    surplus_df_renamed.columns = [date_with_weekday(c) for c in surplus_df.columns]
-    content.append(html.Div([
-        html.H4("1. 必要人数に対する余剰 (Surplus vs Need)"),
-        html.P("各時間帯で必要人数（need）に対して何人多くスタッフがいたかを示します。"),
-        dcc.Graph(figure=px.imshow(
-            surplus_df_renamed,
-            aspect='auto',
-            color_continuous_scale='Blues',
-            title='必要人数に対する余剰人員ヒートマップ',
-            labels={'x': '日付', 'y': '時間', 'color': '余剰人数'}
-        ).update_xaxes(
-            tickvals=list(range(len(surplus_df.columns)))
-        ))
-    ]))
-
-    # 2. 上限に対する余白
-    margin_df_renamed = margin_df.copy()
-    margin_df_renamed.columns = [date_with_weekday(c) for c in margin_df.columns]
-    content.append(html.Div([
-        html.H4("2. 上限に対する余白 (Margin to Upper)", style={'marginTop': '30px'}),
-        html.P("各時間帯で配置人数の上限（upper）まであと何人の余裕があったかを示します。"),
-        dcc.Graph(figure=px.imshow(
-            margin_df_renamed,
-            aspect='auto',
-            color_continuous_scale='Greens',
-            title='上限人数までの余白ヒートマップ',
-            labels={'x': '日付', 'y': '時間', 'color': '余白人数'}
-        ).update_xaxes(
-            tickvals=list(range(len(margin_df.columns)))
-        )),
-        dcc.Markdown(
-            "注: この余白は、過去の実績から算出された上限人数と実際の配置人数の差を示します。"\
-            "需要が低い日や休業日（例: 日曜日）は、過去のデータに基づく上限値が高めに算出"\
-            "されることで、見かけ上の余白が大きくなる場合があります。これは、潜在的な過"\
-            "剰人員やコスト発生の可能性を示唆しています。",
-            style={'marginTop': '10px'}
-        )
-    ]))
-
-    # 3. 最適化スコア
-    score_df_renamed = score_df.copy()
-    score_df_renamed.columns = [date_with_weekday(c) for c in score_df.columns]
-    content.append(html.Div([
-        html.H4("3. 人員配置 最適化スコア", style={'marginTop': '30px'}),
-        html.P("人員配置の効率性を0から1のスコアで示します（1が最も良い）。"),
-        dcc.Graph(figure=px.imshow(
-            score_df_renamed,
-            aspect='auto',
-            color_continuous_scale='RdYlGn',
-            zmin=0,
-            zmax=1,
-            title='最適化スコア ヒートマップ',
-            labels={'x': '日付', 'y': '時間', 'color': 'スコア'}
-        ).update_xaxes(
-            tickvals=list(range(len(score_df.columns)))
-        ))
-    ]))
+    content = [
+        html.Div([
+            html.H4("1. 必要人数に対する余剰 (Surplus vs Need)"),
+            html.P("各時間帯で必要人数（need）に対して何人多くスタッフがいたかを示します。"),
+            dcc.Graph(
+                figure=px.imshow(
+                    surplus_df_renamed,
+                    aspect='auto',
+                    color_continuous_scale='Blues',
+                    title='必要人数に対する余剰人員ヒートマップ',
+                    labels={'x': '日付', 'y': '時間', 'color': '余剰人数'},
+                ).update_xaxes(tickvals=list(range(len(df_surplus.columns))))
+            ),
+        ]),
+        html.Div([
+            html.H4("2. 上限に対する余白 (Margin to Upper)", style={'marginTop': '30px'}),
+            html.P("各時間帯で配置人数の上限（upper）まであと何人の余裕があったかを示します。"),
+            dcc.Graph(
+                figure=px.imshow(
+                    margin_df_renamed,
+                    aspect='auto',
+                    color_continuous_scale='Greens',
+                    title='上限人数までの余白ヒートマップ',
+                    labels={'x': '日付', 'y': '時間', 'color': '余白人数'},
+                ).update_xaxes(tickvals=list(range(len(df_margin.columns))))
+            ),
+        ]),
+        html.Div([
+            html.H4("3. 人員配置 最適化スコア", style={'marginTop': '30px'}),
+            html.P("人員配置の効率性を0から1のスコアで示します（1が最も良い）。"),
+            dcc.Graph(
+                figure=px.imshow(
+                    score_df_renamed,
+                    aspect='auto',
+                    color_continuous_scale='RdYlGn',
+                    zmin=0,
+                    zmax=1,
+                    title='最適化スコア ヒートマップ',
+                    labels={'x': '日付', 'y': '時間', 'color': 'スコア'},
+                ).update_xaxes(tickvals=list(range(len(df_score.columns))))
+            ),
+        ]),
+    ]
 
     return html.Div(content)
 
