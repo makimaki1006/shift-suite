@@ -7,6 +7,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import List, Tuple
+from functools import lru_cache
 import unicodedata
 
 import dash
@@ -72,6 +73,44 @@ def safe_read_csv(filepath: Path) -> pd.DataFrame:
     except Exception as e:
         log.warning(f"Failed to read {filepath}: {e}")
         return pd.DataFrame()
+
+
+@lru_cache(maxsize=32)
+def cached_read_parquet(path: str) -> pd.DataFrame:
+    """Cached reader for Parquet files."""
+    return safe_read_parquet(Path(path))
+
+
+@lru_cache(maxsize=32)
+def cached_read_csv(path: str) -> pd.DataFrame:
+    """Cached reader for CSV files."""
+    return safe_read_csv(Path(path))
+
+
+def load_parquet_from_session(session_data: dict, scenario: str, name: str) -> pd.DataFrame:
+    """Load a Parquet file for a given scenario using caching."""
+    if not session_data or 'scenario_paths' not in session_data:
+        return pd.DataFrame()
+    scenario_path = session_data['scenario_paths'].get(scenario)
+    if not scenario_path:
+        return pd.DataFrame()
+    fp = Path(scenario_path) / f"{name}.parquet"
+    if fp.exists():
+        return cached_read_parquet(str(fp))
+    return pd.DataFrame()
+
+
+def load_csv_from_session(session_data: dict, scenario: str, name: str) -> pd.DataFrame:
+    """Load a CSV file for a given scenario using caching."""
+    if not session_data or 'scenario_paths' not in session_data:
+        return pd.DataFrame()
+    scenario_path = session_data['scenario_paths'].get(scenario)
+    if not scenario_path:
+        return pd.DataFrame()
+    fp = Path(scenario_path) / f"{name}.csv"
+    if fp.exists():
+        return cached_read_csv(str(fp))
+    return pd.DataFrame()
 
 
 def _valid_df(df: pd.DataFrame) -> bool:
@@ -1210,7 +1249,7 @@ def create_ppt_report_tab() -> html.Div:
 # --- メインレイアウト ---
 app.layout = html.Div([
     dcc.Store(id='kpi-data-store', storage_type='memory'),
-    dcc.Store(id='data-loaded', storage_type='memory'),
+    dcc.Store(id='session-data-store', storage_type='memory'),
 
     # ヘッダー
     html.Div([  # type: ignore
@@ -1265,7 +1304,7 @@ app.layout = html.Div([
 
 # --- コールバック関数 ---
 @app.callback(
-    Output('data-loaded', 'data'),
+    Output('session-data-store', 'data'),
     Output('scenario-dropdown', 'options'),
     Output('scenario-dropdown', 'value'),
     Output('scenario-selector-div', 'style'),
@@ -1310,7 +1349,8 @@ def process_upload(contents, filename):
             for s in scenarios
         ]
         first_scenario = scenarios[0]
-        return {'success': True}, scenario_options, first_scenario, {'display': 'block'}
+        scenario_paths = {s: str(TEMP_DIR / s) for s in scenarios}
+        return {'scenario_paths': scenario_paths}, scenario_options, first_scenario, {'display': 'block'}
 
     except Exception as e:
         log.error(f"Error processing ZIP: {e}", exc_info=True)
@@ -1321,17 +1361,19 @@ def process_upload(contents, filename):
     Output('kpi-data-store', 'data'),
     Output('main-content', 'children'),
     Input('scenario-dropdown', 'value'),
-    State('data-loaded', 'data')
+    State('session-data-store', 'data')
 )
-def update_content_for_scenario(selected_scenario, data_status):
+def update_content_for_scenario(selected_scenario, session_data):
     """シナリオ選択に応じてデータを読み込み、メインUIを更新"""
-    if not selected_scenario or not data_status or 'success' not in data_status:
+    if not selected_scenario or not session_data:
         raise PreventUpdate
 
-    if TEMP_DIR is None:
+    scenario_paths = session_data.get('scenario_paths', {})
+    scenario_dir = scenario_paths.get(selected_scenario)
+    if not scenario_dir:
         raise PreventUpdate
 
-    data_dir = TEMP_DIR / selected_scenario
+    data_dir = Path(scenario_dir)
     if not data_dir.exists():
         raise PreventUpdate
 
@@ -1534,14 +1576,19 @@ def update_shortage_heatmap_detail(scope):
 
 @app.callback(
     Output('shortage-ratio-heatmap', 'children'),
+    Input('session-data-store', 'data'),
+    Input('scenario-dropdown', 'value'),
     Input('shortage-heatmap-scope', 'value'),
     Input({'type': 'shortage-detail', 'index': ALL}, 'value')
 )
-def update_shortage_ratio_heatmap(scope, detail_values):
+def update_shortage_ratio_heatmap(session_data, selected_scenario, scope, detail_values):
     """不足率ヒートマップを更新"""
-    lack_count_df = DATA_STORE.get('shortage_time', pd.DataFrame())
-    excess_count_df = DATA_STORE.get('excess_time', pd.DataFrame())
-    ratio_df = DATA_STORE.get('shortage_ratio', pd.DataFrame())
+    if not session_data or not selected_scenario:
+        raise PreventUpdate
+
+    lack_count_df = load_parquet_from_session(session_data, selected_scenario, 'shortage_time')
+    excess_count_df = load_parquet_from_session(session_data, selected_scenario, 'excess_time')
+    ratio_df = load_parquet_from_session(session_data, selected_scenario, 'shortage_ratio')
 
     if lack_count_df.empty:
         return html.Div("不足分析データが見つかりません")  # type: ignore
