@@ -916,7 +916,7 @@ def _summary_by_period(df: pd.DataFrame, *, period: str) -> pd.DataFrame:
     data = df[date_cols].copy()
     data.columns = pd.to_datetime(data.columns)
     df_for_melt = data.reset_index()
-    # reset_index() で生成されたインデックス列の名前を動的に取得
+    # reset_index()によって生成された最初の列（=元のインデックス）の名前を動的に取得する
     index_col_name = df_for_melt.columns[0]
     long = df_for_melt.melt(
         id_vars=[index_col_name], var_name="date", value_name="count"
