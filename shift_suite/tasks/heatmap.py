@@ -561,11 +561,26 @@ def build_heatmap(
         if not pivot_data_all_actual_staff.empty
         else pd.Series(0, index=time_index_labels)
     )
-    avg_need_series = (
-        need_all_final_for_summary.mean(axis=1).round()
-        if not need_all_final_for_summary.empty
-        else pd.Series(0, index=time_index_labels)
-    )
+
+    total_lack_per_time = pd.Series(0, index=time_index_labels, dtype=float)
+    total_excess_per_time = pd.Series(0, index=time_index_labels, dtype=float)
+    working_day_count = 0
+
+    for date_col in need_all_final_for_summary.columns:
+        if date_col in pivot_data_all_final.columns:
+            daily_staff = pivot_data_all_final[date_col]
+            daily_need = need_all_final_for_summary[date_col]
+
+            date_obj = dt.datetime.strptime(date_col, "%Y-%m-%d").date()
+            if date_obj not in holidays_set:
+                working_day_count += 1
+                daily_lack = (daily_need - daily_staff).clip(lower=0)
+                daily_excess = (daily_staff - upper_s_representative).clip(lower=0)
+
+                total_lack_per_time += daily_lack
+                total_excess_per_time += daily_excess
+
+    avg_need_series = need_all_final_for_summary.mean(axis=1).round()
     avg_staff_series = (
         pivot_data_all_final.drop(columns=SUMMARY5, errors="ignore")
         .mean(axis=1)
@@ -573,8 +588,8 @@ def build_heatmap(
         if not pivot_data_all_final.empty
         else pd.Series(0, index=time_index_labels)
     )
-    avg_lack_series = (avg_need_series - avg_staff_series).clip(lower=0)
-    avg_excess_series = (avg_staff_series - upper_s_representative).clip(lower=0)
+    avg_lack_series = (total_lack_per_time / max(working_day_count, 1)).round()
+    avg_excess_series = (total_excess_per_time / max(working_day_count, 1)).round()
 
     pivot_to_excel_all = pivot_data_all_final.copy()
     for col_name_summary_loop, series_data_summary_loop in zip(

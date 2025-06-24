@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
+import json
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
 import numpy as np
@@ -99,30 +100,48 @@ def shortage_and_brief(
         .fillna(0)
     )
 
-    if "need" not in heat_all_df.columns:
-        log.error("[shortage] heat_ALL.xlsx に 'need' 列 (集計列) が見つかりません。")
-        return None
     need_series_per_time_overall_orig = (
-        heat_all_df["need"].reindex(index=time_labels).fillna(0).clip(lower=0)
+        heat_all_df.get("need", pd.Series(dtype=float))
+        .reindex(index=time_labels)
+        .fillna(0)
+        .clip(lower=0)
     )
 
     parsed_date_list_all = [_parse_as_date(c) for c in staff_actual_data_all_df.columns]
     holiday_mask_all = [
         d in estimated_holidays_set if d else False for d in parsed_date_list_all
     ]
-    need_df_all = pd.DataFrame(
-        np.repeat(
-            need_series_per_time_overall_orig.values[:, np.newaxis],
-            len(staff_actual_data_all_df.columns),
-            axis=1,
-        ),
-        index=need_series_per_time_overall_orig.index,
-        columns=staff_actual_data_all_df.columns,
-    )
-    if any(holiday_mask_all):
-        for col, is_h in zip(need_df_all.columns, holiday_mask_all, strict=True):
-            if is_h:
-                need_df_all[col] = 0
+
+    dow_need_pattern_df = pd.DataFrame()
+    meta_fp = out_dir_path / "heatmap.meta.json"
+    if meta_fp.exists():
+        try:
+            meta = json.loads(meta_fp.read_text(encoding="utf-8"))
+            records = meta.get("dow_need_pattern", [])
+            if records:
+                dow_need_pattern_df = pd.DataFrame(records).set_index("time")
+        except Exception as e:
+            log.debug(f"failed reading meta file for need pattern: {e}")
+
+    need_df_all = pd.DataFrame(index=time_labels, columns=staff_actual_data_all_df.columns, dtype=float)
+    for col, parsed_date in zip(staff_actual_data_all_df.columns, parsed_date_list_all, strict=True):
+        if parsed_date is None:
+            need_df_all[col] = need_series_per_time_overall_orig
+            continue
+        if parsed_date in estimated_holidays_set:
+            need_df_all[col] = 0
+            continue
+        dow = parsed_date.weekday()
+        dow_col = str(dow)
+        if not dow_need_pattern_df.empty and dow_col in dow_need_pattern_df.columns:
+            need_df_all[col] = (
+                dow_need_pattern_df[dow_col]
+                .reindex(index=time_labels)
+                .fillna(0)
+                .astype(float)
+            )
+        else:
+            need_df_all[col] = need_series_per_time_overall_orig
 
     lack_count_overall_df = (
         (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
