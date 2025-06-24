@@ -23,10 +23,12 @@ def list_events(out_dir: Path | str) -> pd.DataFrame:
             return
 
         # ``melt`` can mis-handle the index when ``df.index.name`` is None.
-        # These parquet files always use ``time`` as the index name, so be
-        # explicit to avoid accidentally turning the index into a data column.
+        # Reset the index and dynamically detect the resulting index column
+        # name so it works regardless of the original index name.
         df_reset = df.reset_index()
-        long = df_reset.melt(id_vars="time", var_name="date", value_name="count")
+        id_col_name = df_reset.columns[0]
+        long = df_reset.melt(id_vars=[id_col_name], var_name="date", value_name="count")
+        long.rename(columns={id_col_name: "time"}, inplace=True)
         long["date"] = pd.to_datetime(long["date"]).dt.date
         long = long[long["count"] > 0]
         if not long.empty:
