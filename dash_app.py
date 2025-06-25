@@ -25,10 +25,18 @@ from shift_suite.tasks.daily_cost import calculate_daily_cost
 
 # ロガー設定
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 )
 log = logging.getLogger(__name__)
+
+# メモリ上にログを保存するハンドラー
+LOG_BUFFER = io.StringIO()
+buffer_handler = logging.StreamHandler(LOG_BUFFER)
+buffer_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+buffer_handler.setFormatter(formatter)
+logging.getLogger().addHandler(buffer_handler)
 
 # Dashアプリケーション初期化
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
@@ -91,12 +99,16 @@ def clear_data_cache() -> None:
 def data_get(key: str, default=None):
     """Load a data asset lazily from the current scenario directory."""
     if key in DATA_CACHE:
+        log.debug(f"Cache hit for {key}")
         return DATA_CACHE[key]
+
+    log.debug(f"Cache miss for {key}; searching files")
 
     if CURRENT_SCENARIO_DIR is None:
         return default
 
     search_dirs = [CURRENT_SCENARIO_DIR, CURRENT_SCENARIO_DIR.parent]
+    log.debug(f"Searching {search_dirs} for key {key}")
 
     # Special file names
     special = {
@@ -109,20 +121,24 @@ def data_get(key: str, default=None):
     for name in filenames:
         for directory in search_dirs:
             fp = directory / name
+            log.debug(f"Checking {fp}")
             if fp.suffix == ".parquet" and fp.exists():
                 df = safe_read_parquet(fp)
                 if not df.empty:
                     DATA_CACHE[key] = df
+                    log.debug(f"Loaded {fp} into cache for {key}")
                 return DATA_CACHE.get(key, default)
             if fp.suffix == ".csv" and fp.exists():
                 df = safe_read_csv(fp)
                 if not df.empty:
                     DATA_CACHE[key] = df
+                    log.debug(f"Loaded {fp} into cache for {key}")
                 return DATA_CACHE.get(key, default)
             if fp.suffix == ".xlsx" and fp.exists():
                 df = safe_read_excel(fp)
                 if not df.empty:
                     DATA_CACHE[key] = df
+                    log.debug(f"Loaded {fp} into cache for {key}")
                 return DATA_CACHE.get(key, default)
 
     if key == "summary_report":
@@ -130,6 +146,7 @@ def data_get(key: str, default=None):
         if files:
             text = files[-1].read_text(encoding="utf-8")
             DATA_CACHE[key] = text
+            log.debug(f"Loaded summary report {files[-1]}")
             return text
     if key in {"roles", "employments"}:
         roles, employments = load_shortage_meta(CURRENT_SCENARIO_DIR)
@@ -143,6 +160,7 @@ def data_get(key: str, default=None):
         DATA_CACHE["shortage_log_path"] = str(Path(CURRENT_SCENARIO_DIR) / "over_shortage_log.csv")
         return DATA_CACHE.get(key, default)
 
+    log.debug(f"No data found for {key}")
     return default
 
 
@@ -191,6 +209,8 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
     """Load analysis data from the given directory and its base directory."""
     global DATA_CACHE
     DATA_CACHE = {}
+
+    log.info(f"Loading data from {data_dir}")
 
     base_dir = data_dir.parent
     search_dirs = [data_dir, base_dir]
@@ -1333,6 +1353,17 @@ app.layout = html.Div([
     # メインコンテンツ
     html.Div(id='main-content', style={'padding': '20px'}),  # type: ignore
 
+    # リアルタイムログビューア
+    html.Details([
+        html.Summary('リアルタイムログを表示/非表示'),
+        dcc.Textarea(
+            id='realtime-log',
+            readOnly=True,
+            style={'width': '100%', 'height': '200px', 'fontFamily': 'monospace'}
+        )
+    ], style={'padding': '0 20px'}),
+    dcc.Interval(id='log-update', interval=1000, n_intervals=0),
+
 ], style={'backgroundColor': '#f5f5f5', 'minHeight': '100vh'})
 
 # --- コールバック関数 ---
@@ -1351,12 +1382,15 @@ def process_upload(contents, filename):
 
     global DATA_CACHE, TEMP_DIR
 
+    log.info(f"Received upload: {filename}")
+
     # 一時ディレクトリ作成
     if TEMP_DIR:
         import shutil
         shutil.rmtree(TEMP_DIR, ignore_errors=True)
 
     TEMP_DIR = Path(tempfile.mkdtemp(prefix="shift_suite_dash_"))
+    log.debug(f"Created temp dir {TEMP_DIR}")
 
     # ZIPファイルを展開
     content_type, content_string = contents.split(',')
@@ -1365,10 +1399,13 @@ def process_upload(contents, filename):
     try:
         with zipfile.ZipFile(io.BytesIO(decoded)) as zf:
             zf.extractall(TEMP_DIR)
+        log.info(f"Extracted ZIP to {TEMP_DIR}")
 
         scenarios = [d.name for d in TEMP_DIR.iterdir() if d.is_dir() and d.name.startswith('out_')]
         if not scenarios:
             return {'error': '分析シナリオのフォルダが見つかりません'}, [], None, {'display': 'none'}
+
+        log.debug(f"Found scenarios: {scenarios}")
 
         # 日本語ラベル用のマッピング
         scenario_name_map = {
@@ -1412,6 +1449,8 @@ def update_content_for_scenario(selected_scenario, data_status):
     data_dir = Path(data_status['scenarios'].get(selected_scenario, ''))
     if not data_dir.exists():
         raise PreventUpdate
+
+    log.info(f"Switching to scenario {selected_scenario} at {data_dir}")
 
     # Scenario has changed; reset caches and store new directory
     global CURRENT_SCENARIO_DIR
@@ -2037,6 +2076,15 @@ def save_over_shortage_log(n_clicks, table_data, mode):
     df = pd.DataFrame(table_data)
     over_shortage_log.save_log(df, log_path, mode=mode)
     return 'ログを保存しました'
+
+
+@app.callback(
+    Output('realtime-log', 'value'),
+    Input('log-update', 'n_intervals')
+)
+def update_realtime_log(n_intervals):
+    """ログバッファの内容を定期的に更新"""
+    return LOG_BUFFER.getvalue()
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
