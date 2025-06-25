@@ -1270,6 +1270,7 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
         filtered_df = aggregated_df.copy()
         title_parts = []
 
+        # 選択された条件に合わせてデータを絞り込む
         if selected_role and selected_role != 'all':
             filtered_df = filtered_df[filtered_df['role'] == selected_role]
             title_parts.append(f"職種: {selected_role}")
@@ -1287,7 +1288,8 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
             fig_empty = generate_heatmap_figure(empty_heatmap, f"{title} (勤務データなし)")
             return dcc.Graph(figure=fig_empty)
 
-        dynamic_heatmap_df = filtered_df.pivot_table(
+        # 日付順に並び替えてからピボット
+        dynamic_heatmap_df = filtered_df.sort_values('date_lbl').pivot_table(
             index='time',
             columns='date_lbl',
             values='staff_count',
@@ -1348,13 +1350,29 @@ def update_shortage_heatmap_detail(scope):
 )
 def update_shortage_ratio_heatmap(scope, detail_values):
     """不足率ヒートマップを更新"""
-    lack_count_df = data_get('shortage_time', pd.DataFrame())
-    excess_count_df = data_get('excess_time', pd.DataFrame())
-    ratio_df = data_get('shortage_ratio', pd.DataFrame())
+    # 選択内容からキーを組み立ててデータを取得
+    key_suffix = ''
+    if scope == 'role' and detail_values and detail_values[0] != 'ALL':
+        key_suffix = f"role_{safe_filename(detail_values[0])}"
+    elif scope == 'employment' and detail_values and detail_values[0] != 'ALL':
+        key_suffix = f"emp_{safe_filename(detail_values[0])}"
 
-    if lack_count_df.empty:
-        return html.Div("不足分析データが見つかりません")  # type: ignore
+    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_all"
+    df_heat = data_get(heat_key, pd.DataFrame())
 
+    if df_heat.empty:
+        return html.Div("選択された条件のヒートマップデータが見つかりません。")  # type: ignore
+
+    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
+    staff_df = df_heat[date_cols]
+    need_df = pd.DataFrame(np.repeat(df_heat['need'].values[:, np.newaxis], len(date_cols), axis=1),
+                           index=df_heat.index, columns=date_cols)
+    upper_df = pd.DataFrame(np.repeat(df_heat['upper'].values[:, np.newaxis], len(date_cols), axis=1),
+                            index=df_heat.index, columns=date_cols)
+
+    lack_count_df = (need_df - staff_df).clip(lower=0).fillna(0)
+    excess_count_df = (staff_df - upper_df).clip(lower=0).fillna(0)
+    ratio_df = calc_ratio_from_heatmap(df_heat)
     lack_count_df_renamed = lack_count_df.copy()
     lack_count_df_renamed.columns = [date_with_weekday(c) for c in lack_count_df_renamed.columns]
     fig_lack = px.imshow(
@@ -1441,13 +1459,36 @@ def update_opt_detail(scope):
 )
 def update_optimization_content(scope, detail_values):
     """最適化分析コンテンツを更新"""
-    df_surplus = data_get('surplus_vs_need_time', pd.DataFrame())
-    df_margin = data_get('margin_vs_upper_time', pd.DataFrame())
-    df_score = data_get('optimization_score_time', pd.DataFrame())
+    # 選択内容からキーを組み立ててヒートマップを取得
+    key_suffix = ''
+    if scope == 'role' and detail_values and detail_values[0] != 'ALL':
+        key_suffix = f"role_{safe_filename(detail_values[0])}"
+    elif scope == 'employment' and detail_values and detail_values[0] != 'ALL':
+        key_suffix = f"emp_{safe_filename(detail_values[0])}"
+
+    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_all"
+    df_heat = data_get(heat_key, pd.DataFrame())
+
+    if df_heat.empty:
+        return html.Div("選択された条件の最適化分析データが見つかりません。")
+
+    date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
+    staff_df = df_heat[date_cols]
+    need_df = pd.DataFrame(np.repeat(df_heat['need'].values[:, np.newaxis], len(date_cols), axis=1),
+                           index=df_heat.index, columns=date_cols)
+    upper_df = pd.DataFrame(np.repeat(df_heat['upper'].values[:, np.newaxis], len(date_cols), axis=1),
+                            index=df_heat.index, columns=date_cols)
+
+    # 不足率・過剰率からスコアを計算
+    lack_ratio = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    excess_ratio = ((staff_df - upper_df) / upper_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+
+    df_surplus = (staff_df - need_df).clip(lower=0).fillna(0)
+    df_margin = (upper_df - staff_df).clip(lower=0).fillna(0)
+    df_score = 1 - (0.6 * lack_ratio + 0.4 * excess_ratio).clip(0, 1)
 
     if not (_valid_df(df_surplus) and _valid_df(df_margin) and _valid_df(df_score)):
-        return html.Div("最適化分析データが見つかりません。")
-
+        return html.Div("最適化分析データの計算に失敗しました。")
     surplus_df_renamed = df_surplus.copy()
     surplus_df_renamed.columns = [date_with_weekday(c) for c in surplus_df_renamed.columns]
 
