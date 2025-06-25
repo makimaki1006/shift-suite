@@ -24,9 +24,15 @@ from shift_suite.tasks import over_shortage_log
 from shift_suite.tasks.daily_cost import calculate_daily_cost
 
 # ロガー設定
+LOG_BUFFER = io.StringIO()
+buffer_handler = logging.StreamHandler(LOG_BUFFER)
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+buffer_handler.setFormatter(formatter)
+
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[logging.StreamHandler(), buffer_handler],
 )
 log = logging.getLogger(__name__)
 
@@ -91,12 +97,16 @@ def clear_data_cache() -> None:
 def data_get(key: str, default=None):
     """Load a data asset lazily from the current scenario directory."""
     if key in DATA_CACHE:
+        log.debug(f"Cache hit for {key}")
         return DATA_CACHE[key]
+
+    log.debug(f"Cache miss for {key}; searching files")
 
     if CURRENT_SCENARIO_DIR is None:
         return default
 
     search_dirs = [CURRENT_SCENARIO_DIR, CURRENT_SCENARIO_DIR.parent]
+    log.debug(f"Searching {search_dirs} for key {key}")
 
     # Special file names
     special = {
@@ -109,20 +119,24 @@ def data_get(key: str, default=None):
     for name in filenames:
         for directory in search_dirs:
             fp = directory / name
+            log.debug(f"Checking {fp}")
             if fp.suffix == ".parquet" and fp.exists():
                 df = safe_read_parquet(fp)
                 if not df.empty:
                     DATA_CACHE[key] = df
+                    log.debug(f"Loaded {fp} into cache for {key}")
                 return DATA_CACHE.get(key, default)
             if fp.suffix == ".csv" and fp.exists():
                 df = safe_read_csv(fp)
                 if not df.empty:
                     DATA_CACHE[key] = df
+                    log.debug(f"Loaded {fp} into cache for {key}")
                 return DATA_CACHE.get(key, default)
             if fp.suffix == ".xlsx" and fp.exists():
                 df = safe_read_excel(fp)
                 if not df.empty:
                     DATA_CACHE[key] = df
+                    log.debug(f"Loaded {fp} into cache for {key}")
                 return DATA_CACHE.get(key, default)
 
     if key == "summary_report":
@@ -130,6 +144,7 @@ def data_get(key: str, default=None):
         if files:
             text = files[-1].read_text(encoding="utf-8")
             DATA_CACHE[key] = text
+            log.debug(f"Loaded summary report {files[-1]}")
             return text
     if key in {"roles", "employments"}:
         roles, employments = load_shortage_meta(CURRENT_SCENARIO_DIR)
@@ -143,6 +158,7 @@ def data_get(key: str, default=None):
         DATA_CACHE["shortage_log_path"] = str(Path(CURRENT_SCENARIO_DIR) / "over_shortage_log.csv")
         return DATA_CACHE.get(key, default)
 
+    log.debug(f"No data found for {key}")
     return default
 
 
@@ -186,161 +202,6 @@ def load_shortage_meta(data_dir: Path) -> Tuple[List[str], List[str]]:
             log.debug(f"Failed to load shortage meta: {e}")
     return roles, employments
 
-
-def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
-    """Load analysis data from the given directory and its base directory."""
-    global DATA_CACHE
-    DATA_CACHE = {}
-
-    base_dir = data_dir.parent
-    search_dirs = [data_dir, base_dir]
-    log.info(f"データ読み込み開始: {search_dirs}")
-
-    # Parquet files
-    parquet_files = [
-        'heat_ALL.parquet',
-        'shortage_role_summary.parquet',
-        'shortage_employment_summary.parquet',
-        'shortage_time.parquet',
-        'shortage_ratio.parquet',
-        'shortage_freq.parquet',
-        'excess_time.parquet',
-        'excess_ratio.parquet',
-        'excess_freq.parquet',
-        'fatigue_score.parquet',
-        'fairness_before.parquet',
-        'fairness_after.parquet',
-        'staff_stats.parquet',
-        'stats_alerts.parquet',
-        'hire_plan.parquet',
-        'optimal_hire_plan.parquet',
-        'daily_cost.parquet',
-        'forecast.parquet',
-        'cost_benefit.parquet',
-        'work_patterns.parquet',
-    ]
-
-    for file in parquet_files:
-        for directory in search_dirs:
-            fp = directory / file
-            if fp.exists():
-                df = safe_read_parquet(fp)
-                if not df.empty:
-                    DATA_CACHE[file.replace('.parquet', '')] = df
-                break
-            elif file == 'daily_cost.parquet' and (directory / 'daily_cost.xlsx').exists():
-                df = safe_read_excel(directory / 'daily_cost.xlsx')
-                if not df.empty:
-                    DATA_CACHE['daily_cost'] = df
-                break
-
-    csv_files = [
-        'leave_analysis.csv',
-        'staff_balance_daily.csv',
-        'concentration_requested.csv',
-        'leave_ratio_breakdown.csv',
-        'demand_series.csv',
-    ]
-
-    for file in csv_files:
-        for directory in search_dirs:
-            fp = directory / file
-            if fp.exists():
-                df = safe_read_csv(fp)
-                if not df.empty:
-                    key = file.replace('.csv', '')
-                    DATA_CACHE[key] = df
-                break
-
-    # Fallback: extract from leave_analysis.csv if others are missing
-    if 'leave_analysis' in DATA_CACHE and 'staff_balance_daily' not in DATA_CACHE:
-        leave_df = DATA_CACHE['leave_analysis']
-        if 'leave_type' in leave_df.columns:
-            DATA_CACHE['daily_summary'] = leave_df
-
-    for p in data_dir.glob('heat_*.parquet'):
-        if p.name == 'heat_ALL.parquet' or p.name.startswith('heat_emp_'):
-            continue
-        df = safe_read_parquet(p)
-        if not df.empty:
-            DATA_CACHE[safe_filename(p.stem)] = df
-
-    for p in data_dir.glob('heat_emp_*.parquet'):
-        df = safe_read_parquet(p)
-        if not df.empty:
-            DATA_CACHE[safe_filename(p.stem)] = df
-
-    intermediate_fp = data_dir / 'intermediate_data.parquet'
-    if intermediate_fp.exists():
-        log.info('intermediate_data.parquet を long_df として読み込みます。')
-        df = safe_read_parquet(intermediate_fp)
-        if not df.empty:
-            DATA_CACHE['long_df'] = df
-    else:
-        DATA_CACHE['long_df'] = None
-        log.warning('動的ヒートマップの元となる intermediate_data.parquet が見つかりませんでした。')
-
-    pre_aggr_fp = data_dir / 'pre_aggregated_data.parquet'
-    if pre_aggr_fp.exists():
-        DATA_CACHE['pre_aggregated_data'] = safe_read_parquet(pre_aggr_fp)
-
-    for name in ['gap_summary', 'gap_heatmap']:
-        excel_fp = data_dir / f'{name}.xlsx'
-        parquet_fp = data_dir / f'{name}.parquet'
-        df = pd.DataFrame()
-        if excel_fp.exists():
-            try:
-                df = safe_read_excel(excel_fp)
-            except Exception as e:
-                log.warning(f'Failed to read {excel_fp}: {e}')
-        elif parquet_fp.exists():
-            df = safe_read_parquet(parquet_fp)
-        if not df.empty:
-            DATA_CACHE[name] = df
-
-    report_files = sorted(data_dir.glob('OverShortage_SummaryReport_*.md'))
-    if report_files:
-        latest = report_files[-1]
-        try:
-            DATA_CACHE['summary_report'] = latest.read_text(encoding='utf-8')
-        except Exception as e:
-            log.warning(f'Failed to read {latest}: {e}')
-
-    roles, employments = load_shortage_meta(data_dir)
-    DATA_CACHE['roles'] = roles
-    DATA_CACHE['employments'] = employments
-
-    events_df = over_shortage_log.list_events(data_dir)
-    if not events_df.empty:
-        log_fp = data_dir / 'over_shortage_log.csv'
-        existing = over_shortage_log.load_log(log_fp)
-        merged = events_df.merge(
-            existing,
-            on=['date', 'time', 'type'],
-            how='left',
-            suffixes=('', '_log'),
-        )
-        for col in ['reason', 'staff', 'memo']:
-            if col not in merged.columns:
-                merged[col] = ''
-        DATA_CACHE['shortage_events'] = merged
-        DATA_CACHE['shortage_log_path'] = str(log_fp)
-
-    kpi_data = {}
-    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame())
-    if not df_shortage_role.empty and 'lack_h' in df_shortage_role.columns:
-        total_lack_h = df_shortage_role['lack_h'].sum()
-        most_lacking_role = df_shortage_role.loc[df_shortage_role['lack_h'].idxmax()]
-        kpi_data['total_lack_h'] = total_lack_h
-        kpi_data['most_lacking_role_name'] = most_lacking_role['role']
-        kpi_data['most_lacking_role_hours'] = most_lacking_role['lack_h']
-
-    log.info(f"Loaded files: {list(DATA_CACHE.keys())}")
-    log.info(f"Available in {data_dir}: {[f.name for f in data_dir.iterdir() if f.is_file()]}")
-    log.info(
-        f"Loaded {len(DATA_CACHE)} data files and calculated {len(kpi_data)} KPIs."
-    )
-    return kpi_data, {'success': True, 'files': len(DATA_CACHE)}
 
 
 def load_and_sum_heatmaps(data_dir: Path, keys: List[str]) -> pd.DataFrame:
@@ -1333,6 +1194,17 @@ app.layout = html.Div([
     # メインコンテンツ
     html.Div(id='main-content', style={'padding': '20px'}),  # type: ignore
 
+    # リアルタイムログビューア
+    html.Details([
+        html.Summary('リアルタイムログを表示/非表示'),
+        dcc.Textarea(
+            id='realtime-log',
+            readOnly=True,
+            style={'width': '100%', 'height': '200px', 'fontFamily': 'monospace'}
+        )
+    ], style={'padding': '0 20px'}),
+    dcc.Interval(id='log-update', interval=1000, n_intervals=0),
+
 ], style={'backgroundColor': '#f5f5f5', 'minHeight': '100vh'})
 
 # --- コールバック関数 ---
@@ -1351,12 +1223,15 @@ def process_upload(contents, filename):
 
     global DATA_CACHE, TEMP_DIR
 
+    log.info(f"Received upload: {filename}")
+
     # 一時ディレクトリ作成
     if TEMP_DIR:
         import shutil
         shutil.rmtree(TEMP_DIR, ignore_errors=True)
 
     TEMP_DIR = Path(tempfile.mkdtemp(prefix="shift_suite_dash_"))
+    log.debug(f"Created temp dir {TEMP_DIR}")
 
     # ZIPファイルを展開
     content_type, content_string = contents.split(',')
@@ -1365,10 +1240,13 @@ def process_upload(contents, filename):
     try:
         with zipfile.ZipFile(io.BytesIO(decoded)) as zf:
             zf.extractall(TEMP_DIR)
+        log.info(f"Extracted ZIP to {TEMP_DIR}")
 
         scenarios = [d.name for d in TEMP_DIR.iterdir() if d.is_dir() and d.name.startswith('out_')]
         if not scenarios:
             return {'error': '分析シナリオのフォルダが見つかりません'}, [], None, {'display': 'none'}
+
+        log.debug(f"Found scenarios: {scenarios}")
 
         # 日本語ラベル用のマッピング
         scenario_name_map = {
@@ -1412,6 +1290,8 @@ def update_content_for_scenario(selected_scenario, data_status):
     data_dir = Path(data_status['scenarios'].get(selected_scenario, ''))
     if not data_dir.exists():
         raise PreventUpdate
+
+    log.info(f"Switching to scenario {selected_scenario} at {data_dir}")
 
     # Scenario has changed; reset caches and store new directory
     global CURRENT_SCENARIO_DIR
@@ -2037,6 +1917,15 @@ def save_over_shortage_log(n_clicks, table_data, mode):
     df = pd.DataFrame(table_data)
     over_shortage_log.save_log(df, log_path, mode=mode)
     return 'ログを保存しました'
+
+
+@app.callback(
+    Output('realtime-log', 'value'),
+    Input('log-update', 'n_intervals')
+)
+def update_realtime_log(n_intervals):
+    """ログバッファの内容を定期的に更新"""
+    return LOG_BUFFER.getvalue()
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
