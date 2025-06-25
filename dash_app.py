@@ -24,15 +24,17 @@ from shift_suite.tasks import over_shortage_log
 from shift_suite.tasks.daily_cost import calculate_daily_cost
 
 # ロガー設定
-LOG_BUFFER = io.StringIO()
-buffer_handler = logging.StreamHandler(LOG_BUFFER)
-formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
-buffer_handler.setFormatter(formatter)
+LOG_LEVEL = logging.DEBUG
+log_stream = io.StringIO()
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=LOG_LEVEL,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[logging.StreamHandler(), buffer_handler],
+    handlers=[
+        logging.StreamHandler(),
+        logging.StreamHandler(stream=log_stream)
+    ],
+    force=True
 )
 log = logging.getLogger(__name__)
 
@@ -46,7 +48,8 @@ app.title = "Shift-Suite 高速分析ビューア"
 DATA_CACHE: dict[str, object] = {}
 # Path to the currently selected scenario directory.
 CURRENT_SCENARIO_DIR: Path | None = None
-TEMP_DIR = None
+# Temporary directory object for uploaded scenarios
+TEMP_DIR_OBJ: tempfile.TemporaryDirectory | None = None
 
 # --- ユーティリティ関数 ---
 def safe_filename(name: str) -> str:
@@ -96,13 +99,15 @@ def clear_data_cache() -> None:
 
 def data_get(key: str, default=None):
     """Load a data asset lazily from the current scenario directory."""
+    log.debug(f"data_get('{key}'): キャッシュを検索中...")
     if key in DATA_CACHE:
-        log.debug(f"Cache hit for {key}")
+        log.debug(f"data_get('{key}'): キャッシュで発見。")
         return DATA_CACHE[key]
 
-    log.debug(f"Cache miss for {key}; searching files")
+    log.debug(f"data_get('{key}'): キャッシュミス。ファイル検索を開始...")
 
     if CURRENT_SCENARIO_DIR is None:
+        log.warning("CURRENT_SCENARIO_DIRが未設定のため、データ取得をスキップします。")
         return default
 
     search_dirs = [CURRENT_SCENARIO_DIR, CURRENT_SCENARIO_DIR.parent]
@@ -158,7 +163,8 @@ def data_get(key: str, default=None):
         DATA_CACHE["shortage_log_path"] = str(Path(CURRENT_SCENARIO_DIR) / "over_shortage_log.csv")
         return DATA_CACHE.get(key, default)
 
-    log.debug(f"No data found for {key}")
+    log.debug(f"データキー '{key}' に対応するファイルが見つかりませんでした。")
+    DATA_CACHE[key] = default
     return default
 
 
@@ -1197,13 +1203,9 @@ app.layout = html.Div([
     # リアルタイムログビューア
     html.Details([
         html.Summary('リアルタイムログを表示/非表示'),
-        dcc.Textarea(
-            id='realtime-log',
-            readOnly=True,
-            style={'width': '100%', 'height': '200px', 'fontFamily': 'monospace'}
-        )
+        dcc.Textarea(id='log-viewer', style={'width': '100%', 'height': 300}, readOnly=True)
     ], style={'padding': '0 20px'}),
-    dcc.Interval(id='log-update', interval=1000, n_intervals=0),
+    dcc.Interval(id='log-interval', interval=1000),
 
 ], style={'backgroundColor': '#f5f5f5', 'minHeight': '100vh'})
 
@@ -1221,17 +1223,17 @@ def process_upload(contents, filename):
     if contents is None:
         raise PreventUpdate
 
-    global DATA_CACHE, TEMP_DIR
+    global TEMP_DIR_OBJ
 
     log.info(f"Received upload: {filename}")
 
     # 一時ディレクトリ作成
-    if TEMP_DIR:
-        import shutil
-        shutil.rmtree(TEMP_DIR, ignore_errors=True)
+    if TEMP_DIR_OBJ:
+        TEMP_DIR_OBJ.cleanup()
 
-    TEMP_DIR = Path(tempfile.mkdtemp(prefix="shift_suite_dash_"))
-    log.debug(f"Created temp dir {TEMP_DIR}")
+    TEMP_DIR_OBJ = tempfile.TemporaryDirectory(prefix="shift_suite_dash_")
+    temp_dir_path = Path(TEMP_DIR_OBJ.name)
+    log.debug(f"Created temp dir {temp_dir_path}")
 
     # ZIPファイルを展開
     content_type, content_string = contents.split(',')
@@ -1239,10 +1241,10 @@ def process_upload(contents, filename):
 
     try:
         with zipfile.ZipFile(io.BytesIO(decoded)) as zf:
-            zf.extractall(TEMP_DIR)
-        log.info(f"Extracted ZIP to {TEMP_DIR}")
+            zf.extractall(temp_dir_path)
+        log.info(f"Extracted ZIP to {temp_dir_path}")
 
-        scenarios = [d.name for d in TEMP_DIR.iterdir() if d.is_dir() and d.name.startswith('out_')]
+        scenarios = [d.name for d in temp_dir_path.iterdir() if d.is_dir() and d.name.startswith('out_')]
         if not scenarios:
             return {'error': '分析シナリオのフォルダが見つかりません'}, [], None, {'display': 'none'}
 
@@ -1260,7 +1262,7 @@ def process_upload(contents, filename):
             for s in scenarios
         ]
         first_scenario = scenarios[0]
-        scenario_paths = {d.name: str(d) for d in TEMP_DIR.iterdir() if d.is_dir()}
+        scenario_paths = {d.name: str(d) for d in temp_dir_path.iterdir() if d.is_dir()}
         return {
             'success': True,
             'scenarios': scenario_paths,
@@ -1277,7 +1279,7 @@ def process_upload(contents, filename):
     Input('scenario-dropdown', 'value'),
     State('data-loaded', 'data')
 )
-def update_content_for_scenario(selected_scenario, data_status):
+def update_main_content(selected_scenario, data_status):
     """シナリオ選択に応じてデータを読み込み、メインUIを更新"""
     if (
         not selected_scenario
@@ -1919,13 +1921,11 @@ def save_over_shortage_log(n_clicks, table_data, mode):
     return 'ログを保存しました'
 
 
-@app.callback(
-    Output('realtime-log', 'value'),
-    Input('log-update', 'n_intervals')
-)
-def update_realtime_log(n_intervals):
+@app.callback(Output('log-viewer', 'value'), Input('log-interval', 'n_intervals'))
+def update_log_viewer(n):
     """ログバッファの内容を定期的に更新"""
-    return LOG_BUFFER.getvalue()
+    log_stream.seek(0)
+    return log_stream.read()
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
