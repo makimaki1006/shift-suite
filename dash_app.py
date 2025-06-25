@@ -667,11 +667,16 @@ def create_leave_analysis_tab() -> html.Div:
 
 def create_cost_analysis_tab() -> html.Div:
     """コスト分析タブを作成"""
-    # 既存のグラフを描画するエリア
-    initial_graphs = html.Div(id='initial-cost-graphs')
+    return html.Div([
+        html.Div(id='cost-insights', style={
+            'padding': '15px',
+            'backgroundColor': '#e9f2fa',
+            'borderRadius': '8px',
+            'marginBottom': '20px',
+            'border': '1px solid #cce5ff'
+        }),
+        html.H3("人件費分析", style={'marginBottom': '20px'}),
 
-    # 動的シミュレーション用UIと出力先
-    dynamic_sim_ui = html.Div([
         html.H4("動的コストシミュレーション", style={'marginTop': '30px'}),
         dcc.RadioItems(
             id='cost-by-radio',
@@ -685,20 +690,12 @@ def create_cost_analysis_tab() -> html.Div:
             style={'marginBottom': '10px'},
         ),
         html.Div(id='wage-input-container'),
-        html.Div(id='dynamic-cost-output'),
-    ])
 
-    return html.Div([
-        html.Div(id='cost-insights', style={  # type: ignore
-            'padding': '15px',
-            'backgroundColor': '#e9f2fa',
-            'borderRadius': '8px',
-            'marginBottom': '20px',
-            'border': '1px solid #cce5ff'
-        }),
-        html.H3("人件費分析", style={'marginBottom': '20px'}),  # type: ignore
-        initial_graphs,
-        dynamic_sim_ui,
+        dcc.Loading(
+            id="loading-cost-analysis",
+            type="circle",
+            children=html.Div(id='cost-analysis-content')
+        )
     ])
 
 
@@ -1632,65 +1629,94 @@ def update_wage_inputs(by_key):
 
 
 @app.callback(
-    Output('initial-cost-graphs', 'children'),
-    Output('dynamic-cost-output', 'children'),
+    Output('cost-analysis-content', 'children'),
     Input('cost-by-radio', 'value'),
     Input({'type': 'wage-input', 'index': ALL}, 'value'),
     State({'type': 'wage-input', 'index': ALL}, 'id'),
-    State('data-loaded', 'data'),
 )
-def update_cost_analysis_content(by_key, all_wages, all_wage_ids, data_status):
-    """コスト分析タブのグラフを動的に更新"""
-    if not data_status or 'success' not in data_status:
+def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
+    """単価変更に応じてコスト分析タブの全コンテンツを動的に更新する"""
+    long_df = data_get('long_df')
+    if long_df is None or long_df.empty or not all_wages:
         raise PreventUpdate
 
-    # --- 1. デフォルト単価によるグラフ ---
-    df_cost = data_get('daily_cost', pd.DataFrame())
-    initial_graphs: list[dcc.Graph] = []
-    if not df_cost.empty:
-        df_cost['date'] = pd.to_datetime(df_cost['date'])
-        df_cost = df_cost.sort_values('date')
+    wages = {
+        wage_id['index']: (wage_val or 0) for wage_id, wage_val in zip(all_wage_ids, all_wages)
+    }
 
-        fig_daily = px.bar(df_cost, x='date', y='cost', title='日別発生人件費（デフォルト単価）')
-        fig_daily.update_xaxes(tickformat='%m/%d(%a)')
-        initial_graphs.append(dcc.Graph(figure=fig_daily))
+    df_cost = calculate_daily_cost(long_df, wages, by=by_key)
+    if df_cost.empty:
+        return html.P("コスト計算結果がありません。")
 
-        df_cost['cumulative_cost'] = df_cost['cost'].cumsum()
-        fig_cum = px.area(df_cost, x='date', y='cumulative_cost', title='累計人件費の推移（デフォルト単価）')
-        fig_cum.update_xaxes(tickformat='%m/%d(%a)')
-        initial_graphs.append(dcc.Graph(figure=fig_cum))
+    df_cost['date'] = pd.to_datetime(df_cost['date'])
 
-    # --- 2. 単価変更シミュレーション ---
-    long_df = data_get('long_df')
-    dynamic_graphs: list[dcc.Graph] = []
-    if long_df is not None and not long_df.empty and all_wages:
-        wages = {w_id['index']: (w_val or 0) for w_id, w_val in zip(all_wage_ids, all_wages)}
-        sim_cost_df = calculate_daily_cost(long_df, wages, by=by_key)
-
-        if not sim_cost_df.empty:
-            sim_cost_df['date'] = pd.to_datetime(sim_cost_df['date'])
-            sim_cost_df = sim_cost_df.sort_values('date')
-
-            fig_dynamic_daily = px.bar(
-                sim_cost_df,
-                x='date',
-                y='cost',
-                title=f'【シミュレーション】日別発生人件費 ({by_key}別単価)',
+    if not {'day_of_week', 'total_staff', 'role_breakdown'}.issubset(df_cost.columns):
+        details = (
+            long_df[long_df.get('parsed_slots_count', 1) > 0]
+            .assign(date=lambda x: pd.to_datetime(x['ds']).dt.normalize())
+            .groupby('date')
+            .agg(
+                day_of_week=('ds', lambda x: ['月', '火', '水', '木', '金', '土', '日'][x.iloc[0].weekday()]),
+                total_staff=('staff', 'nunique'),
+                role_breakdown=('role', lambda s: ', '.join(f"{r}:{c}" for r, c in s.value_counts().items())),
             )
-            fig_dynamic_daily.update_xaxes(tickformat='%m/%d(%a)')
-            dynamic_graphs.append(dcc.Graph(figure=fig_dynamic_daily))
+            .reset_index()
+        )
+        df_cost = pd.merge(df_cost, details, on='date', how='left')
 
-            sim_cost_df['cumulative_cost'] = sim_cost_df['cost'].cumsum()
-            fig_dynamic_cum = px.area(
-                sim_cost_df,
-                x='date',
-                y='cumulative_cost',
-                title=f'【シミュレーション】累計人件費の推移 ({by_key}別単価)',
-            )
-            fig_dynamic_cum.update_xaxes(tickformat='%m/%d(%a)')
-            dynamic_graphs.append(dcc.Graph(figure=fig_dynamic_cum))
+    df_cost = df_cost.sort_values('date')
 
-    return html.Div(initial_graphs), html.Div(dynamic_graphs)
+    content = []
+
+    total_cost = df_cost['cost'].sum()
+    avg_daily_cost = df_cost['cost'].mean()
+    max_cost_day = df_cost.loc[df_cost['cost'].idxmax()]
+    summary_cards = html.Div([
+        create_metric_card("総コスト", f"¥{total_cost:,.0f}"),
+        create_metric_card("日平均コスト", f"¥{avg_daily_cost:,.0f}"),
+        create_metric_card("最高コスト日", f"{max_cost_day['date'].strftime('%m/%d')}<br>¥{max_cost_day['cost']:,.0f}"),
+    ], style={'display': 'flex', 'justifyContent': 'space-around', 'marginBottom': '20px'})
+    content.append(summary_cards)
+
+    df_cost['cumulative_cost'] = df_cost['cost'].cumsum()
+    fig_cumulative = px.area(df_cost, x='date', y='cumulative_cost', title='累計人件費の推移')
+    fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
+    content.append(dcc.Graph(figure=fig_cumulative))
+
+    fig_daily = px.bar(df_cost, x='date', y='cost', title='日別発生人件費（総額）')
+    fig_daily.update_xaxes(tickformat="%m/%d(%a)")
+    content.append(dcc.Graph(figure=fig_daily))
+
+    if 'role_breakdown' in df_cost.columns and by_key == 'role':
+        role_data = []
+        for _, row in df_cost.iterrows():
+            if pd.notna(row.get('role_breakdown')):
+                date_total_cost = row['cost']
+                role_counts = {r.split(':')[0]: int(r.split(':')[1]) for r in row['role_breakdown'].split(', ') if ':' in r}
+                total_count = sum(role_counts.values())
+
+                for role, count in role_counts.items():
+                    role_cost = (count / total_count) * date_total_cost if total_count > 0 else 0
+                    role_data.append({'date': row['date'], 'role': role, 'count': count, 'cost': role_cost})
+
+        if role_data:
+            role_df = pd.DataFrame(role_data)
+
+            fig_stacked = px.bar(role_df, x='date', y='cost', color='role', title='日別人件費（職種別内訳）')
+            fig_stacked.update_xaxes(tickformat="%m/%d(%a)")
+            content.append(dcc.Graph(figure=fig_stacked))
+
+            role_df['month'] = pd.to_datetime(role_df['date']).dt.to_period('M').astype(str)
+            monthly_role = role_df.groupby(['month', 'role'])['cost'].sum().reset_index()
+            fig_monthly = px.bar(monthly_role, x='month', y='cost', color='role', title='月次人件費（職種別内訳）')
+            content.append(dcc.Graph(figure=fig_monthly))
+
+            total_by_role = role_df.groupby('role')['cost'].sum().reset_index()
+            fig_pie = px.pie(total_by_role, values='cost', names='role', title='職種別コスト構成比（全期間）')
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+            content.append(dcc.Graph(figure=fig_pie))
+
+    return html.Div(content)
 
 
 @app.callback(
