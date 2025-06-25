@@ -5,6 +5,7 @@ import json
 import logging
 import tempfile
 import zipfile
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple
 import unicodedata
@@ -34,8 +35,11 @@ app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
 app.title = "Shift-Suite 高速分析ビューア"
 
-# グローバル変数
-DATA_STORE = {}
+# グローバル状態
+# ``DATA_CACHE`` lazily holds loaded DataFrames for the active scenario.
+DATA_CACHE: dict[str, object] = {}
+# Path to the currently selected scenario directory.
+CURRENT_SCENARIO_DIR: Path | None = None
 TEMP_DIR = None
 
 # --- ユーティリティ関数 ---
@@ -56,8 +60,9 @@ def date_with_weekday(date_str: str) -> str:
         return str(date_str)
 
 
+@lru_cache(maxsize=8)
 def safe_read_parquet(filepath: Path) -> pd.DataFrame:
-    """Parquetファイルを安全に読み込む"""
+    """Parquetファイルを安全に読み込み結果をキャッシュ"""
     try:
         return pd.read_parquet(filepath)  # type: ignore
     except Exception as e:
@@ -65,13 +70,80 @@ def safe_read_parquet(filepath: Path) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+@lru_cache(maxsize=8)
 def safe_read_csv(filepath: Path) -> pd.DataFrame:
-    """CSVファイルを安全に読み込む"""
+    """CSVファイルを安全に読み込み結果をキャッシュ"""
     try:
         return pd.read_csv(filepath)  # type: ignore
     except Exception as e:
         log.warning(f"Failed to read {filepath}: {e}")
         return pd.DataFrame()
+
+
+def clear_data_cache() -> None:
+    """Clear cached data when the scenario changes."""
+    global DATA_CACHE
+    DATA_CACHE.clear()
+    safe_read_parquet.cache_clear()
+    safe_read_csv.cache_clear()
+
+
+def data_get(key: str, default=None):
+    """Load a data asset lazily from the current scenario directory."""
+    if key in DATA_CACHE:
+        return DATA_CACHE[key]
+
+    if CURRENT_SCENARIO_DIR is None:
+        return default
+
+    search_dirs = [CURRENT_SCENARIO_DIR, CURRENT_SCENARIO_DIR.parent]
+
+    # Special file names
+    special = {
+        "long_df": ["intermediate_data.parquet"],
+        "daily_cost": ["daily_cost.parquet", "daily_cost.xlsx"],
+    }
+
+    filenames = special.get(key, [f"{key}.parquet", f"{key}.csv", f"{key}.xlsx"])
+
+    for name in filenames:
+        for directory in search_dirs:
+            fp = directory / name
+            if fp.suffix == ".parquet" and fp.exists():
+                df = safe_read_parquet(fp)
+                if not df.empty:
+                    DATA_CACHE[key] = df
+                return DATA_CACHE.get(key, default)
+            if fp.suffix == ".csv" and fp.exists():
+                df = safe_read_csv(fp)
+                if not df.empty:
+                    DATA_CACHE[key] = df
+                return DATA_CACHE.get(key, default)
+            if fp.suffix == ".xlsx" and fp.exists():
+                df = safe_read_excel(fp)
+                if not df.empty:
+                    DATA_CACHE[key] = df
+                return DATA_CACHE.get(key, default)
+
+    if key == "summary_report":
+        files = sorted(CURRENT_SCENARIO_DIR.glob("OverShortage_SummaryReport_*.md"))
+        if files:
+            text = files[-1].read_text(encoding="utf-8")
+            DATA_CACHE[key] = text
+            return text
+    if key in {"roles", "employments"}:
+        roles, employments = load_shortage_meta(CURRENT_SCENARIO_DIR)
+        DATA_CACHE["roles"] = roles
+        DATA_CACHE["employments"] = employments
+        return DATA_CACHE.get(key, default)
+
+    if key == "shortage_events":
+        df_events = over_shortage_log.list_events(CURRENT_SCENARIO_DIR)
+        DATA_CACHE[key] = df_events
+        DATA_CACHE["shortage_log_path"] = str(Path(CURRENT_SCENARIO_DIR) / "over_shortage_log.csv")
+        return DATA_CACHE.get(key, default)
+
+    return default
 
 
 def _valid_df(df: pd.DataFrame) -> bool:
@@ -117,8 +189,8 @@ def load_shortage_meta(data_dir: Path) -> Tuple[List[str], List[str]]:
 
 def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
     """Load analysis data from the given directory and its base directory."""
-    global DATA_STORE
-    DATA_STORE = {}
+    global DATA_CACHE
+    DATA_CACHE = {}
 
     base_dir = data_dir.parent
     search_dirs = [data_dir, base_dir]
@@ -154,12 +226,12 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
             if fp.exists():
                 df = safe_read_parquet(fp)
                 if not df.empty:
-                    DATA_STORE[file.replace('.parquet', '')] = df
+                    DATA_CACHE[file.replace('.parquet', '')] = df
                 break
             elif file == 'daily_cost.parquet' and (directory / 'daily_cost.xlsx').exists():
                 df = safe_read_excel(directory / 'daily_cost.xlsx')
                 if not df.empty:
-                    DATA_STORE['daily_cost'] = df
+                    DATA_CACHE['daily_cost'] = df
                 break
 
     csv_files = [
@@ -177,40 +249,40 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
                 df = safe_read_csv(fp)
                 if not df.empty:
                     key = file.replace('.csv', '')
-                    DATA_STORE[key] = df
+                    DATA_CACHE[key] = df
                 break
 
     # Fallback: extract from leave_analysis.csv if others are missing
-    if 'leave_analysis' in DATA_STORE and 'staff_balance_daily' not in DATA_STORE:
-        leave_df = DATA_STORE['leave_analysis']
+    if 'leave_analysis' in DATA_CACHE and 'staff_balance_daily' not in DATA_CACHE:
+        leave_df = DATA_CACHE['leave_analysis']
         if 'leave_type' in leave_df.columns:
-            DATA_STORE['daily_summary'] = leave_df
+            DATA_CACHE['daily_summary'] = leave_df
 
     for p in data_dir.glob('heat_*.parquet'):
         if p.name == 'heat_ALL.parquet' or p.name.startswith('heat_emp_'):
             continue
         df = safe_read_parquet(p)
         if not df.empty:
-            DATA_STORE[safe_filename(p.stem)] = df
+            DATA_CACHE[safe_filename(p.stem)] = df
 
     for p in data_dir.glob('heat_emp_*.parquet'):
         df = safe_read_parquet(p)
         if not df.empty:
-            DATA_STORE[safe_filename(p.stem)] = df
+            DATA_CACHE[safe_filename(p.stem)] = df
 
     intermediate_fp = data_dir / 'intermediate_data.parquet'
     if intermediate_fp.exists():
         log.info('intermediate_data.parquet を long_df として読み込みます。')
         df = safe_read_parquet(intermediate_fp)
         if not df.empty:
-            DATA_STORE['long_df'] = df
+            DATA_CACHE['long_df'] = df
     else:
-        DATA_STORE['long_df'] = None
+        DATA_CACHE['long_df'] = None
         log.warning('動的ヒートマップの元となる intermediate_data.parquet が見つかりませんでした。')
 
     pre_aggr_fp = data_dir / 'pre_aggregated_data.parquet'
     if pre_aggr_fp.exists():
-        DATA_STORE['pre_aggregated_data'] = safe_read_parquet(pre_aggr_fp)
+        DATA_CACHE['pre_aggregated_data'] = safe_read_parquet(pre_aggr_fp)
 
     for name in ['gap_summary', 'gap_heatmap']:
         excel_fp = data_dir / f'{name}.xlsx'
@@ -224,19 +296,19 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
         elif parquet_fp.exists():
             df = safe_read_parquet(parquet_fp)
         if not df.empty:
-            DATA_STORE[name] = df
+            DATA_CACHE[name] = df
 
     report_files = sorted(data_dir.glob('OverShortage_SummaryReport_*.md'))
     if report_files:
         latest = report_files[-1]
         try:
-            DATA_STORE['summary_report'] = latest.read_text(encoding='utf-8')
+            DATA_CACHE['summary_report'] = latest.read_text(encoding='utf-8')
         except Exception as e:
             log.warning(f'Failed to read {latest}: {e}')
 
     roles, employments = load_shortage_meta(data_dir)
-    DATA_STORE['roles'] = roles
-    DATA_STORE['employments'] = employments
+    DATA_CACHE['roles'] = roles
+    DATA_CACHE['employments'] = employments
 
     events_df = over_shortage_log.list_events(data_dir)
     if not events_df.empty:
@@ -251,11 +323,11 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
         for col in ['reason', 'staff', 'memo']:
             if col not in merged.columns:
                 merged[col] = ''
-        DATA_STORE['shortage_events'] = merged
-        DATA_STORE['shortage_log_path'] = str(log_fp)
+        DATA_CACHE['shortage_events'] = merged
+        DATA_CACHE['shortage_log_path'] = str(log_fp)
 
     kpi_data = {}
-    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
+    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame())
     if not df_shortage_role.empty and 'lack_h' in df_shortage_role.columns:
         total_lack_h = df_shortage_role['lack_h'].sum()
         most_lacking_role = df_shortage_role.loc[df_shortage_role['lack_h'].idxmax()]
@@ -263,25 +335,25 @@ def load_data_from_dir(data_dir: Path) -> Tuple[dict, dict]:
         kpi_data['most_lacking_role_name'] = most_lacking_role['role']
         kpi_data['most_lacking_role_hours'] = most_lacking_role['lack_h']
 
-    log.info(f"Loaded files: {list(DATA_STORE.keys())}")
+    log.info(f"Loaded files: {list(DATA_CACHE.keys())}")
     log.info(f"Available in {data_dir}: {[f.name for f in data_dir.iterdir() if f.is_file()]}")
     log.info(
-        f"Loaded {len(DATA_STORE)} data files and calculated {len(kpi_data)} KPIs."
+        f"Loaded {len(DATA_CACHE)} data files and calculated {len(kpi_data)} KPIs."
     )
-    return kpi_data, {'success': True, 'files': len(DATA_STORE)}
+    return kpi_data, {'success': True, 'files': len(DATA_CACHE)}
 
 
 def load_and_sum_heatmaps(data_dir: Path, keys: List[str]) -> pd.DataFrame:
     """Load multiple heatmap files and aggregate them."""
     dfs = []
     for key in keys:
-        df = DATA_STORE.get(key)
+        df = data_get(key)
         if df is None and data_dir:
             fp = Path(data_dir) / f"{key}.parquet"
             if fp.exists():
                 df = safe_read_parquet(fp)
                 if not df.empty:
-                    DATA_STORE[key] = df
+                    DATA_CACHE[key] = df
         if isinstance(df, pd.DataFrame) and not df.empty:
             dfs.append(df)
 
@@ -351,10 +423,10 @@ def create_metric_card(label: str, value: str, color: str = "#1f77b4") -> html.D
 
 def create_overview_tab() -> html.Div:
     """概要タブを作成"""
-    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
-    df_fairness = DATA_STORE.get('fairness_before', pd.DataFrame())
-    df_staff = DATA_STORE.get('staff_stats', pd.DataFrame())
-    df_alerts = DATA_STORE.get('stats_alerts', pd.DataFrame())
+    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame())
+    df_fairness = data_get('fairness_before', pd.DataFrame())
+    df_staff = data_get('staff_stats', pd.DataFrame())
+    df_alerts = data_get('stats_alerts', pd.DataFrame())
 
     # メトリクス計算
     lack_h = df_shortage_role['lack_h'].sum() if 'lack_h' in df_shortage_role.columns else 0
@@ -412,8 +484,8 @@ def create_overview_tab() -> html.Div:
 
 def create_heatmap_tab() -> html.Div:
     """ヒートマップタブのレイアウトを生成します。上下2つの比較エリアを持ちます。"""
-    roles = DATA_STORE.get('roles', [])
-    employments = DATA_STORE.get('employments', [])
+    roles = data_get('roles', [])
+    employments = data_get('employments', [])
 
     # 比較エリアを1つ生成するヘルパー関数
     def create_comparison_area(area_id: int):
@@ -460,8 +532,8 @@ def create_heatmap_tab() -> html.Div:
 
 def create_shortage_tab() -> html.Div:
     """不足分析タブを作成"""
-    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
-    df_shortage_emp = DATA_STORE.get('shortage_employment_summary', pd.DataFrame())
+    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame())
+    df_shortage_emp = data_get('shortage_employment_summary', pd.DataFrame())
 
     content = [html.Div(id='shortage-insights', style={  # type: ignore
         'padding': '15px',
@@ -476,12 +548,12 @@ def create_shortage_tab() -> html.Div:
                 "\n".join(
                     [
                         "### 計算に使用したパラメータ",
-                        f"- Need算出方法: {DATA_STORE.get('need_method', 'N/A')}",
-                        f"- Upper算出方法: {DATA_STORE.get('upper_method', 'N/A')}",
-                        f"- 直接雇用単価: ¥{DATA_STORE.get('wage_direct', 0):,.0f}/h",
-                        f"- 派遣単価: ¥{DATA_STORE.get('wage_temp', 0):,.0f}/h",
-                        f"- 採用コスト: ¥{DATA_STORE.get('hiring_cost', 0):,}/人",
-                        f"- 不足ペナルティ: ¥{DATA_STORE.get('penalty_cost', 0):,.0f}/h",
+                        f"- Need算出方法: {data_get('need_method', 'N/A')}",
+                        f"- Upper算出方法: {data_get('upper_method', 'N/A')}",
+                        f"- 直接雇用単価: ¥{data_get('wage_direct', 0):,.0f}/h",
+                        f"- 派遣単価: ¥{data_get('wage_temp', 0):,.0f}/h",
+                        f"- 採用コスト: ¥{data_get('hiring_cost', 0):,}/人",
+                        f"- 不足ペナルティ: ¥{data_get('penalty_cost', 0):,.0f}/h",
                     ]
                 )
             ),
@@ -580,7 +652,7 @@ def create_shortage_tab() -> html.Div:
     content.append(html.Div(id='factor-output'))  # type: ignore
 
     # Over/Short Log section
-    events_df = DATA_STORE.get('shortage_events', pd.DataFrame())
+    events_df = data_get('shortage_events', pd.DataFrame())
     if not events_df.empty:
         content.append(html.Hr())  # type: ignore
         content.append(html.H4('過不足手動ログ', style={'marginTop': '30px'}))  # type: ignore
@@ -643,10 +715,10 @@ def create_leave_analysis_tab() -> html.Div:
     }),
         html.H3("休暇分析", style={'marginBottom': '20px'})]  # type: ignore
 
-    df_staff_balance = DATA_STORE.get('staff_balance_daily', pd.DataFrame())
-    df_daily_summary = DATA_STORE.get('daily_summary', pd.DataFrame())
-    df_concentration = DATA_STORE.get('concentration_requested', pd.DataFrame())
-    df_ratio_breakdown = DATA_STORE.get('leave_ratio_breakdown', pd.DataFrame())
+    df_staff_balance = data_get('staff_balance_daily', pd.DataFrame())
+    df_daily_summary = data_get('daily_summary', pd.DataFrame())
+    df_concentration = data_get('concentration_requested', pd.DataFrame())
+    df_ratio_breakdown = data_get('leave_ratio_breakdown', pd.DataFrame())
 
     if not df_staff_balance.empty:
         fig_balance = px.line(
@@ -737,13 +809,13 @@ def create_cost_analysis_tab() -> html.Div:
     }),
         html.H3("人件費分析", style={'marginBottom': '20px'})]  # type: ignore
 
-    df_cost = DATA_STORE.get('daily_cost', pd.DataFrame())
+    df_cost = data_get('daily_cost', pd.DataFrame())
     if not df_cost.empty:
         df_cost['date'] = pd.to_datetime(df_cost['date'])
 
         # long_dfから詳細情報を取得して結合
         if not {'day_of_week', 'total_staff', 'role_breakdown', 'staff_list_summary'} <= set(df_cost.columns):
-            long_df = DATA_STORE.get('long_df', pd.DataFrame())
+            long_df = data_get('long_df', pd.DataFrame())
             if not long_df.empty and 'ds' in long_df.columns:
                 details = (
                     long_df[long_df.get('parsed_slots_count', 1) > 0]
@@ -926,9 +998,9 @@ def create_hire_plan_tab() -> html.Div:
     }),
         html.H3("採用計画", style={'marginBottom': '20px'})]  # type: ignore
 
-    df_hire = DATA_STORE.get('hire_plan', pd.DataFrame())
-    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame())
-    df_work_patterns = DATA_STORE.get('work_patterns', pd.DataFrame())
+    df_hire = data_get('hire_plan', pd.DataFrame())
+    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame())
+    df_work_patterns = data_get('work_patterns', pd.DataFrame())
     if not df_hire.empty:
         content.append(html.H4("必要FTE（職種別）"))  # type: ignore
 
@@ -975,7 +1047,7 @@ def create_hire_plan_tab() -> html.Div:
         content.append(html.Div(id='sim-cost-text'))  # type: ignore
 
     # 最適採用計画
-    df_optimal = DATA_STORE.get('optimal_hire_plan', pd.DataFrame())
+    df_optimal = data_get('optimal_hire_plan', pd.DataFrame())
     if not df_optimal.empty:
         content.append(html.H4("最適採用計画", style={'marginTop': '30px'}))  # type: ignore
         content.append(html.P("分析の結果、以下の具体的な採用計画を推奨します。"))
@@ -1016,7 +1088,7 @@ def create_fatigue_tab() -> html.Div:
         ),
         html.H3("疲労分析", style={'marginBottom': '20px'}),  # type: ignore
     ]
-    df_fatigue = DATA_STORE.get('fatigue_score', pd.DataFrame())
+    df_fatigue = data_get('fatigue_score', pd.DataFrame())
 
     if not df_fatigue.empty:
         df_fatigue_for_plot = df_fatigue.reset_index().rename(columns={'index': 'staff'})
@@ -1048,8 +1120,8 @@ def create_forecast_tab() -> html.Div:
         'border': '1px solid #cce5ff'
     }),
         html.H3("需要予測", style={'marginBottom': '20px'})]  # type: ignore
-    df_fc = DATA_STORE.get('forecast', pd.DataFrame())
-    df_actual = DATA_STORE.get('demand_series', pd.DataFrame())
+    df_fc = data_get('forecast', pd.DataFrame())
+    df_actual = data_get('demand_series', pd.DataFrame())
 
     if not df_fc.empty:
         fig = go.Figure()
@@ -1094,7 +1166,7 @@ def create_fairness_tab() -> html.Div:
         ),
         html.H3("公平性 (不公平感スコア)", style={'marginBottom': '20px'}),  # type: ignore
     ]
-    df_fair = DATA_STORE.get('fairness_after', pd.DataFrame())
+    df_fair = data_get('fairness_after', pd.DataFrame())
 
     if not df_fair.empty:
         metric_col = (
@@ -1152,8 +1224,8 @@ def create_gap_analysis_tab() -> html.Div:
         'border': '1px solid #cce5ff'
     }),
         html.H3("基準乖離分析", style={'marginBottom': '20px'})]  # type: ignore
-    df_summary = DATA_STORE.get('gap_summary', pd.DataFrame())
-    df_heat = DATA_STORE.get('gap_heatmap', pd.DataFrame())
+    df_summary = data_get('gap_summary', pd.DataFrame())
+    df_heat = data_get('gap_heatmap', pd.DataFrame())
 
     if not df_summary.empty:
         content.append(dash_table.DataTable(
@@ -1184,7 +1256,7 @@ def create_summary_report_tab() -> html.Div:
         'border': '1px solid #cce5ff'
     }),
         html.H3("サマリーレポート", style={'marginBottom': '20px'})]  # type: ignore
-    report_text = DATA_STORE.get('summary_report')
+    report_text = data_get('summary_report')
     if report_text:
         content.append(dcc.Markdown(report_text))
     else:
@@ -1277,7 +1349,7 @@ def process_upload(contents, filename):
     if contents is None:
         raise PreventUpdate
 
-    global DATA_STORE, TEMP_DIR
+    global DATA_CACHE, TEMP_DIR
 
     # 一時ディレクトリ作成
     if TEMP_DIR:
@@ -1310,7 +1382,11 @@ def process_upload(contents, filename):
             for s in scenarios
         ]
         first_scenario = scenarios[0]
-        return {'success': True}, scenario_options, first_scenario, {'display': 'block'}
+        scenario_paths = {d.name: str(d) for d in TEMP_DIR.iterdir() if d.is_dir()}
+        return {
+            'success': True,
+            'scenarios': scenario_paths,
+        }, scenario_options, first_scenario, {'display': 'block'}
 
     except Exception as e:
         log.error(f"Error processing ZIP: {e}", exc_info=True)
@@ -1325,26 +1401,28 @@ def process_upload(contents, filename):
 )
 def update_content_for_scenario(selected_scenario, data_status):
     """シナリオ選択に応じてデータを読み込み、メインUIを更新"""
-    if not selected_scenario or not data_status or 'success' not in data_status:
+    if (
+        not selected_scenario
+        or not data_status
+        or 'success' not in data_status
+        or 'scenarios' not in data_status
+    ):
         raise PreventUpdate
 
-    if TEMP_DIR is None:
-        raise PreventUpdate
-
-    data_dir = TEMP_DIR / selected_scenario
+    data_dir = Path(data_status['scenarios'].get(selected_scenario, ''))
     if not data_dir.exists():
         raise PreventUpdate
 
-    # 既存データをクリアし読み込み直す
-    global DATA_STORE
-    kpi_data, _ = load_data_from_dir(data_dir)
+    # Scenario has changed; reset caches and store new directory
+    global CURRENT_SCENARIO_DIR
+    CURRENT_SCENARIO_DIR = data_dir
+    clear_data_cache()
 
-    # 高速化用の事前集計データを読み込み
-    aggregated_fp = data_dir / 'pre_aggregated_data.parquet'
-    if aggregated_fp.exists():
-        DATA_STORE['pre_aggregated_data'] = pd.read_parquet(aggregated_fp)
-    else:
-        return kpi_data, html.Div(f"エラー: {aggregated_fp} が見つかりません。")  # type: ignore
+    pre_aggr = data_get('pre_aggregated_data')
+    if pre_aggr is None or (isinstance(pre_aggr, pd.DataFrame) and pre_aggr.empty):
+        return {}, html.Div(f"エラー: {(data_dir / 'pre_aggregated_data.parquet').name} が見つかりません。")  # type: ignore
+
+    kpi_data = {}
 
     tabs = dcc.Tabs(id='main-tabs', value='overview', children=[
         dcc.Tab(label='概要', value='overview'),
@@ -1372,10 +1450,14 @@ def update_content_for_scenario(selected_scenario, data_status):
 
 @app.callback(
     Output('tab-content', 'children'),
-    Input('main-tabs', 'value')
+    Input('main-tabs', 'value'),
+    State('scenario-dropdown', 'value'),
+    State('data-loaded', 'data'),
 )
-def update_tab_content(active_tab):
+def update_tab_content(active_tab, selected_scenario, data_status):
     """タブコンテンツを更新"""
+    if not selected_scenario or not data_status:
+        raise PreventUpdate
     if active_tab == 'overview':
         return create_overview_tab()
     elif active_tab == 'heatmap':
@@ -1413,7 +1495,7 @@ def update_tab_content(active_tab):
 )
 def update_employment_options(selected_roles):
     """職種選択に応じて雇用形態フィルターを更新"""
-    aggregated_df = DATA_STORE.get('pre_aggregated_data')
+    aggregated_df = data_get('pre_aggregated_data')
     if aggregated_df is None or aggregated_df.empty:
         default_options = [{'label': 'すべて', 'value': 'all'}]
         return [default_options, default_options], ['all', 'all']
@@ -1450,7 +1532,7 @@ def update_employment_options(selected_roles):
 def update_comparison_heatmaps(role1, emp1, role2, emp2):
     """事前集計データから動的にヒートマップを生成し、2エリアを更新"""
 
-    aggregated_df = DATA_STORE.get('pre_aggregated_data')
+    aggregated_df = data_get('pre_aggregated_data')
     if aggregated_df is None or aggregated_df.empty:
         error_message = html.Div("ヒートマップの元データが見つかりません。")  # type: ignore
         return error_message, error_message
@@ -1508,7 +1590,7 @@ def update_shortage_heatmap_detail(scope):
     if scope == 'overall':
         return None
     elif scope == 'role':
-        roles = DATA_STORE.get('roles', [])
+        roles = data_get('roles', [])
         return html.Div([  # type: ignore
             html.Label("職種選択"),  # type: ignore
             dcc.Dropdown(
@@ -1519,7 +1601,7 @@ def update_shortage_heatmap_detail(scope):
             )
         ], style={'marginBottom': '10px'})
     elif scope == 'employment':
-        employments = DATA_STORE.get('employments', [])
+        employments = data_get('employments', [])
         return html.Div([  # type: ignore
             html.Label("雇用形態選択"),  # type: ignore
             dcc.Dropdown(
@@ -1539,9 +1621,9 @@ def update_shortage_heatmap_detail(scope):
 )
 def update_shortage_ratio_heatmap(scope, detail_values):
     """不足率ヒートマップを更新"""
-    lack_count_df = DATA_STORE.get('shortage_time', pd.DataFrame())
-    excess_count_df = DATA_STORE.get('excess_time', pd.DataFrame())
-    ratio_df = DATA_STORE.get('shortage_ratio', pd.DataFrame())
+    lack_count_df = data_get('shortage_time', pd.DataFrame())
+    excess_count_df = data_get('excess_time', pd.DataFrame())
+    ratio_df = data_get('shortage_ratio', pd.DataFrame())
 
     if lack_count_df.empty:
         return html.Div("不足分析データが見つかりません")  # type: ignore
@@ -1602,7 +1684,7 @@ def update_opt_detail(scope):
     if scope == 'overall':
         return None
     elif scope == 'role':
-        roles = DATA_STORE.get('roles', [])
+        roles = data_get('roles', [])
         return html.Div([  # type: ignore
             html.Label("職種選択"),  # type: ignore
             dcc.Dropdown(
@@ -1613,7 +1695,7 @@ def update_opt_detail(scope):
             )
         ])
     elif scope == 'employment':
-        employments = DATA_STORE.get('employments', [])
+        employments = data_get('employments', [])
         return html.Div([  # type: ignore
             html.Label("雇用形態選択"),  # type: ignore
             dcc.Dropdown(
@@ -1632,9 +1714,9 @@ def update_opt_detail(scope):
 )
 def update_optimization_content(scope, detail_values):
     """最適化分析コンテンツを更新"""
-    df_surplus = DATA_STORE.get('surplus_vs_need_time', pd.DataFrame())
-    df_margin = DATA_STORE.get('margin_vs_upper_time', pd.DataFrame())
-    df_score = DATA_STORE.get('optimization_score_time', pd.DataFrame())
+    df_surplus = data_get('surplus_vs_need_time', pd.DataFrame())
+    df_margin = data_get('margin_vs_upper_time', pd.DataFrame())
+    df_score = data_get('optimization_score_time', pd.DataFrame())
 
     if not (_valid_df(df_surplus) and _valid_df(df_margin) and _valid_df(df_score)):
         return html.Div("最適化分析データが見つかりません。")
@@ -1800,7 +1882,7 @@ def update_cost_insights(kpi_data):
 )
 def update_wage_inputs(by_key):
     """単価入力欄を生成"""
-    long_df = DATA_STORE.get('long_df')
+    long_df = data_get('long_df')
     if long_df is None or long_df.empty or by_key not in long_df.columns:
         return html.P("単価設定のためのデータがありません。")
 
@@ -1827,7 +1909,7 @@ def update_wage_inputs(by_key):
 )
 def update_dynamic_cost_graph(by_key, all_wages, all_wage_ids):
     """単価変更に応じてコストグラフを更新"""
-    long_df = DATA_STORE.get('long_df')
+    long_df = data_get('long_df')
     if long_df is None or long_df.empty or not all_wages:
         raise PreventUpdate
 
@@ -1866,8 +1948,8 @@ def update_hire_simulation(selected_pattern, added_fte, kpi_data):
         RECRUIT_COST_PER_HIRE,
     )
 
-    df_work_patterns = DATA_STORE.get('work_patterns', pd.DataFrame())
-    df_shortage_role = DATA_STORE.get('shortage_role_summary', pd.DataFrame()).copy()
+    df_work_patterns = data_get('work_patterns', pd.DataFrame())
+    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame()).copy()
 
     pattern_info = df_work_patterns[df_work_patterns['code'] == selected_pattern]
     if pattern_info.empty:
@@ -1918,9 +2000,9 @@ def run_factor_analysis(n_clicks):
     if not n_clicks:
         raise PreventUpdate
 
-    heat_df = DATA_STORE.get('heat_ALL')
-    short_df = DATA_STORE.get('shortage_time')
-    leave_df = DATA_STORE.get('leave_analysis')
+    heat_df = data_get('heat_ALL')
+    short_df = data_get('shortage_time')
+    leave_df = data_get('leave_analysis')
 
     if heat_df is None or heat_df.empty or short_df is None or short_df.empty:
         return html.Div('必要なデータがありません')
@@ -1928,8 +2010,8 @@ def run_factor_analysis(n_clicks):
     analyzer = ShortageFactorAnalyzer()
     feat_df = analyzer.generate_features(pd.DataFrame(), heat_df, short_df, leave_df, set())
     model, fi_df = analyzer.train_and_get_feature_importance(feat_df)
-    DATA_STORE['factor_features'] = feat_df
-    DATA_STORE['factor_importance'] = fi_df
+    DATA_CACHE['factor_features'] = feat_df
+    DATA_CACHE['factor_importance'] = fi_df
 
     table = dash_table.DataTable(
         data=fi_df.head(5).to_dict('records'),
@@ -1948,7 +2030,7 @@ def save_over_shortage_log(n_clicks, table_data, mode):
     if not n_clicks:
         raise PreventUpdate
 
-    log_path = DATA_STORE.get('shortage_log_path')
+    log_path = data_get('shortage_log_path')
     if not log_path:
         return 'ログファイルパスが見つかりません'  # type: ignore
 
