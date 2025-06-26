@@ -22,6 +22,7 @@ from shift_suite.tasks.utils import safe_read_excel, gen_labels
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
 from shift_suite.tasks.daily_cost import calculate_daily_cost
+from shift_suite.tasks import leave_analyzer
 
 # ロガー設定
 LOG_LEVEL = logging.DEBUG
@@ -1803,6 +1804,8 @@ def update_individual_analysis_content(selected_staff):
     long_df = data_get('long_df', pd.DataFrame())
     fatigue_df = data_get('fatigue_score', pd.DataFrame())
     fairness_df = data_get('fairness_after', pd.DataFrame())
+    shortage_df = data_get('shortage_time', pd.DataFrame())
+    excess_df = data_get('excess_time', pd.DataFrame())
 
     if long_df.empty:
         return html.P("勤務データが見つかりません。")
@@ -1860,8 +1863,40 @@ def update_individual_analysis_content(selected_staff):
             coworker_counts.columns = ['職員', '共働回数']
             coworker_ranking_df = coworker_counts.head(5)
 
+    # --- 4. 人員不足/過剰への貢献度分析 ---
+    slot_hours = 0.5
+    shortage_contribution_h = 0
+    excess_contribution_h = 0
+    if not staff_df.empty:
+        staff_work_slots = staff_df[staff_df.get('parsed_slots_count', 0) > 0][['ds']].copy()
+        staff_work_slots['date_str'] = staff_work_slots['ds'].dt.strftime('%Y-%m-%d')
+        staff_work_slots['time'] = staff_work_slots['ds'].dt.strftime('%H:%M')
+
+        if not shortage_df.empty:
+            shortage_long = shortage_df.melt(var_name='date_str', value_name='shortage_count', ignore_index=False).reset_index().rename(columns={'index':'time'})
+            merged_shortage = pd.merge(staff_work_slots, shortage_long, on=['date_str', 'time'])
+            shortage_contribution_h = merged_shortage[merged_shortage['shortage_count'] > 0].shape[0] * slot_hours
+
+        if not excess_df.empty:
+            excess_long = excess_df.melt(var_name='date_str', value_name='excess_count', ignore_index=False).reset_index().rename(columns={'index':'time'})
+            merged_excess = pd.merge(staff_work_slots, excess_long, on=['date_str', 'time'])
+            excess_contribution_h = merged_excess[merged_excess['excess_count'] > 0].shape[0] * slot_hours
+
+    # --- 5. 個人の休暇取得傾向 ---
+    leave_by_dow_fig = go.Figure(layout={'title': {'text': '曜日別の休暇取得日数'}})
+    if not staff_df.empty:
+        staff_leave_df = staff_df[staff_df.get('holiday_type', 'none') != '通常勤務']
+        if not staff_leave_df.empty:
+            daily_leave = leave_analyzer.get_daily_leave_counts(staff_leave_df)
+            if not daily_leave.empty:
+                dow_summary = leave_analyzer.summarize_leave_by_day_count(daily_leave, period='dayofweek')
+                if not dow_summary.empty:
+                    leave_by_dow_fig = px.bar(dow_summary, x='period_unit', y='total_leave_days', color='leave_type', title=f'{selected_staff}さんの曜日別休暇取得日数')
+                    leave_by_dow_fig.update_xaxes(title_text='曜日').update_yaxes(title_text='日数')
+
     # --- レイアウトの組み立て ---
     layout = html.Div([
+        # 1行目: スコアカードと共働ランキング
         html.Div([
             html.Div([
                 html.H4("疲労度・不公平感スコア"),
@@ -1873,18 +1908,33 @@ def update_individual_analysis_content(selected_staff):
                     columns=[{'name': i, 'id': i} for i in score_details_df.columns],
                 ) if not score_details_df.empty else html.P("詳細データなし"),
             ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '2%'}),
+
             html.Div([
                 html.H4("共働ランキング Top 5"),
                 dash_table.DataTable(
                     data=coworker_ranking_df.to_dict('records'),
                     columns=[{'name': i, 'id': i} for i in coworker_ranking_df.columns],
                 ) if not coworker_ranking_df.empty else html.P("共働データなし"),
+
+                html.H4("人員不足/過剰への貢献度", style={'marginTop': '20px'}),
+                create_metric_card("不足時間帯での勤務 (h)", f"{shortage_contribution_h:.1f}", color="#c53d40"),
+                create_metric_card("過剰時間帯での勤務 (h)", f"{excess_contribution_h:.1f}", color="#1f77b4"),
+
             ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+
         ], style={'marginBottom': '20px'}),
+
+        # 2行目: グラフ
         html.Div([
-            html.H4("勤務区分の占有割合"),
-            dcc.Graph(figure=work_dist_fig),
-        ]),
+            html.Div([
+                html.H4("勤務区分の占有割合"),
+                dcc.Graph(figure=work_dist_fig)
+            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '2%'}),
+            html.Div([
+                html.H4("休暇取得傾向"),
+                dcc.Graph(figure=leave_by_dow_fig)
+            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+        ])
     ])
 
     return layout
