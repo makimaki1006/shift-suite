@@ -1833,9 +1833,15 @@ def update_individual_analysis_content(selected_staff):
     score_details_df = pd.DataFrame()
 
     if not fatigue_df.empty and 'fatigue_score' in fatigue_df.columns:
-        staff_fatigue = fatigue_df.loc[fatigue_df.index == selected_staff]
-        if not staff_fatigue.empty:
-            fatigue_score = f"{staff_fatigue['fatigue_score'].iloc[0]:.1f}"
+        # `fatigue_df`のインデックスが'staff'であることを確認
+        if fatigue_df.index.name != 'staff':
+            fatigue_df_indexed = fatigue_df.set_index('staff')
+        else:
+            fatigue_df_indexed = fatigue_df
+        if selected_staff in fatigue_df_indexed.index:
+            fatigue_score_val = fatigue_df_indexed.loc[selected_staff, 'fatigue_score']
+            fatigue_score = f"{fatigue_score_val:.1f}"
+
 
     if not fairness_df.empty and 'unfairness_score' in fairness_df.columns:
         staff_fairness = fairness_df[fairness_df['staff'] == selected_staff]
@@ -1848,8 +1854,8 @@ def update_individual_analysis_content(selected_staff):
                     f"{row.get('dev_night_ratio', 0):.2f}",
                     f"{row.get('dev_work_slots', 0):.2f}",
                     f"{row.get('dev_approval_rate', 0):.2f}",
-                    f"{row.get('dev_consecutive', 0):.2f}",
-                ],
+                    f"{row.get('dev_consecutive', 0):.2f}"
+                ]
             }
             score_details_df = pd.DataFrame(score_details_data)
 
@@ -1864,7 +1870,7 @@ def update_individual_analysis_content(selected_staff):
             coworker_ranking_df = coworker_counts.head(5)
 
     # --- 4. 人員不足/過剰への貢献度分析 ---
-    slot_hours = 0.5
+    slot_hours = 0.5 # 1スロット=30分と仮定
     shortage_contribution_h = 0
     excess_contribution_h = 0
     if not staff_df.empty:
@@ -1885,30 +1891,66 @@ def update_individual_analysis_content(selected_staff):
     # --- 5. 個人の休暇取得傾向 ---
     leave_by_dow_fig = go.Figure(layout={'title': {'text': '曜日別の休暇取得日数'}})
     if not staff_df.empty:
-        staff_leave_df = staff_df[staff_df.get('holiday_type', 'none') != '通常勤務']
+        staff_leave_df = staff_df[staff_df.get('holiday_type', '通常勤務') != '通常勤務']
         if not staff_leave_df.empty:
             daily_leave = leave_analyzer.get_daily_leave_counts(staff_leave_df)
             if not daily_leave.empty:
                 dow_summary = leave_analyzer.summarize_leave_by_day_count(daily_leave, period='dayofweek')
                 if not dow_summary.empty:
                     leave_by_dow_fig = px.bar(dow_summary, x='period_unit', y='total_leave_days', color='leave_type', title=f'{selected_staff}さんの曜日別休暇取得日数')
-                    leave_by_dow_fig.update_xaxes(title_text='曜日').update_yaxes(title_text='日数')
+                    leave_by_dow_fig.update_xaxes(title_text="曜日").update_yaxes(title_text="日数")
+
+    # --- 7. 個人の「業務マンネリ度」スコア ---
+    mannelido_score = "計算不可"
+    if not staff_df.empty and 'role' in staff_df.columns:
+        # 勤務時間がある実働レコードに絞る
+        work_records_for_role = staff_df[staff_df.get('parsed_slots_count', 0) > 0]
+        if not work_records_for_role.empty:
+            # 日毎の勤務でカウントするため、日付と役割で重複を除外
+            role_per_day = work_records_for_role[['ds', 'role']].copy()
+            role_per_day['date'] = role_per_day['ds'].dt.date
+            role_counts = role_per_day.drop_duplicates(subset=['date', 'role'])['role'].value_counts(normalize=True)
+            if not role_counts.empty:
+                max_share = role_counts.max()
+                mannelido_score = f"{max_share:.2f}"
+
+    # --- 8. 勤務シフトの「生活リズム破壊度」分析 ---
+    rhythm_score = "計算不可"
+    if not staff_df.empty:
+        # 勤務日ごとの開始時刻を取得
+        daily_starts = staff_df[staff_df.get('parsed_slots_count', 0) > 0].copy()
+        if not daily_starts.empty:
+            daily_starts['date'] = daily_starts['ds'].dt.date
+            start_times = daily_starts.groupby('date')['ds'].min()
+            if len(start_times) > 1:
+                # 時間（hour + minute/60）に変換して標準偏差を計算
+                start_hours = start_times.dt.hour + start_times.dt.minute / 60.0
+                start_time_std = start_hours.std()
+                rhythm_score = f"{start_time_std:.2f}"
+            else:
+                rhythm_score = "0.00" # 勤務が1日だけの場合はばらつきゼロ
 
     # --- レイアウトの組み立て ---
     layout = html.Div([
         # 1行目: スコアカードと共働ランキング
         html.Div([
+            # 左側: スコアカード
             html.Div([
                 html.H4("疲労度・不公平感スコア"),
                 create_metric_card("疲労スコア", fatigue_score, color="#ff7f0e"),
                 create_metric_card("不公平感スコア", unfairness_score, color="#d62728"),
+                html.H5("働き方のクセ分析", style={'marginTop': '20px'}),
+                create_metric_card("業務マンネリ度", mannelido_score, color="#9467bd"),
+                create_metric_card("生活リズム破壊度", rhythm_score, color="#8c564b"),
+
                 html.H5("不公平感スコアの内訳", style={'marginTop': '15px'}),
                 dash_table.DataTable(
                     data=score_details_df.to_dict('records'),
                     columns=[{'name': i, 'id': i} for i in score_details_df.columns],
-                ) if not score_details_df.empty else html.P("詳細データなし"),
+                ) if not score_details_df.empty else html.P("詳細データなし")
             ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '2%'}),
 
+            # 右側: 共働ランキングと貢献度
             html.Div([
                 html.H4("共働ランキング Top 5"),
                 dash_table.DataTable(
