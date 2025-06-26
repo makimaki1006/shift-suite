@@ -18,7 +18,12 @@ def create_blueprint(
 
     long_df["date"] = pd.to_datetime(long_df["ds"].dt.date)
     fairness_df = fairness_df.set_index("staff")
-    fatigue_df = fatigue_df.set_index("staff")
+
+    # `fatigue_df` may already use staff names as the index depending on how it
+    # was saved. Only set the index when a `staff` column exists to avoid a
+    # KeyError.
+    if "staff" in fatigue_df.columns:
+        fatigue_df = fatigue_df.set_index("staff")
 
     daily_avg_fairness = (
         long_df.groupby("date")["staff"]
