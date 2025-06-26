@@ -12,14 +12,13 @@ def _calculate_role_first_rules(long_df: pd.DataFrame) -> list:
         total_days = group_df['ds'].dt.date.nunique()
         unique_staff = group_df['staff'].nunique()
         if total_days > 0 and unique_staff > 0:
-            # 固定度スコア = 1 - (ユニーク職員数 / 勤務日数)
+            # 「固定度スコア」を計算
             stability_score = 1 - (unique_staff / total_days)
-            if stability_score > 0.7:  # スコアが0.7を超える強い法則のみ抽出
-                rules.append({
-                    "法則のカテゴリー": "役割軸",
-                    "発見された法則": f"「{role}」は、少数の固定メンバーで担当されている",
-                    "法則の強度": round(stability_score, 2)
-                })
+            rules.append({
+                "法則のカテゴリー": "役割軸",
+                "発見された法則": f"「{role}」は、少数の固定メンバーで担当されている",
+                "法則の強度": round(stability_score, 2)
+            })
     return rules
 
 
@@ -32,24 +31,24 @@ def _calculate_person_first_rules(long_df: pd.DataFrame) -> list:
     daily_work = long_df.drop_duplicates(subset=['ds', 'staff'])
 
     for staff, group_df in daily_work.groupby('staff'):
-        if len(group_df) < 5:
-            continue  # 勤務日が少ない職員は除外
+        if len(group_df) < 2:
+            stability_score = 1.0  # 勤務が1日だけならパターンは固定的とみなす
+        else:
+            weekday_std = group_df['ds'].dt.dayofweek.std()
+            stability_score = 1 / (1 + weekday_std) if not pd.isna(weekday_std) else 0
 
-        weekday_std = group_df['ds'].dt.dayofweek.std()
-        stability_score = 1 / (1 + weekday_std) if not pd.isna(weekday_std) else 0
-        if stability_score > 0.8:  # スコアが0.8を超える強い法則のみ抽出
-            rules.append({
-                "法則のカテゴリー": "個人軸",
-                "発見された法則": f"「{staff}」さんは、毎週ほぼ同じ曜日に勤務している",
-                "法則の強度": round(stability_score, 2)
-            })
+        rules.append({
+            "法則のカテゴリー": "個人軸",
+            "発見された法則": f"「{staff}」さんは、毎週ほぼ同じ曜日に勤務している",
+            "法則の強度": round(stability_score, 2)
+        })
     return rules
 
 
 def _calculate_sequential_rules(long_df: pd.DataFrame) -> list:
-    """順序の法則を抽出する (例: 夜勤の翌日)"""
+    """順序の法則を抽出する"""
     rules = []
-    if 'is_night' not in long_df.columns:
+    if 'is_night' not in long_df.columns or not long_df['is_night'].any():
         return rules
 
     night_shifts = long_df[long_df['is_night']].sort_values('ds')
@@ -65,19 +64,18 @@ def _calculate_sequential_rules(long_df: pd.DataFrame) -> list:
             (long_df['staff'] == row['staff']) &
             (long_df['ds'].dt.date == next_day)
         ]
-        # 翌日に勤務がない、または休み(parsed_slots_count=0)の場合
         if next_day_shifts.empty or next_day_shifts['parsed_slots_count'].sum() == 0:
             off_after_night += 1
 
     off_after_night_ratio = off_after_night / total_night_shifts if total_night_shifts > 0 else 0
 
-    if off_after_night_ratio > 0.8:  # 80%以上の確率で見られる強い法則のみ
-        rules.append({
-            "法則のカテゴリー": "順序の法則",
-            "発見された法則": "「夜勤」の翌日は「休み」が割り当てられる傾向が極めて強い",
-            "法則の強度": round(off_after_night_ratio, 2)
-        })
+    rules.append({
+        "法則のカテゴリー": "順序の法則",
+        "発見された法則": "「夜勤」の翌日は「休み」が割り当てられる傾向がある",
+        "法則の強度": round(off_after_night_ratio, 2)
+    })
     return rules
+
 
 
 def create_blueprint_list(long_df: pd.DataFrame) -> dict:
@@ -85,10 +83,11 @@ def create_blueprint_list(long_df: pd.DataFrame) -> dict:
     if long_df.empty:
         return {"error": "分析対象の勤務データがありません。"}
 
+    # --- データ準備 ---
     long_df['date'] = pd.to_datetime(long_df['ds'].dt.date)
     long_df['is_night'] = long_df['code'].astype(str).str.contains("夜", na=False)
 
-    # 各カテゴリーの法則を抽出
+    # --- 全カテゴリーの法則を無条件に抽出 ---
     role_rules = _calculate_role_first_rules(long_df)
     person_rules = _calculate_person_first_rules(long_df)
     sequential_rules = _calculate_sequential_rules(long_df)
@@ -97,26 +96,23 @@ def create_blueprint_list(long_df: pd.DataFrame) -> dict:
 
     if not all_rules:
         return {
-            "summary": "明確な法則は見つかりませんでした。シフト作成プロセスが非常に柔軟であるか、あるいは月によって大きく変動している可能性があります。",
+            "summary": "分析可能な法則が見つかりませんでした。",
             "rules_df": pd.DataFrame()
         }
 
-    # 法則を強度順にソート
+    # --- 法則を強度順にソート ---
     rules_df = pd.DataFrame(all_rules).sort_values("法則の強度", ascending=False).reset_index(drop=True)
 
-    # 総合的な洞察サマリーを生成
-    summary_text = "上位の法則を見ると、このシフト作成プロセスは、"
-    top_rule = rules_df.iloc[0]
-    if "個人軸" in top_rule["法則のカテゴリー"]:
-        summary_text += f"まず**{top_rule['発見された法則']}**という個人の事情を最優先し、"
-    elif "役割軸" in top_rule["法則のカテゴリー"]:
-        summary_text += f"まず**{top_rule['発見された法則']}**という役割の骨格を固め、"
+    # --- 総合的な洞察サマリーを生成 ---
+    summary_text = "このシフトの作成プロセスは、複数の法則が組み合わさってできています。\n"
+    if not rules_df.empty:
+        top_rule = rules_df.iloc[0]
+        summary_text += f"最も強い影響力を持つのは、**『{top_rule['法則のカテゴリー']}』**の法則、具体的には**「{top_rule['発見された法則']}」**（強度: {top_rule['法則の強度']}）です。"
+        if len(rules_df) > 1:
+            second_rule = rules_df.iloc[1]
+            summary_text += f"\n次いで、**『{second_rule['法則のカテゴリー']}』**の**「{second_rule['発見された法則']}」**（強度: {second_rule['法則の強度']}）も重要なルールとなっています。"
 
-    if len(rules_df) > 1:
-        second_rule = rules_df.iloc[1]
-        summary_text += f"次に**「{second_rule['発見された法則']}」**というルールを適用している、"
-
-    summary_text += "という思考プロセスが最も強い影響力を持っていると推察されます。"
+    summary_text += "\n\n以下のリスト全体を眺めることで、あなたの職場のシフト作成における『暗黙の優先順位』をより深く理解できます。"
 
     return {
         "summary": summary_text,
