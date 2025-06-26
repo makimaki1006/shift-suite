@@ -991,6 +991,33 @@ def create_ppt_report_tab() -> html.Div:
         html.Button('PPTレポートを生成', id='ppt-generate', n_clicks=0)  # type: ignore
     ])
 
+
+def create_individual_analysis_tab() -> html.Div:
+    """職員個別分析タブを作成"""
+    long_df = data_get('long_df', pd.DataFrame())
+
+    if long_df.empty:
+        return html.Div("分析の元となる勤務データ (long_df) が見つかりません。")
+
+    staff_list = sorted(long_df['staff'].unique())
+
+    return html.Div([
+        html.H3("職員個別分析", style={'marginBottom': '20px'}),
+        html.P("分析したい職員を以下から選択してください。"),
+        dcc.Dropdown(
+            id='individual-staff-dropdown',
+            options=[{'label': staff, 'value': staff} for staff in staff_list],
+            value=staff_list[0] if staff_list else None,
+            clearable=False,
+            style={'width': '50%', 'marginBottom': '20px'}
+        ),
+        dcc.Loading(
+            id="loading-individual-analysis",
+            type="circle",
+            children=html.Div(id='individual-analysis-content')
+        )
+    ])
+
 # --- メインレイアウト ---
 app.layout = html.Div([
     dcc.Store(id='kpi-data-store', storage_type='memory'),
@@ -1165,6 +1192,7 @@ def update_main_content(selected_scenario, data_status):
         dcc.Tab(label='基準乖離分析', value='gap'),
         dcc.Tab(label='サマリーレポート', value='summary_report'),
         dcc.Tab(label='PPTレポート', value='ppt_report'),
+        dcc.Tab(label='職員個別分析', value='individual_analysis'),
     ])
 
     main_layout = html.Div([
@@ -1211,6 +1239,8 @@ def update_tab_content(active_tab, selected_scenario, data_status):
         return create_summary_report_tab()
     elif active_tab == 'ppt_report':
         return create_ppt_report_tab()  # type: ignore
+    elif active_tab == 'individual_analysis':
+        return create_individual_analysis_tab()
     else:
         return html.Div("タブが選択されていません")
 
@@ -1758,6 +1788,42 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
             content.append(dcc.Graph(figure=fig_pie))
 
     return html.Div(content)
+
+
+@app.callback(
+    Output('individual-analysis-content', 'children'),
+    Input('individual-staff-dropdown', 'value'),
+)
+def update_individual_analysis_content(selected_staff):
+    """職員選択に応じて分析コンテンツを更新する"""
+    if not selected_staff:
+        raise PreventUpdate
+
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.P("勤務データが見つかりません。")
+
+    staff_df = long_df[long_df['staff'] == selected_staff].copy()
+
+    work_dist_fig = go.Figure()
+    if not staff_df.empty and 'code' in staff_df.columns:
+        work_records = staff_df[staff_df.get('parsed_slots_count', 1) > 0]
+        if not work_records.empty:
+            code_counts = work_records['code'].value_counts()
+            work_dist_fig = px.pie(
+                values=code_counts.values,
+                names=code_counts.index,
+                title=f'{selected_staff}さんの勤務割合',
+                hole=.3,
+            )
+            work_dist_fig.update_traces(textposition='inside', textinfo='percent+label')
+
+    return html.Div([
+        html.Div([
+            html.H4("勤務区分の占有割合"),
+            dcc.Graph(figure=work_dist_fig)
+        ], className="six columns"),
+    ], className="row")
 
 
 @app.callback(
