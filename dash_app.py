@@ -1822,8 +1822,8 @@ def update_individual_analysis_content(selected_staff):
         html.Div([
             html.H4("勤務区分の占有割合"),
             dcc.Graph(figure=work_dist_fig)
-        ], className="six columns"),
-    ], className="row")
+        ], style={"width": "50%", "display": "inline-block"}),
+    ])
 
 
 @app.callback(
