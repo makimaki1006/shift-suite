@@ -1811,7 +1811,6 @@ def update_individual_analysis_content(selected_staff):
     if long_df.empty:
         return html.P("勤務データが見つかりません。")
 
-    # --- 対象職員のデータに絞り込む ---
     staff_df = long_df[long_df['staff'] == selected_staff].copy()
 
     # --- 1. 勤務区分ごとの占有割合 ---
@@ -1821,188 +1820,133 @@ def update_individual_analysis_content(selected_staff):
         if not work_records.empty:
             code_counts = work_records['code'].value_counts()
             work_dist_fig = px.pie(
-                values=code_counts.values,
-                names=code_counts.index,
-                title=f'{selected_staff}さんの勤務割合',
-                hole=.3,
+                values=code_counts.values, names=code_counts.index,
+                title=f'{selected_staff}さんの勤務割合', hole=.3
             )
             work_dist_fig.update_traces(textposition='inside', textinfo='percent+label')
 
     # --- 2. 不公平・疲労度の詳細スコア ---
-    fatigue_score = "データなし"
-    unfairness_score = "データなし"
+    fatigue_score, unfairness_score = "データなし", "データなし"
     score_details_df = pd.DataFrame()
-
-    if not fatigue_df.empty and 'fatigue_score' in fatigue_df.columns:
-        # `fatigue_df`のインデックスが'staff'であることを確認
-        if fatigue_df.index.name != 'staff':
-            fatigue_df_indexed = fatigue_df.set_index('staff')
-        else:
-            fatigue_df_indexed = fatigue_df
+    if not fatigue_df.empty:
+        fatigue_df_indexed = fatigue_df.set_index('staff') if 'staff' in fatigue_df.columns else fatigue_df
         if selected_staff in fatigue_df_indexed.index:
-            fatigue_score_val = fatigue_df_indexed.loc[selected_staff, 'fatigue_score']
-            fatigue_score = f"{fatigue_score_val:.1f}"
-
-
-    if not fairness_df.empty and 'unfairness_score' in fairness_df.columns:
+            fatigue_score = f"{fatigue_df_indexed.loc[selected_staff, 'fatigue_score']:.1f}"
+    if not fairness_df.empty and 'staff' in fairness_df.columns:
         staff_fairness = fairness_df[fairness_df['staff'] == selected_staff]
         if not staff_fairness.empty:
             row = staff_fairness.iloc[0]
-            unfairness_score = f"{row['unfairness_score']:.2f}"
-            score_details_data = {
+            unfairness_score = f"{row.get('unfairness_score', 0):.2f}"
+            details_data = {
                 "指標": ["夜勤比率の乖離", "総労働時間の乖離", "希望休承認率の乖離", "連休取得頻度の乖離"],
-                "スコア": [
-                    f"{row.get('dev_night_ratio', 0):.2f}",
-                    f"{row.get('dev_work_slots', 0):.2f}",
-                    f"{row.get('dev_approval_rate', 0):.2f}",
-                    f"{row.get('dev_consecutive', 0):.2f}"
-                ]
+                "スコア": [f"{row.get(col, 0):.2f}" for col in ['dev_night_ratio', 'dev_work_slots', 'dev_approval_rate', 'dev_consecutive']]
             }
-            score_details_df = pd.DataFrame(score_details_data)
+            score_details_df = pd.DataFrame(details_data)
 
     # --- 3. 共働した職員ランキング ---
-    coworker_ranking_df = pd.DataFrame(columns=['職員', '共働回数'])
-    if not staff_df.empty:
-        my_slots = staff_df[['ds']].drop_duplicates()
-        coworkers = long_df[long_df['ds'].isin(my_slots['ds']) & (long_df['staff'] != selected_staff)]
-        if not coworkers.empty:
-            coworker_counts = coworkers['staff'].value_counts().reset_index()
-            coworker_counts.columns = ['職員', '共働回数']
-            coworker_ranking_df = coworker_counts.head(5)
+    coworker_ranking_df = pd.DataFrame()
+    my_slots = staff_df[['ds']].drop_duplicates()
+    coworkers = long_df[long_df['ds'].isin(my_slots['ds']) & (long_df['staff'] != selected_staff)]
+    if not coworkers.empty:
+        coworker_counts = coworkers['staff'].value_counts().reset_index()
+        coworker_counts.columns = ['職員', '共働回数']
+        coworker_ranking_df = coworker_counts.head(5)
 
     # --- 4. 人員不足/過剰への貢献度分析 ---
-    slot_hours = 0.5 # 1スロット=30分と仮定
-    shortage_contribution_h = 0
-    excess_contribution_h = 0
-    if not staff_df.empty:
-        staff_work_slots = staff_df[staff_df.get('parsed_slots_count', 0) > 0][['ds']].copy()
-        staff_work_slots['date_str'] = staff_work_slots['ds'].dt.strftime('%Y-%m-%d')
-        staff_work_slots['time'] = staff_work_slots['ds'].dt.strftime('%H:%M')
-
-        if not shortage_df.empty:
-            shortage_long = shortage_df.melt(var_name='date_str', value_name='shortage_count', ignore_index=False).reset_index().rename(columns={'index':'time'})
-            merged_shortage = pd.merge(staff_work_slots, shortage_long, on=['date_str', 'time'])
-            shortage_contribution_h = merged_shortage[merged_shortage['shortage_count'] > 0].shape[0] * slot_hours
-
-        if not excess_df.empty:
-            excess_long = excess_df.melt(var_name='date_str', value_name='excess_count', ignore_index=False).reset_index().rename(columns={'index':'time'})
-            merged_excess = pd.merge(staff_work_slots, excess_long, on=['date_str', 'time'])
-            excess_contribution_h = merged_excess[merged_excess['excess_count'] > 0].shape[0] * slot_hours
+    slot_hours = 0.5
+    shortage_contribution_h, excess_contribution_h = 0, 0
+    staff_work_slots = staff_df[staff_df.get('parsed_slots_count', 0) > 0][['ds']].copy()
+    staff_work_slots['date_str'] = staff_work_slots['ds'].dt.strftime('%Y-%m-%d')
+    staff_work_slots['time'] = staff_work_slots['ds'].dt.strftime('%H:%M')
+    if not shortage_df.empty:
+        shortage_long = shortage_df.melt(var_name='date_str', value_name='shortage_count', ignore_index=False).reset_index().rename(columns={'index':'time'})
+        merged_shortage = pd.merge(staff_work_slots, shortage_long, on=['date_str', 'time'])
+        shortage_contribution_h = merged_shortage[merged_shortage['shortage_count'] > 0].shape[0] * slot_hours
+    if not excess_df.empty:
+        excess_long = excess_df.melt(var_name='date_str', value_name='excess_count', ignore_index=False).reset_index().rename(columns={'index':'time'})
+        merged_excess = pd.merge(staff_work_slots, excess_long, on=['date_str', 'time'])
+        excess_contribution_h = merged_excess[merged_excess['excess_count'] > 0].shape[0] * slot_hours
 
     # --- 5. 個人の休暇取得傾向 ---
     leave_by_dow_fig = go.Figure(layout={'title': {'text': '曜日別の休暇取得日数'}})
-    if not staff_df.empty:
-        staff_leave_df = staff_df[staff_df.get('holiday_type', '通常勤務') != '通常勤務']
-        if not staff_leave_df.empty:
-            daily_leave = leave_analyzer.get_daily_leave_counts(staff_leave_df)
-            if not daily_leave.empty:
-                dow_summary = leave_analyzer.summarize_leave_by_day_count(daily_leave, period='dayofweek')
-                if not dow_summary.empty:
-                    leave_by_dow_fig = px.bar(dow_summary, x='period_unit', y='total_leave_days', color='leave_type', title=f'{selected_staff}さんの曜日別休暇取得日数')
-                    leave_by_dow_fig.update_xaxes(title_text="曜日").update_yaxes(title_text="日数")
+    staff_leave_df = staff_df[staff_df.get('holiday_type', '通常勤務') != '通常勤務']
+    if not staff_leave_df.empty:
+        daily_leave = leave_analyzer.get_daily_leave_counts(staff_leave_df)
+        if not daily_leave.empty:
+            dow_summary = leave_analyzer.summarize_leave_by_day_count(daily_leave, period='dayofweek')
+            if not dow_summary.empty:
+                leave_by_dow_fig = px.bar(dow_summary, x='period_unit', y='total_leave_days', color='leave_type', title=f'{selected_staff}さんの曜日別休暇取得日数')
+                leave_by_dow_fig.update_xaxes(title_text="曜日").update_yaxes(title_text="日数")
 
     # --- 6. 職員間の「化学反応」分析 ---
     synergy_fig = go.Figure(layout={'title': {'text': f'{selected_staff}さんとのシナジー分析'}})
-    synergy_df = analyze_synergy(long_df, shortage_df, selected_staff)
-    if not synergy_df.empty:
-        synergy_df_top5 = synergy_df.head(5)
-        synergy_df_worst5 = synergy_df.tail(5).sort_values("シナジースコア", ascending=True)
-        synergy_display_df = pd.concat([synergy_df_top5, synergy_df_worst5])
-        synergy_fig = px.bar(
-            synergy_display_df,
-            x="相手の職員",
-            y="シナジースコア",
-            color="シナジースコア",
-            color_continuous_scale='RdYlGn',
-            title=f"{selected_staff}さんとのシナジースコア (Top5 & Worst5)"
-        )
-        synergy_fig.update_layout(xaxis_title="相手の職員", yaxis_title="シナジースコア（高いほど良い）")
+    if not shortage_df.empty:  # 不足データがないと計算できないためガード
+        synergy_df = analyze_synergy(long_df, shortage_df, selected_staff)
+        if not synergy_df.empty:
+            synergy_df_top5 = synergy_df.head(5)
+            synergy_df_worst5 = synergy_df.tail(5).sort_values("シナジースコア", ascending=True)
+            synergy_display_df = pd.concat([synergy_df_top5, synergy_df_worst5])
+            synergy_fig = px.bar(
+                synergy_display_df, x="相手の職員", y="シナジースコア", color="シナジースコア",
+                color_continuous_scale='RdYlGn', title=f"{selected_staff}さんとのシナジースコア (Top5 & Worst5)"
+            )
+            synergy_fig.update_layout(xaxis_title="相手の職員", yaxis_title="シナジースコア（高いほど良い）")
 
-    # --- 7. 個人の「業務マンネリ度」スコア ---
-    mannelido_score = "計算不可"
-    if not staff_df.empty and 'role' in staff_df.columns:
-        # 勤務時間がある実働レコードに絞る
-        work_records_for_role = staff_df[staff_df.get('parsed_slots_count', 0) > 0]
-        if not work_records_for_role.empty:
-            # 日毎の勤務でカウントするため、日付と役割で重複を除外
-            role_per_day = work_records_for_role[['ds', 'role']].copy()
-            role_per_day['date'] = role_per_day['ds'].dt.date
-            role_counts = role_per_day.drop_duplicates(subset=['date', 'role'])['role'].value_counts(normalize=True)
-            if not role_counts.empty:
-                max_share = role_counts.max()
-                mannelido_score = f"{max_share:.2f}"
+    # --- 7 & 8. 働き方のクセ分析 ---
+    mannelido_score, rhythm_score = "計算不可", "計算不可"
+    work_records_for_role = staff_df[staff_df.get('parsed_slots_count', 0) > 0]
+    if not work_records_for_role.empty:
+        role_per_day = work_records_for_role[['ds', 'role']].copy()
+        role_per_day['date'] = role_per_day['ds'].dt.date
+        role_counts = role_per_day.drop_duplicates(subset=['date', 'role'])['role'].value_counts(normalize=True)
+        if not role_counts.empty:
+            mannelido_score = f"{role_counts.max():.2f}"
 
-    # --- 8. 勤務シフトの「生活リズム破壊度」分析 ---
-    rhythm_score = "計算不可"
-    if not staff_df.empty:
-        # 勤務日ごとの開始時刻を取得
-        daily_starts = staff_df[staff_df.get('parsed_slots_count', 0) > 0].copy()
-        if not daily_starts.empty:
-            daily_starts['date'] = daily_starts['ds'].dt.date
-            start_times = daily_starts.groupby('date')['ds'].min()
-            if len(start_times) > 1:
-                # 時間（hour + minute/60）に変換して標準偏差を計算
-                start_hours = start_times.dt.hour + start_times.dt.minute / 60.0
-                start_time_std = start_hours.std()
-                rhythm_score = f"{start_time_std:.2f}"
-            else:
-                rhythm_score = "0.00" # 勤務が1日だけの場合はばらつきゼロ
+        daily_starts = work_records_for_role.groupby(work_records_for_role['ds'].dt.date)['ds'].min()
+        if len(daily_starts) > 1:
+            start_hours = daily_starts.dt.hour + daily_starts.dt.minute / 60.0
+            rhythm_score = f"{start_hours.std():.2f}"
+        else:
+            rhythm_score = "0.00"
 
     # --- レイアウトの組み立て ---
     layout = html.Div([
-        # 1行目: スコアカードと共働ランキング
         html.Div([
-            # 左側: スコアカード
             html.Div([
-                html.H4("疲労度・不公平感スコア"),
+                html.H4("疲労度・不公平感・働き方のクセ"),
                 create_metric_card("疲労スコア", fatigue_score, color="#ff7f0e"),
                 create_metric_card("不公平感スコア", unfairness_score, color="#d62728"),
-                html.H5("働き方のクセ分析", style={'marginTop': '20px'}),
                 create_metric_card("業務マンネリ度", mannelido_score, color="#9467bd"),
                 create_metric_card("生活リズム破壊度", rhythm_score, color="#8c564b"),
-
-                html.H5("不公平感スコアの内訳", style={'marginTop': '15px'}),
+            ], style={'width': '24%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '1%'}),
+            html.Div([
+                html.H5("不公平感スコアの内訳"),
                 dash_table.DataTable(
                     data=score_details_df.to_dict('records'),
                     columns=[{'name': i, 'id': i} for i in score_details_df.columns],
                 ) if not score_details_df.empty else html.P("詳細データなし")
-            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '2%'}),
-
-            # 右側: 共働ランキングと貢献度
+            ], style={'width': '24%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '1%'}),
             html.Div([
-                html.H4("共働ランキング Top 5"),
+                html.H5("共働ランキング Top 5"),
                 dash_table.DataTable(
                     data=coworker_ranking_df.to_dict('records'),
                     columns=[{'name': i, 'id': i} for i in coworker_ranking_df.columns],
                 ) if not coworker_ranking_df.empty else html.P("共働データなし"),
-
-                html.H4("人員不足/過剰への貢献度", style={'marginTop': '20px'}),
+            ], style={'width': '24%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '1%'}),
+            html.Div([
+                html.H5("不足/過剰への貢献度"),
                 create_metric_card("不足時間帯での勤務 (h)", f"{shortage_contribution_h:.1f}", color="#c53d40"),
                 create_metric_card("過剰時間帯での勤務 (h)", f"{excess_contribution_h:.1f}", color="#1f77b4"),
-
-            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
-
+            ], style={'width': '24%', 'display': 'inline-block', 'verticalAlign': 'top'}),
         ], style={'marginBottom': '20px'}),
-
-        # 2行目: グラフ
         html.Div([
-            html.Div([
-                html.H4("勤務区分の占有割合"),
-                dcc.Graph(figure=work_dist_fig)
-            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '2%'}),
-            html.Div([
-                html.H4("休暇取得傾向"),
-                dcc.Graph(figure=leave_by_dow_fig)
-            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+            html.Div([dcc.Graph(figure=work_dist_fig)], style={'width': '49%', 'display': 'inline-block'}),
+            html.Div([dcc.Graph(figure=leave_by_dow_fig)], style={'width': '49%', 'display': 'inline-block'}),
         ]),
-
-        # 3行目: 職員間のシナジー分析
         html.Div([
             html.H4("職員間の\u300c化学反応\u300d分析", style={'marginTop': '20px'}),
-            html.P(
-                "シナジースコアは、そのペアが一緒に勤務した際の\u300c人員不足の起こりにくさ\u300dを示します。スコアが高いほど、不足が少なくなる良い組み合わせです。",
-            ),
-            dcc.Graph(figure=synergy_fig),
+            html.P("シナジースコアは、そのペアが一緒に勤務した際の\u300c人員不足の起こりにくさ\u300dを示します。スコアが高いほど、不足が少なくなる良い組み合わせです。"),
+            dcc.Graph(figure=synergy_fig)
         ])
     ])
 
