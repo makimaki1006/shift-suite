@@ -23,6 +23,7 @@ from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
 from shift_suite.tasks.daily_cost import calculate_daily_cost
 from shift_suite.tasks import leave_analyzer
+from shift_suite.tasks.analyzers.synergy import analyze_synergy
 
 # ロガー設定
 LOG_LEVEL = logging.DEBUG
@@ -1900,6 +1901,23 @@ def update_individual_analysis_content(selected_staff):
                     leave_by_dow_fig = px.bar(dow_summary, x='period_unit', y='total_leave_days', color='leave_type', title=f'{selected_staff}さんの曜日別休暇取得日数')
                     leave_by_dow_fig.update_xaxes(title_text="曜日").update_yaxes(title_text="日数")
 
+    # --- 6. 職員間の「化学反応」分析 ---
+    synergy_fig = go.Figure(layout={'title': {'text': f'{selected_staff}さんとのシナジー分析'}})
+    synergy_df = analyze_synergy(long_df, shortage_df, selected_staff)
+    if not synergy_df.empty:
+        synergy_df_top5 = synergy_df.head(5)
+        synergy_df_worst5 = synergy_df.tail(5).sort_values("シナジースコア", ascending=True)
+        synergy_display_df = pd.concat([synergy_df_top5, synergy_df_worst5])
+        synergy_fig = px.bar(
+            synergy_display_df,
+            x="相手の職員",
+            y="シナジースコア",
+            color="シナジースコア",
+            color_continuous_scale='RdYlGn',
+            title=f"{selected_staff}さんとのシナジースコア (Top5 & Worst5)"
+        )
+        synergy_fig.update_layout(xaxis_title="相手の職員", yaxis_title="シナジースコア（高いほど良い）")
+
     # --- 7. 個人の「業務マンネリ度」スコア ---
     mannelido_score = "計算不可"
     if not staff_df.empty and 'role' in staff_df.columns:
@@ -1976,6 +1994,15 @@ def update_individual_analysis_content(selected_staff):
                 html.H4("休暇取得傾向"),
                 dcc.Graph(figure=leave_by_dow_fig)
             ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+        ]),
+
+        # 3行目: 職員間のシナジー分析
+        html.Div([
+            html.H4("職員間の\u300c化学反応\u300d分析", style={'marginTop': '20px'}),
+            html.P(
+                "シナジースコアは、そのペアが一緒に勤務した際の\u300c人員不足の起こりにくさ\u300dを示します。スコアが高いほど、不足が少なくなる良い組み合わせです。",
+            ),
+            dcc.Graph(figure=synergy_fig),
         ])
     ])
 
