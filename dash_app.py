@@ -1792,20 +1792,26 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
 
 @app.callback(
     Output('individual-analysis-content', 'children'),
-    Input('individual-staff-dropdown', 'value'),
+    Input('individual-staff-dropdown', 'value')
 )
 def update_individual_analysis_content(selected_staff):
     """職員選択に応じて分析コンテンツを更新する"""
     if not selected_staff:
         raise PreventUpdate
 
+    # 必要なデータを一括で読み込む
     long_df = data_get('long_df', pd.DataFrame())
+    fatigue_df = data_get('fatigue_score', pd.DataFrame())
+    fairness_df = data_get('fairness_after', pd.DataFrame())
+
     if long_df.empty:
         return html.P("勤務データが見つかりません。")
 
+    # --- 対象職員のデータに絞り込む ---
     staff_df = long_df[long_df['staff'] == selected_staff].copy()
 
-    work_dist_fig = go.Figure()
+    # --- 1. 勤務区分ごとの占有割合 ---
+    work_dist_fig = go.Figure(layout={'title': {'text': f'{selected_staff}さんの勤務割合'}})
     if not staff_df.empty and 'code' in staff_df.columns:
         work_records = staff_df[staff_df.get('parsed_slots_count', 1) > 0]
         if not work_records.empty:
@@ -1818,12 +1824,70 @@ def update_individual_analysis_content(selected_staff):
             )
             work_dist_fig.update_traces(textposition='inside', textinfo='percent+label')
 
-    return html.Div([
+    # --- 2. 不公平・疲労度の詳細スコア ---
+    fatigue_score = "データなし"
+    unfairness_score = "データなし"
+    score_details_df = pd.DataFrame()
+
+    if not fatigue_df.empty and 'fatigue_score' in fatigue_df.columns:
+        staff_fatigue = fatigue_df.loc[fatigue_df.index == selected_staff]
+        if not staff_fatigue.empty:
+            fatigue_score = f"{staff_fatigue['fatigue_score'].iloc[0]:.1f}"
+
+    if not fairness_df.empty and 'unfairness_score' in fairness_df.columns:
+        staff_fairness = fairness_df[fairness_df['staff'] == selected_staff]
+        if not staff_fairness.empty:
+            row = staff_fairness.iloc[0]
+            unfairness_score = f"{row['unfairness_score']:.2f}"
+            score_details_data = {
+                "指標": ["夜勤比率の乖離", "総労働時間の乖離", "希望休承認率の乖離", "連休取得頻度の乖離"],
+                "スコア": [
+                    f"{row.get('dev_night_ratio', 0):.2f}",
+                    f"{row.get('dev_work_slots', 0):.2f}",
+                    f"{row.get('dev_approval_rate', 0):.2f}",
+                    f"{row.get('dev_consecutive', 0):.2f}",
+                ],
+            }
+            score_details_df = pd.DataFrame(score_details_data)
+
+    # --- 3. 共働した職員ランキング ---
+    coworker_ranking_df = pd.DataFrame(columns=['職員', '共働回数'])
+    if not staff_df.empty:
+        my_slots = staff_df[['ds']].drop_duplicates()
+        coworkers = long_df[long_df['ds'].isin(my_slots['ds']) & (long_df['staff'] != selected_staff)]
+        if not coworkers.empty:
+            coworker_counts = coworkers['staff'].value_counts().reset_index()
+            coworker_counts.columns = ['職員', '共働回数']
+            coworker_ranking_df = coworker_counts.head(5)
+
+    # --- レイアウトの組み立て ---
+    layout = html.Div([
+        html.Div([
+            html.Div([
+                html.H4("疲労度・不公平感スコア"),
+                create_metric_card("疲労スコア", fatigue_score, color="#ff7f0e"),
+                create_metric_card("不公平感スコア", unfairness_score, color="#d62728"),
+                html.H5("不公平感スコアの内訳", style={'marginTop': '15px'}),
+                dash_table.DataTable(
+                    data=score_details_df.to_dict('records'),
+                    columns=[{'name': i, 'id': i} for i in score_details_df.columns],
+                ) if not score_details_df.empty else html.P("詳細データなし"),
+            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingRight': '2%'}),
+            html.Div([
+                html.H4("共働ランキング Top 5"),
+                dash_table.DataTable(
+                    data=coworker_ranking_df.to_dict('records'),
+                    columns=[{'name': i, 'id': i} for i in coworker_ranking_df.columns],
+                ) if not coworker_ranking_df.empty else html.P("共働データなし"),
+            ], style={'width': '48%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+        ], style={'marginBottom': '20px'}),
         html.Div([
             html.H4("勤務区分の占有割合"),
-            dcc.Graph(figure=work_dist_fig)
-        ], className="six columns"),
-    ], className="row")
+            dcc.Graph(figure=work_dist_fig),
+        ]),
+    ])
+
+    return layout
 
 
 @app.callback(
