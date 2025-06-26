@@ -25,7 +25,7 @@ from shift_suite.tasks.daily_cost import calculate_daily_cost
 from shift_suite.tasks import leave_analyzer
 from shift_suite.tasks.analyzers.synergy import analyze_synergy
 from shift_suite.tasks.analyzers.team_dynamics import analyze_team_dynamics
-from shift_suite.tasks.blueprint_analyzer import create_blueprint
+from shift_suite.tasks.blueprint_analyzer import create_blueprint_list
 
 # ロガー設定
 LOG_LEVEL = logging.DEBUG
@@ -2060,52 +2060,43 @@ def update_team_analysis_graphs(selected_value, selected_key):
 
 @app.callback(
     Output('blueprint-analysis-content', 'children'),
-    Input('generate-blueprint-button', 'n_clicks'),
+    Input('generate-blueprint-button', 'n_clicks')
 )
 def update_blueprint_analysis_content(n_clicks):
     if n_clicks == 0:
         raise PreventUpdate
 
     long_df = data_get('long_df', pd.DataFrame())
-    fairness_df = data_get('fairness_after', pd.DataFrame())
-    fatigue_df = data_get('fatigue_score', pd.DataFrame())
-    shortage_df = data_get('shortage_time', pd.DataFrame())
 
-    blueprint = create_blueprint(long_df, fairness_df, fatigue_df, shortage_df)
+    # 新しい分析関数を呼び出す
+    blueprint_data = create_blueprint_list(long_df)
 
-    if "error" in blueprint:
+    if "error" in blueprint_data:
         return html.Div([
             html.H4("分析エラー", style={'color': 'red'}),
-            html.P(blueprint["error"]),
+            html.P(blueprint_data["error"])
         ])
 
-    content = [
-        html.H4("分析結果：推奨されるシフト作成ブループリント"),
-        html.Div(
-            [
-                create_metric_card("お手本シフトの日数", str(blueprint.get("お手本シフトの日数", 0))),
-                create_metric_card("推奨される初手", blueprint.get("推奨される初手", "N/A")),
-            ],
-            style={'display': 'flex', 'gap': '20px', 'marginBottom': '20px'},
-        ),
-        html.H5(f"「{blueprint.get('推奨される初手')}」の後の推奨手"),
-        dcc.Markdown(
-            "\n".join(
-                [
-                    f"- **{i+1}位:** {key} ({value}回)"
-                    for i, (key, value) in enumerate(
-                        blueprint.get(
-                            f"「{blueprint.get('推奨される初手')}」の後の推奨される次の一手",
-                            {},
-                        ).items()
-                    )
-                ]
-            )
-        ),
-        html.Blockquote(blueprint.get("解説")),
-    ]
+    # --- パート1：総合的な洞察サマリー ---
+    summary_div = html.Div([
+        html.H4("総合的な洞察サマリー"),
+        html.Blockquote(blueprint_data["summary"])
+    ])
 
-    return html.Div(content)
+    # --- パート2：発見された「法則」の全リスト ---
+    rules_table_div = html.Div([
+        html.H4(f"発見された全{len(blueprint_data['rules_df'])}個の法則リスト"),
+        html.P("「法則の強度」でソートされています。これがあなたの職場の「暗黙の優先順位」です。"),
+        dash_table.DataTable(
+            data=blueprint_data['rules_df'].to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in blueprint_data['rules_df'].columns],
+            style_cell={'textAlign': 'left'},
+            style_header={'fontWeight': 'bold'},
+            sort_action="native",
+        ) if not blueprint_data['rules_df'].empty else html.P("表示できる法則がありません。")
+    ])
+
+    return html.Div([summary_div, html.Hr(), rules_table_div])
 
 
 @app.callback(

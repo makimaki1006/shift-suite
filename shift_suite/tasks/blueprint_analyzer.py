@@ -2,82 +2,123 @@ from __future__ import annotations
 import pandas as pd
 
 
-def create_blueprint(
-    long_df: pd.DataFrame,
-    fairness_df: pd.DataFrame,
-    fatigue_df: pd.DataFrame,
-    shortage_df: pd.DataFrame,
-) -> dict:
-    """質の高いシフトに共通する作成パターンを分析しブループリントを生成。"""
-    if long_df.empty or fairness_df.empty or fatigue_df.empty or shortage_df.empty:
-        return {"error": "必要な分析データが不足しています。"}
+def _calculate_role_first_rules(long_df: pd.DataFrame) -> list:
+    """役割軸の法則を抽出する"""
+    rules = []
+    if 'role' not in long_df.columns:
+        return rules
 
-    # --- ステップ1: 「良いシフト（お手本シフト）」を定義する ---
-    daily_scores = pd.DataFrame(index=pd.to_datetime(shortage_df.columns))
-    daily_scores["shortage"] = shortage_df.sum().values
+    for role, group_df in long_df.groupby('role'):
+        total_days = group_df['ds'].dt.date.nunique()
+        unique_staff = group_df['staff'].nunique()
+        if total_days > 0 and unique_staff > 0:
+            # 固定度スコア = 1 - (ユニーク職員数 / 勤務日数)
+            stability_score = 1 - (unique_staff / total_days)
+            if stability_score > 0.7:  # スコアが0.7を超える強い法則のみ抽出
+                rules.append({
+                    "法則のカテゴリー": "役割軸",
+                    "発見された法則": f"「{role}」は、少数の固定メンバーで担当されている",
+                    "法則の強度": round(stability_score, 2)
+                })
+    return rules
 
-    long_df["date"] = pd.to_datetime(long_df["ds"].dt.date)
-    fairness_df = fairness_df.set_index("staff")
 
-    # `fatigue_df` may already use staff names as the index depending on how it
-    # was saved. Only set the index when a `staff` column exists to avoid a
-    # KeyError.
-    if "staff" in fatigue_df.columns:
-        fatigue_df = fatigue_df.set_index("staff")
+def _calculate_person_first_rules(long_df: pd.DataFrame) -> list:
+    """個人軸の法則を抽出する"""
+    rules = []
+    if long_df.empty:
+        return rules
 
-    daily_avg_fairness = (
-        long_df.groupby("date")["staff"]
-        .apply(lambda x: fairness_df.reindex(x.unique())["unfairness_score"].mean())
-        .rename("avg_fairness")
-    )
-    daily_avg_fatigue = (
-        long_df.groupby("date")["staff"]
-        .apply(lambda x: fatigue_df.reindex(x.unique())["fatigue_score"].mean())
-        .rename("avg_fatigue")
-    )
+    daily_work = long_df.drop_duplicates(subset=['ds', 'staff'])
 
-    daily_scores = daily_scores.join(daily_avg_fairness).join(daily_avg_fatigue).fillna(0)
-    daily_scores["rank_shortage"] = daily_scores["shortage"].rank(pct=True)
-    daily_scores["rank_fairness"] = daily_scores["avg_fairness"].rank(pct=True)
-    daily_scores["rank_fatigue"] = daily_scores["avg_fatigue"].rank(pct=True)
-    daily_scores["total_rank"] = daily_scores[["rank_shortage", "rank_fairness", "rank_fatigue"]].mean(axis=1)
-    good_shift_dates = daily_scores[daily_scores["total_rank"] <= 0.2].index
+    for staff, group_df in daily_work.groupby('staff'):
+        if len(group_df) < 5:
+            continue  # 勤務日が少ない職員は除外
 
-    if good_shift_dates.empty:
-        return {"error": "分析に適した「お手本シフト」が見つかりませんでした。"}
+        weekday_std = group_df['ds'].dt.dayofweek.std()
+        stability_score = 1 / (1 + weekday_std) if not pd.isna(weekday_std) else 0
+        if stability_score > 0.8:  # スコアが0.8を超える強い法則のみ抽出
+            rules.append({
+                "法則のカテゴリー": "個人軸",
+                "発見された法則": f"「{staff}」さんは、毎週ほぼ同じ曜日に勤務している",
+                "法則の強度": round(stability_score, 2)
+            })
+    return rules
 
-    # --- ステップ2: シフトピースの「制約の強さ」を定量化 ---
-    long_df["is_night"] = long_df["code"].astype(str).str.contains("夜", na=False)
-    long_df["is_part_time"] = long_df.get("employment", "").astype(str).str.contains("パート", na=False)
 
-    def get_constraint_score(row):
-        if row["is_night"]:
-            return 3
-        if row["is_part_time"]:
-            return 2
-        return 1
+def _calculate_sequential_rules(long_df: pd.DataFrame) -> list:
+    """順序の法則を抽出する (例: 夜勤の翌日)"""
+    rules = []
+    if 'is_night' not in long_df.columns:
+        return rules
 
-    long_df["constraint"] = long_df.apply(get_constraint_score, axis=1)
+    night_shifts = long_df[long_df['is_night']].sort_values('ds')
+    if night_shifts.empty:
+        return rules
 
-    # --- ステップ3: シーケンス・マイニングで「思考の連鎖」を発見 ---
-    good_shifts_df = long_df[long_df["date"].isin(good_shift_dates)]
-    first_move_counts = (
-        good_shifts_df.sort_values(["date", "constraint"], ascending=[True, False])
-        .drop_duplicates("date")["code"].value_counts()
-    )
+    total_night_shifts = len(night_shifts)
+    off_after_night = 0
 
-    first_move_code = first_move_counts.index[0]
-    dates_with_first_move = good_shifts_df[good_shifts_df["code"] == first_move_code]["date"].unique()
-    second_move_candidates = good_shifts_df[
-        good_shifts_df["date"].isin(dates_with_first_move) & (good_shifts_df["code"] != first_move_code)
-    ]
-    second_move_counts = second_move_candidates["code"].value_counts()
+    for index, row in night_shifts.iterrows():
+        next_day = row['ds'].date() + pd.Timedelta(days=1)
+        next_day_shifts = long_df[
+            (long_df['staff'] == row['staff']) &
+            (long_df['ds'].dt.date == next_day)
+        ]
+        # 翌日に勤務がない、または休み(parsed_slots_count=0)の場合
+        if next_day_shifts.empty or next_day_shifts['parsed_slots_count'].sum() == 0:
+            off_after_night += 1
 
-    blueprint = {
-        "お手本シフトの日数": len(good_shift_dates),
-        "推奨される初手": first_move_code,
-        f"「{first_move_code}」の後の推奨される次の一手": second_move_counts.head(3).to_dict() if not second_move_counts.empty else "特になし",
-        "解説": f"質の高いシフトの多くは、まず「{first_move_code}」勤務を確定させてから、他のシフトを組む傾向にあります。",
+    off_after_night_ratio = off_after_night / total_night_shifts if total_night_shifts > 0 else 0
+
+    if off_after_night_ratio > 0.8:  # 80%以上の確率で見られる強い法則のみ
+        rules.append({
+            "法則のカテゴリー": "順序の法則",
+            "発見された法則": "「夜勤」の翌日は「休み」が割り当てられる傾向が極めて強い",
+            "法則の強度": round(off_after_night_ratio, 2)
+        })
+    return rules
+
+
+def create_blueprint_list(long_df: pd.DataFrame) -> dict:
+    """シフトデータから法則を網羅的に抽出し、強度順のリストとして返す。"""
+    if long_df.empty:
+        return {"error": "分析対象の勤務データがありません。"}
+
+    long_df['date'] = pd.to_datetime(long_df['ds'].dt.date)
+    long_df['is_night'] = long_df['code'].astype(str).str.contains("夜", na=False)
+
+    # 各カテゴリーの法則を抽出
+    role_rules = _calculate_role_first_rules(long_df)
+    person_rules = _calculate_person_first_rules(long_df)
+    sequential_rules = _calculate_sequential_rules(long_df)
+
+    all_rules = role_rules + person_rules + sequential_rules
+
+    if not all_rules:
+        return {
+            "summary": "明確な法則は見つかりませんでした。シフト作成プロセスが非常に柔軟であるか、あるいは月によって大きく変動している可能性があります。",
+            "rules_df": pd.DataFrame()
+        }
+
+    # 法則を強度順にソート
+    rules_df = pd.DataFrame(all_rules).sort_values("法則の強度", ascending=False).reset_index(drop=True)
+
+    # 総合的な洞察サマリーを生成
+    summary_text = "上位の法則を見ると、このシフト作成プロセスは、"
+    top_rule = rules_df.iloc[0]
+    if "個人軸" in top_rule["法則のカテゴリー"]:
+        summary_text += f"まず**{top_rule['発見された法則']}**という個人の事情を最優先し、"
+    elif "役割軸" in top_rule["法則のカテゴリー"]:
+        summary_text += f"まず**{top_rule['発見された法則']}**という役割の骨格を固め、"
+
+    if len(rules_df) > 1:
+        second_rule = rules_df.iloc[1]
+        summary_text += f"次に**「{second_rule['発見された法則']}」**というルールを適用している、"
+
+    summary_text += "という思考プロセスが最も強い影響力を持っていると推察されます。"
+
+    return {
+        "summary": summary_text,
+        "rules_df": rules_df
     }
-
-    return blueprint
