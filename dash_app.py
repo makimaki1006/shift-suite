@@ -24,6 +24,7 @@ from shift_suite.tasks import over_shortage_log
 from shift_suite.tasks.daily_cost import calculate_daily_cost
 from shift_suite.tasks import leave_analyzer
 from shift_suite.tasks.analyzers.synergy import analyze_synergy
+from shift_suite.tasks.analyzers.team_dynamics import analyze_team_dynamics
 
 # ロガー設定
 LOG_LEVEL = logging.DEBUG
@@ -1020,6 +1021,37 @@ def create_individual_analysis_tab() -> html.Div:
         )
     ])
 
+
+def create_team_analysis_tab() -> html.Div:
+    """チーム分析タブを作成"""
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.Div("分析データが見つかりません。")
+
+    filterable_cols = ['role', 'code', 'employment']
+
+    return html.Div([
+        html.H3("ダイナミック・チーム分析"),
+        html.P("分析したいチームの条件を指定してください。"),
+        html.Div([
+            dcc.Dropdown(
+                id='team-criteria-key-dropdown',
+                options=[{'label': col, 'value': col} for col in filterable_cols],
+                value='code',
+                style={'width': '200px', 'display': 'inline-block'}
+            ),
+            dcc.Dropdown(
+                id='team-criteria-value-dropdown',
+                style={
+                    'width': '300px',
+                    'display': 'inline-block',
+                    'marginLeft': '10px'
+                }
+            )
+        ]),
+        dcc.Loading(children=html.Div(id='team-analysis-content'))
+    ])
+
 # --- メインレイアウト ---
 app.layout = html.Div([
     dcc.Store(id='kpi-data-store', storage_type='memory'),
@@ -1195,6 +1227,7 @@ def update_main_content(selected_scenario, data_status):
         dcc.Tab(label='サマリーレポート', value='summary_report'),
         dcc.Tab(label='PPTレポート', value='ppt_report'),
         dcc.Tab(label='職員個別分析', value='individual_analysis'),
+        dcc.Tab(label='チーム分析', value='team_analysis'),
     ])
 
     main_layout = html.Div([
@@ -1243,6 +1276,8 @@ def update_tab_content(active_tab, selected_scenario, data_status):
         return create_ppt_report_tab()  # type: ignore
     elif active_tab == 'individual_analysis':
         return create_individual_analysis_tab()
+    elif active_tab == 'team_analysis':
+        return create_team_analysis_tab()
     else:
         return html.Div("タブが選択されていません")
 
@@ -1951,6 +1986,55 @@ def update_individual_analysis_content(selected_staff):
     ])
 
     return layout
+
+
+@app.callback(
+    Output('team-criteria-value-dropdown', 'options'),
+    Input('team-criteria-key-dropdown', 'value')
+)
+def update_team_value_options(selected_key):
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty or not selected_key:
+        return []
+    options = sorted(long_df[selected_key].unique())
+    return [{'label': opt, 'value': opt} for opt in options]
+
+
+@app.callback(
+    Output('team-analysis-content', 'children'),
+    Input('team-criteria-value-dropdown', 'value'),
+    State('team-criteria-key-dropdown', 'value')
+)
+def update_team_analysis_graphs(selected_value, selected_key):
+    if not selected_value or not selected_key:
+        raise PreventUpdate
+
+    long_df = data_get('long_df', pd.DataFrame())
+    fatigue_df = data_get('fatigue_score', pd.DataFrame())
+    fairness_df = data_get('fairness_after', pd.DataFrame())
+
+    team_criteria = {selected_key: selected_value}
+    team_df = analyze_team_dynamics(long_df, fatigue_df, fairness_df, team_criteria)
+
+    if team_df.empty:
+        return html.P("この条件に合致するチームデータはありません。")
+
+    fig_fatigue = px.line(
+        team_df,
+        y=['avg_fatigue', 'std_fatigue'],
+        title=f"チーム「{selected_value}」の疲労度スコア推移"
+    )
+    fig_fairness = px.line(
+        team_df,
+        y=['avg_unfairness', 'std_unfairness'],
+        title=f"チーム「{selected_value}」の不公平感スコア推移"
+    )
+
+    return html.Div([
+        html.H4(f"チーム「{selected_value}」の分析結果"),
+        dcc.Graph(figure=fig_fatigue),
+        dcc.Graph(figure=fig_fairness)
+    ])
 
 
 @app.callback(
