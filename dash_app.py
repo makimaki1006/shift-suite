@@ -2156,7 +2156,7 @@ def update_blueprint_analysis_content(n_clicks):
         "個人配慮": "#e8f5e9",
         "ローテーション戦略": "#fff3e0",
         "リスク回避": "#ffebee",
-        "時系列戦略": "#f3e5f5"
+        "時系列戦略": "#e0f2f1"
     }
 
     # テーブルのスタイル設定
