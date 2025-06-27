@@ -7,6 +7,17 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 
+# --- analysis thresholds ---
+SYNERGY_HIGH_THRESHOLD = 1.5
+SYNERGY_LOW_THRESHOLD = 0.3
+VETERAN_RATIO_THRESHOLD = 0.7
+ROLE_RATIO_THRESHOLD = 0.4
+MONTH_END_RATIO_THRESHOLD = 1.2
+WEEKEND_RATIO_THRESHOLD = 0.7
+EARLY_MONTH_RATIO_THRESHOLD = 0.1
+ROLE_COMBO_RATIO_THRESHOLD = 0.1
+NEW_STAFF_ONLY_RATIO_THRESHOLD = 0.01
+
 log = logging.getLogger(__name__)
 
 
@@ -47,14 +58,14 @@ def _analyze_skill_synergy(long_df: pd.DataFrame) -> list:
             synergy_score = actual_count / expected_count
 
             # 期待値から大きく乖離している組み合わせを検出
-            if synergy_score > 1.5:  # 期待値の1.5倍以上
+            if synergy_score > SYNERGY_HIGH_THRESHOLD:
                 rules.append({
                     "法則のカテゴリー": "スキル相性",
                     "発見された法則": f"「{staff1}」と「{staff2}」は意図的に同じシフトに配置される（相性◎）",
                     "法則の強度": round(min(synergy_score / 2, 1.0), 2),
                     "詳細データ": {"実績": actual_count, "期待値": round(expected_count, 1)}
                 })
-            elif synergy_score < 0.3:  # 期待値の30%未満
+            elif synergy_score < SYNERGY_LOW_THRESHOLD:
                 rules.append({
                     "法則のカテゴリー": "スキル相性",
                     "発見された法則": f"「{staff1}」と「{staff2}」は意図的に別シフトに配置される（相性×）",
@@ -97,7 +108,7 @@ def _analyze_workload_distribution(long_df: pd.DataFrame) -> list:
     veteran_staff = staff_experience[staff_experience > median_exp].index
     veteran_ratio = len(set(busy_staff) & set(veteran_staff)) / len(busy_staff) if len(busy_staff) > 0 else 0
 
-    if veteran_ratio > 0.7:
+    if veteran_ratio > VETERAN_RATIO_THRESHOLD:
         rules.append({
             "法則のカテゴリー": "負荷分散戦略",
             "発見された法則": "繁忙時間帯には必ずベテラン職員を優先配置している",
@@ -108,7 +119,7 @@ def _analyze_workload_distribution(long_df: pd.DataFrame) -> list:
     # 役割別の分布も分析
     for role in busy_df['role'].unique():
         role_ratio = len(busy_df[busy_df['role'] == role]) / len(busy_df)
-        if role_ratio > 0.4:
+        if role_ratio > ROLE_RATIO_THRESHOLD:
             rules.append({
                 "法則のカテゴリー": "負荷分散戦略",
                 "発見された法則": f"繁忙時間帯では「{role}」の配置を重視している",
@@ -128,7 +139,7 @@ def _analyze_personal_consideration(long_df: pd.DataFrame) -> list:
 
     # 各職員の勤務パターンを分析
     for staff in long_df['staff'].unique():
-        staff_df = long_df[long_df['staff'] == staff]
+        staff_df = long_df[long_df['staff'] == staff].copy()
 
         # 曜日×時間帯の勤務頻度を計算
         staff_df['dow'] = staff_df['ds'].dt.dayofweek
@@ -157,7 +168,7 @@ def _analyze_personal_consideration(long_df: pd.DataFrame) -> list:
 
         if len(month_pattern) == 2:
             early_month_ratio = month_pattern[True] / month_pattern.sum()
-            if early_month_ratio < 0.1:
+            if early_month_ratio < EARLY_MONTH_RATIO_THRESHOLD:
                 rules.append({
                     "法則のカテゴリー": "個人配慮",
                     "発見された法則": f"「{staff}」は月初（1-5日）の勤務をほぼ避けている",
@@ -270,7 +281,7 @@ def _analyze_risk_mitigation(long_df: pd.DataFrame) -> list:
     if total_time_slots > 0:
         new_staff_only_ratio = new_staff_only_count / total_time_slots
 
-        if new_staff_only_ratio < 0.01:  # 1%未満
+        if new_staff_only_ratio < NEW_STAFF_ONLY_RATIO_THRESHOLD:
             rules.append({
                 "法則のカテゴリー": "リスク回避",
                 "発見された法則": "新人だけのシフトは絶対に作らない（必ずベテランを1人は配置）",
@@ -291,7 +302,7 @@ def _analyze_risk_mitigation(long_df: pd.DataFrame) -> list:
     if role_combinations:
         avg_count = np.mean(list(role_combinations.values()))
         for combo, count in role_combinations.items():
-            if count < avg_count * 0.1:  # 平均の10%未満
+            if count < avg_count * ROLE_COMBO_RATIO_THRESHOLD:
                 rules.append({
                     "法則のカテゴリー": "リスク回避",
                     "発見された法則": f"「{combo[0]}」と「{combo[1]}」は同時配置を避けている（業務上の理由？）",
@@ -321,13 +332,13 @@ def _analyze_temporal_context(long_df: pd.DataFrame) -> list:
         'ds': 'count'
     })
 
-    if len(period_stats) > 1:
+    if len(period_stats) > 1 and '月末' in period_stats.index:
         period_stats['avg_staff_per_slot'] = period_stats['ds'] / period_stats['staff']
 
-        # 月末が特に手厚い配置になっているか
-        if 'month_end_ratio' in locals():
-            month_end_ratio = period_stats.loc['月末', 'avg_staff_per_slot'] / period_stats['avg_staff_per_slot'].mean()
-            if month_end_ratio > 1.2:
+        mean_staff_per_slot = period_stats['avg_staff_per_slot'].mean()
+        if mean_staff_per_slot > 0:
+            month_end_ratio = period_stats.loc['月末', 'avg_staff_per_slot'] / mean_staff_per_slot
+            if month_end_ratio > MONTH_END_RATIO_THRESHOLD:
                 rules.append({
                     "法則のカテゴリー": "時系列戦略",
                     "発見された法則": "月末は通常より手厚い人員配置を行っている（締め作業対応？）",
@@ -337,7 +348,6 @@ def _analyze_temporal_context(long_df: pd.DataFrame) -> list:
 
     # 曜日による戦略の違い
     long_df['dow'] = long_df['ds'].dt.dayofweek
-    dow_names = ['月', '火', '水', '木', '金', '土', '日']
 
     dow_stats = long_df[long_df['parsed_slots_count'] > 0].groupby('dow').agg({
         'staff': 'nunique',
@@ -351,7 +361,7 @@ def _analyze_temporal_context(long_df: pd.DataFrame) -> list:
 
         if weekday_staff > 0:
             weekend_ratio = weekend_staff / weekday_staff
-            if weekend_ratio < 0.7:
+            if weekend_ratio < WEEKEND_RATIO_THRESHOLD:
                 rules.append({
                     "法則のカテゴリー": "時系列戦略",
                     "発見された法則": "週末は平日の70%以下の省力体制で運営している",
