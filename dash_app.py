@@ -26,6 +26,13 @@ from shift_suite.tasks import leave_analyzer
 from shift_suite.tasks.analyzers.synergy import analyze_synergy
 from shift_suite.tasks.analyzers.team_dynamics import analyze_team_dynamics
 from shift_suite.tasks.blueprint_analyzer import create_blueprint_list
+from shift_suite.tasks.integrated_creation_logic_viewer import (
+    create_creation_logic_analysis_tab,
+    run_integrated_logic_analysis,
+)
+from shift_suite.tasks.shift_creation_logic_analyzer import ShiftCreationLogicAnalyzer
+from shift_suite.tasks.shift_creation_forensics import ShiftCreationForensics
+from shift_suite.tasks.shift_mind_reader import ShiftMindReader
 
 # ロガー設定
 LOG_LEVEL = logging.DEBUG
@@ -1105,6 +1112,7 @@ def create_blueprint_analysis_tab() -> html.Div:
 app.layout = html.Div([
     dcc.Store(id='kpi-data-store', storage_type='memory'),
     dcc.Store(id='data-loaded', storage_type='memory'),
+    dcc.Store(id='creation-logic-results-store', storage_type='memory'),
 
     # ヘッダー
     html.Div([  # type: ignore
@@ -1278,6 +1286,7 @@ def update_main_content(selected_scenario, data_status):
         dcc.Tab(label='職員個別分析', value='individual_analysis'),
         dcc.Tab(label='チーム分析', value='team_analysis'),
         dcc.Tab(label='作成ブループリント', value='blueprint_analysis'),
+        dcc.Tab(label='ロジック解明', value='logic_analysis'),
     ])
 
     main_layout = html.Div([
@@ -1330,6 +1339,8 @@ def update_tab_content(active_tab, selected_scenario, data_status):
         return create_team_analysis_tab()
     elif active_tab == 'blueprint_analysis':
         return create_blueprint_analysis_tab()
+    elif active_tab == 'logic_analysis':
+        return create_creation_logic_analysis_tab()
     else:
         return html.Div("タブが選択されていません")
 
@@ -2364,6 +2375,70 @@ def update_log_viewer(n):
     """ログバッファの内容を定期的に更新"""
     log_stream.seek(0)
     return log_stream.read()
+
+
+@app.callback(
+    Output('creation-logic-results', 'children'),
+    Output('logic-analysis-progress', 'children'),
+    Output('creation-logic-results-store', 'data'),
+    Input('analyze-creation-logic-button', 'n_clicks'),
+    State('logic-analysis-depth', 'value'),
+    prevent_initial_call=True
+)
+def update_logic_analysis_results(n_clicks, depth):
+    """
+    「ロジック解明」ボタンが押されたときに、統合分析を実行し、結果を表示する。
+    """
+    if n_clicks == 0:
+        raise PreventUpdate
+
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.Div([
+            html.H4("エラー", style={'color': 'red'}),
+            html.P("分析に必要な勤務データ (long_df) が見つかりません。")
+        ]), "", {}
+
+    try:
+        progress_message = f"解析深度「{depth}」で分析を開始します...しばらくお待ちください。"
+        log.info(progress_message)
+
+        logic_analyzer = ShiftCreationLogicAnalyzer()
+        forensics = ShiftCreationForensics()
+        mind_reader = ShiftMindReader()
+
+        logic_results = {}
+        forensics_results = {}
+        mind_results = {}
+
+        if depth in ['basic', 'detailed', 'complete', 'ultimate']:
+            logic_results = logic_analyzer.reverse_engineer_creation_process(long_df)
+        if depth in ['detailed', 'complete', 'ultimate']:
+            forensics_results = forensics.full_forensic_analysis(long_df)
+        if depth in ['complete', 'ultimate']:
+            mind_results = mind_reader.read_creator_mind(long_df)
+
+        serializable_results = {
+            "logic_results": logic_results,
+            "forensics_results": forensics_results,
+            "mind_results": mind_results,
+            "depth": depth
+        }
+
+        stored_data = json.loads(pd.DataFrame([serializable_results]).to_json(orient='records'))[0]
+
+        results_view = run_integrated_logic_analysis(long_df, depth)
+
+        return results_view, f"✅ 解析深度「{depth}」での分析が完了しました。", stored_data
+
+    except Exception as e:
+        log.error(f"ロジック解明分析中にエラー: {e}", exc_info=True)
+        error_message = html.Div([
+            html.H4("分析エラー", style={'color': 'red'}),
+            html.P("分析の実行中に予期せぬエラーが発生しました。"),
+            html.P(f"エラー内容: {str(e)}")
+        ])
+        return error_message, "❌ エラーが発生しました。", {}
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
