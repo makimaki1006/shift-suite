@@ -109,6 +109,9 @@ from shift_suite.tasks.optimal_hire_plan import create_optimal_hire_plan
 
 # ★新規インポート
 from shift_suite.tasks.gap_analyzer import analyze_standards_gap
+from shift_suite.tasks.advanced_blueprint_engine_v2 import AdvancedBlueprintEngineV2
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
 
 
 def _patch_streamlit_watcher() -> None:
@@ -4182,6 +4185,63 @@ def display_gap_analysis_tab(tab_container, data_dir):
             st.info("解析結果がありません。")
 
 
+def display_mind_reader_tab(data_dir: Path) -> None:
+    st.subheader("🧠 シフト作成思考プロセス解読")
+
+    if "mind_reader_results" not in st.session_state:
+        if st.button("思考プロセスを解読する"):
+            with st.spinner("思考を解読中..."):
+                engine = AdvancedBlueprintEngineV2()
+                long_df = st.session_state.get("long_df")
+                if long_df is not None and not long_df.empty:
+                    results = engine.run_full_blueprint_analysis(long_df)
+                    st.session_state.mind_reader_results = results["mind_reading"]
+                    st.rerun()
+                else:
+                    st.error("分析の元となる勤務データが見つかりません。")
+    else:
+        results = st.session_state.mind_reader_results
+
+        st.markdown("#### 優先順位（判断基準の重要度）")
+        st.info(
+            "作成者が無意識にどの項目を重視しているかを数値化したものです。絶対値が大きいほど重要です。"
+        )
+        importance_df = results.get("feature_importance")
+        if importance_df is not None:
+            st.dataframe(importance_df)
+
+        st.markdown("#### 思考フローチャート（決定木）")
+        st.info(
+            "「誰を配置するか」という判断の分岐を模倣したものです。上にある分岐ほど、優先的に考慮されています。"
+        )
+        tree_model = results.get("thinking_process_tree")
+        if tree_model:
+            fig, _ = plt.subplots(figsize=(20, 10))
+            plot_tree(
+                tree_model,
+                filled=True,
+                feature_names=getattr(tree_model, "feature_names_in_", None),
+                class_names=True,
+                max_depth=3,
+                fontsize=10,
+            )
+            st.pyplot(fig)
+
+        st.markdown("#### トレードオフ分析")
+        st.info(
+            "横軸と縦軸の指標の間で、作成者がどのようなバランスを取ってきたかを示します。"
+        )
+        trade_off_df = results.get("trade_offs")
+        if trade_off_df is not None and not trade_off_df.empty:
+            fig = px.scatter(
+                trade_off_df,
+                x="total_cost",
+                y="fairness_score",
+                title="コスト vs 公平性 トレードオフ",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
     with tab_container:
         st.subheader(_("PPT Report"))
@@ -4276,6 +4336,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 continue
             data_dir = Path(out_dir_path)
             tab_keys_en_dash = [
+                "Mind Reader",
                 "Overview",
                 "Heatmap",
                 "Shortage",
@@ -4293,6 +4354,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
             tab_labels_dash = [_(key) for key in tab_keys_en_dash]
             inner_tabs = st.tabs(tab_labels_dash)
             tab_func_map_dash = {
+                "Mind Reader": display_mind_reader_tab,
                 "Overview": display_overview_tab,
                 "Heatmap": display_heatmap_tab,
                 "Shortage": display_shortage_tab,
@@ -4378,6 +4440,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
     import plotly.graph_objects as go
 
     tab_keys_en_dash = [
+        "Mind Reader",
         "Overview",
         "Heatmap",
         "Shortage",
@@ -4397,6 +4460,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
 
     if extracted_data_dir:
         tab_function_map_dash = {
+            "Mind Reader": display_mind_reader_tab,
             "Overview": display_overview_tab,
             "Heatmap": display_heatmap_tab,
             "Shortage": display_shortage_tab,

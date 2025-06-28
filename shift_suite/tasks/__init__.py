@@ -11,6 +11,8 @@ __all__ = [
     "LowStaffLoadAnalyzer",
     "ShortageFactorAnalyzer",
     "create_optimal_hire_plan",
+    "AdvancedBlueprintEngineV2",
+    "ShiftMindReader",
 ]
 
 _module_map = {
@@ -24,6 +26,8 @@ _module_map = {
     "create_optimal_hire_plan": "shift_suite.tasks.optimal_hire_plan",
     "optimal_hire_plan": "shift_suite.tasks.optimal_hire_plan",
     "daily_cost": "shift_suite.tasks.daily_cost",
+    "AdvancedBlueprintEngineV2": "shift_suite.tasks.advanced_blueprint_engine_v2",
+    "ShiftMindReader": "shift_suite.tasks.shift_mind_reader",
 }
 
 
