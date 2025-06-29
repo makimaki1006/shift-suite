@@ -118,8 +118,10 @@ class ShiftMindReader:
         def _consecutive(s: pd.Series) -> int:
             if s.empty:
                 return 0
+            s = pd.to_datetime(s)
             days = s.dt.date
-            diff = days.diff().dt.days.ne(1).cumsum()
+            _ = days  # prevent unused-variable lint error
+            diff = s.diff().dt.days.ne(1).cumsum()
             return diff.value_counts().max()
 
         staff_features["consecutive_days"] = df_until_now.groupby("staff")["ds"].apply(_consecutive)
