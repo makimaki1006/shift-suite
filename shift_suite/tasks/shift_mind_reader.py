@@ -12,7 +12,7 @@ import pandas as pd
 import lightgbm as lgb
 from sklearn.tree import DecisionTreeClassifier
 
-from ..analyzers import (
+from .analyzers import (
     RestTimeAnalyzer,
     WorkPatternAnalyzer,
     AttendanceBehaviorAnalyzer,
