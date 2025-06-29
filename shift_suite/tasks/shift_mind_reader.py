@@ -128,7 +128,7 @@ class ShiftMindReader:
 
         if not fatigue_features.empty:
             staff_features = staff_features.join(
-                fatigue_features.set_index("staff"), how="left"
+                fatigue_features, how="left"
             )
 
         # additional analyzers
