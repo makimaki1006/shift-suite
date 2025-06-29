@@ -2389,8 +2389,8 @@ def update_logic_analysis_results(n_clicks):
 
     try:
         engine = AdvancedBlueprintEngineV2()
-        results = engine.run_full_blueprint_analysis(long_df)
-        mind_results = results.get("mind_reading", {})
+        full_results = engine.run_full_blueprint_analysis(long_df)
+        mind_results = full_results.get("mind_reading", {})
 
         if "error" in mind_results:
             return html.Div(f"分析エラー: {mind_results['error']}", style={'color': 'red'})

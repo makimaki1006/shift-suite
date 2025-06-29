@@ -12,6 +12,14 @@ import pandas as pd
 import lightgbm as lgb
 from sklearn.tree import DecisionTreeClassifier
 
+from ..analyzers import (
+    RestTimeAnalyzer,
+    WorkPatternAnalyzer,
+    AttendanceBehaviorAnalyzer,
+)
+from ..fatigue import _features as calc_fatigue_features
+from ..fairness import calculate_jain_index
+
 log = logging.getLogger(__name__)
 
 
@@ -39,7 +47,8 @@ class ShiftMindReader:
             return {"error": "意思決定ポイントを再構築できませんでした。"}
 
         preference_model, feature_importance = self._reverse_engineer_preferences(
-            decision_history
+            decision_history,
+            long_df,
         )
         self.preference_model = preference_model
 
@@ -92,8 +101,59 @@ class ShiftMindReader:
 
         return decisions
 
+    def _get_current_features_for_all_staff(self, long_df: pd.DataFrame, context_date: pd.Timestamp) -> pd.DataFrame:
+        """Calculate latest features for every staff up to ``context_date``."""
+        df_until_now = long_df[long_df["ds"] < context_date]
+        if df_until_now.empty:
+            return pd.DataFrame(index=long_df["staff"].unique())
+
+        # fatigue related features (simplified)
+        fatigue_features = calc_fatigue_features(df_until_now)
+
+        staff_features = pd.DataFrame(index=long_df["staff"].unique())
+        staff_features["total_hours"] = (
+            df_until_now.groupby("staff")["ds"].count() * 0.5
+        )
+
+        def _consecutive(s: pd.Series) -> int:
+            if s.empty:
+                return 0
+            days = s.dt.date
+            diff = days.diff().dt.days.ne(1).cumsum()
+            return diff.value_counts().max()
+
+        staff_features["consecutive_days"] = df_until_now.groupby("staff")["ds"].apply(_consecutive)
+
+        if not fatigue_features.empty:
+            staff_features = staff_features.join(
+                fatigue_features.set_index("staff"), how="left"
+            )
+
+        # additional analyzers
+        rta = RestTimeAnalyzer()
+        rest_daily = rta.analyze(df_until_now)
+        if not rest_daily.empty:
+            last_rest = rest_daily.groupby("staff")["rest_hours"].last()
+            staff_features["recent_rest_hours"] = staff_features.index.map(last_rest).fillna(0)
+
+        aba = AttendanceBehaviorAnalyzer()
+        att = aba.analyze(df_until_now)
+        if not att.empty:
+            staff_features["attendance_rate"] = staff_features.index.map(att.set_index("staff")["attendance_rate"]).fillna(0)
+
+        wpa = WorkPatternAnalyzer()
+        pattern_df = wpa.analyze(df_until_now)
+        if not pattern_df.empty:
+            code_cols = [c for c in pattern_df.columns if c != "staff"]
+            staff_features["num_codes"] = pattern_df.set_index("staff")[code_cols].gt(0).sum(axis=1)
+
+        jain_val = calculate_jain_index(staff_features.get("total_hours", pd.Series(dtype=float)))
+        staff_features["jain_index"] = jain_val
+
+        return staff_features.fillna(0)
+
     def _reverse_engineer_preferences(
-        self, decisions: List[DecisionPoint]
+        self, decisions: List[DecisionPoint], long_df: pd.DataFrame
     ) -> Tuple[lgb.LGBMRanker, pd.DataFrame]:
         """【実装方針】
         1. `decisions`リストから、LGBMRanker用の学習データを生成する (X, y, group)。
@@ -103,36 +163,52 @@ class ShiftMindReader:
         5. 学習済みモデルの`feature_importances_`属性から特徴量重要度を取得し、DataFrameとして整形する。
         6. 学習済みモデルと特徴量重要度DFを返す。
         """
-        log.info("選好関数を逆算中...")
-        if not decisions:
-            return lgb.LGBMRanker(), pd.DataFrame(columns=["feature", "importance"])
+        log.info("選好関数を逆算中 (拡張特徴量版)...")
 
-        records = []
+        X_train: List[List[float]] = []
+        y_train: List[int] = []
+        group: List[int] = []
+        feature_names = [
+            "total_hours",
+            "consecutive_days",
+            "recent_rest_hours",
+            "attendance_rate",
+            "num_codes",
+        ]
+
+        if not decisions:
+            return lgb.LGBMRanker(), pd.DataFrame({"feature": feature_names, "importance": [0] * len(feature_names)})
+
         for dp in decisions:
-            for idx, opt in enumerate(dp.options):
-                rec = {
-                    "query_id": dp.query_id,
-                    "hours": opt.get("hours", 0.0),
-                    "chosen": 1 if idx == dp.chosen_idx else 0,
+            current_features = self._get_current_features_for_all_staff(long_df, dp.context["slot_time"])
+            query_features: List[List[float]] = []
+            for opt in dp.options:
+                staff_id = opt["staff"]
+                feats = {
+                    "total_hours": current_features.loc[staff_id].get("total_hours", 0) + 0.5,
+                    "consecutive_days": current_features.loc[staff_id].get("consecutive_days", 0),
+                    "recent_rest_hours": current_features.loc[staff_id].get("recent_rest_hours", 0),
+                    "attendance_rate": current_features.loc[staff_id].get("attendance_rate", 0),
+                    "num_codes": current_features.loc[staff_id].get("num_codes", 0),
                 }
-                records.append(rec)
-        feat_df = pd.DataFrame(records)
-        group = feat_df.groupby("query_id").size().tolist()
+                query_features.append([feats.get(fn, 0) for fn in feature_names])
+
+            X_train.extend(query_features)
+            labels = [0] * len(dp.options)
+            labels[dp.chosen_idx] = 1
+            y_train.extend(labels)
+            group.append(len(dp.options))
 
         model = lgb.LGBMRanker(verbose=-1)
-        if not feat_df.empty:
-            X = feat_df[["hours"]]
-            y = feat_df["chosen"]
+        if X_train:
             try:
-                model.fit(X, y, group=group)
+                model.fit(X_train, y_train, group=group)
             except Exception as e:  # noqa: BLE001
                 log.warning(f"LGBMRanker fit failed: {e}")
 
-        importance = getattr(model, "feature_importances_", [0])
-        fi_df = pd.DataFrame(
-            {"feature": ["hours"], "importance": importance[:1]}
-        )
-        return model, fi_df
+        importance = getattr(model, "feature_importances_", [0] * len(feature_names))
+        fi_df = pd.DataFrame({"feature": feature_names, "importance": importance})
+        return model, fi_df.sort_values("importance", ascending=False)
 
     def _mimic_thinking_process(self, decisions: List[DecisionPoint]) -> DecisionTreeClassifier:
         """【実装方針】
