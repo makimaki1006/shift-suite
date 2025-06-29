@@ -28,11 +28,10 @@ from shift_suite.tasks.analyzers.team_dynamics import analyze_team_dynamics
 from shift_suite.tasks.blueprint_analyzer import create_blueprint_list
 from shift_suite.tasks.integrated_creation_logic_viewer import (
     create_creation_logic_analysis_tab,
-    run_integrated_logic_analysis,
 )
-from shift_suite.tasks.shift_creation_logic_analyzer import ShiftCreationLogicAnalyzer
-from shift_suite.tasks.shift_creation_forensics import ShiftCreationForensics
-from shift_suite.tasks.shift_mind_reader import ShiftMindReader
+from shift_suite.tasks.advanced_blueprint_engine_v2 import AdvancedBlueprintEngineV2
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
 
 # ロガー設定
 LOG_LEVEL = logging.DEBUG
@@ -2379,66 +2378,54 @@ def update_log_viewer(n):
 
 @app.callback(
     Output('creation-logic-results', 'children'),
-    Output('logic-analysis-progress', 'children'),
-    Output('creation-logic-results-store', 'data'),
     Input('analyze-creation-logic-button', 'n_clicks'),
-    State('logic-analysis-depth', 'value'),
     prevent_initial_call=True
 )
-def update_logic_analysis_results(n_clicks, depth):
-    """
-    「ロジック解明」ボタンが押されたときに、統合分析を実行し、結果を表示する。
-    """
-    if n_clicks == 0:
-        raise PreventUpdate
-
+def update_logic_analysis_results(n_clicks):
+    """「ロジック解明」ボタンが押されたときに分析を実行し、結果を表示する。"""
     long_df = data_get('long_df', pd.DataFrame())
     if long_df.empty:
-        return html.Div([
-            html.H4("エラー", style={'color': 'red'}),
-            html.P("分析に必要な勤務データ (long_df) が見つかりません。")
-        ]), "", {}
+        return html.Div("分析データが見つかりません。まずデータを読み込んでください。", style={'color': 'red'})
 
     try:
-        progress_message = f"解析深度「{depth}」で分析を開始します...しばらくお待ちください。"
-        log.info(progress_message)
+        engine = AdvancedBlueprintEngineV2()
+        results = engine.run_full_blueprint_analysis(long_df)
+        mind_results = results.get("mind_reading", {})
 
-        logic_analyzer = ShiftCreationLogicAnalyzer()
-        forensics = ShiftCreationForensics()
-        mind_reader = ShiftMindReader()
+        if "error" in mind_results:
+            return html.Div(f"分析エラー: {mind_results['error']}", style={'color': 'red'})
 
-        logic_results = {}
-        forensics_results = {}
-        mind_results = {}
+        importance_df = pd.DataFrame(mind_results.get('feature_importance', []))
+        fig_bar = px.bar(
+            importance_df.sort_values('importance', ascending=False).head(15),
+            x='importance', y='feature', orientation='h', title='判断基準の重要度（TOP15）'
+        )
+        bar_chart = dcc.Graph(figure=fig_bar)
 
-        if depth in ['basic', 'detailed', 'complete', 'ultimate']:
-            logic_results = logic_analyzer.reverse_engineer_creation_process(long_df)
-        if depth in ['detailed', 'complete', 'ultimate']:
-            forensics_results = forensics.full_forensic_analysis(long_df)
-        if depth in ['complete', 'ultimate']:
-            mind_results = mind_reader.read_creator_mind(long_df)
+        tree_model = mind_results.get('thinking_process_tree')
+        if tree_model and hasattr(tree_model, 'tree_'):
+            buf = io.BytesIO()
+            fig, ax = plt.subplots(figsize=(25, 10))
+            plot_tree(tree_model, filled=True, feature_names=tree_model.feature_names_in_, max_depth=3, fontsize=10, ax=ax)
+            fig.savefig(buf, format="png")
+            plt.close(fig)
+            tree_image = html.Img(src=f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}", style={'width': '100%'})
+        else:
+            tree_image = html.P("決定木モデルを生成できませんでした。")
 
-        serializable_results = {
-            "logic_results": logic_results,
-            "forensics_results": forensics_results,
-            "mind_results": mind_results,
-            "depth": depth
-        }
-
-        stored_data = json.loads(pd.DataFrame([serializable_results]).to_json(orient='records'))[0]
-
-        results_view = run_integrated_logic_analysis(long_df, depth)
-
-        return results_view, f"✅ 解析深度「{depth}」での分析が完了しました。", stored_data
-
-    except Exception as e:
-        log.error(f"ロジック解明分析中にエラー: {e}", exc_info=True)
-        error_message = html.Div([
-            html.H4("分析エラー", style={'color': 'red'}),
-            html.P("分析の実行中に予期せぬエラーが発生しました。"),
-            html.P(f"エラー内容: {str(e)}")
+        return html.Div([
+            html.H4("判断基準の重要度"),
+            html.P("作成者がどの要素を重視しているかを数値化したものです。"),
+            bar_chart,
+            html.H4("思考フローチャート（決定木）", style={"marginTop": "30px"}),
+            html.P("配置を決定する際の思考の分岐を模倣したものです。"),
+            tree_image,
         ])
-        return error_message, "❌ エラーが発生しました。", {}
+    except Exception as e:  # noqa: BLE001
+        log.error(f"ロジック解明分析中にエラー: {e}", exc_info=True)
+        return html.Div(f"分析中に予期せぬエラーが発生しました: {e}", style={'color': 'red'})
+
+
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
