@@ -17,7 +17,7 @@ from .analyzers import (
     WorkPatternAnalyzer,
     AttendanceBehaviorAnalyzer,
 )
-from ..fatigue import _features as calc_fatigue_features
+from .fatigue import _features as calc_fatigue_features
 from ..fairness import calculate_jain_index
 
 log = logging.getLogger(__name__)
