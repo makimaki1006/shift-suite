@@ -61,6 +61,21 @@ CURRENT_SCENARIO_DIR: Path | None = None
 # Temporary directory object for uploaded scenarios
 TEMP_DIR_OBJ: tempfile.TemporaryDirectory | None = None
 
+# ``LOGIC_ANALYSIS_CACHE`` stores results keyed by dataframe hash
+LOGIC_ANALYSIS_CACHE: dict[int, dict[str, object]] = {}
+
+def get_cached_analysis(df_hash: int):
+    """Return cached analysis results for the given hash."""
+    return LOGIC_ANALYSIS_CACHE.get(df_hash)
+
+
+def cache_analysis(df_hash: int, results: dict) -> None:
+    """Cache analysis results keeping at most 3 entries."""
+    if len(LOGIC_ANALYSIS_CACHE) >= 3:
+        oldest_key = next(iter(LOGIC_ANALYSIS_CACHE))
+        del LOGIC_ANALYSIS_CACHE[oldest_key]
+    LOGIC_ANALYSIS_CACHE[df_hash] = results
+
 # --- ユーティリティ関数 ---
 def safe_filename(name: str) -> str:
     """Normalize and sanitize strings for file keys"""
@@ -1112,6 +1127,8 @@ app.layout = html.Div([
     dcc.Store(id='kpi-data-store', storage_type='memory'),
     dcc.Store(id='data-loaded', storage_type='memory'),
     dcc.Store(id='creation-logic-results-store', storage_type='memory'),
+    dcc.Store(id='logic-analysis-progress', storage_type='memory'),
+    dcc.Interval(id='logic-analysis-interval', interval=500, disabled=True),
 
     # ヘッダー
     html.Div([  # type: ignore
@@ -2350,6 +2367,69 @@ def run_factor_analysis(n_clicks):
     return html.Div([html.H5('影響度の高い要因 トップ5'), table])  # type: ignore
 
 
+def generate_lightweight_tree_visualization(tree_model):
+    """Generate a small decision tree visualisation."""
+    if not tree_model or not hasattr(tree_model, 'tree_'):
+        return html.P('決定木モデルを生成できませんでした。')
+
+    try:
+        buf = io.BytesIO()
+        fig, ax = plt.subplots(figsize=(12, 6))
+        plot_tree(
+            tree_model,
+            filled=True,
+            feature_names=tree_model.feature_names_in_[:20],
+            max_depth=2,
+            fontsize=8,
+            ax=ax,
+            impurity=False,
+            proportion=True,
+        )
+        fig.savefig(buf, format='png', dpi=72, bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+        encoded = base64.b64encode(buf.getvalue()).decode()
+        return html.Img(
+            src=f"data:image/png;base64,{encoded}",
+            style={'width': '100%', 'maxWidth': '1000px'},
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.error(f'決定木可視化エラー: {exc}')
+        return html.P(f'決定木の可視化に失敗しました: {exc}')
+
+
+def generate_results_display(full_results):
+    """Create the final display for logic analysis results."""
+    mind_results = full_results.get('mind_reading', {})
+
+    if 'error' in mind_results:
+        return html.Div(f"分析エラー: {mind_results['error']}", style={'color': 'red'})
+
+    importance_df = pd.DataFrame(mind_results.get('feature_importance', []))
+    fig_bar = px.bar(
+        importance_df.sort_values('importance', ascending=False).head(15),
+        x='importance',
+        y='feature',
+        orientation='h',
+        title='判断基準の重要度（TOP15）',
+    )
+
+    tree_content = generate_lightweight_tree_visualization(
+        mind_results.get('thinking_process_tree')
+    )
+
+    return html.Div([
+        html.H4('分析完了！'),
+        html.Hr(),
+        html.H4('判断基準の重要度'),
+        html.P('作成者がどの要素を重視しているかを数値化したものです。'),
+        dcc.Graph(figure=fig_bar),
+        html.H4('思考フローチャート', style={'marginTop': '30px'}),
+        html.P('配置を決定する際の思考の分岐を模倣したものです。'),
+        tree_content,
+    ])
+
+
 @app.callback(
     Output('save-log-msg', 'children'),
     Input('save-log-button', 'n_clicks'),
@@ -2378,52 +2458,113 @@ def update_log_viewer(n):
 
 @app.callback(
     Output('creation-logic-results', 'children'),
+    Output('logic-analysis-interval', 'disabled'),
+    Output('logic-analysis-progress', 'data'),
     Input('analyze-creation-logic-button', 'n_clicks'),
-    prevent_initial_call=True
+    State('logic-analysis-progress', 'data'),
+    prevent_initial_call=True,
 )
-def update_logic_analysis_results(n_clicks):
-    """「ロジック解明」ボタンが押されたときに分析を実行し、結果を表示する。"""
-    long_df = data_get('long_df', pd.DataFrame())
-    if long_df.empty:
-        return html.Div("分析データが見つかりません。まずデータを読み込んでください。", style={'color': 'red'})
+def update_logic_analysis_results(n_clicks, progress_data):
+    """Execute logic analysis in stages and update progress."""
 
-    try:
+    if n_clicks == 0:
+        raise PreventUpdate
+
+    if progress_data is None:
+        progress_bar = html.Div([
+            html.H4("分析中...", id="progress-title"),
+            dcc.Graph(
+                id='progress-bar',
+                figure={
+                    'data': [{
+                        'x': [0],
+                        'y': ['Progress'],
+                        'type': 'bar',
+                        'orientation': 'h',
+                        'marker': {'color': '#1f77b4'},
+                    }],
+                    'layout': {
+                        'xaxis': {'range': [0, 100], 'title': '進捗率 (%)'},
+                        'yaxis': {'visible': False},
+                        'height': 100,
+                        'margin': {'l': 0, 'r': 0, 't': 30, 'b': 30},
+                    },
+                },
+            ),
+            html.Div(id='progress-message', children='データを読み込んでいます...'),
+        ])
+
+        return progress_bar, False, {'stage': 'loading', 'progress': 0}
+
+    stage = progress_data.get('stage', 'loading')
+
+    if stage == 'loading':
+        long_df = data_get('long_df', pd.DataFrame())
+        if long_df.empty:
+            return html.Div('分析データが見つかりません。', style={'color': 'red'}), True, None
+
+        df_hash = hash(long_df.to_json())
+        cached = get_cached_analysis(df_hash)
+        if cached:
+            return generate_results_display(cached), True, None
+
+        return dash.no_update, False, {'stage': 'analyzing', 'progress': 10, 'df_hash': df_hash}
+
+    if stage == 'analyzing':
+        long_df = data_get('long_df', pd.DataFrame())
+        df_hash = progress_data.get('df_hash')
+
         engine = AdvancedBlueprintEngineV2()
         full_results = engine.run_full_blueprint_analysis(long_df)
-        mind_results = full_results.get("mind_reading", {})
 
-        if "error" in mind_results:
-            return html.Div(f"分析エラー: {mind_results['error']}", style={'color': 'red'})
+        cache_analysis(df_hash, full_results)
+        return dash.no_update, False, {'stage': 'visualizing', 'progress': 70, 'results': full_results}
 
-        importance_df = pd.DataFrame(mind_results.get('feature_importance', []))
-        fig_bar = px.bar(
-            importance_df.sort_values('importance', ascending=False).head(15),
-            x='importance', y='feature', orientation='h', title='判断基準の重要度（TOP15）'
-        )
-        bar_chart = dcc.Graph(figure=fig_bar)
+    if stage == 'visualizing':
+        full_results = progress_data.get('results', {})
+        return generate_results_display(full_results), True, None
 
-        tree_model = mind_results.get('thinking_process_tree')
-        if tree_model and hasattr(tree_model, 'tree_'):
-            buf = io.BytesIO()
-            fig, ax = plt.subplots(figsize=(25, 10))
-            plot_tree(tree_model, filled=True, feature_names=tree_model.feature_names_in_, max_depth=3, fontsize=10, ax=ax)
-            fig.savefig(buf, format="png")
-            plt.close(fig)
-            tree_image = html.Img(src=f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}", style={'width': '100%'})
-        else:
-            tree_image = html.P("決定木モデルを生成できませんでした。")
+    return dash.no_update, True, None
 
-        return html.Div([
-            html.H4("判断基準の重要度"),
-            html.P("作成者がどの要素を重視しているかを数値化したものです。"),
-            bar_chart,
-            html.H4("思考フローチャート（決定木）", style={"marginTop": "30px"}),
-            html.P("配置を決定する際の思考の分岐を模倣したものです。"),
-            tree_image,
-        ])
-    except Exception as e:  # noqa: BLE001
-        log.error(f"ロジック解明分析中にエラー: {e}", exc_info=True)
-        return html.Div(f"分析中に予期せぬエラーが発生しました: {e}", style={'color': 'red'})
+
+@app.callback(
+    Output('progress-bar', 'figure'),
+    Output('progress-message', 'children'),
+    Input('logic-analysis-interval', 'n_intervals'),
+    State('logic-analysis-progress', 'data'),
+    prevent_initial_call=True,
+)
+def update_progress_bar(n_intervals, progress_data):
+    """Update the progress bar display."""
+    if not progress_data:
+        raise PreventUpdate
+
+    progress = progress_data.get('progress', 0)
+    stage = progress_data.get('stage', 'loading')
+
+    messages = {
+        'loading': 'データを読み込んでいます...',
+        'analyzing': 'シフトパターンを分析しています...',
+        'visualizing': '結果を可視化しています...',
+    }
+
+    figure = {
+        'data': [{
+            'x': [progress],
+            'y': ['Progress'],
+            'type': 'bar',
+            'orientation': 'h',
+            'marker': {'color': '#1f77b4'},
+        }],
+        'layout': {
+            'xaxis': {'range': [0, 100], 'title': '進捗率 (%)'},
+            'yaxis': {'visible': False},
+            'height': 100,
+            'margin': {'l': 0, 'r': 0, 't': 30, 'b': 30},
+        },
+    }
+
+    return figure, messages.get(stage, '処理中...')
 
 
 
