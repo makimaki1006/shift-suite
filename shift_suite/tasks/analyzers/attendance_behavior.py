@@ -21,6 +21,10 @@ class AttendanceBehaviorAnalyzer:
         """
         if df.empty or "ds" not in df.columns or "parsed_slots_count" not in df.columns:
             return pd.DataFrame(columns=["staff", "attendance_rate"])
+
+        # create explicit copy to avoid pandas SettingWithCopyWarning
+        df = df.copy()
+
         df["date"] = pd.to_datetime(df["ds"]).dt.date
         daily = df.groupby(["staff", "date"])["parsed_slots_count"].sum().reset_index()
         daily["worked"] = daily["parsed_slots_count"] > 0
