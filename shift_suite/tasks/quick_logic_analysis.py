@@ -91,6 +91,27 @@ def create_minimal_features(df: pd.DataFrame, all_possible_codes: list[str]) -> 
     return features
 
 
+def create_standard_features(daily_group: pd.DataFrame, all_possible_codes: list[str]) -> pd.DataFrame:
+    """標準モード用の中程度の粒度の特徴量を生成する"""
+    # 高速版の特徴量をベースにする
+    features = create_minimal_features(daily_group, all_possible_codes)
+
+    # 1. 勤務間隔の統計
+    if not daily_group.empty:
+        daily_group = daily_group.sort_values("ds")
+        rest_hours = (daily_group["ds"].diff().dt.total_seconds() / 3600).fillna(0)
+        features["avg_rest_hours"] = [rest_hours.mean()]
+        features["min_rest_hours"] = [rest_hours.min()]
+
+    # 2. 勤務コードの多様性
+    if "code" in daily_group.columns:
+        features["unique_code_ratio"] = [
+            daily_group["code"].nunique() / len(all_possible_codes) if all_possible_codes else 0
+        ]
+
+    return features
+
+
 def run_ultra_light_analysis(df: pd.DataFrame) -> dict:
     """10秒以内で完了する超軽量分析（日単位集計版）"""
 
@@ -156,8 +177,69 @@ def run_ultra_light_analysis(df: pd.DataFrame) -> dict:
     return results
 
 
-def run_optimized_analysis(df: pd.DataFrame) -> dict:
-    """Placeholder for a slower but thorough analysis."""
+def run_standard_analysis(df: pd.DataFrame) -> dict:
+    """標準モード：中規模サンプリングとやや詳細な特徴量で分析"""
+    sample_size = min(5000, len(df))
+    sample_df = df.sample(n=sample_size, random_state=42) if len(df) > sample_size else df
+    results: dict[str, Any] = {}
+    try:
+        daily_groups = sample_df.groupby(sample_df["ds"].dt.date)
+        X_daily, y_daily = [], []
+        all_codes = df["code"].unique().tolist() if "code" in df.columns else []
+        global_median_night_ratio = df.groupby(df["ds"].dt.date).apply(
+            lambda x: x["code"].astype(str).str.contains("夜", na=False).sum() / len(x) if len(x) > 0 else 0
+        ).median()
+
+        for _, group in daily_groups:
+            if group.empty:
+                continue
+            X_daily.append(create_standard_features(group, all_possible_codes=all_codes))
+            night_ratio = group["code"].astype(str).str.contains("夜", na=False).sum() / len(group) if len(group) > 0 else 0
+            y_daily.append(1 if night_ratio <= global_median_night_ratio else 0)
+
+        if not X_daily:
+            raise ValueError("日単位の分析データが生成できませんでした。")
+        features = pd.concat(X_daily, ignore_index=True).fillna(0)
+        y = np.array(y_daily)
+
+        model = DecisionTreeClassifier(max_depth=3, min_samples_split=20, min_samples_leaf=10, random_state=42)
+        model.fit(features, y)
+
+        importance = (
+            pd.DataFrame({"feature": features.columns, "importance": model.feature_importances_})
+            .nlargest(10, "importance")
+        )
+        results["feature_importance"] = importance.to_dict("records")
+        results["simple_tree"] = model
+    except Exception as exc:
+        log.error("standard analysis failed: %s", exc, exc_info=True)
+        results["error"] = str(exc)
+    return results
+
+
+def run_full_analysis(df: pd.DataFrame) -> dict:
+    """詳細モード：全データとオリジナルの重い分析ロジックを実行"""
+    log.info("詳細分析（full analysis）を開始します。時間がかかる可能性があります。")
+    try:
+        from shift_suite.tasks.advanced_blueprint_engine_v2 import AdvancedBlueprintEngineV2
+
+        engine = AdvancedBlueprintEngineV2()
+        full_results = engine.run_full_blueprint_analysis(df)
+        return full_results.get("mind_reading", {})
+    except Exception as exc:
+        log.error("full analysis failed: %s", exc, exc_info=True)
+        return {"error": str(exc)}
+
+
+def run_optimized_analysis(df: pd.DataFrame, detail_level: str) -> dict:
+    """分析レベルに応じて適切な分析関数を呼び出すルーター"""
+    if detail_level == "fast":
+        return run_ultra_light_analysis(df)
+    if detail_level == "standard":
+        return run_standard_analysis(df)
+    if detail_level == "detailed":
+        return run_full_analysis(df)
+    log.warning(f"不明な分析レベル: {detail_level}。高速モードを実行します。")
     return run_ultra_light_analysis(df)
 
 
