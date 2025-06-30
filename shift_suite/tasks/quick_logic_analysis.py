@@ -91,38 +91,65 @@ def create_minimal_features(df: pd.DataFrame, all_possible_codes: list[str]) -> 
     return features
 
 
-def create_dummy_target(df: pd.DataFrame) -> np.ndarray:
-    """Create a dummy target variable for analysis."""
-    daily_ratio = df.groupby(df["ds"].dt.date).apply(
-        lambda x: x["code"].astype(str).str.contains("\u591c", na=False).sum() / len(x)
-    )
-    median_ratio = daily_ratio.median()
-    targets = (daily_ratio <= median_ratio).astype(int)
-    df["date"] = df["ds"].dt.date
-    df_with_target = df.merge(targets.to_frame("target"), left_on="date", right_index=True, how="left")
-    return df_with_target["target"].fillna(0).values[: len(df)]
-
-
 def run_ultra_light_analysis(df: pd.DataFrame) -> dict:
-    """Run a fast analysis on at most 500 samples."""
+    """10秒以内で完了する超軽量分析（日単位集計版）"""
+
     sample_size = min(500, len(df))
     sample_df = df.sample(n=sample_size, random_state=42) if len(df) > sample_size else df
     results: dict[str, Any] = {}
+
     try:
+        # --- ▼▼▼ 新しいロジック ▼▼▼ ---
+
+        # 1. 日単位でデータをグループ化
+        daily_groups = sample_df.groupby(sample_df["ds"].dt.date)
+
+        X_daily: list[pd.DataFrame] = []
+        y_daily: list[int] = []
+
         all_codes = df["code"].unique().tolist() if "code" in df.columns else []
-        features = create_minimal_features(sample_df, all_possible_codes=all_codes)
-        y = create_dummy_target(sample_df)
-        model = DecisionTreeClassifier(max_depth=2, min_samples_split=50, min_samples_leaf=20)
+
+        # 全データから夜勤率の中央値を計算（比較基準を統一するため）
+        global_median_night_ratio = df.groupby(df["ds"].dt.date).apply(
+            lambda x: x["code"].astype(str).str.contains("夜", na=False).sum() / len(x) if len(x) > 0 else 0
+        ).median()
+
+        for date, group in daily_groups:
+            if group.empty:
+                continue
+
+            # 2. 1日分の特徴量ベクトルを生成
+            daily_features = create_minimal_features(group, all_possible_codes=all_codes)
+            X_daily.append(daily_features)
+
+            # 3. 1日分の正解ラベルを生成
+            night_ratio = group["code"].astype(str).str.contains("夜", na=False).sum() / len(group) if len(group) > 0 else 0
+            y_daily.append(1 if night_ratio <= global_median_night_ratio else 0)
+
+        if not X_daily:
+            raise ValueError("日単位での分析データが生成できませんでした。")
+
+        # 日ごとの特徴量を一つのデータフレームに結合
+        features = pd.concat(X_daily, ignore_index=True)
+        y = np.array(y_daily)
+
+        # --- ▲▲▲ 新しいロジックここまで ▲▲▲ ---
+
+        # これ以降のモデル学習部分は変更なし
+        model = DecisionTreeClassifier(max_depth=2, min_samples_split=10, min_samples_leaf=5, random_state=42)
         model.fit(features, y)
+
         importance = (
             pd.DataFrame({"feature": features.columns, "importance": model.feature_importances_})
             .nlargest(5, "importance")
         )
         results["feature_importance"] = importance.to_dict("records")
         results["simple_tree"] = model
-    except Exception as exc:  # pragma: no cover - safety log
-        log.error("light analysis failed: %s", exc)
+
+    except Exception as exc:
+        log.error("light analysis failed: %s", exc, exc_info=True)
         results["error"] = str(exc)
+
     return results
 
 
