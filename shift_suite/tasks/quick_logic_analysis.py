@@ -143,6 +143,9 @@ def run_ultra_light_analysis(df: pd.DataFrame) -> dict:
             pd.DataFrame({"feature": features.columns, "importance": model.feature_importances_})
             .nlargest(5, "importance")
         )
+        print("---------- DEBUG: Feature Importances ----------")
+        print(importance)
+        print("------------------------------------------")
         results["feature_importance"] = importance.to_dict("records")
         results["simple_tree"] = model
 
