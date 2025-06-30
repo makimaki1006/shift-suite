@@ -29,7 +29,15 @@ from shift_suite.tasks.blueprint_analyzer import create_blueprint_list
 from shift_suite.tasks.integrated_creation_logic_viewer import (
     create_creation_logic_analysis_tab,
 )
-from shift_suite.tasks.advanced_blueprint_engine_v2 import AdvancedBlueprintEngineV2
+from shift_suite.tasks.quick_logic_analysis import (
+    get_basic_shift_stats,
+    get_quick_patterns,
+    run_ultra_light_analysis,
+    run_optimized_analysis,
+    create_stats_cards,
+    create_pattern_list,
+    create_deep_analysis_display,
+)
 from sklearn.tree import plot_tree
 import matplotlib.pyplot as plt
 
@@ -1126,6 +1134,7 @@ def create_blueprint_analysis_tab() -> html.Div:
 app.layout = html.Div([
     dcc.Store(id='kpi-data-store', storage_type='memory'),
     dcc.Store(id='data-loaded', storage_type='memory'),
+    dcc.Store(id='full-analysis-store', storage_type='memory'),
     dcc.Store(id='creation-logic-results-store', storage_type='memory'),
     dcc.Store(id='logic-analysis-progress', storage_type='memory'),
     dcc.Interval(id='logic-analysis-interval', interval=500, disabled=True),
@@ -2458,73 +2467,64 @@ def update_log_viewer(n):
 
 @app.callback(
     Output('creation-logic-results', 'children'),
-    Output('logic-analysis-interval', 'disabled'),
-    Output('logic-analysis-progress', 'data'),
+    Output('full-analysis-store', 'data'),
     Input('analyze-creation-logic-button', 'n_clicks'),
-    State('logic-analysis-progress', 'data'),
+    State('analysis-detail-level', 'value'),
     prevent_initial_call=True,
 )
-def update_logic_analysis_results(n_clicks, progress_data):
-    """Execute logic analysis in stages and update progress."""
+def update_logic_analysis_immediate(n_clicks, detail_level):
+    """Show basic results immediately and start deep analysis."""
 
-    if n_clicks == 0:
+    if not n_clicks:
         raise PreventUpdate
 
-    if progress_data is None:
-        progress_bar = html.Div([
-            html.H4("分析中...", id="progress-title"),
-            dcc.Graph(
-                id='progress-bar',
-                figure={
-                    'data': [{
-                        'x': [0],
-                        'y': ['Progress'],
-                        'type': 'bar',
-                        'orientation': 'h',
-                        'marker': {'color': '#1f77b4'},
-                    }],
-                    'layout': {
-                        'xaxis': {'range': [0, 100], 'title': '進捗率 (%)'},
-                        'yaxis': {'visible': False},
-                        'height': 100,
-                        'margin': {'l': 0, 'r': 0, 't': 30, 'b': 30},
-                    },
-                },
-            ),
-            html.Div(id='progress-message', children='データを読み込んでいます...'),
-        ])
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.Div('分析データが見つかりません。', style={'color': 'red'}), None
 
-        return progress_bar, False, {'stage': 'loading', 'progress': 0}
+    basic_stats = get_basic_shift_stats(long_df)
+    quick_patterns = get_quick_patterns(long_df.head(500))
 
-    stage = progress_data.get('stage', 'loading')
+    immediate_results = html.Div([
+        html.H4('✅ 基本分析完了（詳細分析実行中...）', style={'color': 'green'}),
+        html.Hr(),
+        html.Div([
+            html.H5('📊 シフトの基本統計'),
+            create_stats_cards(basic_stats),
+        ]),
+        html.Div([
+            html.H5('🔍 発見された主要パターン（簡易版）'),
+            create_pattern_list(quick_patterns),
+        ], style={'marginTop': '20px'}),
+        html.Div([
+            html.H5('🧠 AIによる深層分析'),
+            dcc.Loading(id='deep-analysis-loading', children=html.Div(id='deep-analysis-results'), type='circle'),
+        ], style={'marginTop': '30px'}),
+        dcc.Interval(id='background-trigger', interval=100, n_intervals=0, max_intervals=1),
+    ])
 
-    if stage == 'loading':
-        long_df = data_get('long_df', pd.DataFrame())
-        if long_df.empty:
-            return html.Div('分析データが見つかりません。', style={'color': 'red'}), True, None
+    return immediate_results, {'status': 'pending', 'level': detail_level}
 
-        df_hash = hash(long_df.to_json())
-        cached = get_cached_analysis(df_hash)
-        if cached:
-            return generate_results_display(cached), True, None
 
-        return dash.no_update, False, {'stage': 'analyzing', 'progress': 10, 'df_hash': df_hash}
+@app.callback(
+    Output('deep-analysis-results', 'children'),
+    Input('background-trigger', 'n_intervals'),
+    State('analysis-detail-level', 'value'),
+    prevent_initial_call=True,
+)
+def run_deep_analysis_background(n_intervals, detail_level):
+    """Run deeper analysis in the background."""
 
-    if stage == 'analyzing':
-        long_df = data_get('long_df', pd.DataFrame())
-        df_hash = progress_data.get('df_hash')
+    if n_intervals == 0:
+        raise PreventUpdate
 
-        engine = AdvancedBlueprintEngineV2()
-        full_results = engine.run_full_blueprint_analysis(long_df)
+    long_df = data_get('long_df', pd.DataFrame())
+    if detail_level == 'fast':
+        results = run_ultra_light_analysis(long_df)
+    else:
+        results = run_optimized_analysis(long_df)
 
-        cache_analysis(df_hash, full_results)
-        return dash.no_update, False, {'stage': 'visualizing', 'progress': 70, 'results': full_results}
-
-    if stage == 'visualizing':
-        full_results = progress_data.get('results', {})
-        return generate_results_display(full_results), True, None
-
-    return dash.no_update, True, None
+    return create_deep_analysis_display(results)
 
 
 @app.callback(
