@@ -32,7 +32,6 @@ from shift_suite.tasks.integrated_creation_logic_viewer import (
 from shift_suite.tasks.quick_logic_analysis import (
     get_basic_shift_stats,
     get_quick_patterns,
-    run_ultra_light_analysis,
     run_optimized_analysis,
     create_stats_cards,
     create_pattern_list,
@@ -2519,10 +2518,7 @@ def run_deep_analysis_background(n_intervals, detail_level):
         raise PreventUpdate
 
     long_df = data_get('long_df', pd.DataFrame())
-    if detail_level == 'fast':
-        results = run_ultra_light_analysis(long_df)
-    else:
-        results = run_optimized_analysis(long_df)
+    results = run_optimized_analysis(long_df, detail_level)
 
     return create_deep_analysis_display(results)
 
