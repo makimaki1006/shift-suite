@@ -58,20 +58,36 @@ def get_quick_patterns(df: pd.DataFrame) -> list[dict[str, Any]]:
     return patterns
 
 
-def create_minimal_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Generate lightweight features for training."""
+def create_minimal_features(df: pd.DataFrame, all_possible_codes: list[str]) -> pd.DataFrame:
+    """Generate lightweight features for training with stable dummy columns."""
     features = pd.DataFrame()
+
+    # 1. hour based counts
     hour_counts = df.groupby(df["ds"].dt.hour).size()
     for hour in range(24):
         features[f"hour_{hour}_count"] = [hour_counts.get(hour, 0)]
+
+    # 2. day-of-week counts
     dow_counts = df.groupby(df["ds"].dt.dayofweek).size()
     for dow in range(7):
         features[f"dow_{dow}_count"] = [dow_counts.get(dow, 0)]
+
+    # 3. staff and slot statistics
     features["unique_staff"] = [df["staff"].nunique()]
     features["total_slots"] = [len(df)]
-    if "code" in df.columns:
+
+    # 4. most common code dummy variables across all_possible_codes
+    if "code" in df.columns and all_possible_codes:
         mode_val = df["code"].mode()
-        features["most_common_code"] = [mode_val.iloc[0] if not mode_val.empty else "unknown"]
+        most_common_code = mode_val.iloc[0] if not mode_val.empty else "unknown"
+
+        code_series = pd.Series([most_common_code])
+        code_categorical = pd.Categorical(code_series, categories=all_possible_codes)
+        dummies = pd.get_dummies(code_categorical, prefix="most_common_code")
+
+        for col in dummies.columns:
+            features[col] = [dummies[col].iloc[0]]
+
     return features
 
 
@@ -90,10 +106,11 @@ def create_dummy_target(df: pd.DataFrame) -> np.ndarray:
 def run_ultra_light_analysis(df: pd.DataFrame) -> dict:
     """Run a fast analysis on at most 500 samples."""
     sample_size = min(500, len(df))
-    sample_df = df.sample(n=sample_size) if len(df) > sample_size else df
+    sample_df = df.sample(n=sample_size, random_state=42) if len(df) > sample_size else df
     results: dict[str, Any] = {}
     try:
-        features = create_minimal_features(sample_df)
+        all_codes = df["code"].unique().tolist() if "code" in df.columns else []
+        features = create_minimal_features(sample_df, all_possible_codes=all_codes)
         y = create_dummy_target(sample_df)
         model = DecisionTreeClassifier(max_depth=2, min_samples_split=50, min_samples_leaf=20)
         model.fit(features, y)
