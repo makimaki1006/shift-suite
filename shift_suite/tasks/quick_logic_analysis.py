@@ -96,18 +96,18 @@ def create_standard_features(daily_group: pd.DataFrame, all_possible_codes: list
     # 高速版の特徴量をベースにする
     features = create_minimal_features(daily_group, all_possible_codes)
 
+    # === 追加する特徴量 ===
     # 1. 勤務間隔の統計
     if not daily_group.empty:
-        daily_group = daily_group.sort_values("ds")
-        rest_hours = (daily_group["ds"].diff().dt.total_seconds() / 3600).fillna(0)
+        daily_group_sorted = daily_group.sort_values("ds")
+        rest_hours = (daily_group_sorted["ds"].diff().dt.total_seconds() / 3600).fillna(0)
         features["avg_rest_hours"] = [rest_hours.mean()]
         features["min_rest_hours"] = [rest_hours.min()]
 
     # 2. 勤務コードの多様性
-    if "code" in daily_group.columns:
-        features["unique_code_ratio"] = [
-            daily_group["code"].nunique() / len(all_possible_codes) if all_possible_codes else 0
-        ]
+    if "code" in daily_group.columns and all_possible_codes:
+        unique_code_count = daily_group["code"].nunique()
+        features["unique_code_ratio"] = [unique_code_count / len(all_possible_codes) if all_possible_codes else 0]
 
     return features
 
@@ -228,19 +228,20 @@ def run_full_analysis(df: pd.DataFrame) -> dict:
         return full_results.get("mind_reading", {})
     except Exception as exc:
         log.error("full analysis failed: %s", exc, exc_info=True)
-        return {"error": str(exc)}
+        return {"error": f"詳細分析中にエラーが発生しました: {exc}"}
 
 
 def run_optimized_analysis(df: pd.DataFrame, detail_level: str) -> dict:
     """分析レベルに応じて適切な分析関数を呼び出すルーター"""
     if detail_level == "fast":
         return run_ultra_light_analysis(df)
-    if detail_level == "standard":
+    elif detail_level == "standard":
         return run_standard_analysis(df)
-    if detail_level == "detailed":
+    elif detail_level == "detailed":
         return run_full_analysis(df)
-    log.warning(f"不明な分析レベル: {detail_level}。高速モードを実行します。")
-    return run_ultra_light_analysis(df)
+    else:
+        log.warning(f"不明な分析レベル: {detail_level}。高速モードを実行します。")
+        return run_ultra_light_analysis(df)
 
 
 def create_stats_cards(stats: dict) -> html.Div:
