@@ -7,10 +7,11 @@ import tempfile
 import zipfile
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 import unicodedata
 
 import dash
+import dash_cytoscape as cyto
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -295,6 +296,42 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str) -> go.Figure:
     )
     fig.update_xaxes(tickvals=list(range(len(display_df.columns))))
     return fig
+
+
+def create_knowledge_network_graph(network_data: Dict) -> cyto.Cytoscape:
+    """Return an interactive network graph of implicit knowledge."""
+    nodes = [
+        {"data": {"id": n["id"], "label": n["label"]}}
+        for n in network_data.get("nodes", [])
+    ]
+    edges = [
+        {
+            "data": {
+                "source": e.get("from"),
+                "target": e.get("to"),
+                "label": e.get("label", ""),
+            }
+        }
+        for e in network_data.get("edges", [])
+    ]
+
+    return cyto.Cytoscape(
+        id="knowledge-network-graph",
+        elements=nodes + edges,
+        style={"width": "100%", "height": "500px"},
+        layout={"name": "cose"},
+        stylesheet=[
+            {"selector": "node", "style": {"content": "data(label)", "font-size": "10px"}},
+            {
+                "selector": "edge",
+                "style": {
+                    "label": "data(label)",
+                    "font-size": "8px",
+                    "curve-style": "bezier",
+                },
+            },
+        ],
+    )
 
 # --- UIコンポーネント生成関数 ---
 def create_metric_card(label: str, value: str, color: str = "#1f77b4") -> html.Div:
