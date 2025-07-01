@@ -4,6 +4,7 @@ from __future__ import annotations
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output, State
 import pandas as pd
+import plotly.express as px
 
 
 def register_enhanced_callbacks(app) -> None:
@@ -80,3 +81,21 @@ def create_basic_analysis_display(results: dict) -> dash_table.DataTable | html.
 def create_advanced_analysis_display(results: dict) -> dcc.Markdown:
     summary = results.get("summary", "高度な分析結果なし")
     return dcc.Markdown(summary)
+
+
+def create_feature_importance_graph(importance_df: pd.DataFrame) -> dcc.Graph:
+    """Generate an interactive bar chart showing feature importance."""
+    if importance_df is None or importance_df.empty:
+        fig = px.bar(title="シフト作成における判断基準 TOP10")
+    else:
+        fig = px.bar(
+            importance_df.head(10).sort_values("importance", ascending=True),
+            x="importance",
+            y="feature",
+            orientation="h",
+            title="シフト作成における判断基準 TOP10",
+            labels={"importance": "重要度スコア", "feature": "判断基準"},
+            template="plotly_white",
+        )
+        fig.update_layout(margin=dict(l=150), title_x=0.5)
+    return dcc.Graph(figure=fig)
