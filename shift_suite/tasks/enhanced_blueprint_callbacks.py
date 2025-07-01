@@ -1,10 +1,14 @@
 """Dash callbacks for the enhanced blueprint analysis tab."""
 from __future__ import annotations
 
+import base64
+import io
 from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output, State
+import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
+from sklearn.tree import plot_tree
 
 
 def register_enhanced_callbacks(app) -> None:
@@ -102,3 +106,93 @@ def create_feature_importance_graph(importance_df: pd.DataFrame) -> dcc.Graph:
         )
         fig.update_layout(margin=dict(l=150), title_x=0.5)
     return dcc.Graph(figure=fig)
+
+
+def create_thinking_summary(model) -> dcc.Markdown:
+    """Return a short natural language summary of the first tree split."""
+    if not model or not hasattr(model, "tree_"):
+        return dcc.Markdown("思考サマリーを生成できませんでした。")
+    feature_names = getattr(model, "feature_names_in_", None)
+    feature_idx = int(model.tree_.feature[0])
+    threshold = float(model.tree_.threshold[0])
+    if feature_idx == -2:
+        return dcc.Markdown("決定木に有効な分岐がありません。")
+    label = feature_names[feature_idx] if feature_names is not None else str(feature_idx)
+    text = f"最初の判断基準は **{label}** が {threshold:.2f} を超えるかどうかです。"
+    return dcc.Markdown(text)
+
+
+def create_full_decision_tree_graph(model) -> html.Img:
+    """Render the entire decision tree as a static image."""
+    if not model or not hasattr(model, "tree_"):
+        return html.Img()
+    buf = io.BytesIO()
+    fig, ax = plt.subplots(figsize=(16, 10))
+    plot_tree(
+        model,
+        filled=True,
+        feature_names=getattr(model, "feature_names_in_", None),
+        fontsize=8,
+        ax=ax,
+        impurity=False,
+        proportion=True,
+    )
+    fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+    plt.close(fig)
+    buf.seek(0)
+    encoded = base64.b64encode(buf.getvalue()).decode()
+    return html.Img(src=f"data:image/png;base64,{encoded}", style={"width": "100%", "maxWidth": "1200px"})
+
+
+def create_full_importance_table(importance_df: pd.DataFrame) -> dash_table.DataTable:
+    """Show all feature importances sorted by score."""
+    if importance_df is None or importance_df.empty:
+        return dash_table.DataTable(data=[], columns=[])
+    df = importance_df.sort_values("importance", ascending=False)
+    tooltip = {
+        "feature": {"value": "判断基準項目", "type": "markdown"},
+        "importance": {"value": "モデルが重視する度合い", "type": "markdown"},
+    }
+    return dash_table.DataTable(
+        data=df.to_dict("records"),
+        columns=[{"name": c, "id": c} for c in df.columns],
+        tooltip_header=tooltip,
+        sort_action="native",
+        page_size=20,
+    )
+
+
+def create_knowledge_card(rule: dict) -> html.Div:
+    """Generate a clickable card summarising one implicit rule."""
+    rule_id = rule.get("id", 0)
+    strength = float(rule.get("strength", 0))
+    progress_style = {
+        "width": f"{strength * 100:.0f}%",
+        "height": "100%",
+        "backgroundColor": "#428bca",
+        "borderRadius": "4px",
+    }
+    return html.Div(
+        id={"type": "knowledge-card", "index": rule_id},
+        children=[
+            html.H5(rule.get("category", ""), style={"marginBottom": "5px"}),
+            html.P(rule.get("description", ""), style={"fontSize": "14px"}),
+            html.Div(
+                [html.Div(style=progress_style)],
+                style={
+                    "height": "8px",
+                    "backgroundColor": "#e0e0e0",
+                    "borderRadius": "4px",
+                    "marginTop": "5px",
+                },
+            ),
+        ],
+        style={
+            "border": "1px solid #ccc",
+            "borderRadius": "8px",
+            "padding": "10px",
+            "margin": "5px",
+            "cursor": "pointer",
+            "width": "200px",
+        },
+    )
