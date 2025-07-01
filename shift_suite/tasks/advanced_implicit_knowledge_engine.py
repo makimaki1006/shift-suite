@@ -5,7 +5,7 @@ import itertools
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Callable
 
 import networkx as nx
 import pandas as pd
@@ -32,7 +32,11 @@ class AdvancedImplicitKnowledgeEngine:
         self.discovered_knowledge: List[ImplicitKnowledge] = []
 
     # ------------------------------------------------------------------
-    def discover_all_implicit_knowledge(self, long_df: pd.DataFrame) -> Dict[str, Any]:
+    def discover_all_implicit_knowledge(
+        self,
+        long_df: pd.DataFrame,
+        progress_callback: Optional[Callable] = None,
+    ) -> Dict[str, Any]:
         """Run all discovery steps and return aggregated result."""
         if long_df.empty:
             return {
@@ -43,10 +47,24 @@ class AdvancedImplicitKnowledgeEngine:
                 "summary": "No implicit knowledge discovered.",
             }
 
+        if progress_callback:
+            progress_callback((55, "時間的パターンを分析中..."))
         temporal_knowledge = self._discover_temporal_patterns(long_df)
+
+        if progress_callback:
+            progress_callback((65, "社会的ダイナミクスを分析中..."))
         social_knowledge = self._discover_social_dynamics(long_df)
+
+        if progress_callback:
+            progress_callback((75, "最適化戦略を分析中..."))
         optimization_knowledge = self._discover_optimization_strategies(long_df)
+
+        if progress_callback:
+            progress_callback((85, "例外処理パターンを分析中..."))
         exception_knowledge = self._discover_exception_handling(long_df)
+
+        if progress_callback:
+            progress_callback((95, "継続的改善パターンを分析中..."))
         learning_knowledge = self._discover_learning_patterns(long_df)
 
         all_knowledge = (

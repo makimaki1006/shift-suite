@@ -43,7 +43,10 @@ def register_enhanced_callbacks(app) -> None:
         # heavy advanced analysis
         set_progress((50, "高度な暗黙知を発見中..."))
         engine = AdvancedImplicitKnowledgeEngine()
-        advanced_results = engine.discover_all_implicit_knowledge(long_df)
+        advanced_results = engine.discover_all_implicit_knowledge(
+            long_df,
+            progress_callback=set_progress,
+        )
         advanced_display = create_advanced_analysis_display(advanced_results)
 
         set_progress((100, "分析完了！"))
