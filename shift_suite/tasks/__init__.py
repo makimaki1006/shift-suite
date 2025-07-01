@@ -13,6 +13,9 @@ __all__ = [
     "create_optimal_hire_plan",
     "AdvancedBlueprintEngineV2",
     "ShiftMindReader",
+    "ShiftCreationProcessReconstructor",
+    "ImplicitRuleDiscoverer",
+    "AdvancedImplicitKnowledgeEngine",
 ]
 
 _module_map = {
@@ -28,6 +31,9 @@ _module_map = {
     "daily_cost": "shift_suite.tasks.daily_cost",
     "AdvancedBlueprintEngineV2": "shift_suite.tasks.advanced_blueprint_engine_v2",
     "ShiftMindReader": "shift_suite.tasks.shift_mind_reader",
+    "ShiftCreationProcessReconstructor": "shift_suite.tasks.shift_creation_process_reconstructor",
+    "ImplicitRuleDiscoverer": "shift_suite.tasks.shift_creation_process_reconstructor",
+    "AdvancedImplicitKnowledgeEngine": "shift_suite.tasks.advanced_implicit_knowledge_engine",
 }
 
 
