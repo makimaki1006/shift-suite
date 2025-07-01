@@ -149,7 +149,7 @@ class AdvancedImplicitKnowledgeEngine:
                         evidence={
                             "type": "community_detection",
                             "members": list(community),
-                            "cohesion_score": cohesion,
+                            "cohesion_score": round(cohesion, 3),
                             "external_connection_count": external_links,
                             "team_size": len(community),
                         },
@@ -173,7 +173,7 @@ class AdvancedImplicitKnowledgeEngine:
                             "type": "key_person",
                             "staff": [top],
                             "connected_communities": connected,
-                            "centrality_score": centrality[top],
+                            "centrality_score": round(centrality[top], 3),
                         },
                         actionable_advice="Prepare backup personnel for this key staff",
                         complexity=3,
@@ -269,7 +269,8 @@ class AdvancedImplicitKnowledgeEngine:
                 if any(staff in k2.evidence.get("members", []) for staff in k1.evidence.get("staff", [])):
                     relation = "strengthens"
             if relation:
-                G.add_edge(i, j, type=relation, weight=0.8)
+                weight = 0.8 if relation == "conflicts" else 0.9
+                G.add_edge(i, j, type=relation, weight=weight)
 
         return {
             "nodes": [
