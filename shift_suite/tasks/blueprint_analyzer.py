@@ -587,8 +587,37 @@ def create_staff_level_blueprint(
 
 # backward compatibility
 def create_blueprint_list(long_df: pd.DataFrame) -> dict:
-    scored = create_scored_blueprint(long_df)
-    staff_level = create_staff_level_blueprint(long_df, scored)
-    results = analyze_tradeoffs(scored)
-    results["staff_level_scores"] = staff_level
-    return results
+    """Return discovered rules and scoring analysis as a single dictionary."""
+    if long_df.empty:
+        return {}
+
+    # --- legacy implicit rule discovery logic ---
+    log.info("ブループリント分析（ルール発見）を開始します...")
+    all_rules: list[dict] = []
+    all_rules.extend(_analyze_skill_synergy(long_df))
+    all_rules.extend(_analyze_workload_distribution(long_df))
+    all_rules.extend(_analyze_personal_consideration(long_df))
+    all_rules.extend(_analyze_rotation_strategy(long_df))
+    all_rules.extend(_analyze_risk_mitigation(long_df))
+    all_rules.extend(_analyze_temporal_context(long_df))
+
+    rules_df = (
+        pd.DataFrame(all_rules).sort_values("法則の強度", ascending=False).reset_index(drop=True)
+        if all_rules
+        else pd.DataFrame()
+    )
+
+    # --- scoring and trade-off analysis ---
+    log.info("ブループリント分析（スコア化・トレードオフ分析）を開始します...")
+    scored_df = create_scored_blueprint(long_df)
+    tradeoff_info = analyze_tradeoffs(scored_df)
+
+    # --- staff level scores ---
+    staff_level_scores = create_staff_level_blueprint(long_df, scored_df)
+
+    return {
+        "rules_df": rules_df,
+        "scored_df": scored_df,
+        "tradeoffs": tradeoff_info,
+        "staff_level_scores": staff_level_scores,
+    }
