@@ -29,6 +29,7 @@ from shift_suite.tasks.analyzers.team_dynamics import analyze_team_dynamics
 from shift_suite.tasks.blueprint_analyzer import (
     create_scored_blueprint,
     analyze_tradeoffs,
+    create_staff_level_blueprint,
 )
 from shift_suite.tasks.integrated_creation_logic_viewer import (
     create_creation_logic_analysis_tab,
@@ -2182,6 +2183,7 @@ def update_blueprint_analysis_content(n_clicks):
 
     score_df = create_scored_blueprint(long_df)
     tradeoff_info = analyze_tradeoffs(score_df)
+    staff_df = create_staff_level_blueprint(long_df, score_df)
 
     if score_df.empty:
         return html.Div([html.P("分析に十分なデータがありません。")])
@@ -2213,10 +2215,34 @@ def update_blueprint_analysis_content(n_clicks):
         html.Ul(summary_items) if summary_items else html.P("なし")
     ])
 
+    staff_table = dash_table.DataTable(
+        data=staff_df.round(2).reset_index().rename(columns={"index": "staff"}).to_dict("records"),
+        columns=[{"name": c, "id": c} for c in staff_df.reset_index().rename(columns={"index": "staff"}).columns],
+    ) if not staff_df.empty else html.P("スタッフデータなし")
+
+    radar_fig = go.Figure()
+    score_cols = ["fairness_score", "cost_score", "risk_score", "satisfaction_score"]
+    for staff in staff_df.index:
+        radar_fig.add_trace(
+            go.Scatterpolar(
+                r=staff_df.loc[staff, score_cols].tolist(),
+                theta=["公平性スコア", "コストスコア", "リスクスコア", "満足度スコア"],
+                name=staff,
+            )
+        )
+    radar_fig.update_layout(polar=dict(radialaxis=dict(range=[0, 1])), showlegend=True)
+    staff_section = html.Div([
+        html.H4("スタッフ別スコア分析"),
+        staff_table,
+        dcc.Graph(figure=radar_fig),
+    ])
+
     return html.Div([
         tradeoff_div,
         html.Hr(),
-        summary_div
+        summary_div,
+        html.Hr(),
+        staff_section,
     ])
 
 

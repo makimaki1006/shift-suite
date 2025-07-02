@@ -556,7 +556,34 @@ def analyze_tradeoffs(scored_blueprint_df: pd.DataFrame) -> dict:
     }
 
 
+def create_staff_level_blueprint(
+    long_df: pd.DataFrame, scored_blueprint_df: pd.DataFrame
+) -> pd.DataFrame:
+    """Aggregate daily scores at the staff level."""
+    if long_df.empty or scored_blueprint_df.empty:
+        return pd.DataFrame()
+
+    df = long_df.copy()
+    df["ds"] = pd.to_datetime(df["ds"])
+    df["date"] = df["ds"].dt.date
+
+    staff_by_day = df[["date", "staff"]].drop_duplicates()
+    score_df = scored_blueprint_df.reset_index()
+    merged = staff_by_day.merge(score_df, on="date", how="left")
+
+    score_cols = [
+        "fairness_score",
+        "cost_score",
+        "risk_score",
+        "satisfaction_score",
+    ]
+    return merged.groupby("staff")[score_cols].mean()
+
+
 # backward compatibility
 def create_blueprint_list(long_df: pd.DataFrame) -> dict:
     scored = create_scored_blueprint(long_df)
-    return analyze_tradeoffs(scored)
+    staff_level = create_staff_level_blueprint(long_df, scored)
+    results = analyze_tradeoffs(scored)
+    results["staff_level_scores"] = staff_level
+    return results
