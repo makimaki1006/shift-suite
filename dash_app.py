@@ -2198,6 +2198,10 @@ def update_blueprint_analysis_content(n_clicks):
     fig_scatter = px.scatter(scatter_df, x='fairness_score', y='cost_score', hover_data=['date']) if not scatter_df.empty else go.Figure()
 
     rules_df = blueprint_data.get('rules_df', pd.DataFrame())
+    if not rules_df.empty and '詳細データ' in rules_df.columns:
+        rules_df['詳細データ'] = rules_df['詳細データ'].apply(
+            lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, dict) else str(x)
+        )
     rules_table_data = rules_df.to_dict('records') if not rules_df.empty else []
 
     store_data = {
