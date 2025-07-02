@@ -26,11 +26,7 @@ from shift_suite.tasks.daily_cost import calculate_daily_cost
 from shift_suite.tasks import leave_analyzer
 from shift_suite.tasks.analyzers.synergy import analyze_synergy
 from shift_suite.tasks.analyzers.team_dynamics import analyze_team_dynamics
-from shift_suite.tasks.blueprint_analyzer import (
-    create_scored_blueprint,
-    analyze_tradeoffs,
-    create_staff_level_blueprint,
-)
+from shift_suite.tasks.blueprint_analyzer import create_blueprint_list
 from shift_suite.tasks.integrated_creation_logic_viewer import (
     create_creation_logic_analysis_tab,
 )
@@ -1124,7 +1120,7 @@ def create_team_analysis_tab() -> html.Div:
 
 
 def create_blueprint_analysis_tab() -> html.Div:
-    """シフト作成ブループリント分析タブを作成（改良版）"""
+    """Return layout for blueprint analysis with two interactive views."""
     return html.Div([
         html.H3("シフト作成プロセスの\u300c暗黙知\u300d分析", style={'marginBottom': '20px'}),
         html.P(
@@ -1166,7 +1162,22 @@ def create_blueprint_analysis_tab() -> html.Div:
         dcc.Loading(
             id="loading-blueprint",
             type="default",
-            children=html.Div(id="blueprint-analysis-content")
+            children=html.Div([
+                html.Div([
+                    html.H4("全体分析ビュー：シフト全体の傾向と暗黙知"),
+                    dcc.Graph(id='tradeoff-scatter-plot'),
+                    html.H5("発見された暗黙知ルール一覧"),
+                    html.P("ルールをクリックすると、関連するスタッフの個別分析を表示します。"),
+                    dash_table.DataTable(id='rules-data-table', row_selectable='single'),
+                ], style={'width': '50%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+                html.Div([
+                    html.H4("スタッフ個別ビュー：個人の働き方と価値観"),
+                    dcc.Dropdown(id='staff-selector-dropdown'),
+                    dcc.Graph(id='staff-radar-chart'),
+                    html.H5("このスタッフに関連する暗黙知"),
+                    html.Div(id='staff-related-rules-list'),
+                ], style={'width': '49%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingLeft': '1%'}),
+            ], id='blueprint-analysis-content')
         ),
     ])
 
@@ -1177,6 +1188,7 @@ app.layout = html.Div([
     dcc.Store(id='full-analysis-store', storage_type='memory'),
     dcc.Store(id='creation-logic-results-store', storage_type='memory'),
     dcc.Store(id='logic-analysis-progress', storage_type='memory'),
+    dcc.Store(id='blueprint-results-store', storage_type='memory'),
     dcc.Interval(id='logic-analysis-interval', interval=500, disabled=True),
 
     # ヘッダー
@@ -2166,84 +2178,98 @@ def update_team_analysis_graphs(selected_value, selected_key):
 
 
 @app.callback(
-    Output('blueprint-analysis-content', 'children'),
-    Input('generate-blueprint-button', 'n_clicks')
+    Output('blueprint-results-store', 'data'),
+    Output('tradeoff-scatter-plot', 'figure'),
+    Output('rules-data-table', 'data'),
+    Output('staff-selector-dropdown', 'options'),
+    Input('generate-blueprint-button', 'n_clicks'),
 )
 def update_blueprint_analysis_content(n_clicks):
-    if n_clicks == 0:
+    if not n_clicks:
         raise PreventUpdate
 
     long_df = data_get('long_df', pd.DataFrame())
-
     if long_df.empty:
-        return html.Div([
-            html.H4("エラー", style={'color': 'red'}),
-            html.P("分析に必要な勤務データが見つかりません。")
-        ])
+        return dash.no_update, go.Figure(), [], []
 
-    score_df = create_scored_blueprint(long_df)
-    tradeoff_info = analyze_tradeoffs(score_df)
-    staff_df = create_staff_level_blueprint(long_df, score_df)
+    blueprint_data = create_blueprint_list(long_df)
 
-    if score_df.empty:
-        return html.Div([html.P("分析に十分なデータがありません。")])
+    scatter_df = pd.DataFrame(blueprint_data.get('tradeoffs', {}).get('scatter_data', []))
+    fig_scatter = px.scatter(scatter_df, x='fairness_score', y='cost_score', hover_data=['date']) if not scatter_df.empty else go.Figure()
 
-    scatter_df = pd.DataFrame(tradeoff_info.get("scatter_data", []))
-    fig = px.scatter(
-        scatter_df,
-        x="fairness_score",
-        y="cost_score",
-        hover_data=["date"],
-        title="Fairness vs Cost"
-    )
+    rules_df = blueprint_data.get('rules_df', pd.DataFrame())
+    rules_table_data = rules_df.to_dict('records') if not rules_df.empty else []
 
-    corr_df = pd.DataFrame(tradeoff_info.get("correlation_matrix", {}))
-    corr_table = dash_table.DataTable(
-        data=corr_df.round(2).reset_index().rename(columns={"index": "score"}).to_dict("records"),
-        columns=[{"name": c, "id": c} for c in corr_df.reset_index().rename(columns={"index": "score"}).columns],
-    ) if not corr_df.empty else html.P("相関データなし")
+    store_data = {
+        'rules_df': rules_df.to_json(orient='split') if not rules_df.empty else None,
+        'scored_df': blueprint_data.get('scored_df', pd.DataFrame()).to_json(orient='split') if blueprint_data.get('scored_df') is not None and not blueprint_data.get('scored_df').empty else None,
+        'tradeoffs': blueprint_data.get('tradeoffs', {}),
+        'staff_level_scores': blueprint_data.get('staff_level_scores', pd.DataFrame()).to_json(orient='split') if blueprint_data.get('staff_level_scores') is not None and not blueprint_data.get('staff_level_scores').empty else None,
+    }
 
-    tradeoff_div = html.Div([
-        dcc.Graph(figure=fig),
-        html.H4("Correlation Matrix"),
-        corr_table,
-    ])
+    staff_scores_df = blueprint_data.get('staff_level_scores', pd.DataFrame())
+    dropdown_options = [{'label': s, 'value': s} for s in staff_scores_df.index] if not staff_scores_df.empty else []
 
-    summary_items = [html.Li(f"{k}: {v:.2f}") for k, v in tradeoff_info.get("strongest_tradeoffs", {}).items()]
-    summary_div = html.Div([
-        html.H4("Strongest Trade-offs"),
-        html.Ul(summary_items) if summary_items else html.P("なし")
-    ])
+    return store_data, fig_scatter, rules_table_data, dropdown_options
 
-    staff_table = dash_table.DataTable(
-        data=staff_df.round(2).reset_index().rename(columns={"index": "staff"}).to_dict("records"),
-        columns=[{"name": c, "id": c} for c in staff_df.reset_index().rename(columns={"index": "staff"}).columns],
-    ) if not staff_df.empty else html.P("スタッフデータなし")
 
-    radar_fig = go.Figure()
-    score_cols = ["fairness_score", "cost_score", "risk_score", "satisfaction_score"]
-    for staff in staff_df.index:
-        radar_fig.add_trace(
-            go.Scatterpolar(
-                r=staff_df.loc[staff, score_cols].tolist(),
-                theta=["公平性スコア", "コストスコア", "リスクスコア", "満足度スコア"],
-                name=staff,
-            )
+def _extract_staff_from_rule(rule_text: str, staff_names: list[str]) -> str | None:
+    """Return first staff name found in rule text."""
+    for name in staff_names:
+        if name in rule_text:
+            return name
+    return None
+
+
+@app.callback(
+    Output('staff-radar-chart', 'figure'),
+    Output('staff-related-rules-list', 'children'),
+    Input('staff-selector-dropdown', 'value'),
+    Input('rules-data-table', 'selected_rows'),
+    State('blueprint-results-store', 'data'),
+    State('rules-data-table', 'data'),
+    prevent_initial_call=True,
+)
+def update_staff_view(selected_staff, selected_row_indices, stored_data, table_data):
+    if not stored_data:
+        raise PreventUpdate
+
+    rules_json = stored_data.get('rules_df')
+    staff_json = stored_data.get('staff_level_scores')
+    if not rules_json or not staff_json:
+        return go.Figure(), "データがありません。"
+
+    rules_df = pd.read_json(rules_json, orient='split')
+    staff_scores_df = pd.read_json(staff_json, orient='split')
+
+    ctx = dash.callback_context
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    target_staff = selected_staff
+    if trigger_id == 'rules-data-table' and selected_row_indices:
+        clicked_rule = table_data[selected_row_indices[0]]
+        target_staff = _extract_staff_from_rule(clicked_rule.get('発見された法則', ''), list(staff_scores_df.index))
+
+    if not target_staff or target_staff not in staff_scores_df.index:
+        return go.Figure(), "スタッフを選択してください。"
+
+    row = staff_scores_df.loc[target_staff]
+    score_cols = ['fairness_score', 'cost_score', 'risk_score', 'satisfaction_score']
+    fig_radar = go.Figure()
+    fig_radar.add_trace(
+        go.Scatterpolar(
+            r=row[score_cols].tolist(),
+            theta=['公平性', 'コスト', 'リスク', '満足度'],
+            fill='toself',
+            name=target_staff,
         )
-    radar_fig.update_layout(polar=dict(radialaxis=dict(range=[0, 1])), showlegend=True)
-    staff_section = html.Div([
-        html.H4("スタッフ別スコア分析"),
-        staff_table,
-        dcc.Graph(figure=radar_fig),
-    ])
+    )
+    fig_radar.update_layout(polar=dict(radialaxis=dict(range=[0, 1])), showlegend=False)
 
-    return html.Div([
-        tradeoff_div,
-        html.Hr(),
-        summary_div,
-        html.Hr(),
-        staff_section,
-    ])
+    related_rules = rules_df[rules_df['発見された法則'].str.contains(target_staff)]
+    rule_list_items = [html.P(r) for r in related_rules['発見された法則'].tolist()] if not related_rules.empty else [html.P('関連ルールなし')]
+
+    return fig_radar, rule_list_items
 
 
 @app.callback(
