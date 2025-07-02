@@ -26,7 +26,10 @@ from shift_suite.tasks.daily_cost import calculate_daily_cost
 from shift_suite.tasks import leave_analyzer
 from shift_suite.tasks.analyzers.synergy import analyze_synergy
 from shift_suite.tasks.analyzers.team_dynamics import analyze_team_dynamics
-from shift_suite.tasks.blueprint_analyzer import create_blueprint_list
+from shift_suite.tasks.blueprint_analyzer import (
+    create_scored_blueprint,
+    analyze_tradeoffs,
+)
 from shift_suite.tasks.integrated_creation_logic_viewer import (
     create_creation_logic_analysis_tab,
 )
@@ -2177,150 +2180,43 @@ def update_blueprint_analysis_content(n_clicks):
             html.P("分析に必要な勤務データが見つかりません。")
         ])
 
-    # 新しい分析関数を呼び出す
-    blueprint_data = create_blueprint_list(long_df)
+    score_df = create_scored_blueprint(long_df)
+    tradeoff_info = analyze_tradeoffs(score_df)
 
-    if "error" in blueprint_data:
-        return html.Div([
-            html.H4("分析エラー", style={'color': 'red'}),
-            html.P(blueprint_data["error"])
-        ])
+    if score_df.empty:
+        return html.Div([html.P("分析に十分なデータがありません。")])
 
-    # --- パート1：総合的な洞察サマリー ---
+    scatter_df = pd.DataFrame(tradeoff_info.get("scatter_data", []))
+    fig = px.scatter(
+        scatter_df,
+        x="fairness_score",
+        y="cost_score",
+        hover_data=["date"],
+        title="Fairness vs Cost"
+    )
+
+    corr_df = pd.DataFrame(tradeoff_info.get("correlation_matrix", {}))
+    corr_table = dash_table.DataTable(
+        data=corr_df.round(2).reset_index().rename(columns={"index": "score"}).to_dict("records"),
+        columns=[{"name": c, "id": c} for c in corr_df.reset_index().rename(columns={"index": "score"}).columns],
+    ) if not corr_df.empty else html.P("相関データなし")
+
+    tradeoff_div = html.Div([
+        dcc.Graph(figure=fig),
+        html.H4("Correlation Matrix"),
+        corr_table,
+    ])
+
+    summary_items = [html.Li(f"{k}: {v:.2f}") for k, v in tradeoff_info.get("strongest_tradeoffs", {}).items()]
     summary_div = html.Div([
-        html.H4("総合的な洞察サマリー", style={'marginBottom': '15px'}),
-        dcc.Markdown(blueprint_data["summary"], style={
-            'backgroundColor': '#e9f2fa',
-            'padding': '15px',
-            'borderRadius': '8px',
-            'border': '1px solid #cce5ff'
-        })
-    ])
-
-    # --- パート2：意外な発見のハイライト ---
-    hidden_gems_div = html.Div([])
-    if blueprint_data.get("hidden_gems"):
-        gems_content = []
-        for gem in blueprint_data["hidden_gems"]:
-            gems_content.append(html.Div([
-                html.H6(f"💡 {gem['発見']}", style={'marginBottom': '5px'}),
-                html.P(f"意外性: {gem['意外性']}", style={'fontSize': '14px', 'color': '#666'})
-            ], style={
-                'backgroundColor': '#fff3cd',
-                'padding': '10px',
-                'borderRadius': '5px',
-                'marginBottom': '10px',
-                'border': '1px solid #ffeaa7'
-            }))
-
-        hidden_gems_div = html.Div([
-            html.H4("🎯 特に注目すべき発見", style={'marginTop': '30px', 'marginBottom': '15px'}),
-            html.Div(gems_content)
-        ])
-
-    # --- パート3：発見された「法則」の全リスト ---
-    rules_df = blueprint_data['rules_df']
-
-    # カテゴリー別に色分けする
-    category_colors = {
-        "スキル相性": "#e3f2fd",
-        "負荷分散戦略": "#f3e5f5",
-        "個人配慮": "#e8f5e9",
-        "ローテーション戦略": "#fff3e0",
-        "リスク回避": "#ffebee",
-        "時系列戦略": "#e0f2f1"
-    }
-
-    # テーブルのスタイル設定
-    style_data_conditional = []
-    for category, color in category_colors.items():
-        style_data_conditional.append({
-            'if': {'filter_query': '{法則のカテゴリー} = "' + category + '"'},
-            'backgroundColor': color
-        })
-
-    # 詳細データ列をJSON文字列に変換（表示用）
-    if '詳細データ' in rules_df.columns:
-        rules_df['詳細データ'] = rules_df['詳細データ'].apply(
-            lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, dict) else str(x)
-        )
-
-    rules_table_div = html.Div([
-        html.H4(f"発見された全{len(rules_df)}個の法則リスト", style={'marginTop': '30px', 'marginBottom': '15px'}),
-        html.P("「法則の強度」でソートされています。これがあなたの職場の「暗黙の優先順位」です。", style={'marginBottom': '15px'}),
-
-        # カテゴリー別の統計
-        html.Div([
-            html.H5("カテゴリー別の法則数", style={'marginBottom': '10px'}),
-            html.Div([
-                html.Span(f"{cat}: {count}個", style={
-                    'backgroundColor': color,
-                    'padding': '5px 10px',
-                    'borderRadius': '15px',
-                    'marginRight': '10px',
-                    'display': 'inline-block',
-                    'fontSize': '14px'
-                })
-                for cat, count in rules_df['法則のカテゴリー'].value_counts().items()
-                if (color := category_colors.get(cat))
-            ])
-        ], style={'marginBottom': '20px'}),
-
-        dash_table.DataTable(
-            data=rules_df.to_dict('records'),
-            columns=[
-                {'name': '法則のカテゴリー', 'id': '法則のカテゴリー'},
-                {'name': '発見された法則', 'id': '発見された法則'},
-                {'name': '法則の強度', 'id': '法則の強度'},
-                {'name': '詳細データ', 'id': '詳細データ'}
-            ],
-            style_cell={
-                'textAlign': 'left',
-                'whiteSpace': 'normal',
-                'height': 'auto',
-                'minWidth': '80px',
-                'maxWidth': '300px'
-            },
-            style_header={
-                'fontWeight': 'bold',
-                'backgroundColor': '#f0f0f0'
-            },
-            style_data_conditional=style_data_conditional,
-            sort_action="native",
-            filter_action="native",
-            page_size=20,
-            style_data={
-                'whiteSpace': 'normal',
-                'height': 'auto',
-            }
-        ) if not rules_df.empty else html.P("表示できる法則がありません。")
-    ])
-
-    # --- パート4：実践的なアドバイス ---
-    advice_div = html.Div([
-        html.H4("📝 この分析結果の活用方法", style={'marginTop': '30px', 'marginBottom': '15px'}),
-        html.Div([
-            html.Ul([
-                html.Li("強度0.8以上の法則は\u300c絶対的なルール\u300dとして新人教育に活用"),
-                html.Li("スキル相性の情報は、新規採用時の配置計画に活用"),
-                html.Li("個人配慮パターンは、引き継ぎ時の重要情報として文書化"),
-                html.Li("リスク回避ルールは、品質管理のチェックリストに追加"),
-            ])
-        ], style={
-            'backgroundColor': '#e8f5e9',
-            'padding': '15px',
-            'borderRadius': '8px',
-            'border': '1px solid #c8e6c9'
-        })
+        html.H4("Strongest Trade-offs"),
+        html.Ul(summary_items) if summary_items else html.P("なし")
     ])
 
     return html.Div([
-        summary_div,
-        hidden_gems_div,
+        tradeoff_div,
         html.Hr(),
-        rules_table_div,
-        html.Hr(),
-        advice_div
+        summary_div
     ])
 
 

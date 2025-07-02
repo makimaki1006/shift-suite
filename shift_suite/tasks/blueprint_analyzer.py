@@ -442,82 +442,121 @@ def _generate_deep_insights_summary(rules_df: pd.DataFrame) -> str:
     return "\n".join(summary_parts)
 
 
-def create_blueprint_list(long_df: pd.DataFrame) -> dict:
-    """シフトデータから深層的な法則を抽出し、作成者の暗黙知を可視化する"""
+def _calculate_fairness_score(daily_shift_df: pd.DataFrame) -> float:
+    """その日のシフトの公平性スコアを計算"""
+    work_hours = daily_shift_df.groupby("staff")["ds"].count()
+    if work_hours.empty:
+        return 0.0
+    return 1.0 - (work_hours.std() / (work_hours.mean() + 1e-6))
+
+
+def _calculate_cost_score(daily_shift_df: pd.DataFrame, max_staff: int) -> float:
+    """その日のシフトのコストスコアを計算"""
+    staff_count = daily_shift_df["staff"].nunique()
+    if max_staff == 0:
+        return 1.0
+    return 1.0 - (staff_count / max_staff)
+
+
+def _calculate_risk_score(daily_shift_df: pd.DataFrame, new_staff: set[str]) -> float:
+    """新人だけのシフトを避けられているかでリスクを評価"""
+    time_groups = daily_shift_df.groupby(daily_shift_df["ds"].dt.hour)
+    new_only = 0
+    total = 0
+    for _, group in time_groups:
+        staff = set(group["staff"].unique())
+        if len(staff) > 1:
+            total += 1
+            if all(s in new_staff for s in staff):
+                new_only += 1
+    if total == 0:
+        return 1.0
+    return 1.0 - new_only / total
+
+
+def _calculate_satisfaction_score(date: pd.Timestamp, long_df: pd.DataFrame) -> float:
+    """連勤の長さから満足度を推定"""
+    day_df = long_df[long_df["ds"].dt.date == date.date()]
+    staff_list = day_df["staff"].unique()
+    long_run = 0
+    for staff in staff_list:
+        staff_dates = (
+            long_df[long_df["staff"] == staff]["ds"].dt.date.drop_duplicates().sort_values()
+        )
+        indices = [i for i, d in enumerate(staff_dates) if d == date.date()]
+        for idx in indices:
+            left = idx
+            while left > 0 and (staff_dates.iloc[left] - staff_dates.iloc[left - 1]).days == 1:
+                left -= 1
+            right = idx
+            while right < len(staff_dates) - 1 and (
+                staff_dates.iloc[right + 1] - staff_dates.iloc[right]
+            ).days == 1:
+                right += 1
+            if right - left + 1 >= 4:
+                long_run += 1
+                break
+    if len(staff_list) == 0:
+        return 1.0
+    return 1.0 - long_run / len(staff_list)
+
+
+def create_scored_blueprint(long_df: pd.DataFrame) -> pd.DataFrame:
+    """Calculate daily scores representing shift creator preferences."""
     if long_df.empty:
-        return {"error": "分析対象の勤務データがありません。"}
+        return pd.DataFrame()
 
-    log.info("ブループリント分析を開始します...")
+    df = long_df.copy()
+    df["ds"] = pd.to_datetime(df["ds"])
 
-    # データ準備
-    long_df = long_df.copy()
-    long_df['date'] = pd.to_datetime(long_df['ds']).dt.date
-    long_df['is_night'] = long_df['code'].astype(str).str.contains("夜", na=False)
+    daily_groups = df.groupby(df["ds"].dt.date)
+    max_staff = daily_groups["staff"].nunique().max()
 
-    # 全カテゴリーの法則を抽出
-    all_rules = []
+    staff_experience = df.groupby("staff")["ds"].nunique()
+    threshold = staff_experience.quantile(0.25)
+    new_staff = set(staff_experience[staff_experience <= threshold].index)
 
-    try:
-        # 1. スキル相性分析
-        log.info("スキル相性分析を実行中...")
-        synergy_rules = _analyze_skill_synergy(long_df)
-        all_rules.extend(synergy_rules)
-        log.info(f"スキル相性: {len(synergy_rules)}個のルールを発見")
-
-        # 2. 負荷分散戦略
-        log.info("負荷分散戦略分析を実行中...")
-        workload_rules = _analyze_workload_distribution(long_df)
-        all_rules.extend(workload_rules)
-        log.info(f"負荷分散: {len(workload_rules)}個のルールを発見")
-
-        # 3. 個人配慮パターン
-        log.info("個人配慮パターン分析を実行中...")
-        personal_rules = _analyze_personal_consideration(long_df)
-        all_rules.extend(personal_rules)
-        log.info(f"個人配慮: {len(personal_rules)}個のルールを発見")
-
-        # 4. ローテーション戦略
-        log.info("ローテーション戦略分析を実行中...")
-        rotation_rules = _analyze_rotation_strategy(long_df)
-        all_rules.extend(rotation_rules)
-        log.info(f"ローテーション: {len(rotation_rules)}個のルールを発見")
-
-        # 5. リスク回避ルール
-        log.info("リスク回避ルール分析を実行中...")
-        risk_rules = _analyze_risk_mitigation(long_df)
-        all_rules.extend(risk_rules)
-        log.info(f"リスク回避: {len(risk_rules)}個のルールを発見")
-
-        # 6. 時系列パターン
-        log.info("時系列パターン分析を実行中...")
-        temporal_rules = _analyze_temporal_context(long_df)
-        all_rules.extend(temporal_rules)
-        log.info(f"時系列: {len(temporal_rules)}個のルールを発見")
-
-    except Exception as e:
-        log.error(f"分析中にエラーが発生しました: {e}", exc_info=True)
-        return {"error": f"分析中にエラーが発生しました: {str(e)}"}
-
-    if not all_rules:
-        return {
-            "summary": "分析可能な法則が見つかりませんでした。データ量が不足している可能性があります。",
-            "rules_df": pd.DataFrame(),
-            "hidden_gems": []
+    scored_days = []
+    for date, group in daily_groups:
+        scores = {
+            "date": pd.to_datetime(date),
+            "fairness_score": _calculate_fairness_score(group),
+            "cost_score": _calculate_cost_score(group, int(max_staff)),
+            "risk_score": _calculate_risk_score(group, new_staff),
+            "satisfaction_score": _calculate_satisfaction_score(pd.to_datetime(date), df),
         }
+        scored_days.append(scores)
 
-    # 法則を強度順にソート
-    rules_df = pd.DataFrame(all_rules).sort_values("法則の強度", ascending=False).reset_index(drop=True)
+    return pd.DataFrame(scored_days).set_index("date")
 
-    # 総合的な洞察サマリーを生成
-    summary_text = _generate_deep_insights_summary(rules_df)
 
-    # 意外な発見を抽出
-    hidden_gems = _extract_surprising_insights(rules_df)
+def analyze_tradeoffs(scored_blueprint_df: pd.DataFrame) -> dict:
+    """スコア間のトレードオフを分析する"""
+    if scored_blueprint_df.empty:
+        return {}
 
-    log.info(f"分析完了: 合計{len(rules_df)}個のルールを発見")
+    corr = scored_blueprint_df.corr()
+    tradeoff_pairs = {}
+    for col1 in corr.columns:
+        for col2 in corr.columns:
+            if col1 != col2 and corr.loc[col1, col2] < -0.5:
+                tradeoff_pairs[f"{col1}_vs_{col2}"] = float(corr.loc[col1, col2])
+
+    scatter_cols = {"fairness_score", "cost_score"}
+    scatter_data = (
+        scored_blueprint_df[list(scatter_cols)].reset_index().to_dict("records")
+        if scatter_cols.issubset(scored_blueprint_df.columns)
+        else []
+    )
 
     return {
-        "summary": summary_text,
-        "rules_df": rules_df,
-        "hidden_gems": hidden_gems
+        "correlation_matrix": corr.to_dict(),
+        "strongest_tradeoffs": tradeoff_pairs,
+        "scatter_data": scatter_data,
     }
+
+
+# backward compatibility
+def create_blueprint_list(long_df: pd.DataFrame) -> dict:
+    scored = create_scored_blueprint(long_df)
+    return analyze_tradeoffs(scored)
