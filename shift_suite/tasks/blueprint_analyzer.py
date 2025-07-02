@@ -557,19 +557,24 @@ def analyze_tradeoffs(scored_blueprint_df: pd.DataFrame) -> dict:
 
 
 def create_staff_level_blueprint(
-    long_df: pd.DataFrame, scored_blueprint_df: pd.DataFrame
+    long_df: pd.DataFrame, score_df: pd.DataFrame
 ) -> pd.DataFrame:
-    """Aggregate daily scores at the staff level."""
-    if long_df.empty or scored_blueprint_df.empty:
+    """スタッフ毎のブループリントスコアを集計"""
+    if long_df.empty or score_df.empty:
         return pd.DataFrame()
 
-    df = long_df.copy()
-    df["ds"] = pd.to_datetime(df["ds"])
-    df["date"] = df["ds"].dt.date
+    staff_by_day = long_df[["ds", "staff"]].copy()
+    staff_by_day["date"] = staff_by_day["ds"].dt.date
 
-    staff_by_day = df[["date", "staff"]].drop_duplicates()
-    score_df = scored_blueprint_df.reset_index()
-    merged = staff_by_day.merge(score_df, on="date", how="left")
+    score_df_reset = score_df.reset_index()
+
+    # staff_by_dayの'date'列を、score_df_resetに合わせて日付型(datetime64[ns])に変換します。
+    staff_by_day["date"] = pd.to_datetime(staff_by_day["date"])
+
+    merged = staff_by_day.merge(score_df_reset, on="date", how="left")
+
+    if merged.empty or "staff" not in merged.columns:
+        return pd.DataFrame()
 
     score_cols = [
         "fairness_score",
