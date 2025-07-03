@@ -2271,7 +2271,7 @@ def update_team_analysis_graphs(selected_value, selected_key):
     Output('tradeoff-scatter-plot', 'figure'),
     Output('rules-data-table', 'data'),
     Output('staff-selector-dropdown', 'options'),
-    Output('facts-data-table', 'data'),
+    Output('facts-data-table', 'data', allow_duplicate=True),
     Output('facts-summary', 'children'),
     Output('integrated-analysis-content', 'children'),
     Input('generate-blueprint-button', 'n_clicks'),
@@ -2391,7 +2391,7 @@ def update_blueprint_analysis_content(n_clicks, analysis_type):
 
 
 @app.callback(
-    Output('facts-data-table', 'data'),
+    Output('facts-data-table', 'data', allow_duplicate=True),
     Input('fact-category-filter', 'value'),
     State('blueprint-results-store', 'data'),
     prevent_initial_call=True
