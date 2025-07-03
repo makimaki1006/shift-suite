@@ -5,7 +5,7 @@ import json
 import logging
 import tempfile
 import zipfile
-from functools import lru_cache
+from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Dict, List, Tuple
 import unicodedata
@@ -19,6 +19,9 @@ import plotly.graph_objects as go
 from dash import dash_table, dcc, html
 from dash.dependencies import Input, Output, State, ALL
 from dash.exceptions import PreventUpdate
+from flask import jsonify
+import traceback
+import gc
 from shift_suite.tasks.utils import safe_read_excel, gen_labels
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
@@ -60,6 +63,24 @@ log = logging.getLogger(__name__)
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
 app.title = "Shift-Suite 高速分析ビューア"
+
+# Flask error handlers
+@server.errorhandler(Exception)
+def handle_exception(e):
+    """Catch all unhandled exceptions."""
+    log.exception("Unhandled exception in request:")
+    error_info = {
+        "error": str(e),
+        "type": type(e).__name__,
+        "traceback": traceback.format_exc(),
+    }
+    return jsonify(error_info), 200
+
+
+@server.errorhandler(500)
+def handle_500(e):
+    log.error("500 error occurred")
+    return jsonify({"error": "Internal server error", "message": str(e)}), 200
 
 # グローバル状態
 # ``DATA_CACHE`` lazily holds loaded DataFrames for the active scenario.
@@ -128,6 +149,29 @@ def clear_data_cache() -> None:
     DATA_CACHE.clear()
     safe_read_parquet.cache_clear()
     safe_read_csv.cache_clear()
+
+
+def safe_callback(func):
+    """Wrap Dash callbacks with robust error handling."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except FileNotFoundError as e:
+            log.error(f"\u30d5\u30a1\u30a4\u30eb\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093: {e}")
+            raise PreventUpdate
+        except pd.errors.EmptyDataError:
+            log.error("\u7a7a\u306e\u30c7\u30fc\u30bf\u30d5\u30ec\u30fc\u30e0")
+            raise PreventUpdate
+        except MemoryError:
+            log.error("\u30e1\u30e2\u30ea\u4e0d\u8db3")
+            clear_data_cache()
+            gc.collect()
+            raise PreventUpdate
+        except Exception:
+            log.exception(f"\u4e88\u671f\u3057\u306a\u3044\u30a8\u30e9\u30fc in {func.__name__}")
+            return dash.no_update
+    return wrapper
 
 
 def data_get(key: str, default=None):
@@ -2278,6 +2322,7 @@ def update_team_analysis_graphs(selected_value, selected_key):
     State('blueprint-analysis-type', 'value'),
     prevent_initial_call=True
 )
+@safe_callback
 def update_blueprint_analysis_content(n_clicks, analysis_type):
     if not n_clicks:
         raise PreventUpdate
@@ -2397,6 +2442,7 @@ def update_blueprint_analysis_content(n_clicks, analysis_type):
     State('blueprint-results-store', 'data'),
     prevent_initial_call=True
 )
+@safe_callback
 def filter_facts_by_category(selected_category, stored_data):
     """カテゴリーで事実をフィルタリング"""
     if not stored_data or not stored_data.get('facts_df'):
