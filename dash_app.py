@@ -2276,6 +2276,7 @@ def update_team_analysis_graphs(selected_value, selected_key):
     Output('integrated-analysis-content', 'children'),
     Input('generate-blueprint-button', 'n_clicks'),
     State('blueprint-analysis-type', 'value'),
+    prevent_initial_call=True
 )
 def update_blueprint_analysis_content(n_clicks, analysis_type):
     if not n_clicks:
