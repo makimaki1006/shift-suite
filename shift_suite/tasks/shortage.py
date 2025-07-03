@@ -29,6 +29,7 @@ def shortage_and_brief(
     slot: int,
     *,
     holidays: Iterable[dt.date] | None = None,
+    include_zero_days: bool = True,
     wage_direct: float = 0.0,
     wage_temp: float = 0.0,
     penalty_per_lack: float = 0.0,
@@ -58,6 +59,8 @@ def shortage_and_brief(
     log.info("[SHORTAGE_DEBUG] shortage_and_brief 開始")
     log.info(f"[SHORTAGE_DEBUG] スロット: {slot}分")
     log.info(f"[SHORTAGE_DEBUG] 指定休業日数: {len(estimated_holidays_set)}")
+    if include_zero_days:
+        log.info("[SHORTAGE_FIX] include_zero_days=True → 推定休業日を使用しません")
 
     fp_all_heatmap = out_dir_path / "heat_ALL.parquet"
     if not fp_all_heatmap.exists():
@@ -76,15 +79,16 @@ def shortage_and_brief(
     if meta_fp.exists():
         try:
             meta = json.loads(meta_fp.read_text(encoding="utf-8"))
-            estimated_holidays_set.update(
-                {
-                    d
-                    for d in (
-                        _parse_as_date(h) for h in meta.get("estimated_holidays", [])
-                    )
-                    if d
-                }
-            )
+            if not include_zero_days:
+                estimated_holidays_set.update(
+                    {
+                        d
+                        for d in (
+                            _parse_as_date(h) for h in meta.get("estimated_holidays", [])
+                        )
+                        if d
+                    }
+                )
             pattern_records = meta.get("dow_need_pattern", [])
             if pattern_records:
                 tmp_df = pd.DataFrame(pattern_records)
@@ -207,11 +211,21 @@ def shortage_and_brief(
             actual_sum = staff_actual_data_all_df[col].sum()
             need_sum = need_df_all[col].sum()
             lack_sum = lack_count_overall_df[col].sum()
+            is_holiday = _parse_as_date(col) in estimated_holidays_set
 
             log.info(f"[SHORTAGE_DEBUG] {col}:")
+            log.info(f"[SHORTAGE_DEBUG]   休業日={is_holiday}")
             log.info(f"[SHORTAGE_DEBUG]   実績合計: {actual_sum}")
             log.info(f"[SHORTAGE_DEBUG]   Need合計: {need_sum}")
             log.info(f"[SHORTAGE_DEBUG]   不足合計: {lack_sum}")
+
+            if not is_holiday and need_sum > actual_sum * 3:
+                log.warning(
+                    f"[SHORTAGE_WARN] {col}: 異常な不足数({lack_sum})を検出"
+                )
+                log.warning(
+                    f"[SHORTAGE_WARN]   実績({actual_sum})に対してNeed({need_sum})が過大"
+                )
 
             non_zero_times = need_df_all[col][need_df_all[col] > 0].index.tolist()
             if non_zero_times:

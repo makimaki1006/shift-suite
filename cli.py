@@ -92,6 +92,7 @@ def main():
         long,
         out,
         args.slot,
+        include_zero_days=True,
         ref_start_date_for_need=ref_start,
         ref_end_date_for_need=ref_end,
         need_statistic_method="中央値",
@@ -105,6 +106,7 @@ def main():
         out,
         args.slot,
         holidays=(holiday_dates_global or []) + (holiday_dates_local or []),
+        include_zero_days=True,
     )
     try:
         build_hire_plan_from_shortage(out, safety_factor=args.safety_factor)

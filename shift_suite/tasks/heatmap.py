@@ -126,6 +126,7 @@ def calculate_pattern_based_need(
     *,
     holidays: set[dt.date] | None = None,
     adjustment_factor: float = 1.0,
+    include_zero_days: bool = True,
 ) -> pd.DataFrame:
     # 修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
     log.info(
@@ -148,6 +149,9 @@ def calculate_pattern_based_need(
     df_for_calc = actual_staff_by_slot_and_date.copy()
 
     holidays_set = set(holidays or [])
+
+    if include_zero_days:
+        log.info("[NEED_FIX] include_zero_days=True → 休業日除外なし")
 
     # 参照期間でデータをフィルタリング (列名がdt.dateオブジェクトであることを前提)
     cols_to_process_dow = [
@@ -216,7 +220,11 @@ def calculate_pattern_based_need(
                     values = data_for_dow_calc.loc[time_slot].values.tolist()
                     log.info(f"[SUNDAY_DEBUG]   {time_slot}: {values}")
         for time_slot_val, row_series_data in data_for_dow_calc.iterrows():
-            values_at_slot_current = row_series_data.dropna().astype(float).tolist()
+            if include_zero_days:
+                values_at_slot_current = [0.0 if pd.isna(v) else float(v) for v in row_series_data]
+            else:
+                values_at_slot_current = row_series_data.dropna().astype(float).tolist()
+
             if not values_at_slot_current:
                 dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = 0
                 continue
@@ -341,6 +349,7 @@ def build_heatmap(
     *,
     need_calc_method: str | None = None,
     need_stat_method: str | None = None,
+    include_zero_days: bool = True,
     need_manual_values: dict | None = None,
     upper_calc_method: str | None = None,
     upper_calc_param: dict | None = None,
@@ -588,7 +597,11 @@ def build_heatmap(
         need_stat_method if need_stat_method is not None else need_statistic_method
     )
 
-    final_holidays_to_use = holidays_set.union(estimated_holidays_set)
+    if include_zero_days:
+        log.info("[NEED_FIX] include_zero_days=True → 推定休業日を無視")
+        final_holidays_to_use = holidays_set
+    else:
+        final_holidays_to_use = holidays_set.union(estimated_holidays_set)
 
     dow_need_pattern_df = calculate_pattern_based_need(
         actual_staff_for_need_input,
@@ -600,6 +613,7 @@ def build_heatmap(
         slot_minutes_for_empty=slot_minutes,
         holidays=final_holidays_to_use,
         adjustment_factor=need_adjustment_factor,
+        include_zero_days=include_zero_days,
     )
 
     pivot_data_all_final = pd.DataFrame(
@@ -803,6 +817,7 @@ def build_heatmap(
             slot_minutes_for_empty=slot_minutes,
             holidays=final_holidays_to_use,
             adjustment_factor=need_adjustment_factor,
+            include_zero_days=include_zero_days,
         )
 
         need_df_role_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_role_final.columns, dtype=float).fillna(0)
@@ -982,6 +997,7 @@ def build_heatmap(
             slot_minutes_for_empty=slot_minutes,
             holidays=final_holidays_to_use,
             adjustment_factor=need_adjustment_factor,
+            include_zero_days=include_zero_days,
         )
 
         need_df_emp_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_emp_final.columns, dtype=float).fillna(0)
