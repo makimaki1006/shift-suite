@@ -27,7 +27,7 @@ from datetime import (
     timedelta,
 )  #  dt エイリアスではなく datetime, timedelta を直接使用
 from pathlib import Path
-from typing import Any, Sequence  #  Any を追加
+from typing import Any, Dict, Sequence
 
 import numpy as np
 import pandas as pd
@@ -420,6 +420,65 @@ def date_with_weekday(date_val: Any) -> str:
     return dt_val.strftime("%Y-%m-%d") + f"({weekday_jp})"
 
 
+def validate_need_calculation(
+    need_df: pd.DataFrame,
+    actual_df: pd.DataFrame,
+    tolerance_factor: float = 3.0,
+) -> Dict[str, Any]:
+    """Validate need calculation results."""
+
+    validation_results = {
+        "status": "PASS",
+        "warnings": [],
+        "errors": [],
+        "statistics": {},
+    }
+
+    for column in need_df.columns:
+        if column in actual_df.columns:
+            need_total = need_df[column].sum()
+            actual_total = actual_df[column].sum()
+
+            if actual_total > 0 and need_total > actual_total * tolerance_factor:
+                warning_msg = (
+                    f"{column}: Need({need_total:.1f})が実績({actual_total:.1f})の{tolerance_factor}倍を超過"
+                )
+                validation_results["warnings"].append(warning_msg)
+                validation_results["status"] = "WARNING"
+                log.warning(f"[VALIDATION_WARN] {warning_msg}")
+
+            validation_results["statistics"][column] = {
+                "need_total": need_total,
+                "actual_total": actual_total,
+                "ratio": need_total / actual_total if actual_total > 0 else float("inf"),
+            }
+
+    return validation_results
+
+
+def log_need_calculation_summary(
+    need_df: pd.DataFrame,
+    actual_df: pd.DataFrame,
+    method: str,
+) -> None:
+    """Log summary of need calculation."""
+
+    log.info(f"[NEED_SUMMARY] ========== Need計算サマリー ({method}) ==========")
+
+    dow_names = ["月", "火", "水", "木", "金", "土", "日"]
+
+    for column in need_df.columns:
+        if column in actual_df.columns:
+            date_obj = _parse_as_date(column)
+            if date_obj:
+                dow_name = dow_names[date_obj.weekday()]
+                need_total = need_df[column].sum()
+                actual_total = actual_df[column].sum()
+                log.info(
+                    f"[NEED_SUMMARY] {column}({dow_name}): Need={need_total:.1f}, 実績={actual_total:.1f}"
+                )
+
+
 # ────────────────── 9. Public Re-export ──────────────────
 __all__: Sequence[str] = [
     "log",
@@ -437,4 +496,6 @@ __all__: Sequence[str] = [
     "calculate_jain_index",
     "_parse_as_date",  # 追加
     "date_with_weekday",
+    "validate_need_calculation",
+    "log_need_calculation_summary",
 ]

@@ -1618,6 +1618,7 @@ if run_button_clicked:
                         long_df,
                         scenario_out_dir,
                         param_slot,
+                        include_zero_days=True,
                         need_calc_method=param_need_calc_method,
                         ref_start_date_for_need=param_need_ref_start,
                         ref_end_date_for_need=param_need_ref_end,
@@ -1653,6 +1654,7 @@ if run_button_clicked:
                         param_slot,
                         holidays=(holiday_dates_global_for_run or [])
                         + (holiday_dates_local_for_run or []),
+                        include_zero_days=True,
                         wage_direct=param_wage_direct,
                         wage_temp=param_wage_temp,
                         penalty_per_lack=param_penalty_lack,
