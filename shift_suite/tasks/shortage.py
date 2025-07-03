@@ -55,6 +55,9 @@ def shortage_and_brief(
     slot_hours = slot / 60.0
 
     estimated_holidays_set: Set[dt.date] = set(holidays or [])
+    log.info("[SHORTAGE_DEBUG] shortage_and_brief 開始")
+    log.info(f"[SHORTAGE_DEBUG] スロット: {slot}分")
+    log.info(f"[SHORTAGE_DEBUG] 指定休業日数: {len(estimated_holidays_set)}")
 
     fp_all_heatmap = out_dir_path / "heat_ALL.parquet"
     if not fp_all_heatmap.exists():
@@ -189,6 +192,34 @@ def shortage_and_brief(
         out_dir_path / "surplus_vs_need_time.parquet",
         index=True,
     )
+
+    sunday_columns = [
+        col
+        for col in lack_count_overall_df.columns
+        if _parse_as_date(col) and _parse_as_date(col).weekday() == 6
+    ]
+
+    if sunday_columns:
+        log.info("[SHORTAGE_DEBUG] ========== 日曜日の不足分析 ==========")
+        log.info(f"[SHORTAGE_DEBUG] 対象日曜日: {sunday_columns}")
+
+        for col in sunday_columns[:3]:
+            actual_sum = staff_actual_data_all_df[col].sum()
+            need_sum = need_df_all[col].sum()
+            lack_sum = lack_count_overall_df[col].sum()
+
+            log.info(f"[SHORTAGE_DEBUG] {col}:")
+            log.info(f"[SHORTAGE_DEBUG]   実績合計: {actual_sum}")
+            log.info(f"[SHORTAGE_DEBUG]   Need合計: {need_sum}")
+            log.info(f"[SHORTAGE_DEBUG]   不足合計: {lack_sum}")
+
+            non_zero_times = need_df_all[col][need_df_all[col] > 0].index.tolist()
+            if non_zero_times:
+                log.info(f"[SHORTAGE_DEBUG]   Need>0の時間帯: {non_zero_times}")
+                for time_slot in non_zero_times[:3]:
+                    log.info(
+                        f"[SHORTAGE_DEBUG]     {time_slot}: Need={need_df_all.loc[time_slot, col]}, 実績={staff_actual_data_all_df.loc[time_slot, col]}"
+                    )
 
     # ----- excess analysis -----
     fp_excess_time = fp_excess_ratio = fp_excess_freq = None

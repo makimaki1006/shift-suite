@@ -317,15 +317,49 @@ def calculate_jain_index(values: pd.Series) -> float:
 # 追加箇所: _parse_as_date 関数の定義 (build_stats.py から移設)
 def _parse_as_date(column_name: Any) -> dt.date | None:
     """列名を日付オブジェクトにパース試行。失敗時は None"""
-    if isinstance(
-        column_name, (dt.date, dt.datetime, pd.Timestamp)
-    ):  #  dt.date を先頭に
-        # Ensure it's converted to a Python date object
+    # 🔍 【追加】パース過程のデバッグログ（必要に応じて有効化）
+    # log.debug(f"[DATE_PARSE] パース試行: '{column_name}' (型: {type(column_name)})")
+
+    result: dt.date | None = None
+    if isinstance(column_name, (dt.date, dt.datetime, pd.Timestamp)):
         if isinstance(column_name, pd.Timestamp):
-            return column_name.date()
-        if isinstance(column_name, dt.datetime):
-            return column_name.date()
-        return column_name  # dt.date の場合
+            result = column_name.date()
+        elif isinstance(column_name, dt.datetime):
+            result = column_name.date()
+        else:
+            result = column_name
+    elif isinstance(column_name, str):
+        if column_name.lower() in [s.lower() for s in SUMMARY5]:
+            result = None
+        else:
+            m = re.search(r"(\d{4}-\d{1,2}-\d{1,2})", column_name)
+            if m:
+                try:
+                    result = pd.to_datetime(m.group(1), errors="raise").date()
+                except (ValueError, TypeError, pd.errors.ParserError):
+                    result = None
+            if result is None:
+                try:
+                    result = pd.to_datetime(column_name.split(" ")[0], errors="raise").date()
+                except (ValueError, TypeError, pd.errors.ParserError):
+                    try:
+                        if "." in column_name:
+                            excel_serial = float(column_name)
+                        else:
+                            excel_serial = int(column_name)
+                        if 0 < excel_serial < 200000:
+                            result = (datetime(1899, 12, 30) + timedelta(days=excel_serial)).date()
+                    except ValueError:
+                        result = None
+    elif isinstance(column_name, (int, float)):
+        try:
+            if column_name > 0 and column_name < 200000:
+                result = (datetime(1899, 12, 30) + timedelta(days=int(column_name))).date()
+        except (ValueError, OverflowError, TypeError):
+            result = None
+    if result and result.weekday() == 6:
+        log.debug(f"[DATE_PARSE] 日曜日を検出: {column_name} → {result}")
+    return result
 
     if isinstance(column_name, str):
         # SUMMARY5 に含まれる列名は日付ではないと明確に判定
