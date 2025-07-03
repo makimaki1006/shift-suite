@@ -1120,18 +1120,33 @@ def create_team_analysis_tab() -> html.Div:
 
 
 def create_blueprint_analysis_tab() -> html.Div:
-    """Return layout for blueprint analysis with two interactive views."""
+    """Return layout for blueprint analysis with facts and implicit knowledge."""
     return html.Div([
         html.H3("シフト作成プロセスの\u300c暗黙知\u300d分析", style={'marginBottom': '20px'}),
         html.P(
-            "過去のシフトデータから、熟練者が無意識に行っている\u300cシフトの組み方のセオリー\u300dを6つの観点から分析し、抽出します。",
+            "過去のシフトデータから、客観的事実と暗黙のルールを分析します。",
             style={'marginBottom': '10px'}
         ),
 
-        # 分析観点の説明
+        # 分析タイプの選択
+        html.Div([
+            dcc.RadioItems(
+                id='blueprint-analysis-type',
+                options=[
+                    {'label': '暗黙知のみ', 'value': 'implicit'},
+                    {'label': '客観的事実のみ', 'value': 'facts'},
+                    {'label': '統合分析（暗黙知＋事実）', 'value': 'integrated'}
+                ],
+                value='integrated',
+                inline=True,
+                style={'marginBottom': '10px'}
+            )
+        ]),
+
         html.Details([
-            html.Summary('📊 分析の6つの観点（クリックで詳細）', style={'cursor': 'pointer', 'fontWeight': 'bold'}),
+            html.Summary('📊 分析の観点（クリックで詳細）', style={'cursor': 'pointer', 'fontWeight': 'bold'}),
             html.Div([
+                html.H5("暗黙知の6つの観点"),
                 html.Ul([
                     html.Li("🤝 スキル相性: 誰と誰を組ませると上手くいくか、逆に避けているか"),
                     html.Li("⚖️ 負荷分散戦略: 繁忙時間帯にどんな戦略で人を配置しているか"),
@@ -1139,6 +1154,14 @@ def create_blueprint_analysis_tab() -> html.Div:
                     html.Li("🔄 ローテーション: 公平性を保つための複雑なローテーションルール"),
                     html.Li("🚨 リスク回避: トラブル防止のための暗黙の配置ルール"),
                     html.Li("📅 時系列戦略: 月初・月末、曜日による配置戦略の変化"),
+                ]),
+                html.H5("客観的事実の観点", style={'marginTop': '10px'}),
+                html.Ul([
+                    html.Li("📅 曜日パターン: 特定の曜日のみ勤務、曜日の偏り"),
+                    html.Li("🏷️ コードパターン: 特定の勤務コードのみ使用、回避"),
+                    html.Li("⏰ 時間帯パターン: 早朝・深夜勤務、固定時間帯"),
+                    html.Li("👥 ペア関係: 頻繁に一緒に働く/働かないペア"),
+                    html.Li("📊 統計的事実: 勤務頻度、平均勤務時間"),
                 ])
             ], style={'padding': '10px', 'backgroundColor': '#f0f0f0', 'borderRadius': '5px', 'marginTop': '10px'})
         ], style={'marginBottom': '20px'}),
@@ -1163,20 +1186,86 @@ def create_blueprint_analysis_tab() -> html.Div:
             id="loading-blueprint",
             type="default",
             children=html.Div([
-                html.Div([
-                    html.H4("全体分析ビュー：シフト全体の傾向と暗黙知"),
-                    dcc.Graph(id='tradeoff-scatter-plot'),
-                    html.H5("発見された暗黙知ルール一覧"),
-                    html.P("ルールをクリックすると、関連するスタッフの個別分析を表示します。"),
-                    dash_table.DataTable(id='rules-data-table', row_selectable='single'),
-                ], style={'width': '50%', 'display': 'inline-block', 'verticalAlign': 'top'}),
-                html.Div([
-                    html.H4("スタッフ個別ビュー：個人の働き方と価値観"),
-                    dcc.Dropdown(id='staff-selector-dropdown'),
-                    dcc.Graph(id='staff-radar-chart'),
-                    html.H5("このスタッフに関連する暗黙知"),
-                    html.Div(id='staff-related-rules-list'),
-                ], style={'width': '49%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingLeft': '1%'}),
+                dcc.Tabs(id='blueprint-result-tabs', children=[
+                    dcc.Tab(label='暗黙知分析', children=[
+                        html.Div([
+                            html.Div([
+                                html.H4("全体分析ビュー：シフト全体の傾向と暗黙知"),
+                                dcc.Graph(id='tradeoff-scatter-plot'),
+                                html.H5("発見された暗黙知ルール一覧"),
+                                html.P("ルールをクリックすると、関連するスタッフの個別分析を表示します。"),
+                                dash_table.DataTable(id='rules-data-table', row_selectable='single'),
+                            ], style={'width': '50%', 'display': 'inline-block', 'verticalAlign': 'top'}),
+                            html.Div([
+                                html.H4("スタッフ個別ビュー：個人の働き方と価値観"),
+                                dcc.Dropdown(id='staff-selector-dropdown'),
+                                dcc.Graph(id='staff-radar-chart'),
+                                html.H5("このスタッフに関連する暗黙知"),
+                                html.Div(id='staff-related-rules-list'),
+                            ], style={'width': '49%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingLeft': '1%'}),
+                        ])
+                    ]),
+                    dcc.Tab(label='客観的事実', children=[
+                        html.Div([
+                            html.H4("発見された客観的事実"),
+                            html.Div([
+                                html.Label("事実のカテゴリーでフィルター:"),
+                                dcc.Dropdown(
+                                    id='fact-category-filter',
+                                    options=[
+                                        {'label': '全て表示', 'value': 'all'},
+                                        {'label': '勤務パターン事実', 'value': '勤務パターン事実'},
+                                        {'label': '曜日事実', 'value': '曜日事実'},
+                                        {'label': 'コード事実', 'value': 'コード事実'},
+                                        {'label': '時間帯事実', 'value': '時間帯事実'},
+                                        {'label': 'ペア事実', 'value': 'ペア事実'},
+                                        {'label': '統計的事実', 'value': '統計的事実'}
+                                    ],
+                                    value='all',
+                                    clearable=False
+                                )
+                            ], style={'width': '300px', 'marginBottom': '20px'}),
+                            dash_table.DataTable(
+                                id='facts-data-table',
+                                columns=[
+                                    {'name': 'スタッフ', 'id': 'スタッフ'},
+                                    {'name': 'カテゴリー', 'id': 'カテゴリー'},
+                                    {'name': '事実タイプ', 'id': '事実タイプ'},
+                                    {'name': '詳細', 'id': '詳細'},
+                                    {'name': '確信度', 'id': '確信度', 'type': 'numeric', 'format': {'specifier': '.2f'}}
+                                ],
+                                style_data_conditional=[
+                                    {
+                                        'if': {
+                                            'column_id': '確信度',
+                                            'filter_query': '{確信度} >= 0.8'
+                                        },
+                                        'backgroundColor': '#3D9970',
+                                        'color': 'white',
+                                    },
+                                    {
+                                        'if': {
+                                            'column_id': '確信度',
+                                            'filter_query': '{確信度} < 0.5'
+                                        },
+                                        'backgroundColor': '#FFDC00',
+                                    }
+                                ],
+                                sort_action='native',
+                                filter_action='native',
+                                page_size=20
+                            ),
+                            html.Div(id='facts-summary', style={'marginTop': '20px'})
+                        ])
+                    ]),
+                    dcc.Tab(label='統合分析', children=[
+                        html.Div([
+                            html.H4("事実と暗黙知の関連"),
+                            html.P("客観的事実がどのような暗黙知につながっているかを分析します。"),
+                            html.Div(id='integrated-analysis-content')
+                        ])
+                    ])
+                ], value='暗黙知分析'),
             ], id='blueprint-analysis-content')
         ),
     ])
@@ -2182,15 +2271,20 @@ def update_team_analysis_graphs(selected_value, selected_key):
     Output('tradeoff-scatter-plot', 'figure'),
     Output('rules-data-table', 'data'),
     Output('staff-selector-dropdown', 'options'),
+    Output('facts-data-table', 'data'),
+    Output('facts-summary', 'children'),
+    Output('integrated-analysis-content', 'children'),
     Input('generate-blueprint-button', 'n_clicks'),
+    State('blueprint-analysis-type', 'value'),
 )
-def update_blueprint_analysis_content(n_clicks):
+def update_blueprint_analysis_content(n_clicks, analysis_type):
     if not n_clicks:
         raise PreventUpdate
 
     long_df = data_get('long_df', pd.DataFrame())
     if long_df.empty:
-        return dash.no_update, go.Figure(), [], []
+        empty_fig = go.Figure()
+        return {}, empty_fig, [], [], [], "データがありません", "データがありません"
 
     blueprint_data = create_blueprint_list(long_df)
 
@@ -2198,8 +2292,8 @@ def update_blueprint_analysis_content(n_clicks):
     fig_scatter = px.scatter(scatter_df, x='fairness_score', y='cost_score', hover_data=['date']) if not scatter_df.empty else go.Figure()
 
     rules_df = blueprint_data.get('rules_df', pd.DataFrame())
+    rules_table_data = []
 
-    # テーブル用のデータを整形
     if not rules_df.empty:
         if '詳細データ' in rules_df.columns:
             rules_df['詳細データ'] = rules_df['詳細データ'].apply(
@@ -2208,20 +2302,115 @@ def update_blueprint_analysis_content(n_clicks):
                 else str(x)
             )
         rules_table_data = rules_df.to_dict('records')
-    else:
-        rules_table_data = []
+
+    staff_scores_df = blueprint_data.get('staff_level_scores', pd.DataFrame())
+    dropdown_options = [{'label': s, 'value': s} for s in staff_scores_df.index] if not staff_scores_df.empty else []
+
+    facts_df = blueprint_data.get('facts_df', pd.DataFrame())
+    facts_table_data = []
+    facts_summary = "事実データがありません"
+
+    if not facts_df.empty:
+        facts_df = facts_df.sort_values('確信度', ascending=False)
+        facts_table_data = facts_df.to_dict('records')
+
+        total_facts = len(facts_df)
+        high_confidence_facts = len(facts_df[facts_df['確信度'] >= 0.8])
+        unique_staff = facts_df['スタッフ'].nunique()
+
+        facts_summary = html.Div([
+            html.H5("事実分析サマリー"),
+            html.Ul([
+                html.Li(f"発見された事実: {total_facts}件"),
+                html.Li(f"高確信度（80%以上）の事実: {high_confidence_facts}件"),
+                html.Li(f"分析対象スタッフ: {unique_staff}人"),
+            ]),
+            html.Div([
+                html.H6("カテゴリー別内訳"),
+                html.Ul([
+                    html.Li(f"{cat}: {len(df)}件")
+                    for cat, df in blueprint_data.get('facts_by_category', {}).items()
+                    if not df.empty
+                ])
+            ])
+        ])
+
+    integrated_content = html.Div("統合分析の準備中...")
+
+    if not facts_df.empty and not rules_df.empty:
+        integrated_items = []
+
+        for staff in facts_df['スタッフ'].unique():
+            if staff == "全体":
+                continue
+
+            staff_facts = facts_df[facts_df['スタッフ'] == staff]
+            staff_rules = rules_df[rules_df['発見された法則'].str.contains(staff, na=False)]
+
+            if len(staff_facts) > 0 or len(staff_rules) > 0:
+                integrated_items.append(
+                    html.Div([
+                        html.H6(f"{staff}さんの分析"),
+                        html.Ul([
+                            html.Li(f"客観的事実: {len(staff_facts)}件"),
+                            html.Li(f"関連する暗黙知: {len(staff_rules)}件"),
+                        ]),
+                        html.Details([
+                            html.Summary("詳細を見る"),
+                            html.Div([
+                                html.P("主な事実:"),
+                                html.Ul([
+                                    html.Li(fact['詳細'])
+                                    for _, fact in staff_facts.head(3).iterrows()
+                                ]),
+                                html.P("関連ルール:"),
+                                html.Ul([
+                                    html.Li(rule['発見された法則'][:50] + "...")
+                                    for _, rule in staff_rules.head(3).iterrows()
+                                ])
+                            ])
+                        ])
+                    ], style={'marginBottom': '20px', 'padding': '10px', 'backgroundColor': '#f0f0f0', 'borderRadius': '5px'})
+                )
+
+        if integrated_items:
+            integrated_content = html.Div(integrated_items)
+        else:
+            integrated_content = html.Div("統合分析可能なデータが見つかりませんでした。")
 
     store_data = {
         'rules_df': rules_df.to_json(orient='split') if not rules_df.empty else None,
         'scored_df': blueprint_data.get('scored_df', pd.DataFrame()).to_json(orient='split') if blueprint_data.get('scored_df') is not None and not blueprint_data.get('scored_df').empty else None,
         'tradeoffs': blueprint_data.get('tradeoffs', {}),
         'staff_level_scores': blueprint_data.get('staff_level_scores', pd.DataFrame()).to_json(orient='split') if blueprint_data.get('staff_level_scores') is not None and not blueprint_data.get('staff_level_scores').empty else None,
+        'facts_df': facts_df.to_json(orient='split') if not facts_df.empty else None,
+        'facts_by_category': {k: v.to_json(orient='split') for k, v in blueprint_data.get('facts_by_category', {}).items()}
     }
 
-    staff_scores_df = blueprint_data.get('staff_level_scores', pd.DataFrame())
-    dropdown_options = [{'label': s, 'value': s} for s in staff_scores_df.index] if not staff_scores_df.empty else []
+    return store_data, fig_scatter, rules_table_data, dropdown_options, facts_table_data, facts_summary, integrated_content
 
-    return store_data, fig_scatter, rules_table_data, dropdown_options
+
+@app.callback(
+    Output('facts-data-table', 'data'),
+    Input('fact-category-filter', 'value'),
+    State('blueprint-results-store', 'data'),
+    prevent_initial_call=True
+)
+def filter_facts_by_category(selected_category, stored_data):
+    """カテゴリーで事実をフィルタリング"""
+    if not stored_data or not stored_data.get('facts_df'):
+        return []
+
+    facts_df = pd.read_json(stored_data['facts_df'], orient='split')
+
+    if selected_category == 'all':
+        filtered_df = facts_df
+    else:
+        filtered_df = facts_df[facts_df['カテゴリー'] == selected_category]
+
+    filtered_df = filtered_df.sort_values('確信度', ascending=False)
+
+    return filtered_df.to_dict('records')
 
 
 def _extract_staff_from_rule(rule_text: str, staff_names: list[str]) -> str | None:

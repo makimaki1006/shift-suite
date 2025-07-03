@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from itertools import combinations
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
@@ -621,3 +622,354 @@ def create_blueprint_list(long_df: pd.DataFrame) -> dict:
         "tradeoffs": tradeoff_info,
         "staff_level_scores": staff_level_scores,
     }
+
+
+# backward compatibility を保ちつつ拡張
+_original_create_blueprint_list = create_blueprint_list
+
+
+class FactExtractor:
+    """シフトデータから客観的な事実を抽出するクラス"""
+
+    def __init__(self) -> None:
+        self.weekday_names = ['月', '火', '水', '木', '金', '土', '日']
+
+    def extract_all_facts(self, long_df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+        """全ての客観的事実を体系的に抽出"""
+
+        if long_df.empty:
+            return {}
+
+        facts = {
+            "勤務パターン事実": self._extract_work_pattern_facts(long_df),
+            "曜日事実": self._extract_weekday_facts(long_df),
+            "コード事実": self._extract_code_facts(long_df),
+            "時間帯事実": self._extract_time_facts(long_df),
+            "ペア事実": self._extract_pair_facts(long_df),
+            "統計的事実": self._extract_statistical_facts(long_df),
+        }
+
+        return facts
+
+    def _extract_work_pattern_facts(self, long_df: pd.DataFrame) -> pd.DataFrame:
+        """勤務パターンに関するシンプルな事実を抽出"""
+        return pd.DataFrame()
+
+    def _extract_weekday_facts(self, long_df: pd.DataFrame) -> pd.DataFrame:
+        """スタッフごとの曜日別勤務事実を抽出"""
+        facts = []
+
+        for staff in long_df['staff'].unique():
+            staff_df = long_df[long_df['staff'] == staff]
+            staff_df = staff_df[staff_df['parsed_slots_count'] > 0]
+
+            if staff_df.empty:
+                continue
+
+            weekday_counts = staff_df.groupby(staff_df['ds'].dt.dayofweek).size()
+            total_days = staff_df['ds'].dt.date.nunique()
+
+            working_days = weekday_counts[weekday_counts > 0].index.tolist()
+
+            if len(working_days) < 7:
+                working_day_names = [self.weekday_names[d] for d in working_days]
+                facts.append({
+                    "スタッフ": staff,
+                    "事実タイプ": "曜日限定勤務",
+                    "詳細": f"{', '.join(working_day_names)}のみ勤務",
+                    "勤務曜日数": len(working_days),
+                    "総勤務日数": total_days,
+                    "確信度": min(1.0, total_days / 10),
+                })
+
+            if len(weekday_counts) > 0 and total_days >= 5:
+                for day, count in weekday_counts.items():
+                    expected_ratio = 1 / 7
+                    actual_ratio = count / total_days
+                    if actual_ratio > expected_ratio * 2:
+                        facts.append({
+                            "スタッフ": staff,
+                            "事実タイプ": "曜日偏重",
+                            "詳細": f"{self.weekday_names[day]}曜日に{actual_ratio:.1%}が集中",
+                            "実績比率": round(actual_ratio, 3),
+                            "期待比率": round(expected_ratio, 3),
+                            "偏重度": round(actual_ratio / expected_ratio, 2),
+                            "確信度": min(1.0, total_days / 10),
+                        })
+
+        return pd.DataFrame(facts)
+
+    def _extract_code_facts(self, long_df: pd.DataFrame) -> pd.DataFrame:
+        """勤務コードに関する事実を抽出"""
+        facts = []
+
+        all_codes = sorted(long_df[long_df['code'] != '']['code'].unique())
+
+        for staff in long_df['staff'].unique():
+            staff_df = long_df[long_df['staff'] == staff]
+            staff_df = staff_df[staff_df['code'] != '']
+
+            if staff_df.empty:
+                continue
+
+            used_codes = sorted(staff_df['code'].unique())
+
+            if len(used_codes) > 0 and len(used_codes) < len(all_codes) * 0.5:
+                facts.append({
+                    "スタッフ": staff,
+                    "事実タイプ": "限定コード使用",
+                    "詳細": f"使用コード: {', '.join(used_codes[:5])}{'...' if len(used_codes) > 5 else ''}",
+                    "使用コード数": len(used_codes),
+                    "全コード数": len(all_codes),
+                    "使用率": round(len(used_codes) / len(all_codes), 3),
+                    "確信度": 1.0,
+                })
+
+            avoided_codes = sorted(set(all_codes) - set(used_codes))
+            if avoided_codes and len(avoided_codes) < len(all_codes) * 0.5:
+                facts.append({
+                    "スタッフ": staff,
+                    "事実タイプ": "コード回避",
+                    "詳細": f"未使用コード: {', '.join(avoided_codes[:5])}{'...' if len(avoided_codes) > 5 else ''}",
+                    "回避コード数": len(avoided_codes),
+                    "確信度": 1.0,
+                })
+
+            if len(staff_df) > 0:
+                code_freq = staff_df['code'].value_counts(normalize=True)
+                if len(code_freq) > 0 and code_freq.iloc[0] > 0.7:
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "主要コード依存",
+                        "詳細": f"{code_freq.index[0]}が{code_freq.iloc[0]:.1%}を占める",
+                        "主要コード": code_freq.index[0],
+                        "依存度": round(code_freq.iloc[0], 3),
+                        "確信度": min(1.0, len(staff_df) / 20),
+                    })
+
+        return pd.DataFrame(facts)
+
+    def _extract_time_facts(self, long_df: pd.DataFrame) -> pd.DataFrame:
+        """時間帯に関する事実を抽出"""
+        facts = []
+
+        for staff in long_df['staff'].unique():
+            staff_df = long_df[long_df['staff'] == staff]
+            staff_df = staff_df[staff_df['parsed_slots_count'] > 0]
+
+            if staff_df.empty:
+                continue
+
+            hours = staff_df['ds'].dt.hour
+            if len(hours) > 0:
+                early_morning_ratio = (hours < 6).sum() / len(hours)
+                if early_morning_ratio > 0.3:
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "早朝勤務",
+                        "詳細": f"全勤務の{early_morning_ratio:.1%}が6時前",
+                        "比率": round(early_morning_ratio, 3),
+                        "確信度": min(1.0, len(hours) / 50),
+                    })
+
+                night_ratio = (hours >= 22).sum() / len(hours)
+                if night_ratio > 0.3:
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "深夜勤務",
+                        "詳細": f"全勤務の{night_ratio:.1%}が22時以降",
+                        "比率": round(night_ratio, 3),
+                        "確信度": min(1.0, len(hours) / 50),
+                    })
+
+                hour_std = hours.std()
+                if hour_std < 2:
+                    mode_hour = hours.mode()[0] if len(hours.mode()) > 0 else hours.mean()
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "固定時間帯勤務",
+                        "詳細": f"主に{int(mode_hour)}時台を中心に勤務",
+                        "中心時間": int(mode_hour),
+                        "ばらつき": round(hour_std, 2),
+                        "確信度": min(1.0, len(hours) / 30),
+                    })
+
+        return pd.DataFrame(facts)
+
+    def _extract_pair_facts(self, long_df: pd.DataFrame) -> pd.DataFrame:
+        """ペア勤務に関する事実を抽出"""
+        facts = []
+
+        daily_staff = long_df[long_df['parsed_slots_count'] > 0].groupby(
+            ['ds', 'code']
+        )['staff'].apply(list).reset_index()
+
+        pair_counts = defaultdict(int)
+        total_shifts_per_staff = long_df.groupby('staff')['ds'].nunique()
+
+        for _, row in daily_staff.iterrows():
+            staff_list = row['staff']
+            if len(staff_list) >= 2:
+                for pair in combinations(sorted(set(staff_list)), 2):
+                    pair_counts[pair] += 1
+
+        for (staff1, staff2), count in pair_counts.items():
+            if staff1 in total_shifts_per_staff.index and staff2 in total_shifts_per_staff.index:
+                min_shifts = min(total_shifts_per_staff[staff1], total_shifts_per_staff[staff2])
+                if min_shifts > 0:
+                    pair_ratio = count / min_shifts
+
+                    if pair_ratio > 0.5:
+                        facts.append({
+                            "スタッフ": f"{staff1} & {staff2}",
+                            "事実タイプ": "頻繁ペア",
+                            "詳細": f"共働率{pair_ratio:.1%} ({count}回)",
+                            "共働回数": count,
+                            "共働率": round(pair_ratio, 3),
+                            "確信度": min(1.0, count / 10),
+                        })
+                    elif count == 0:
+                        facts.append({
+                            "スタッフ": f"{staff1} & {staff2}",
+                            "事実タイプ": "非共働ペア",
+                            "詳細": "一度も同じシフトに入っていない",
+                            "共働回数": 0,
+                            "確信度": min(1.0, min_shifts / 10),
+                        })
+
+        return pd.DataFrame(facts)
+
+    def _extract_statistical_facts(self, long_df: pd.DataFrame) -> pd.DataFrame:
+        """統計的な事実を抽出"""
+        facts = []
+
+        total_staff = long_df['staff'].nunique()
+        total_days = long_df['ds'].dt.date.nunique()
+
+        if total_days > 0:
+            daily_staff_counts = long_df[long_df['parsed_slots_count'] > 0].groupby(
+                long_df['ds'].dt.date
+            )['staff'].nunique()
+
+            avg_daily_staff = daily_staff_counts.mean()
+
+            facts.append({
+                "スタッフ": "全体",
+                "事実タイプ": "基本統計",
+                "詳細": f"平均{avg_daily_staff:.1f}人/日（総勢{total_staff}人）",
+                "平均日次スタッフ数": round(avg_daily_staff, 2),
+                "総スタッフ数": total_staff,
+                "分析期間日数": total_days,
+                "確信度": 1.0,
+            })
+
+        for staff in long_df['staff'].unique():
+            staff_df = long_df[long_df['staff'] == staff]
+            work_days = staff_df[staff_df['parsed_slots_count'] > 0]['ds'].dt.date.nunique()
+
+            if total_days > 0 and work_days > 0:
+                work_ratio = work_days / total_days
+                avg_hours_per_day = (staff_df['parsed_slots_count'].sum() * 0.5) / work_days
+
+                if work_ratio < 0.2:
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "低頻度勤務",
+                        "詳細": f"勤務率{work_ratio:.1%} ({work_days}/{total_days}日)",
+                        "勤務日数": work_days,
+                        "勤務率": round(work_ratio, 3),
+                        "確信度": min(1.0, total_days / 20),
+                    })
+                elif work_ratio > 0.8:
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "高頻度勤務",
+                        "詳細": f"勤務率{work_ratio:.1%} ({work_days}/{total_days}日)",
+                        "勤務日数": work_days,
+                        "勤務率": round(work_ratio, 3),
+                        "確信度": min(1.0, total_days / 20),
+                    })
+
+                if avg_hours_per_day < 4:
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "短時間勤務",
+                        "詳細": f"平均{avg_hours_per_day:.1f}時間/日",
+                        "平均勤務時間": round(avg_hours_per_day, 2),
+                        "確信度": min(1.0, work_days / 10),
+                    })
+                elif avg_hours_per_day > 10:
+                    facts.append({
+                        "スタッフ": staff,
+                        "事実タイプ": "長時間勤務",
+                        "詳細": f"平均{avg_hours_per_day:.1f}時間/日",
+                        "平均勤務時間": round(avg_hours_per_day, 2),
+                        "確信度": min(1.0, work_days / 10),
+                    })
+
+        return pd.DataFrame(facts)
+
+
+def create_integrated_analysis(long_df: pd.DataFrame) -> Dict[str, Any]:
+    """事実と暗黙知の統合分析"""
+
+    blueprint_data = create_blueprint_list(long_df)
+
+    fact_extractor = FactExtractor()
+    facts_dict = fact_extractor.extract_all_facts(long_df)
+
+    all_facts = []
+    for fact_type, fact_df in facts_dict.items():
+        if not fact_df.empty:
+            fact_df['カテゴリー'] = fact_type
+            all_facts.append(fact_df)
+
+    combined_facts_df = pd.concat(all_facts, ignore_index=True) if all_facts else pd.DataFrame()
+
+    connections = []
+    if not combined_facts_df.empty and 'rules_df' in blueprint_data and not blueprint_data['rules_df'].empty:
+        for _, fact in combined_facts_df.iterrows():
+            staff_in_fact = fact.get('スタッフ', '')
+            related_rules = blueprint_data['rules_df'][
+                blueprint_data['rules_df']['発見された法則'].str.contains(staff_in_fact, na=False)
+            ]
+
+            for _, rule in related_rules.iterrows():
+                connections.append({
+                    "事実": fact['詳細'],
+                    "関連ルール": rule['発見された法則'],
+                    "関連性": "スタッフ名による関連",
+                })
+
+    result = blueprint_data.copy()
+    result['facts_df'] = combined_facts_df
+    result['facts_by_category'] = facts_dict
+    result['fact_rule_connections'] = pd.DataFrame(connections)
+
+    return result
+
+
+def create_blueprint_list(long_df: pd.DataFrame) -> dict:
+    """Return discovered rules and scoring analysis as a single dictionary."""
+    result = _original_create_blueprint_list(long_df)
+
+    try:
+        fact_extractor = FactExtractor()
+        facts_dict = fact_extractor.extract_all_facts(long_df)
+
+        all_facts = []
+        for fact_type, fact_df in facts_dict.items():
+            if not fact_df.empty:
+                fact_df['カテゴリー'] = fact_type
+                all_facts.append(fact_df)
+
+        combined_facts_df = pd.concat(all_facts, ignore_index=True) if all_facts else pd.DataFrame()
+
+        result['facts_df'] = combined_facts_df
+        result['facts_by_category'] = facts_dict
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"事実抽出中にエラーが発生しました: {e}")
+        result['facts_df'] = pd.DataFrame()
+        result['facts_by_category'] = {}
+
+    return result
