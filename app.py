@@ -4187,22 +4187,24 @@ def display_gap_analysis_tab(tab_container, data_dir):
             st.info("解析結果がありません。")
 
 
-def display_mind_reader_tab(data_dir: Path) -> None:
-    st.subheader("🧠 シフト作成思考プロセス解読")
+def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
+    """Display the Mind Reader analysis tab."""
+    with tab_container:
+        st.subheader("🧠 シフト作成思考プロセス解読")
 
-    if "mind_reader_results" not in st.session_state:
-        if st.button("思考プロセスを解読する"):
-            with st.spinner("思考を解読中..."):
-                engine = AdvancedBlueprintEngineV2()
-                long_df = st.session_state.get("long_df")
-                if long_df is not None and not long_df.empty:
-                    results = engine.run_full_blueprint_analysis(long_df)
-                    st.session_state.mind_reader_results = results["mind_reading"]
-                    st.rerun()
-                else:
-                    st.error("分析の元となる勤務データが見つかりません。")
-    else:
-        results = st.session_state.mind_reader_results
+        if "mind_reader_results" not in st.session_state:
+            if st.button("思考プロセスを解読する"):
+                with st.spinner("思考を解読中..."):
+                    engine = AdvancedBlueprintEngineV2()
+                    long_df = st.session_state.get("long_df")
+                    if long_df is not None and not long_df.empty:
+                        results = engine.run_full_blueprint_analysis(long_df)
+                        st.session_state.mind_reader_results = results["mind_reading"]
+                        st.rerun()
+                    else:
+                        st.error("分析の元となる勤務データが見つかりません。")
+        else:
+            results = st.session_state.mind_reader_results
 
         st.markdown("#### 優先順位（判断基準の重要度）")
         st.info(
