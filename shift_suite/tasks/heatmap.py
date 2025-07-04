@@ -129,46 +129,23 @@ def calculate_pattern_based_need(
     include_zero_days: bool = True,
     all_dates_in_period: list[dt.date] | None = None,
 ) -> pd.DataFrame:
-    # 修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
+    """曜日別・時間帯別のNeedを計算（修正版）"""
+
     log.info(
-        f"[heatmap.calculate_pattern_based_need] 参照期間: {ref_start_date} - {ref_end_date}, 手法: {statistic_method}, 外れ値除去: {remove_outliers}"
+        f"[heatmap.calculate_pattern_based_need] 参照期間: {ref_start_date} - {ref_end_date}, "
+        f"手法: {statistic_method}, 外れ値除去: {remove_outliers}"
     )
 
     time_index_labels = pd.Index(gen_labels(slot_minutes_for_empty), name="time")
-    default_dow_need_df = pd.DataFrame(
-        0, index=time_index_labels, columns=range(7)
-    )  # 月曜0 - 日曜6
+    default_dow_need_df = pd.DataFrame(0, index=time_index_labels, columns=range(7))
 
     if actual_staff_by_slot_and_date.empty:
-        log.warning(
-            "[heatmap.calculate_pattern_based_need] 入力実績データが空です。デフォルトの0 needを返します。"
-        )
+        log.warning("[heatmap.calculate_pattern_based_need] 入力実績データが空です。")
         return default_dow_need_df
 
-    # actual_staff_by_slot_and_date の列名が日付オブジェクトであることを確認・変換
-    # 呼び出し元(build_heatmap)で列名をdt.dateオブジェクトに変換済みのものを渡すように修正
     df_for_calc = actual_staff_by_slot_and_date.copy()
-
     holidays_set = set(holidays or [])
 
-    if include_zero_days:
-        log.info("[NEED_FIX] include_zero_days=True → 休業日除外なし")
-
-    # 重要な修正：全期間の日付を考慮する
-    if all_dates_in_period and include_zero_days:
-        all_dates_in_ref = [
-            d for d in all_dates_in_period
-            if isinstance(d, dt.date) and ref_start_date <= d <= ref_end_date and d not in holidays_set
-        ]
-
-        # 実績がない日付を0で埋める
-        for date in all_dates_in_ref:
-            if date not in df_for_calc.columns:
-                df_for_calc[date] = 0
-
-        log.info(f"[NEED_FIX] 全期間の日付を考慮: 元の列数={len(actual_staff_by_slot_and_date.columns)}, 補完後={len(df_for_calc.columns)}")
-
-    # 参照期間でデータをフィルタリング (列名がdt.dateオブジェクトであることを前提)
     cols_to_process_dow = [
         col_date
         for col_date in df_for_calc.columns
@@ -180,15 +157,15 @@ def calculate_pattern_based_need(
     ]
 
     if not cols_to_process_dow:
-        log.warning(
-            f"[heatmap.calculate_pattern_based_need] 参照期間 ({ref_start_date} - {ref_end_date}) に該当する実績データがありません。"
-        )
+        log.warning("[heatmap.calculate_pattern_based_need] 参照期間に該当する実績データがありません。")
         return default_dow_need_df
 
     filtered_slot_df_dow = df_for_calc[cols_to_process_dow]
     dow_need_df_calculated = pd.DataFrame(
         index=filtered_slot_df_dow.index, columns=range(7), dtype=float
     )
+
+    dow_names = {0: "月曜日", 1: "火曜日", 2: "水曜日", 3: "木曜日", 4: "金曜日", 5: "土曜日", 6: "日曜日"}
 
     for day_of_week_idx in range(7):
         dow_cols_to_agg = [
@@ -197,8 +174,6 @@ def calculate_pattern_based_need(
             if col_dt.weekday() == day_of_week_idx
         ]
 
-        # デバッグ: 曜日名マッピング
-        dow_names = {0: "月曜日", 1: "火曜日", 2: "水曜日", 3: "木曜日", 4: "金曜日", 5: "土曜日", 6: "日曜日"}
         dow_name = dow_names.get(day_of_week_idx, f"曜日{day_of_week_idx}")
         log.info(f"[NEED_DEBUG] === {dow_name} ({day_of_week_idx}) 処理開始 ===")
         log.info(f"[NEED_DEBUG] 対象日付数: {len(dow_cols_to_agg)}")
@@ -208,50 +183,31 @@ def calculate_pattern_based_need(
             dow_need_df_calculated[day_of_week_idx] = 0
             continue
 
-        # デバッグ情報出力（全曜日）
-        log.info(
-            f"[NEED_DEBUG] 対象日付例: {[d.strftime('%Y-%m-%d') for d in dow_cols_to_agg[:3]]}{'...' if len(dow_cols_to_agg) > 3 else ''}"
-        )
-
         data_for_dow_calc = filtered_slot_df_dow[dow_cols_to_agg]
 
-        # 日毎の合計人数を計算
+        # 重要な修正: 営業日の判定
+        # 各日の総勤務人数を計算し、実質的な営業日を判定
         daily_totals = data_for_dow_calc.sum()
-        log.info(f"  各日の総勤務人数: {daily_totals.values.tolist()}")
-        log.info(f"  日平均総勤務人数: {daily_totals.mean():.2f}")
+        operating_days = daily_totals[daily_totals > 0]
 
-        # 時間帯別の詳細（特に日曜日は詳細に）
-        if day_of_week_idx == 6:
-            log.info("[SUNDAY_DEBUG] ========== 日曜日の詳細分析 ==========")
-            log.info("[SUNDAY_DEBUG] 対象期間の全日曜日:")
-            for d in dow_cols_to_agg:
-                daily_sum = data_for_dow_calc[d].sum()
-                log.info(f"[SUNDAY_DEBUG]   {d.strftime('%Y-%m-%d')}: {daily_sum}名")
+        log.info(f"[NEED_DEBUG] {dow_name}: 全{len(dow_cols_to_agg)}日中、実稼働日は{len(operating_days)}日")
 
-            log.info("[SUNDAY_DEBUG] 代表的な時間帯の値:")
-            sample_times = ["09:00", "12:00", "15:00", "18:00"]
-            for time_slot in sample_times:
-                if time_slot in data_for_dow_calc.index:
-                    values = data_for_dow_calc.loc[time_slot].values.tolist()
-                    log.info(f"[SUNDAY_DEBUG]   {time_slot}: {values}")
-        for time_slot_val, row_series_data in data_for_dow_calc.iterrows():
-            if include_zero_days:
-                values_at_slot_current = [0.0 if pd.isna(v) else float(v) for v in row_series_data]
-            else:
-                values_at_slot_current = row_series_data.dropna().astype(float).tolist()
+        if len(operating_days) == 0:
+            log.info(f"[NEED_DEBUG] {dow_name}: 実稼働日がないためNeed=0")
+            dow_need_df_calculated[day_of_week_idx] = 0
+            continue
+
+        operating_cols = operating_days.index.tolist()
+        data_for_stats = data_for_dow_calc[operating_cols]
+
+        for time_slot_val, row_series_data in data_for_stats.iterrows():
+            values_at_slot_current = row_series_data.dropna().astype(float).tolist()
 
             if not values_at_slot_current:
                 dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = 0
                 continue
+
             values_for_stat_calc = values_at_slot_current
-            if day_of_week_idx == 6 and time_slot_val in ["09:00", "12:00", "15:00"]:
-                log.info(f"[SUNDAY_DETAIL] {time_slot_val} 時間帯:")
-                log.info(f"[SUNDAY_DETAIL]   元データ: {values_at_slot_current}")
-            # 統計値の計算前にデバッグ情報を出力
-            if day_of_week_idx == 6 or (day_of_week_idx == 1 and time_slot_val == "09:00"):
-                log.info(f"\n  [統計計算デバッグ] {dow_name} {time_slot_val}")
-                log.info(f"    元データ: {values_at_slot_current}")
-                log.info(f"    データ数: {len(values_at_slot_current)}")
 
             if remove_outliers and len(values_at_slot_current) >= 4:
                 q1_val = np.percentile(values_at_slot_current, 25)
@@ -264,16 +220,9 @@ def calculate_pattern_based_need(
                     for x_val in values_at_slot_current
                     if lower_bound_val <= x_val <= upper_bound_val
                 ]
-                # デバッグ: 外れ値除去の詳細
-                if day_of_week_idx == 6 and time_slot_val in ["09:00", "12:00", "15:00"]:
-                    log.info(f"[SUNDAY_DETAIL]   外れ値除去後: {values_filtered_outlier}")
-
-                if not values_filtered_outlier:
-                    log.debug(
-                        f"  曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: 外れ値除去後データなし。元のリストで計算します。"
-                    )
-                else:
+                if values_filtered_outlier:
                     values_for_stat_calc = values_filtered_outlier
+
             need_calculated_val = 0.0
             if values_for_stat_calc:
                 if statistic_method == "10パーセンタイル":
@@ -285,28 +234,15 @@ def calculate_pattern_based_need(
                 elif statistic_method == "平均値":
                     need_calculated_val = np.mean(values_for_stat_calc)
                 else:
-                    log.warning(
-                        f"不明な統計的指標: {statistic_method}。中央値を使用します。"
-                    )
+                    log.warning(f"不明な統計的指標: {statistic_method}。中央値を使用します。")
                     need_calculated_val = np.median(values_for_stat_calc)
-            if day_of_week_idx == 6 and time_slot_val in ["09:00", "12:00", "15:00"]:
-                log.info(f"[SUNDAY_DETAIL]   統計手法適用後: {need_calculated_val:.2f}")
-                need_calculated_val *= adjustment_factor
-                log.info(f"[SUNDAY_DETAIL]   調整係数適用後: {need_calculated_val:.2f}")
-                final_need = round(need_calculated_val) if not pd.isna(need_calculated_val) else 0
-                log.info(f"[SUNDAY_DETAIL]   最終Need値: {final_need}")
-            else:
-                need_calculated_val *= adjustment_factor
+
+            need_calculated_val *= adjustment_factor
+
             dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = (
-                round(need_calculated_val)
-                if not pd.isna(need_calculated_val)
-                else 0
-            )
-            log.debug(
-                f"  曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: 元データ長 {len(row_series_data.dropna())} -> 外れ値除去後 {len(values_for_stat_calc)} -> Need {dow_need_df_calculated.loc[time_slot_val, day_of_week_idx]}"
+                round(need_calculated_val) if not pd.isna(need_calculated_val) else 0
             )
 
-    # 全曜日の計算完了後、サマリーを出力
     log.info("[NEED_DEBUG] ========== Need計算完了サマリー ==========")
     for dow_idx in range(7):
         dow_name = dow_names.get(dow_idx, f"曜日{dow_idx}")
@@ -314,14 +250,6 @@ def calculate_pattern_based_need(
         max_need = dow_need_df_calculated[dow_idx].max()
         avg_need = dow_need_df_calculated[dow_idx].mean()
         log.info(f"[NEED_DEBUG] {dow_name}: 合計={total_need:.0f}, 最大={max_need:.0f}, 平均={avg_need:.2f}")
-
-    # 特に日曜日の詳細
-    if 6 in dow_need_df_calculated.columns:
-        sunday_data = dow_need_df_calculated[6]
-        log.info("\n[日曜日の時間帯別Need値]")
-        for time_slot, need_val in sunday_data.items():
-            if need_val > 0:
-                log.info(f"  {time_slot}: {need_val}")
 
     log.info("[heatmap.calculate_pattern_based_need] 曜日別・時間帯別needの算出完了。")
     return dow_need_df_calculated.fillna(0).astype(int)
@@ -897,7 +825,7 @@ def build_heatmap(
         ):
             pivot_to_excel_role[col] = data
 
-        fp_role = out_dir_path / f"heat_{role_safe_name_final_loop}.parquet"
+        fp_role = out_dir_path / f"heat_role_{role_safe_name_final_loop}.parquet"
         try:
             pivot_to_excel_role.to_parquet(fp_role)
             log.info(f"職種 '{role_item_final_loop}' ヒートマップ作成完了。")
@@ -907,12 +835,12 @@ def build_heatmap(
                 exc_info=True,
             )
 
-        fp_role_xlsx = out_dir_path / f"heat_{role_safe_name_final_loop}.xlsx"
+        fp_role_xlsx = out_dir_path / f"heat_role_{role_safe_name_final_loop}.xlsx"
         try:
             save_df_xlsx(
                 pivot_to_excel_role,
                 fp_role_xlsx,
-                sheet_name=f"heat_{role_safe_name_final_loop}",
+                sheet_name=f"heat_role_{role_safe_name_final_loop}",
             )
         except Exception as e_role_xlsx:
             log.error(
