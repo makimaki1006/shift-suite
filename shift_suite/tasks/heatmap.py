@@ -1,5 +1,5 @@
 # shift_suite / tasks / heatmap.py
-# v1.8.0 (休暇除外処理対応版)
+# v1.8.1 (日曜日Need計算修正版)
 from __future__ import annotations
 
 import datetime as dt
@@ -127,6 +127,7 @@ def calculate_pattern_based_need(
     holidays: set[dt.date] | None = None,
     adjustment_factor: float = 1.0,
     include_zero_days: bool = True,
+    all_dates_in_period: list[dt.date] | None = None,
 ) -> pd.DataFrame:
     # 修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
     log.info(
@@ -152,6 +153,20 @@ def calculate_pattern_based_need(
 
     if include_zero_days:
         log.info("[NEED_FIX] include_zero_days=True → 休業日除外なし")
+
+    # 重要な修正：全期間の日付を考慮する
+    if all_dates_in_period and include_zero_days:
+        all_dates_in_ref = [
+            d for d in all_dates_in_period
+            if isinstance(d, dt.date) and ref_start_date <= d <= ref_end_date and d not in holidays_set
+        ]
+
+        # 実績がない日付を0で埋める
+        for date in all_dates_in_ref:
+            if date not in df_for_calc.columns:
+                df_for_calc[date] = 0
+
+        log.info(f"[NEED_FIX] 全期間の日付を考慮: 元の列数={len(actual_staff_by_slot_and_date.columns)}, 補完後={len(df_for_calc.columns)}")
 
     # 参照期間でデータをフィルタリング (列名がdt.dateオブジェクトであることを前提)
     cols_to_process_dow = [
@@ -614,6 +629,7 @@ def build_heatmap(
         holidays=final_holidays_to_use,
         adjustment_factor=need_adjustment_factor,
         include_zero_days=include_zero_days,
+        all_dates_in_period=all_dates_in_period_list,
     )
 
     pivot_data_all_final = pd.DataFrame(
@@ -807,6 +823,13 @@ def build_heatmap(
             else:
                 actual_staff_for_role_need_input = pd.DataFrame(index=time_index_labels)
 
+        # 重要な修正：職種別でも全期間の日付を補完
+        if include_zero_days and all_dates_in_period_list:
+            for date in all_dates_in_period_list:
+                if ref_start_date_for_need <= date <= ref_end_date_for_need and date not in final_holidays_to_use:
+                    if date not in actual_staff_for_role_need_input.columns:
+                        actual_staff_for_role_need_input[date] = 0
+
         dow_need_pattern_role_df = calculate_pattern_based_need(
             actual_staff_for_role_need_input,
             ref_start_date_for_need,
@@ -818,6 +841,7 @@ def build_heatmap(
             holidays=final_holidays_to_use,
             adjustment_factor=need_adjustment_factor,
             include_zero_days=include_zero_days,
+            all_dates_in_period=all_dates_in_period_list,
         )
 
         need_df_role_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_role_final.columns, dtype=float).fillna(0)
@@ -987,6 +1011,13 @@ def build_heatmap(
             else:
                 actual_staff_for_emp_need_input = pd.DataFrame(index=time_index_labels)
 
+        # 重要な修正：雇用形態別でも全期間の日付を補完
+        if include_zero_days and all_dates_in_period_list:
+            for date in all_dates_in_period_list:
+                if ref_start_date_for_need <= date <= ref_end_date_for_need and date not in final_holidays_to_use:
+                    if date not in actual_staff_for_emp_need_input.columns:
+                        actual_staff_for_emp_need_input[date] = 0
+
         dow_need_pattern_emp_df = calculate_pattern_based_need(
             actual_staff_for_emp_need_input,
             ref_start_date_for_need,
@@ -998,6 +1029,7 @@ def build_heatmap(
             holidays=final_holidays_to_use,
             adjustment_factor=need_adjustment_factor,
             include_zero_days=include_zero_days,
+            all_dates_in_period=all_dates_in_period_list,
         )
 
         need_df_emp_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_emp_final.columns, dtype=float).fillna(0)
