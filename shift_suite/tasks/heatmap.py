@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import math
 from pathlib import Path
 from typing import List, Set
 
@@ -26,6 +25,7 @@ from .utils import (
     safe_sheet,
     save_df_xlsx,
     write_meta,
+    validate_need_calculation,
 )
 
 # 新規追加: 通常勤務の判定用定数
@@ -278,12 +278,12 @@ def calculate_pattern_based_need(
                 log.info(f"[SUNDAY_DETAIL]   統計手法適用後: {need_calculated_val:.2f}")
                 need_calculated_val *= adjustment_factor
                 log.info(f"[SUNDAY_DETAIL]   調整係数適用後: {need_calculated_val:.2f}")
-                final_need = math.ceil(need_calculated_val) if not pd.isna(need_calculated_val) else 0
+                final_need = round(need_calculated_val) if not pd.isna(need_calculated_val) else 0
                 log.info(f"[SUNDAY_DETAIL]   最終Need値: {final_need}")
             else:
                 need_calculated_val *= adjustment_factor
             dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = (
-                math.ceil(need_calculated_val)
+                round(need_calculated_val)
                 if not pd.isna(need_calculated_val)
                 else 0
             )
@@ -603,7 +603,7 @@ def build_heatmap(
     else:
         final_holidays_to_use = holidays_set.union(estimated_holidays_set)
 
-    dow_need_pattern_df = calculate_pattern_based_need(
+    overall_dow_need_pattern_df = calculate_pattern_based_need(
         actual_staff_for_need_input,
         ref_start_date_for_need,
         ref_end_date_for_need,
@@ -638,10 +638,10 @@ def build_heatmap(
             need_all_final_for_summary[date_str_col_map] = 0
         else:
             day_of_week_map = current_date_obj_map.weekday()
-            if day_of_week_map in dow_need_pattern_df.columns:
-                need_all_final_for_summary[date_str_col_map] = dow_need_pattern_df[day_of_week_map]
+            if day_of_week_map in overall_dow_need_pattern_df.columns:
+                need_all_final_for_summary[date_str_col_map] = overall_dow_need_pattern_df[day_of_week_map]
                 if current_date_obj_map.weekday() == 6:
-                    need_values = dow_need_pattern_df[day_of_week_map]
+                    need_values = overall_dow_need_pattern_df[day_of_week_map]
                     log.info(f"[SUNDAY_APPLY]   → Need値適用: 合計={need_values.sum():.0f}")
                     log.info(f"[SUNDAY_APPLY]   → Need値詳細（最初5つ）: {need_values.head().tolist()}")
             else:
@@ -1085,10 +1085,10 @@ def build_heatmap(
         else []
     )
     dow_need_pattern_output = (
-        dow_need_pattern_df.reset_index()
+        overall_dow_need_pattern_df.reset_index()
         .rename(columns={"time": "time"})
         .to_dict(orient="records")
-        if not dow_need_pattern_df.empty
+        if not overall_dow_need_pattern_df.empty
         else []
     )  #  index名変更
 
@@ -1110,4 +1110,5 @@ def build_heatmap(
         },
         leave_statistics=leave_stats,  # 休暇統計をメタデータに追加
     )
+    validate_need_calculation(need_all_final_for_summary, pivot_data_all_final)
     log.info("[heatmap.build_heatmap] ヒートマップ生成処理完了。")
