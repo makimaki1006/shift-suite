@@ -330,18 +330,15 @@ def shortage_and_brief(
     monthly_role_rows: List[Dict[str, Any]] = []
     processed_role_names_list = []
 
-    for fp_role_heatmap_item in out_dir_path.glob("heat_*.xlsx"):
-        if fp_role_heatmap_item.name == "heat_ALL.xlsx":
-            continue
-
-        role_name_current = fp_role_heatmap_item.stem.replace("heat_", "")
+    for fp_role_heatmap_item in out_dir_path.glob("heat_role_*.parquet"):
+        role_name_current = fp_role_heatmap_item.stem.replace("heat_role_", "")
         processed_role_names_list.append(role_name_current)
         log.debug(
             f"--- shortage_role.xlsx 計算デバッグ (職種: {role_name_current}) ---"
         )
 
         try:
-            role_heat_current_df = pd.read_excel(fp_role_heatmap_item, index_col=0)
+            role_heat_current_df = pd.read_parquet(fp_role_heatmap_item)
         except Exception as e_role_heat:
             log.warning(
                 f"[shortage] 職種別ヒートマップ '{fp_role_heatmap_item.name}' の読み込みエラー: {e_role_heat}"
@@ -622,14 +619,14 @@ def shortage_and_brief(
     monthly_emp_rows: List[Dict[str, Any]] = []
     processed_emp_names_list = []
 
-    for fp_emp_heatmap_item in out_dir_path.glob("heat_emp_*.xlsx"):
+    for fp_emp_heatmap_item in out_dir_path.glob("heat_emp_*.parquet"):
         emp_name_current = fp_emp_heatmap_item.stem.replace("heat_emp_", "")
         processed_emp_names_list.append(emp_name_current)
         log.debug(
             f"--- shortage_employment.xlsx 計算デバッグ (雇用形態: {emp_name_current}) ---"
         )
         try:
-            emp_heat_current_df = pd.read_excel(fp_emp_heatmap_item, index_col=0)
+            emp_heat_current_df = pd.read_parquet(fp_emp_heatmap_item)
         except Exception as e_emp_heat:
             log.warning(
                 f"[shortage] 雇用形態別ヒートマップ '{fp_emp_heatmap_item.name}' の読み込みエラー: {e_emp_heat}"
