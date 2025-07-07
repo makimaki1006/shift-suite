@@ -100,6 +100,7 @@ def _to_hhmm(v: Any) -> str | None:
             log.debug(f"Excelシリアル値からの時刻変換エラー: 値='{v}', エラー='{e}'")
             return None
     s = str(v).strip()
+    # Excel may express midnight as "24:00"; convert to standard "00:00"
     if s == "24:00":
         return "00:00"
     if re.fullmatch(r"\d{1,2}:\d{2}:\d{2}", s):
@@ -124,9 +125,7 @@ def _expand(
         e_time = dt.datetime.strptime(ed, "%H:%M")
     except (ValueError, TypeError):
         return []
-    if ed == "00:00":
-        e_time = e_time.replace(hour=23, minute=59, second=59)
-    elif e_time <= s_time:
+    if ed == "00:00" or e_time <= s_time:
         e_time += dt.timedelta(days=1)
 
     slots: list[str] = []
