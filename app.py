@@ -587,21 +587,19 @@ def load_all_heatmap_files(data_dir: Path) -> dict:
             except Exception as e:  # noqa: BLE001
                 log.warning("%s の読み込みに失敗しました: %s", filename, e)
 
-    for fp in data_dir.glob("heat_role_*.parquet"):
-        try:
-            key = fp.stem  # heat_role_XXX
-            heatmap_data[key] = pd.read_parquet(fp)
-            log.info("'%s'を読み込み、heatmap_data['%s']に格納しました。", fp.name, key)
-        except Exception as e:
-            log.warning("%s の読み込みに失敗しました: %s", fp.name, e)
-
-    for fp in data_dir.glob("heat_emp_*.parquet"):
-        try:
-            key = fp.stem  # heat_emp_XXX
-            heatmap_data[key] = pd.read_parquet(fp)
-            log.info("'%s'を読み込み、heatmap_data['%s']に格納しました。", fp.name, key)
-        except Exception as e:
-            log.warning("%s の読み込みに失敗しました: %s", fp.name, e)
+    for pattern in ["heat_role_*.parquet", "heat_emp_*.parquet"]:
+        for fp in data_dir.glob(pattern):
+            try:
+                if pattern.startswith("heat_role_"):
+                    key = f"heat_role_{fp.stem.replace('heat_role_', '')}"
+                else:
+                    key = f"heat_emp_{fp.stem.replace('heat_emp_', '')}"
+                heatmap_data[key] = pd.read_parquet(fp)
+                log.info(
+                    "'%s'を読み込み、heatmap_data['%s']に格納しました。", fp.name, key
+                )
+            except Exception as e:  # noqa: BLE001
+                log.warning("%s の読み込みに失敗しました: %s", fp.name, e)
 
     return heatmap_data
 
@@ -1620,7 +1618,7 @@ if run_button_clicked:
                         long_df,
                         scenario_out_dir,
                         param_slot,
-                        include_zero_days=False,
+                        include_zero_days=True,
                         need_calc_method=param_need_calc_method,
                         ref_start_date_for_need=param_need_ref_start,
                         ref_end_date_for_need=param_need_ref_end,
@@ -2586,39 +2584,7 @@ def display_heatmap_tab(tab_container, data_dir):
                 heat_keys = [f"heat_emp_{safe_sheet(x, for_path=True)}" for x in sel_item]
                 scope_info_for_title += f" ({', '.join(sel_item)})"
 
-            # データの取得（修正版）
-            dfs = []
-            for key in heat_keys:
-                df = st.session_state.display_data.get(key)
-                if df is None and data_dir:
-                    fp = data_dir / f"{key}.parquet"
-                    if fp.exists():
-                        try:
-                            df = pd.read_parquet(fp)
-                            st.session_state.display_data[key] = df
-                            log.info(f"ファイルから {key} を読み込みました")
-                        except Exception as e:
-                            log.warning(f"{fp.name} の読み込みに失敗しました: {e}")
-                            df = None
-                if isinstance(df, pd.DataFrame) and not df.empty:
-                    dfs.append(df)
-                else:
-                    log.warning(f"データ {key} が見つからないか空です")
-
-            if not dfs:
-                st.warning("選択されたスコープのヒートマップデータが見つかりません")
-                return
-
-            if len(dfs) == 1:
-                df_heat = dfs[0]
-            else:
-                df_heat = dfs[0].copy()
-                for df in dfs[1:]:
-                    numeric_cols = df.select_dtypes(include=[np.number]).columns
-                    for col in numeric_cols:
-                        if col in df_heat.columns:
-                            df_heat[col] = df_heat[col].add(df.get(col, 0), fill_value=0)
-
+            df_heat = load_and_sum_heatmaps(data_dir, heat_keys)
             mode = [k for k, v in mode_opts.items() if v == mode_lbl][0]
 
             if df_heat is not None and not df_heat.empty:
@@ -4232,36 +4198,21 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
                     engine = AdvancedBlueprintEngineV2()
                     long_df = st.session_state.get("long_df")
                     if long_df is not None and not long_df.empty:
-                        try:
-                            results = engine.run_full_blueprint_analysis(long_df)
-                            st.session_state.mind_reader_results = results.get("mind_reading", {})
-                            st.rerun()
-                        except Exception as e:
-                            log.error(f"Mind Reader分析中にエラーが発生しました: {e}", exc_info=True)
-                            st.error(f"分析中にエラーが発生しました: {str(e)}")
-                            return
+                        results = engine.run_full_blueprint_analysis(long_df)
+                        st.session_state.mind_reader_results = results["mind_reading"]
+                        st.rerun()
                     else:
                         st.error("分析の元となる勤務データが見つかりません。")
-                        return
-            else:
-                st.info("「思考プロセスを解読する」ボタンをクリックして分析を開始してください。")
-                return
-
-        results = st.session_state.get("mind_reader_results", {})
-
-        if not results:
-            st.warning("分析結果が見つかりません。再度分析を実行してください。")
-            return
+        else:
+            results = st.session_state.mind_reader_results
 
         st.markdown("#### 優先順位（判断基準の重要度）")
         st.info(
             "作成者が無意識にどの項目を重視しているかを数値化したものです。絶対値が大きいほど重要です。"
         )
         importance_df = results.get("feature_importance")
-        if importance_df is not None and not importance_df.empty:
+        if importance_df is not None:
             st.dataframe(importance_df)
-        else:
-            st.info("特徴量の重要度データがありません。")
 
         st.markdown("#### 思考フローチャート（決定木）")
         st.info(
@@ -4269,23 +4220,16 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
         )
         tree_model = results.get("thinking_process_tree")
         if tree_model:
-            try:
-                fig, _ = plt.subplots(figsize=(20, 10))
-                plot_tree(
-                    tree_model,
-                    filled=True,
-                    feature_names=getattr(tree_model, "feature_names_in_", None),
-                    class_names=True,
-                    max_depth=3,
-                    fontsize=10,
-                )
-                st.pyplot(fig)
-                plt.close(fig)
-            except Exception as e:
-                log.error(f"決定木の描画中にエラー: {e}")
-                st.error("決定木の描画に失敗しました。")
-        else:
-            st.info("決定木モデルがありません。")
+            fig, _ = plt.subplots(figsize=(20, 10))
+            plot_tree(
+                tree_model,
+                filled=True,
+                feature_names=getattr(tree_model, "feature_names_in_", None),
+                class_names=True,
+                max_depth=3,
+                fontsize=10,
+            )
+            st.pyplot(fig)
 
         st.markdown("#### トレードオフ分析")
         st.info(
@@ -4293,19 +4237,13 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
         )
         trade_off_df = results.get("trade_offs")
         if trade_off_df is not None and not trade_off_df.empty:
-            try:
-                fig = px.scatter(
-                    trade_off_df,
-                    x="total_cost",
-                    y="fairness_score",
-                    title="コスト vs 公平性 トレードオフ",
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                log.error(f"トレードオフグラフの描画中にエラー: {e}")
-                st.error("トレードオフグラフの描画に失敗しました。")
-        else:
-            st.info("トレードオフ分析データがありません。")
+            fig = px.scatter(
+                trade_off_df,
+                x="total_cost",
+                y="fairness_score",
+                title="コスト vs 公平性 トレードオフ",
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
