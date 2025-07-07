@@ -100,6 +100,8 @@ def _to_hhmm(v: Any) -> str | None:
             log.debug(f"Excelシリアル値からの時刻変換エラー: 値='{v}', エラー='{e}'")
             return None
     s = str(v).strip()
+    if s == "24:00":
+        return "00:00"
     if re.fullmatch(r"\d{1,2}:\d{2}:\d{2}", s):
         s = s[:-3]
     if re.fullmatch(r"\d{1,2}:\d{2}", s):
@@ -122,14 +124,19 @@ def _expand(
         e_time = dt.datetime.strptime(ed, "%H:%M")
     except (ValueError, TypeError):
         return []
-    if e_time <= s_time:
+    if ed == "00:00":
+        e_time = e_time.replace(hour=23, minute=59, second=59)
+    elif e_time <= s_time:
         e_time += dt.timedelta(days=1)
+
     slots: list[str] = []
     current_time = s_time
     max_slots = (24 * 60) // slot_minutes + 1
+
     while current_time < e_time and len(slots) < max_slots:
         slots.append(current_time.strftime("%H:%M"))
         current_time += dt.timedelta(minutes=slot_minutes)
+
     if len(slots) >= max_slots:
         log.warning(
             f"勤務コード {st}-{ed} のスロット展開が24時間を超えるため制限しました。"
@@ -368,6 +375,21 @@ def ingest_excel(
             log.error(f"年月セル '{year_month_cell_location}' の読み込み失敗: {e}")
             raise ValueError("年月セルの取得に失敗しました") from e
 
+    # パフォーマンスのため、コードごとの開始時刻を辞書にキャッシュ
+    code_to_start_time: Dict[str, dt.time | None] = {}
+    for _, row in wt_df.iterrows():
+        code = row.get("code")
+        start_parsed = row.get("start_parsed")
+        if code and start_parsed and isinstance(start_parsed, str):
+            try:
+                code_to_start_time[code] = dt.datetime.strptime(
+                    start_parsed, "%H:%M"
+                ).time()
+            except (ValueError, TypeError):
+                code_to_start_time[code] = None
+        else:
+            code_to_start_time[code] = None
+
     for sheet_name_actual in shift_sheets:
         try:
             log.info(f"シート処理開始: {sheet_name_actual}")
@@ -453,7 +475,7 @@ def ingest_excel(
             ):
                 continue
 
-            for col_name_original_str in date_cols_candidate:  #  必ず文字列として扱う
+            for col_name_original_str in date_cols_candidate:
                 shift_code_raw = row_data.get(col_name_original_str, "")
                 code_val = _normalize(str(shift_code_raw))
 
@@ -502,12 +524,9 @@ def ingest_excel(
                     if wt_row_series is not None
                     else DEFAULT_HOLIDAY_TYPE
                 )
-                # 重要: 休暇コードの場合、スロット数を強制的に0にする
-                if wt_row_series is not None and wt_row_series.get(
-                    "is_leave_code", False
-                ):
+
+                if wt_row_series is not None and wt_row_series.get("is_leave_code", False):
                     parsed_slots_count_for_record = 0
-                    log.debug(f"休暇コード '{code_val}' のスロット数を0に強制設定")
                 else:
                     parsed_slots_count_for_record = (
                         wt_row_series["parsed_slots_count"]
@@ -532,11 +551,20 @@ def ingest_excel(
                     )
                     continue
 
+                shift_start_time = code_to_start_time.get(code_val)
+
                 for t_slot_val in current_code_slots_list:
                     try:
+                        slot_time = dt.datetime.strptime(t_slot_val, "%H:%M").time()
+                        
+                        # 日付またぎ判定
+                        current_date = date_val_parsed_dt_date
+                        if shift_start_time and slot_time < shift_start_time:
+                            current_date += dt.timedelta(days=1)
+
                         record_datetime = dt.datetime.combine(
-                            date_val_parsed_dt_date,
-                            dt.datetime.strptime(t_slot_val, "%H:%M").time(),
+                            current_date,
+                            slot_time,
                         )
                         records.append(
                             {
