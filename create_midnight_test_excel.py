@@ -26,4 +26,4 @@ def create_test_excel():
 
 if __name__ == "__main__":
     create_test_excel()
-    print(f"Created 'test_midnight_edge_cases.xlsx'")
+    print("Created 'test_midnight_edge_cases.xlsx'")
