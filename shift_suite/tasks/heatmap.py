@@ -9,6 +9,7 @@ from typing import List, Set
 import numpy as np
 import openpyxl
 import pandas as pd
+import logging
 from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.styles import PatternFill
 from openpyxl.utils import get_column_letter
@@ -27,6 +28,8 @@ from .utils import (
     write_meta,
     validate_need_calculation,
 )
+
+analysis_logger = logging.getLogger('analysis')
 
 # 新規追加: 通常勤務の判定用定数
 DEFAULT_HOLIDAY_TYPE = "通常勤務"
@@ -214,6 +217,21 @@ def calculate_pattern_based_need(
         )
 
         data_for_dow_calc = filtered_slot_df_dow[dow_cols_to_agg]
+
+        if not data_for_dow_calc.empty:
+            avg_staff_per_day_overall = filtered_slot_df_dow.sum().mean()
+            avg_staff_per_day_dow = data_for_dow_calc.sum().mean()
+            analysis_logger.info(
+                f"曜日 '{dow_name}'({day_of_week_idx}) の必要人数計算: "
+                f"曜日別平均勤務人数 = {avg_staff_per_day_dow:.2f}, "
+                f"全体平均勤務人数 = {avg_staff_per_day_overall:.2f}, "
+                f"適用中の統計手法 = '{statistic_method}'"
+            )
+            if avg_staff_per_day_dow < (avg_staff_per_day_overall * 0.25):
+                analysis_logger.warning(
+                    f"曜日 '{dow_name}'({day_of_week_idx}) は勤務実績が著しく少ないため、"
+                    f"必要人数が実態と乖離する可能性があります。"
+                )
 
         # 日毎の合計人数を計算
         daily_totals = data_for_dow_calc.sum()

@@ -59,6 +59,19 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# Analysis logger configuration
+analysis_logger = logging.getLogger('analysis')
+analysis_logger.setLevel(logging.INFO)
+analysis_logger.propagate = False
+try:
+    file_handler = logging.FileHandler('analysis_log.log', mode='a', encoding='utf-8')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s] - %(message)s')
+    file_handler.setFormatter(formatter)
+    if not analysis_logger.handlers:
+        analysis_logger.addHandler(file_handler)
+except Exception as e:
+    logging.error(f"\u5206\u6790\u30ed\u30b0\u30d5\u30a1\u30a4\u30eb\u306e\u8a2d\u5b9a\u306b\u5931\u6557\u3057\u307e\u3057\u305f: {e}")
+
 # Dashアプリケーション初期化
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 server = app.server
@@ -1640,6 +1653,23 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
         time_labels = gen_labels(30)
         all_dates = sorted(aggregated_df['date_lbl'].unique())
         dynamic_heatmap_df = dynamic_heatmap_df.reindex(index=time_labels, columns=all_dates, fill_value=0)
+
+        present_dates = dynamic_heatmap_df.columns.tolist()
+        analysis_logger.info(
+            f"ヒートマップ '{title}' の生成: 描画対象の日付 ({len(present_dates)}件): {present_dates}"
+        )
+
+        long_df = data_get('long_df', pd.DataFrame())
+        if not long_df.empty:
+            all_dates_in_period = sorted(pd.to_datetime(long_df['ds']).dt.strftime('%Y-%m-%d').unique())
+            missing_dates = sorted(list(set(all_dates_in_period) - set(present_dates)))
+            if missing_dates:
+                analysis_logger.warning(
+                    f"ヒートマップ '{title}' で日付が欠落している可能性があります。"
+                    f"分析期間中の全日付: {len(all_dates_in_period)}件, "
+                    f"描画対象の日付: {len(present_dates)}件, "
+                    f"欠落日付 ({len(missing_dates)}件): {missing_dates}"
+                )
 
         fig = generate_heatmap_figure(dynamic_heatmap_df, title)
         return dcc.Graph(figure=fig)
