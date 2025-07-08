@@ -19,6 +19,7 @@ from .utils import _parse_as_date
 
 configure_logging()
 log = logging.getLogger(__name__)
+analysis_logger = logging.getLogger('analysis')
 
 
 SLOT_MINUTES = 30
@@ -125,8 +126,10 @@ def _expand(
         e_time = dt.datetime.strptime(ed, "%H:%M")
     except (ValueError, TypeError):
         return []
-    if ed == "00:00" or e_time <= s_time:
+    is_overnight = False
+    if ed == "00:00" or (e_time <= s_time and st != ed):
         e_time += dt.timedelta(days=1)
+        is_overnight = True
 
     slots: list[str] = []
     current_time = s_time
@@ -139,6 +142,14 @@ def _expand(
     if len(slots) >= max_slots:
         log.warning(
             f"勤務コード {st}-{ed} のスロット展開が24時間を超えるため制限しました。"
+        )
+    if is_overnight:
+        analysis_logger.info(
+            f"24時を跨ぐシフトのスロット展開: "
+            f"入力(st='{st}', ed='{ed}'), "
+            f"解析後(s_time='{s_time.strftime('%Y-%m-%d %H:%M')}', e_time='{e_time.strftime('%Y-%m-%d %H:%M')}'), "
+            f"生成されたスロット数: {len(slots)}, "
+            f"スロットリスト: {slots}"
         )
     return slots
 

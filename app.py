@@ -151,6 +151,18 @@ _patch_streamlit_watcher()
 configure_logging()
 log = logging.getLogger(__name__)
 
+analysis_logger = logging.getLogger('analysis')
+analysis_logger.setLevel(logging.INFO)
+analysis_logger.propagate = False
+try:
+    file_handler = logging.FileHandler('analysis_log.log', mode='a', encoding='utf-8')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s] - %(message)s')
+    file_handler.setFormatter(formatter)
+    if not analysis_logger.handlers:
+        analysis_logger.addHandler(file_handler)
+except Exception as e:
+    logging.error(f"\u5206\u6790\u30ed\u30b0\u30d5\u30a1\u30a4\u30eb\u306e\u8a2d\u5b9a\u306b\u5931\u6557\u3057\u307e\u3057\u305f: {e}")
+
 
 def log_environment_info() -> None:
     """Log basic environment details to help with debugging."""
