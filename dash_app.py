@@ -264,7 +264,7 @@ def _valid_df(df: pd.DataFrame) -> bool:
 
 
 def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
-    """ヒートマップデータから不足率を計算"""
+    """ヒートマップデータから不足率を計算（修正版）"""
     if df.empty or "need" not in df.columns:
         return pd.DataFrame()
 
@@ -279,7 +279,19 @@ def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
         columns=date_cols
     )
     staff_df = df[date_cols].fillna(0)
-    ratio_df = ((need_df - staff_df) / need_df.replace(0, np.nan)).clip(lower=0).fillna(0)
+    
+    # 修正: 日曜日の過剰表示を防ぐため、計算を強化
+    # need_dfが0の場合の適切な処理
+    valid_need_mask = need_df > 0
+    ratio_df = pd.DataFrame(0.0, index=need_df.index, columns=need_df.columns)
+    
+    # 需要がある場合のみ不足率を計算
+    ratio_df = ratio_df.where(~valid_need_mask, 
+                             ((need_df - staff_df) / need_df).clip(lower=0))
+    
+    # 最終的にNaN値を0で埋める（日曜日対策）
+    ratio_df = ratio_df.fillna(0)
+    
     return ratio_df
 
 
@@ -341,15 +353,27 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str) -> go.Figure:
     display_df = df_heat[date_cols]
     time_labels = gen_labels(30)
     display_df = display_df.reindex(time_labels, fill_value=0)
+    
+    # 修正点1: NaN値を明示的に0で埋める
+    display_df = display_df.fillna(0)
+    
     display_df_renamed = display_df.copy()
     display_df_renamed.columns = [date_with_weekday(c) for c in display_df.columns]
 
+    # 修正点2: text_autoを追加して、0値も表示されるようにする
     fig = px.imshow(
         display_df_renamed,
         aspect='auto',
         color_continuous_scale=px.colors.sequential.Viridis,
         title=title,
-        labels={'x': '日付', 'y': '時間', 'color': '人数'}
+        labels={'x': '日付', 'y': '時間', 'color': '人数'},
+        text_auto=True  # セルに値を表示
+    )
+    
+    # 修正点3: 0値の表示スタイルを調整
+    fig.update_traces(
+        texttemplate='%{text}',
+        textfont={"size": 10}
     )
     fig.update_xaxes(tickvals=list(range(len(display_df.columns))))
     return fig
@@ -1740,17 +1764,36 @@ def update_shortage_ratio_heatmap(scope, detail_values):
     upper_df = pd.DataFrame(np.repeat(df_heat['upper'].values[:, np.newaxis], len(date_cols), axis=1),
                             index=df_heat.index, columns=date_cols)
 
-    lack_count_df = (need_df - staff_df).clip(lower=0).fillna(0)
+    # 修正: 日曜日の不足数過剰表示を防ぐため、計算を強化
+    # need_dfが0の場合は不足数も0とする
+    valid_need_mask = need_df > 0
+    lack_count_df = pd.DataFrame(0.0, index=need_df.index, columns=need_df.columns)
+    lack_count_df = lack_count_df.where(~valid_need_mask, 
+                                       (need_df - staff_df).clip(lower=0))
+    lack_count_df = lack_count_df.fillna(0)
+    
     excess_count_df = (staff_df - upper_df).clip(lower=0).fillna(0)
     ratio_df = calc_ratio_from_heatmap(df_heat)
+    
+    # 不足数ヒートマップの修正
     lack_count_df_renamed = lack_count_df.copy()
     lack_count_df_renamed.columns = [date_with_weekday(c) for c in lack_count_df_renamed.columns]
+    # 追加の安全対策: NaN値を再度0で埋める（日曜日の欠落対策）
+    lack_count_df_renamed = lack_count_df_renamed.fillna(0)
+    
     fig_lack = px.imshow(
         lack_count_df_renamed,
         aspect='auto',
         color_continuous_scale='Oranges',
         title='不足人数ヒートマップ',
         labels={'x': '日付', 'y': '時間', 'color': '人数'},
+        text_auto=True  # 0値も表示
+    )
+    
+    # 不足数の表示スタイルを調整
+    fig_lack.update_traces(
+        texttemplate='%{text}',
+        textfont={"size": 10}
     )
     fig_lack.update_xaxes(tickvals=list(range(len(lack_count_df.columns))))
 
