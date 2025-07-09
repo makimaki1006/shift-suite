@@ -231,7 +231,7 @@ def calculate_pattern_based_need(
             # 日曜日は強制的に特殊処理対象とする
             if day_of_week_idx == 6:  # 日曜日
                 is_significant_holiday = True
-                analysis_logger.info(f"[SUNDAY_FORCE] 日曜日のため強制的に特殊処理を適用します")
+                analysis_logger.info("[SUNDAY_FORCE] 日曜日のため強制的に特殊処理を適用します")
             elif avg_staff_per_day_dow < (avg_staff_per_day_overall * 0.25):
                 analysis_logger.warning(
                     f"曜日 '{dow_name}'({day_of_week_idx}) は勤務実績が著しく少ないため、"
@@ -324,6 +324,15 @@ def calculate_pattern_based_need(
                     need_calculated_val = np.percentile(values_for_stat_calc, 90)
                 else:  # 平均値
                     need_calculated_val = np.mean(values_for_stat_calc)
+
+            # データの中央値が小さい場合はNeedを上限2.0に制限
+            if values_at_slot_current and np.median(values_at_slot_current) < 2.0:
+                need_calculated_val = min(need_calculated_val, 2.0)
+                analysis_logger.info(
+                    f"  [NEED_CAP] 曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: "
+                    f"実績中央値が2未満のためNeedを {need_calculated_val:.1f} に制限しました。"
+                )
+
             # 調整係数の適用
             need_calculated_val *= adjustment_factor
             
