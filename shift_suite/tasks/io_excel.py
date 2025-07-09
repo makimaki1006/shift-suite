@@ -119,6 +119,9 @@ def _expand(
     st: str | None, ed: str | None, slot_minutes: int = SLOT_MINUTES
 ) -> list[str]:
     """Expand start and end time into time slots spaced by ``slot_minutes``."""
+    analysis_logger.info(
+        f"[DEBUG_EXPAND] _expand呼び出し: st='{st}', ed='{ed}', slot_minutes={slot_minutes}"
+    )
     if not st or not ed:
         return []
     try:
@@ -130,12 +133,18 @@ def _expand(
     if ed == "00:00" or (e_time <= s_time and st != ed):
         e_time += dt.timedelta(days=1)
         is_overnight = True
+        analysis_logger.info(
+            f"[DEBUG_EXPAND] 翌日跨ぎシフトを検出: e_timeが1日進められました -> '{e_time.strftime('%H:%M')}'"
+        )
 
     slots: list[str] = []
     current_time = s_time
     max_slots = (24 * 60) // slot_minutes + 1
 
     while (current_time < e_time or (current_time == e_time and e_time.time() == dt.time(0, 0))) and len(slots) < max_slots:
+        analysis_logger.info(
+            f"[DEBUG_EXPAND] スロット追加: {current_time.strftime('%H:%M')}. 現在時刻 < 終了時刻: {current_time < e_time}, 終了時刻が0:00: {e_time.time() == dt.time(0,0)}, 追加継続条件: {(current_time < e_time or (current_time == e_time and e_time.time() == dt.time(0, 0)))}"
+        )
         slots.append(current_time.strftime("%H:%M"))
         current_time += dt.timedelta(minutes=slot_minutes)
 
@@ -151,6 +160,9 @@ def _expand(
             f"生成されたスロット数: {len(slots)}, "
             f"スロットリスト: {slots}"
         )
+    analysis_logger.info(
+        f"[DEBUG_EXPAND] スロット展開完了: 生成スロット数={len(slots)}. リスト: {slots}"
+    )
     return slots
 
 
@@ -470,11 +482,18 @@ def ingest_excel(
                             f"シート '{sheet_name_actual}' の日付列パースに失敗しました: 元の列名='{c}'"
                         )
 
+        analysis_logger.info(
+            f"[DEBUG_INGEST] 認識された日付列ヘッダーとそのパース結果: {sorted([(k, v.strftime('%Y-%m-%d')) for k,v in date_col_map.items()])}"
+        )
+
         log.debug(f"日付列マッピング結果: {len(date_col_map)}個成功")
         for col, date in date_col_map.items():
             log.debug(f"  {col} → {date}")
 
         all_dates_from_headers.update(date_col_map.values())
+        analysis_logger.info(
+            f"[DEBUG_INGEST] 全てのシートヘッダーから抽出された日付のリスト: {sorted([d.strftime('%Y-%m-%d') for d in all_dates_from_headers])}"
+        )
 
         for _, row_data in df_sheet.iterrows():
             staff = _normalize(row_data.get("staff", ""))
@@ -611,6 +630,9 @@ def ingest_excel(
                     "parsed_slots_count": 0,
                 }
             )
+            analysis_logger.info(
+                f"[DEBUG_INGEST] 欠落日付のためのプレースホルダーレコードを追加: {d.strftime('%Y-%m-%d')}"
+            )
 
     if unknown_codes:
         log.warning(
@@ -628,6 +650,12 @@ def ingest_excel(
     if not final_long_df.empty:
         final_long_df["ds"] = pd.to_datetime(final_long_df["ds"])
         final_long_df = final_long_df.sort_values("ds").reset_index(drop=True)
+        analysis_logger.info(
+            f"[DEBUG_INGEST] 最終的なlong_dfの日付範囲: {final_long_df['ds'].dt.date.min().strftime('%Y-%m-%d')} から {final_long_df['ds'].dt.date.max().strftime('%Y-%m-%d')}"
+        )
+        analysis_logger.info(
+            f"[DEBUG_INGEST] 最終long_dfに含まれるユニークな日付数: {final_long_df['ds'].dt.date.nunique()}"
+        )
 
     # 処理結果の統計をログ出力
     if not final_long_df.empty:
