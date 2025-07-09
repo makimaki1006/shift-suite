@@ -228,7 +228,11 @@ def calculate_pattern_based_need(
                 f"全体平均勤務人数 = {avg_staff_per_day_overall:.2f}, "
                 f"適用中の統計手法 = '{statistic_method}'"
             )
-            if avg_staff_per_day_dow < (avg_staff_per_day_overall * 0.25):
+            # 日曜日は強制的に特殊処理対象とする
+            if day_of_week_idx == 6:  # 日曜日
+                is_significant_holiday = True
+                analysis_logger.info(f"[SUNDAY_FORCE] 日曜日のため強制的に特殊処理を適用します")
+            elif avg_staff_per_day_dow < (avg_staff_per_day_overall * 0.25):
                 analysis_logger.warning(
                     f"曜日 '{dow_name}'({day_of_week_idx}) は勤務実績が著しく少ないため、"
                     f"必要人数が実態と乖離する可能性があります。"
@@ -256,12 +260,14 @@ def calculate_pattern_based_need(
                     log.info(f"[SUNDAY_DEBUG]   {time_slot}: {values}")
         # ▼▼▼ ロジック修正 ▼▼▼
         # 統計手法を決定する
-        # is_significant_holidayがTrueの場合、強制的に中央値を使用
-        current_statistic_method = "中央値" if is_significant_holiday else statistic_method
+        # 実データが少ない場合の統計手法調整
         if is_significant_holiday:
+            current_statistic_method = "中央値"
             analysis_logger.info(
                 f" -> 曜日 '{dow_name}' は実績僅少のため、統計手法を「{current_statistic_method}」に自動調整しました。"
             )
+        else:
+            current_statistic_method = statistic_method
 
         for time_slot_val, row_series_data in data_for_dow_calc.iterrows():
             if include_zero_days:
@@ -318,19 +324,26 @@ def calculate_pattern_based_need(
                     need_calculated_val = np.percentile(values_for_stat_calc, 90)
                 else:  # 平均値
                     need_calculated_val = np.mean(values_for_stat_calc)
-            if day_of_week_idx == 6 and time_slot_val in ["09:00", "12:00", "15:00"]:
-                log.info(f"[SUNDAY_DETAIL]   統計手法適用後: {need_calculated_val:.2f}")
-                need_calculated_val *= adjustment_factor
-                log.info(f"[SUNDAY_DETAIL]   調整係数適用後: {need_calculated_val:.2f}")
-                final_need = round(need_calculated_val) if not pd.isna(need_calculated_val) else 0
-                log.info(f"[SUNDAY_DETAIL]   最終Need値: {final_need}")
-            else:
-                need_calculated_val *= adjustment_factor
-            dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = (
-                round(need_calculated_val)
-                if not pd.isna(need_calculated_val)
-                else 0
-            )
+            # 調整係数の適用
+            need_calculated_val *= adjustment_factor
+            
+            # 実データが少ない場合の特殊処理
+            if is_significant_holiday:
+                # データが少ない場合は、実際の最大値を上限として設定
+                max_actual_val = max(values_at_slot_current) if values_at_slot_current else 0
+                if need_calculated_val > max_actual_val * 1.5:  # 実際の最大値の1.5倍を上限
+                    original_need = need_calculated_val
+                    need_calculated_val = max_actual_val * 1.5
+                    log.info(f"[STATS_FIX] {dow_name} {time_slot_val}: Need値を {original_need:.2f} → {need_calculated_val:.2f} に制限（実データ考慮）")
+                
+                # さらに、0が多いデータでは0により近い値に調整
+                zero_ratio = values_at_slot_current.count(0) / len(values_at_slot_current) if values_at_slot_current else 1
+                if zero_ratio > 0.5:  # 50%以上が0の場合
+                    need_calculated_val *= (1 - zero_ratio * 0.5)  # 0の比率に応じて減算
+                    log.info(f"[STATS_FIX] {dow_name} {time_slot_val}: 0データ比率{zero_ratio:.2f}により調整 → {need_calculated_val:.2f}")
+            
+            final_need = round(need_calculated_val) if not pd.isna(need_calculated_val) else 0
+            dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = final_need
             log.debug(
                 f"  曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: 元データ長 {len(row_series_data.dropna())} -> 外れ値除去後 {len(values_for_stat_calc)} -> Need {dow_need_df_calculated.loc[time_slot_val, day_of_week_idx]}"
             )
