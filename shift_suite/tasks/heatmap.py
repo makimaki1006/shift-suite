@@ -779,6 +779,10 @@ def build_heatmap(
     ):
         pivot_to_excel_all[col_name_summary_loop] = series_data_summary_loop
 
+    analysis_logger.info(
+        f"[DEBUG_HEATMAP_FINAL_COLS] heat_ALL.parquetに保存される最終列: {pivot_to_excel_all.columns.tolist()}"
+    )
+
     fp_all_path = out_dir_path / "heat_ALL.parquet"
     try:
         pivot_to_excel_all.to_parquet(fp_all_path)
