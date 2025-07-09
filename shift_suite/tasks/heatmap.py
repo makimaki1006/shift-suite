@@ -274,6 +274,9 @@ def calculate_pattern_based_need(
                 values_at_slot_current = [0.0 if pd.isna(v) else float(v) for v in row_series_data]
             else:
                 values_at_slot_current = row_series_data.dropna().astype(float).tolist()
+            analysis_logger.info(
+                f"[DEBUG_NEED_DETAIL] 処理中の時間帯: {time_slot_val} ({dow_name}), 元データ ({len(values_at_slot_current)}点): {values_at_slot_current}"
+            )
 
             if not values_at_slot_current:
                 dow_need_df_calculated.loc[time_slot_val, day_of_week_idx] = 0
@@ -303,6 +306,10 @@ def calculate_pattern_based_need(
                 if day_of_week_idx == 6 and time_slot_val in ["09:00", "12:00", "15:00"]:
                     log.info(f"[SUNDAY_DETAIL]   外れ値除去後: {values_filtered_outlier}")
 
+                analysis_logger.info(
+                    f"[DEBUG_NEED_DETAIL] 外れ値除去実行前 (Q1:{q1_val:.1f}, Q3:{q3_val:.1f}, IQR:{iqr_val:.1f}), フィルタリング後 ({len(values_filtered_outlier)}点): {values_filtered_outlier}"
+                )
+
                 if not values_filtered_outlier:
                     log.debug(
                         f"  曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: 外れ値除去後データなし。元のリストで計算します。"
@@ -324,6 +331,9 @@ def calculate_pattern_based_need(
                     need_calculated_val = np.percentile(values_for_stat_calc, 90)
                 else:  # 平均値
                     need_calculated_val = np.mean(values_for_stat_calc)
+            analysis_logger.info(
+                f"[DEBUG_NEED_DETAIL] 統計手法({current_statistic_method})適用後のNeed仮値: {need_calculated_val:.2f}"
+            )
 
             # データの中央値が小さい場合はNeedを上限2.0に制限
             if values_at_slot_current and np.median(values_at_slot_current) < 2.0:
@@ -331,6 +341,9 @@ def calculate_pattern_based_need(
                 analysis_logger.info(
                     f"  [NEED_CAP] 曜日 {day_of_week_idx}, 時間帯 {time_slot_val}: "
                     f"実績中央値が2未満のためNeedを {need_calculated_val:.1f} に制限しました。"
+                )
+                analysis_logger.info(
+                    f"[DEBUG_NEED_DETAIL] Need上限適用判定: 元データ中央値={np.median(values_at_slot_current):.1f}。制限後Need={need_calculated_val:.2f}"
                 )
 
             # 調整係数の適用
