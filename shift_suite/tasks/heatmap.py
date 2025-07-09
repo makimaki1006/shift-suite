@@ -218,6 +218,7 @@ def calculate_pattern_based_need(
 
         data_for_dow_calc = filtered_slot_df_dow[dow_cols_to_agg]
 
+        is_significant_holiday = False
         if not data_for_dow_calc.empty:
             avg_staff_per_day_overall = filtered_slot_df_dow.sum().mean()
             avg_staff_per_day_dow = data_for_dow_calc.sum().mean()
@@ -232,6 +233,7 @@ def calculate_pattern_based_need(
                     f"曜日 '{dow_name}'({day_of_week_idx}) は勤務実績が著しく少ないため、"
                     f"必要人数が実態と乖離する可能性があります。"
                 )
+                is_significant_holiday = True
 
         # 日毎の合計人数を計算
         daily_totals = data_for_dow_calc.sum()
@@ -252,6 +254,15 @@ def calculate_pattern_based_need(
                 if time_slot in data_for_dow_calc.index:
                     values = data_for_dow_calc.loc[time_slot].values.tolist()
                     log.info(f"[SUNDAY_DEBUG]   {time_slot}: {values}")
+        # ▼▼▼ ロジック修正 ▼▼▼
+        # 統計手法を決定する
+        # is_significant_holidayがTrueの場合、強制的に中央値を使用
+        current_statistic_method = "中央値" if is_significant_holiday else statistic_method
+        if is_significant_holiday:
+            analysis_logger.info(
+                f" -> 曜日 '{dow_name}' は実績僅少のため、統計手法を「{current_statistic_method}」に自動調整しました。"
+            )
+
         for time_slot_val, row_series_data in data_for_dow_calc.iterrows():
             if include_zero_days:
                 values_at_slot_current = [0.0 if pd.isna(v) else float(v) for v in row_series_data]
@@ -294,19 +305,19 @@ def calculate_pattern_based_need(
                     values_for_stat_calc = values_filtered_outlier
             need_calculated_val = 0.0
             if values_for_stat_calc:
-                if statistic_method == "10パーセンタイル":
+                # 決定された統計手法に基づいて計算
+                if current_statistic_method == "10パーセンタイル":
                     need_calculated_val = np.percentile(values_for_stat_calc, 10)
-                elif statistic_method == "25パーセンタイル":
+                elif current_statistic_method == "25パーセンタイル":
                     need_calculated_val = np.percentile(values_for_stat_calc, 25)
-                elif statistic_method == "中央値":
+                elif current_statistic_method == "中央値":
                     need_calculated_val = np.median(values_for_stat_calc)
-                elif statistic_method == "平均値":
+                elif current_statistic_method == "75パーセンタイル":
+                    need_calculated_val = np.percentile(values_for_stat_calc, 75)
+                elif current_statistic_method == "90パーセンタイル":
+                    need_calculated_val = np.percentile(values_for_stat_calc, 90)
+                else:  # 平均値
                     need_calculated_val = np.mean(values_for_stat_calc)
-                else:
-                    log.warning(
-                        f"不明な統計的指標: {statistic_method}。中央値を使用します。"
-                    )
-                    need_calculated_val = np.median(values_for_stat_calc)
             if day_of_week_idx == 6 and time_slot_val in ["09:00", "12:00", "15:00"]:
                 log.info(f"[SUNDAY_DETAIL]   統計手法適用後: {need_calculated_val:.2f}")
                 need_calculated_val *= adjustment_factor
