@@ -1694,11 +1694,27 @@ if run_button_clicked:
                     log_and_display_error("不足分析の処理中にエラーが発生しました", e)
 
                 # 4. dash_app.py用の「中間サマリーテーブル」を生成
-                work_records = long_df[long_df.get("parsed_slots_count", 1) > 0].copy()
-                work_records["date_lbl"] = work_records["ds"].dt.strftime("%Y-%m-%d")
-                work_records["time"] = work_records["ds"].dt.strftime("%H:%M")
-                pre_aggregated_df = (
-                    work_records.groupby([
+                # 全日付・時間帯・職種・雇用形態の組み合わせを網羅するベースデータを作成
+                all_combinations_from_long_df = long_df[[
+                    "ds",
+                    "role",
+                    "employment",
+                ]].drop_duplicates().copy()
+
+                all_combinations_from_long_df["date_lbl"] = all_combinations_from_long_df[
+                    "ds"
+                ].dt.strftime("%Y-%m-%d")
+                all_combinations_from_long_df["time"] = all_combinations_from_long_df[
+                    "ds"
+                ].dt.strftime("%H:%M")
+
+                # parsed_slots_count > 0 のスロットのみスタッフ数をカウント
+                working_staff_data = long_df[long_df.get("parsed_slots_count", 0) > 0].copy()
+                working_staff_data["date_lbl"] = working_staff_data["ds"].dt.strftime("%Y-%m-%d")
+                working_staff_data["time"] = working_staff_data["ds"].dt.strftime("%H:%M")
+
+                staff_counts_actual = (
+                    working_staff_data.groupby([
                         "date_lbl",
                         "time",
                         "role",
@@ -1708,6 +1724,16 @@ if run_button_clicked:
                     .reset_index()
                     .rename(columns={"staff": "staff_count"})
                 )
+
+                # すべての組み合わせに実際のスタッフ数を結合し、稼働がない場合は0で埋める
+                pre_aggregated_df = pd.merge(
+                    all_combinations_from_long_df,
+                    staff_counts_actual,
+                    on=["date_lbl", "time", "role", "employment"],
+                    how="left",
+                )
+                pre_aggregated_df["staff_count"] = pre_aggregated_df["staff_count"].fillna(0).astype(int)
+
                 pre_aggregated_df.to_parquet(
                     scenario_out_dir / "pre_aggregated_data.parquet",
                     index=False,
