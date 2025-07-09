@@ -1674,9 +1674,15 @@ def update_comparison_heatmaps(role1, emp1, role2, emp2):
             fill_value=0,
         )
 
+        # aggregated_df['date_lbl'].unique() は常に30日全ての日付を保持しています
+        all_dates_from_aggregated_data = sorted(aggregated_df['date_lbl'].unique())
+
+        # まず列（日付）を全て網羅するようにreindexし、不足している列は0で埋める
+        dynamic_heatmap_df = dynamic_heatmap_df.reindex(columns=all_dates_from_aggregated_data, fill_value=0)
+
         time_labels = gen_labels(30)
-        all_dates = sorted(aggregated_df['date_lbl'].unique())
-        dynamic_heatmap_df = dynamic_heatmap_df.reindex(index=time_labels, columns=all_dates, fill_value=0)
+        # 次にインデックス（時間）を全て網羅するようにreindexし、不足している行は0で埋める
+        dynamic_heatmap_df = dynamic_heatmap_df.reindex(index=time_labels, fill_value=0)
 
         present_dates = dynamic_heatmap_df.columns.tolist()
         analysis_logger.info(
