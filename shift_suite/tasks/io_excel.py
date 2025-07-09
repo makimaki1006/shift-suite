@@ -135,7 +135,7 @@ def _expand(
     current_time = s_time
     max_slots = (24 * 60) // slot_minutes + 1
 
-    while current_time < e_time and len(slots) < max_slots:
+    while (current_time < e_time or (current_time == e_time and e_time.time() == dt.time(0, 0))) and len(slots) < max_slots:
         slots.append(current_time.strftime("%H:%M"))
         current_time += dt.timedelta(minutes=slot_minutes)
 
@@ -347,6 +347,7 @@ def ingest_excel(
 
     records: list[dict] = []
     unknown_codes: set[str] = set()
+    all_dates_from_headers: set[dt.date] = set()
     year_val: int | None = None
     month_val: int | None = None
     if year_month_cell_location:
@@ -461,17 +462,19 @@ def ingest_excel(
                     date_col_map[str(c)] = parsed_dt
                     continue
                 parsed_dt = _parse_as_date(str(c))
-            if parsed_dt:
-                date_col_map[str(c)] = parsed_dt
-            else:
-                if not str(c).startswith("Unnamed:"):
-                    log.warning(
-                        f"シート '{sheet_name_actual}' の日付列パースに失敗しました: 元の列名='{c}'"
-                    )
+                if parsed_dt:
+                    date_col_map[str(c)] = parsed_dt
+                else:
+                    if not str(c).startswith("Unnamed:"):
+                        log.warning(
+                            f"シート '{sheet_name_actual}' の日付列パースに失敗しました: 元の列名='{c}'"
+                        )
 
         log.debug(f"日付列マッピング結果: {len(date_col_map)}個成功")
         for col, date in date_col_map.items():
             log.debug(f"  {col} → {date}")
+
+        all_dates_from_headers.update(date_col_map.values())
 
         for _, row_data in df_sheet.iterrows():
             staff = _normalize(row_data.get("staff", ""))
@@ -592,6 +595,22 @@ def ingest_excel(
                             f"時刻スロット '{t_slot_val}' のパース中にエラー (スタッフ: {staff}, 日付: {date_val_parsed_dt_date}, コード: {code_val}): {e_time}"
                         )
                         continue
+
+    # Ensure at least one record exists for all parsed dates
+    processed_dates = {r["ds"].date() for r in records}
+    for d in sorted(all_dates_from_headers):
+        if d not in processed_dates:
+            records.append(
+                {
+                    "ds": dt.datetime.combine(d, dt.time(0, 0)),
+                    "staff": "",
+                    "role": "",
+                    "employment": "",
+                    "code": "",
+                    "holiday_type": DEFAULT_HOLIDAY_TYPE,
+                    "parsed_slots_count": 0,
+                }
+            )
 
     if unknown_codes:
         log.warning(
