@@ -1,11 +1,9 @@
 """
-shortage.py – v2.6.0 (過不足分析 + 最適化スコア)
+shortage.py – v2.6.2 (休日不足の根本原因修正版)
 ────────────────────────────────────────────────────────
-* v2.3.0: SUMMARY5列参照・計算ロジック修正・constants参照
-* v2.4.0: heatmap.meta.json から推定休業日を読み込み、need計算に反映。
-* v2.4.1: 職種別KPIの稼働日数考慮とデバッグログ強化。
-* v2.5.0: excess(過剰) 指標を追加し過不足分析に対応。
 * v2.6.0: need/upper 余剰・余白および最適化スコア計算を追加。
+* v2.6.1: (前回提案) KPIサマリー部分での詳細Need参照を追加。
+* v2.6.2: 全体不足計算の開始時点で詳細Needを参照するよう根本修正。
 """
 
 from __future__ import annotations
@@ -72,17 +70,47 @@ def shortage_and_brief(
         )
         return None
 
+    # --- ▼▼▼▼▼ ここからが重要な修正箇所 ▼▼▼▼▼ ---
+
     # 日付ごとの詳細Needデータを読み込む
     need_per_date_slot_df = pd.DataFrame()
     need_per_date_slot_fp = out_dir_path / "need_per_date_slot.parquet"
     if need_per_date_slot_fp.exists():
         try:
             need_per_date_slot_df = pd.read_parquet(need_per_date_slot_fp)
-            log.info("[shortage] need_per_date_slot.parquet を読み込みました")
+            log.info(
+                "[shortage] ☆☆☆ need_per_date_slot.parquet を読み込み、これをマスターNeedとして使用します ☆☆☆"
+            )
         except Exception as e:
             log.warning(f"[shortage] need_per_date_slot.parquet の読み込みエラー: {e}")
 
-    dow_need_pattern_df = pd.DataFrame()
+    # heat_ALL.parquetから日付列を特定
+    date_columns_in_heat_all = [
+        str(col)
+        for col in heat_all_df.columns
+        if col not in SUMMARY5 and _parse_as_date(str(col)) is not None
+    ]
+    if not date_columns_in_heat_all:
+        log.warning("[shortage] heat_ALL.parquet に日付データ列が見つかりませんでした。")
+        # 処理を中断せずに空のファイルを生成
+        empty_df = pd.DataFrame(index=time_labels)
+        fp_s_t_empty = save_df_parquet(
+            empty_df, out_dir_path / "shortage_time.parquet", index=True
+        )
+        fp_s_r_empty = save_df_parquet(
+            pd.DataFrame(), out_dir_path / "shortage_role.parquet", index=False
+        )
+        return (fp_s_t_empty, fp_s_r_empty) if fp_s_t_empty and fp_s_r_empty else None
+
+    # 実績スタッフ数データを準備
+    staff_actual_data_all_df = (
+        heat_all_df[date_columns_in_heat_all]
+        .copy()
+        .reindex(index=time_labels)
+        .fillna(0)
+    )
+
+    # heatmap.meta.jsonから休業日情報を取得
     meta_fp = out_dir_path / "heatmap.meta.json"
     if meta_fp.exists():
         try:
@@ -99,74 +127,49 @@ def shortage_and_brief(
             log.info(
                 f"[SHORTAGE_DEBUG] heatmap.meta.json から読み込んだ休業日数: {len(estimated_holidays_set)}"
             )
-            pattern_records = meta.get("dow_need_pattern", [])
-            if pattern_records:
-                tmp_df = pd.DataFrame(pattern_records)
-                if "time" in tmp_df.columns:
-                    tmp_df = tmp_df.set_index("time")
-                tmp_df.rename(
-                    columns={str(c): int(c) for c in tmp_df.columns if str(c).isdigit()},
-                    inplace=True,
-                )
-                dow_need_pattern_df = tmp_df
-        except Exception as e_meta:  # noqa: BLE001
+        except Exception as e_meta:
             log.warning(f"[shortage] heatmap.meta.json 解析エラー: {e_meta}")
 
-    date_columns_in_heat_all = [
-        str(col)
-        for col in heat_all_df.columns
-        if col not in SUMMARY5 and _parse_as_date(str(col)) is not None
-    ]
-    if not date_columns_in_heat_all:
-        log.warning("[shortage] heat_ALL.xlsx に日付データ列が見つかりませんでした。")
-        # 空のExcelを生成して返す
-        empty_df = pd.DataFrame(index=time_labels)
-        fp_s_t_empty = save_df_parquet(
-            empty_df,
-            out_dir_path / "shortage_time.parquet",
-            index=True,
+    # 全体のNeed DataFrameを構築
+    if not need_per_date_slot_df.empty:
+        # 【最重要修正】詳細Needデータがある場合、それをそのまま使用する
+        log.info("[shortage] 詳細Needデータに基づき、全体のNeedを再構築します。")
+        need_df_all = need_per_date_slot_df.reindex(
+            columns=staff_actual_data_all_df.columns, fill_value=0
         )
-        fp_s_r_empty = save_df_parquet(
-            pd.DataFrame(),
-            out_dir_path / "shortage_role.parquet",
-            index=False,
+        need_df_all = need_df_all.reindex(index=time_labels, fill_value=0)
+    else:
+        # 【フォールバック】詳細Needデータがない場合、従来の曜日パターンで計算
+        log.warning("[shortage] 詳細Needデータがないため、従来の曜日パターンに基づきNeedを計算します。")
+        dow_need_pattern_df = pd.DataFrame()
+        if meta_fp.exists():
+            meta = json.loads(meta_fp.read_text(encoding="utf-8"))
+            pattern_records = meta.get("dow_need_pattern", [])
+            if pattern_records:
+                tmp_df = pd.DataFrame(pattern_records).set_index("time")
+                tmp_df.columns = tmp_df.columns.astype(int)
+                dow_need_pattern_df = tmp_df
+
+        need_df_all = pd.DataFrame(
+            index=time_labels, columns=staff_actual_data_all_df.columns, dtype=float
         )
-        save_df_parquet(
-            empty_df,
-            out_dir_path / "shortage_freq.parquet",
-            index=True,
-        )
-        return (fp_s_t_empty, fp_s_r_empty) if fp_s_t_empty and fp_s_r_empty else None
+        parsed_date_list_all = [
+            _parse_as_date(c) for c in staff_actual_data_all_df.columns
+        ]
+        for col, d in zip(need_df_all.columns, parsed_date_list_all, strict=True):
+            is_holiday = d in estimated_holidays_set if d else False
+            if is_holiday:
+                need_df_all[col] = 0
+                continue
+            dow_col = d.weekday() if d else None
+            if d and not dow_need_pattern_df.empty and dow_col in dow_need_pattern_df.columns:
+                need_df_all[col] = (
+                    dow_need_pattern_df[dow_col].reindex(index=time_labels).fillna(0)
+                )
+            else:
+                need_df_all[col] = 0
 
-    staff_actual_data_all_df = (
-        heat_all_df[date_columns_in_heat_all]
-        .copy()
-        .reindex(index=time_labels)
-        .fillna(0)
-    )
-
-
-    parsed_date_list_all = [_parse_as_date(c) for c in staff_actual_data_all_df.columns]
-    holiday_mask_all = [
-        d in estimated_holidays_set if d else False for d in parsed_date_list_all
-    ]
-
-    # needを曜日パターンに基づいて生成
-    need_df_all = pd.DataFrame(index=time_labels, columns=staff_actual_data_all_df.columns, dtype=float)
-    for col, d, is_h in zip(need_df_all.columns, parsed_date_list_all, holiday_mask_all, strict=True):
-        if is_h:
-            need_df_all[col] = 0
-            continue
-        dow_col = d.weekday() if d else None
-        if d and not dow_need_pattern_df.empty and dow_col in dow_need_pattern_df.columns:
-            need_df_all[col] = (
-                dow_need_pattern_df[dow_col]
-                .reindex(index=time_labels)
-                .fillna(0)
-                .astype(float)
-            )
-        else:
-            need_df_all[col] = 0
+    # --- ▲▲▲▲▲ ここまでが重要な修正箇所 ▲▲▲▲▲ ---
 
     lack_count_overall_df = (
         (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
@@ -260,6 +263,12 @@ def shortage_and_brief(
             index=upper_series_overall_orig.index,
             columns=staff_actual_data_all_df.columns,
         )
+        parsed_date_list_all = [
+            _parse_as_date(c) for c in staff_actual_data_all_df.columns
+        ]
+        holiday_mask_all = [
+            d in estimated_holidays_set if d else False for d in parsed_date_list_all
+        ]
         if any(holiday_mask_all):
             for col, is_h in zip(upper_df_all.columns, holiday_mask_all, strict=True):
                 if is_h:
