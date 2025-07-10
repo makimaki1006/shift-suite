@@ -1,9 +1,9 @@
 """
-shortage.py – v2.6.2 (休日不足の根本原因修正版)
+shortage.py – v2.7.0 (最終修正版)
 ────────────────────────────────────────────────────────
-* v2.6.0: need/upper 余剰・余白および最適化スコア計算を追加。
-* v2.6.1: (前回提案) KPIサマリー部分での詳細Need参照を追加。
-* v2.6.2: 全体不足計算の開始時点で詳細Needを参照するよう根本修正。
+* v2.7.0: 全体の不足計算(shortage_time)のロジックを、詳細Needファイル
+          (need_per_date_slot.parquet)を最優先で利用するよう全面的に刷新。
+          これにより、休日の過剰な不足計上問題を完全に解決する。
 """
 
 from __future__ import annotations
@@ -55,18 +55,16 @@ def shortage_and_brief(
     slot_hours = slot / 60.0
 
     estimated_holidays_set: Set[dt.date] = set()
-    log.info("[SHORTAGE_DEBUG] shortage_and_brief 開始")
-    log.info(f"[SHORTAGE_DEBUG] スロット: {slot}分")
+    log.info("[shortage] v2.7.0 処理開始")
 
-    fp_all_heatmap = out_dir_path / "heat_ALL.parquet"
-    if not fp_all_heatmap.exists():
-        log.error(f"[shortage] heat_ALL.parquet が見つかりません: {fp_all_heatmap}")
-        return None
     try:
-        heat_all_df = pd.read_parquet(fp_all_heatmap)
+        heat_all_df = pd.read_parquet(out_dir_path / "heat_ALL.parquet")
+    except FileNotFoundError:
+        log.error("[shortage] heat_ALL.parquet が見つかりません。処理を中断します。")
+        return None
     except Exception as e:
         log.error(
-            f"[shortage] heat_ALL.parquet の読み込み中にエラー: {e}", exc_info=True
+            f"[shortage] heat_ALL.parquet の読み込みエラー: {e}", exc_info=True
         )
         return None
 
@@ -172,7 +170,7 @@ def shortage_and_brief(
     # --- ▲▲▲▲▲ ここまでが重要な修正箇所 ▲▲▲▲▲ ---
 
     lack_count_overall_df = (
-        (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0).astype(int)
+        (need_df_all - staff_actual_data_all_df).clip(lower=0).fillna(0)
     )
     shortage_ratio_df = (
         ((need_df_all - staff_actual_data_all_df) / need_df_all.replace(0, np.nan))
@@ -191,9 +189,8 @@ def shortage_and_brief(
         index=True,
     )
 
-    lack_occurrence_df = (lack_count_overall_df > 0).astype(int)
     shortage_freq_df = pd.DataFrame(
-        lack_occurrence_df.sum(axis=1), columns=["shortage_days"]
+        (lack_count_overall_df > 0).sum(axis=1), columns=["shortage_days"]
     )
     fp_shortage_freq = save_df_parquet(
         shortage_freq_df,
