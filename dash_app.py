@@ -207,6 +207,7 @@ def data_get(key: str, default=None):
     special = {
         "long_df": ["intermediate_data.parquet"],
         "daily_cost": ["daily_cost.parquet", "daily_cost.xlsx"],
+        "shortage_time": ["shortage_time_CORRECTED.parquet"],
     }
 
     filenames = special.get(key, [f"{key}.parquet", f"{key}.csv", f"{key}.xlsx"])
