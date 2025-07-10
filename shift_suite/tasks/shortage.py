@@ -425,15 +425,36 @@ def shortage_and_brief(
             d in estimated_holidays_set if d else False for d in parsed_role_dates
         ]
 
-        need_df_role = pd.DataFrame(
-            np.repeat(
-                role_need_per_time_series_orig_for_role.values[:, np.newaxis],
-                len(role_staff_actual_data_df.columns),
-                axis=1,
-            ),
-            index=role_need_per_time_series_orig_for_role.index,
-            columns=role_staff_actual_data_df.columns,
-        )
+        # need_df_role の構築ロジックを修正
+        # need_per_date_slot_df があれば、それに基づいて need_df_role を再構築する
+        if not need_per_date_slot_df.empty:
+            log.info(f"[shortage] {role_name_current}: need_per_date_slot.parquet を使用してNeedを再構築します。")
+            # 該当職種のヒートマップに存在する日付列を基準にする
+            need_df_role = pd.DataFrame(index=time_labels, columns=role_staff_actual_data_df.columns, dtype=float).fillna(0)
+
+            # この職種が必要とされる時間帯インデックスを取得 (平均パターンから)
+            time_indices_for_role = role_need_per_time_series_orig_for_role[
+                role_need_per_time_series_orig_for_role > 0
+            ].index
+
+            for date_col in need_df_role.columns:
+                if date_col in need_per_date_slot_df.columns:
+                    # 特定の日付の、特定の時間帯のNeed値をコピーする
+                    need_df_role.loc[time_indices_for_role, date_col] = need_per_date_slot_df.loc[time_indices_for_role, date_col]
+        else:
+            # フォールバック: 従来の平均Needに基づく計算方法
+            log.info(f"[shortage] {role_name_current}: 従来の平均Needデータを使用します。")
+            need_df_role = pd.DataFrame(
+                np.repeat(
+                    role_need_per_time_series_orig_for_role.values[:, np.newaxis],
+                    len(role_staff_actual_data_df.columns),
+                    axis=1,
+                ),
+                index=role_need_per_time_series_orig_for_role.index,
+                columns=role_staff_actual_data_df.columns,
+            )
+
+        # 休業日のNeedを0にする処理 (これは修正後も必要)
         if any(holiday_mask_role):
             for c, is_h in zip(need_df_role.columns, holiday_mask_role, strict=True):
                 if is_h:
@@ -447,32 +468,8 @@ def shortage_and_brief(
             if not is_h and _parse_as_date(c)
         ]
         num_working_days_for_current_role = len(working_cols_role)
-        # need_per_date_slot_dfがある場合は、日付ごとの実際のNeedを使用
-        if not need_per_date_slot_df.empty and working_cols_role:
-            role_need_total_slots = 0
-            for col in working_cols_role:
-                if col in need_per_date_slot_df.columns:
-                    # 該当職種の時間帯インデックスでフィルタ
-                    time_indices = role_need_per_time_series_orig_for_role[
-                        role_need_per_time_series_orig_for_role > 0
-                    ].index
-                    role_need_total_slots += need_per_date_slot_df.loc[
-                        time_indices, col
-                    ].sum()
-            total_need_slots_for_role_working_days = role_need_total_slots
-            log.debug(
-                f"[shortage] {role_name_current}: 詳細Needから計算 = {role_need_total_slots} slots"
-            )
-        else:
-            # フォールバック：従来の計算方法
-            total_need_slots_for_role_working_days = (
-                role_need_per_time_series_orig_for_role.sum()
-                * num_working_days_for_current_role
-            )
-            log.debug(
-                f"[shortage] {role_name_current}: 平均Needから計算 = {total_need_slots_for_role_working_days} slots"
-            )
 
+        # 修正された need_df_role を使って lack と excess を計算する
         role_lack_count_for_specific_role_df = (
             need_df_role - role_staff_actual_data_df
         ).clip(lower=0)
@@ -508,7 +505,8 @@ def shortage_and_brief(
                 f"[shortage] '{role_name_current}' ヒートマップに 'upper' 列がないため excess 計算をスキップ"
             )
 
-        total_need_hours_for_role = total_need_slots_for_role_working_days * slot_hours
+        # サマリー用の合計時間も、修正された need_df_role から計算する
+        total_need_hours_for_role = need_df_role[working_cols_role].sum().sum() * slot_hours
         # staff_h は全日の実績で計算（休業日も実績0として含まれる）
         total_staff_hours_for_role = role_staff_actual_data_df.sum().sum() * slot_hours
         # lack_h は休業日のneed=0を考慮したlackの合計
@@ -730,13 +728,27 @@ def shortage_and_brief(
         holiday_mask_emp = [
             d in estimated_holidays_set if d else False for d in parsed_emp_dates
         ]
-        need_df_emp = pd.DataFrame(
-            np.repeat(
-                emp_need_series.values[:, np.newaxis], len(emp_staff_df.columns), axis=1
-            ),
-            index=emp_need_series.index,
-            columns=emp_staff_df.columns,
-        )
+        # need_df_emp の構築ロジックを修正
+        if not need_per_date_slot_df.empty:
+            log.info(f"[shortage] {emp_name_current}: need_per_date_slot.parquet を使用してNeedを再構築します。")
+            need_df_emp = pd.DataFrame(index=time_labels, columns=emp_staff_df.columns, dtype=float).fillna(0)
+
+            emp_time_indices = emp_need_series[emp_need_series > 0].index
+
+            if not emp_time_indices.empty:
+                for date_col in need_df_emp.columns:
+                    if date_col in need_per_date_slot_df.columns:
+                        need_df_emp.loc[emp_time_indices, date_col] = need_per_date_slot_df.loc[emp_time_indices, date_col]
+        else:
+            log.info(f"[shortage] {emp_name_current}: 従来の平均Needデータを使用します。")
+            need_df_emp = pd.DataFrame(
+                np.repeat(
+                    emp_need_series.values[:, np.newaxis], len(emp_staff_df.columns), axis=1
+                ),
+                index=emp_need_series.index,
+                columns=emp_staff_df.columns,
+            )
+
         if any(holiday_mask_emp):
             for c, is_h in zip(need_df_emp.columns, holiday_mask_emp, strict=True):
                 if is_h:
@@ -750,28 +762,27 @@ def shortage_and_brief(
         num_working_days_for_current_emp = len(working_cols_emp)
 
         lack_count_emp_df = (need_df_emp - emp_staff_df).clip(lower=0)
-        excess_count_emp_df = (emp_staff_df - need_df_emp).clip(lower=0)
 
-        # need_per_date_slot_dfがある場合は、日付ごとの実際のNeedを使用
-        if not need_per_date_slot_df.empty and working_cols_emp:
-            emp_need_total_slots = 0
-            for col in working_cols_emp:
-                if col in need_per_date_slot_df.columns:
-                    # 該当雇用形態の時間帯でフィルタ
-                    emp_time_indices = emp_need_series[emp_need_series > 0].index
-                    if not emp_time_indices.empty:
-                        emp_need_total_slots += need_per_date_slot_df.loc[
-                            emp_time_indices, col
-                        ].sum()
-            total_need_hours_for_emp = emp_need_total_slots * slot_hours
-            log.debug(
-                f"[shortage] {emp_name_current}: 詳細Needから計算 = {emp_need_total_slots} slots"
-            )
-        else:
-            # フォールバック：従来の計算方法
-            total_need_hours_for_emp = need_df_emp.sum().sum() * slot_hours
-            log.debug(f"[shortage] {emp_name_current}: 既存計算方法を使用")
+        # excess_count_emp_dfの計算に誤りがあったため修正 (needではなくupperと比較)
+        excess_count_emp_df = pd.DataFrame()
+        if "upper" in emp_heat_current_df.columns:
+             upper_series_emp = emp_heat_current_df["upper"].reindex(index=time_labels).fillna(0).clip(lower=0)
+             upper_df_emp = pd.DataFrame(
+                 np.repeat(
+                     upper_series_emp.values[:, np.newaxis], len(emp_staff_df.columns), axis=1
+                 ),
+                 index=upper_series_emp.index,
+                 columns=emp_staff_df.columns,
+             )
+             if any(holiday_mask_emp):
+                 for c, is_h in zip(upper_df_emp.columns, holiday_mask_emp, strict=True):
+                     if is_h:
+                         upper_df_emp[c] = 0
+             excess_count_emp_df = (emp_staff_df - upper_df_emp).clip(lower=0)
 
+
+        # サマリー用の合計時間も、修正された need_df_emp から計算する
+        total_need_hours_for_emp = need_df_emp[working_cols_emp].sum().sum() * slot_hours
         total_staff_hours_for_emp = emp_staff_df.sum().sum() * slot_hours
         total_lack_hours_for_emp = lack_count_emp_df.sum().sum() * slot_hours
         total_excess_hours_for_emp = (
