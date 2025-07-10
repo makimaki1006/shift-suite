@@ -724,11 +724,18 @@ def build_heatmap(
                     need_values = overall_dow_need_pattern_df[day_of_week_map]
                     log.info(f"[SUNDAY_APPLY]   → Need値適用: 合計={need_values.sum():.0f}")
                     log.info(f"[SUNDAY_APPLY]   → Need値詳細（最初5つ）: {need_values.head().tolist()}")
+
             else:
                 need_all_final_for_summary[date_str_col_map] = 0
                 log.warning(
                     f"曜日 {day_of_week_map} のneedパターンが見つかりません ({date_str_col_map})。Needは0とします。"
                 )
+
+    # 詳細なNeedデータをParquetファイルとして保存
+    need_all_final_for_summary.to_parquet(
+        out_dir_path / "need_per_date_slot.parquet"
+    )
+    log.info("Need per date/slot data saved to need_per_date_slot.parquet.")
 
     upper_s_representative = (
         derive_max_staff(pivot_data_all_actual_staff, max_method)
