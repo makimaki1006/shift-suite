@@ -448,21 +448,17 @@ def shortage_and_brief(
         ]
         num_working_days_for_current_role = len(working_cols_role)
         # need_per_date_slot_dfがある場合は、日付ごとの実際のNeedを使用
-        if not need_per_date_slot_df.empty and role_date_columns_list:
+        if not need_per_date_slot_df.empty and working_cols_role:
             role_need_total_slots = 0
-            for col in role_date_columns_list:
-                # 休業日を除外
-                col_date = _parse_as_date(col)
-                if col_date and col_date not in estimated_holidays_set:
-                    if col in need_per_date_slot_df.columns:
-                        # 該当職種の時間帯でフィルタ（need > 0の時間帯のみ）
-                        role_time_indices = role_need_per_time_series_orig_for_role[
-                            role_need_per_time_series_orig_for_role > 0
-                        ].index
-                        if not role_time_indices.empty:
-                            role_need_total_slots += need_per_date_slot_df.loc[
-                                role_time_indices, col
-                            ].sum()
+            for col in working_cols_role:
+                if col in need_per_date_slot_df.columns:
+                    # 該当職種の時間帯インデックスでフィルタ
+                    time_indices = role_need_per_time_series_orig_for_role[
+                        role_need_per_time_series_orig_for_role > 0
+                    ].index
+                    role_need_total_slots += need_per_date_slot_df.loc[
+                        time_indices, col
+                    ].sum()
             total_need_slots_for_role_working_days = role_need_total_slots
             log.debug(
                 f"[shortage] {role_name_current}: 詳細Needから計算 = {role_need_total_slots} slots"
@@ -757,19 +753,16 @@ def shortage_and_brief(
         excess_count_emp_df = (emp_staff_df - need_df_emp).clip(lower=0)
 
         # need_per_date_slot_dfがある場合は、日付ごとの実際のNeedを使用
-        if not need_per_date_slot_df.empty and emp_date_columns:
+        if not need_per_date_slot_df.empty and working_cols_emp:
             emp_need_total_slots = 0
-            for col in emp_date_columns:
-                # 休業日を除外
-                col_date = _parse_as_date(col)
-                if col_date and col_date not in estimated_holidays_set:
-                    if col in need_per_date_slot_df.columns:
-                        # 該当雇用形態の時間帯でフィルタ
-                        emp_time_indices = emp_need_series[emp_need_series > 0].index
-                        if not emp_time_indices.empty:
-                            emp_need_total_slots += need_per_date_slot_df.loc[
-                                emp_time_indices, col
-                            ].sum()
+            for col in working_cols_emp:
+                if col in need_per_date_slot_df.columns:
+                    # 該当雇用形態の時間帯でフィルタ
+                    emp_time_indices = emp_need_series[emp_need_series > 0].index
+                    if not emp_time_indices.empty:
+                        emp_need_total_slots += need_per_date_slot_df.loc[
+                            emp_time_indices, col
+                        ].sum()
             total_need_hours_for_emp = emp_need_total_slots * slot_hours
             log.debug(
                 f"[shortage] {emp_name_current}: 詳細Needから計算 = {emp_need_total_slots} slots"
