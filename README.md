@@ -167,6 +167,24 @@ The GUI caches uploaded Excel or Parquet files using `load_data_cached()` with
 The analysis code lives under the `shift_suite/tasks` package.  Results are
 written to the specified output directory or displayed directly in the GUI.
 
+### Excel Import Wizard
+
+Launching the GUI with `streamlit run app.py` presents a step-by-step wizard for
+loading your workbook:
+
+1. **Upload** the Excel file and pick the master sheet (勤務区分) along with the
+   roster sheets you wish to analyse.
+2. For each roster sheet, enter the cell that contains the year/month value
+   (e.g. `A1`) and the row number of the column headers. The header row may
+   include staff, role and employment columns alongside date columns such as
+   `2025/2/2(火)`—this layout is supported.
+3. Confirm or adjust the column mapping for staff name, role and employment
+   type.
+4. Review the summary page and press **取り込み開始** to ingest the workbook.
+
+The chosen values populate the sidebar fields so you can tweak them later if
+needed.
+
 ### Additional dependencies
 
 Some modules require extra libraries such as `prophet` for forecasting or
