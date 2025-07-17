@@ -18,8 +18,6 @@ from .constants import SUMMARY5
 from shift_suite.i18n import translate as _
 
 # 'log' という名前でロガーを取得 (utils.pyからインポートされるlogと同じ)
-import pyarrow as pa
-import pyarrow.parquet as pq
 from .utils import (
     _parse_as_date,
     derive_max_staff,
@@ -32,17 +30,6 @@ from .utils import (
 )
 
 analysis_logger = logging.getLogger('analysis')
-# 簡素化された統合Need計算システム
-try:
-    from shift_suite.core.statistics_engine import AdaptiveStatisticsEngine
-    _unified_stats_engine = AdaptiveStatisticsEngine()
-    _UNIFIED_SYSTEM_AVAILABLE = True
-    analysis_logger.info("[UNIFIED] 統合システム利用可能")
-except ImportError as e:
-    _unified_stats_engine = None
-    _UNIFIED_SYSTEM_AVAILABLE = False
-    analysis_logger.warning(f"[UNIFIED] 統合システム不可: {e}")
-
 
 # 新規追加: 通常勤務の判定用定数
 DEFAULT_HOLIDAY_TYPE = "通常勤務"
@@ -144,54 +131,11 @@ def calculate_pattern_based_need(
     adjustment_factor: float = 1.0,
     include_zero_days: bool = True,
     all_dates_in_period: list[dt.date] | None = None,
-    long_df: pd.DataFrame | None = None,  # 連続勤務検出用
 ) -> pd.DataFrame:
     # 修正箇所: logger.info -> log.info など、ロガー名を 'log' に統一
     log.info(
         f"[heatmap.calculate_pattern_based_need] 参照期間: {ref_start_date} - {ref_end_date}, 手法: {statistic_method}, 外れ値除去: {remove_outliers}"
     )
-
-    # ★★★ 動的連続勤務検出システム追加 ★★★
-    continuous_shift_detector = None
-    if long_df is not None and not long_df.empty:
-        try:
-            from .dynamic_continuous_shift_detector import DynamicContinuousShiftDetector
-            
-            # 設定ファイルパスの決定
-            config_path = Path(__file__).parent.parent / "config" / "dynamic_continuous_shift_config.json"
-            
-            # 動的検出器の初期化
-            continuous_shift_detector = DynamicContinuousShiftDetector(config_path)
-            
-            # wt_dfも渡して完全に動的な検出を実行
-            wt_df_for_detection = None
-            if 'wt_df' in locals() or 'wt_df' in globals():
-                wt_df_for_detection = wt_df if 'wt_df' in locals() else globals().get('wt_df')
-            
-            continuous_shifts = continuous_shift_detector.detect_continuous_shifts(long_df, wt_df_for_detection)
-            log.info(f"[DYNAMIC_CONTINUOUS] 動的連続勤務検出完了: {len(continuous_shifts)}件")
-            
-            # 検出統計出力
-            summary = continuous_shift_detector.get_detection_summary()
-            log.info(f"[DYNAMIC_CONTINUOUS] 統計: {summary}")
-            
-            # 学習した設定の自動保存
-            if summary.get('total_count', 0) > 0:
-                learned_config_path = config_path.parent / f"learned_config_{dt.date.today().strftime('%Y%m%d')}.json"
-                continuous_shift_detector.export_config(learned_config_path)
-                log.info(f"[DYNAMIC_CONTINUOUS] 学習済み設定保存: {learned_config_path}")
-            
-        except Exception as e:
-            log.warning(f"[DYNAMIC_CONTINUOUS] 動的連続勤務検出エラー: {e}")
-            # フォールバック: 従来のシステムを使用
-            try:
-                from .continuous_shift_detector import ContinuousShiftDetector
-                continuous_shift_detector = ContinuousShiftDetector()
-                continuous_shifts = continuous_shift_detector.detect_continuous_shifts(long_df)
-                log.info(f"[FALLBACK] フォールバック連続勤務検出: {len(continuous_shifts)}件")
-            except Exception as fallback_error:
-                log.error(f"[FALLBACK] フォールバック検出もエラー: {fallback_error}")
-                continuous_shift_detector = None
 
     time_index_labels = pd.Index(gen_labels(slot_minutes_for_empty), name="time")
     default_dow_need_df = pd.DataFrame(
@@ -274,51 +218,20 @@ def calculate_pattern_based_need(
 
         data_for_dow_calc = filtered_slot_df_dow[dow_cols_to_agg]
 
-        # ★★★ 統合Need計算システム統合修正 ★★★
-        # 曜日固有ロジックを除去し、動的データ対応の汎用統計計算を適用
         is_significant_holiday = False
-        
-        # 日毎の合計人数を初期化（empty対応）
-        daily_totals = data_for_dow_calc.sum() if not data_for_dow_calc.empty else pd.Series(dtype=float)
-        
         if not data_for_dow_calc.empty:
             avg_staff_per_day_overall = filtered_slot_df_dow.sum().mean()
             avg_staff_per_day_dow = data_for_dow_calc.sum().mean()
-            
-            # daily_totalsは上記で既に計算済み
-            
             analysis_logger.info(
                 f"曜日 '{dow_name}'({day_of_week_idx}) の必要人数計算: "
                 f"曜日別平均勤務人数 = {avg_staff_per_day_dow:.2f}, "
                 f"全体平均勤務人数 = {avg_staff_per_day_overall:.2f}, "
                 f"適用中の統計手法 = '{statistic_method}'"
             )
-            
-            # 統合システムによる適応的判定（曜日に依存しない）
-            # 条件を緩和：低実績またはデータの変動が大きい場合に適用
-            data_variance = np.var(daily_totals) if len(daily_totals) > 1 else 0
-            avg_data_value = daily_totals.mean() if not daily_totals.empty else 0
-            
-            # 適用条件：日曜日の問題を解決するため条件を大幅緩和
-            # データドリブンな統計処理の適用条件（曜日に依存しない）
-            # 1. 平均勤務人数が全体の50%未満
-            # 2. 全体平均も低い場合（≤1名）は必ず適用
-            # 3. データの変動が大きい（変動係数 > 0.5）
-            # 4. データ数が少ない（5未満）
-            should_apply_adaptive = (
-                avg_staff_per_day_overall <= 1.0 or  # 全体が少ない場合
-                avg_staff_per_day_dow < (avg_staff_per_day_overall * 0.5) or  # 該当曜日が平均の50%未満
-                (avg_data_value > 0 and (np.sqrt(data_variance) / avg_data_value) > 0.5) or  # 変動が大きい
-                len(daily_totals) < 5  # データ数が少ない
-            )
-            
-            if should_apply_adaptive:
-                analysis_logger.warning(
-                    f"曜日 '{dow_name}'({day_of_week_idx}) はデータの性質により、"
-                    f"統合システムの適応的統計手法を適用します。"
-                )
+            # 日曜日は強制的に特殊処理対象とする
+            if day_of_week_idx == 6:  # 日曜日
                 is_significant_holiday = True
-                analysis_logger.info(f"[ADAPTIVE_STATS] {dow_name}: データドリブンな統計処理を適用")
+                analysis_logger.info("[SUNDAY_FORCE] 日曜日のため強制的に特殊処理を適用します")
             elif avg_staff_per_day_dow < (avg_staff_per_day_overall * 0.25):
                 analysis_logger.warning(
                     f"曜日 '{dow_name}'({day_of_week_idx}) は勤務実績が著しく少ないため、"
@@ -326,8 +239,8 @@ def calculate_pattern_based_need(
                 )
                 is_significant_holiday = True
 
-        # 日毎の合計人数（上記で既に計算済み）
-        # daily_totals = data_for_dow_calc.sum()  # 重複削除
+        # 日毎の合計人数を計算
+        daily_totals = data_for_dow_calc.sum()
         log.info(f"  各日の総勤務人数: {daily_totals.values.tolist()}")
         log.info(f"  日平均総勤務人数: {daily_totals.mean():.2f}")
 
@@ -345,14 +258,14 @@ def calculate_pattern_based_need(
                 if time_slot in data_for_dow_calc.index:
                     values = data_for_dow_calc.loc[time_slot].values.tolist()
                     log.info(f"[SUNDAY_DEBUG]   {time_slot}: {values}")
-# ★★★ 統合Need計算システムの統計エンジン適用 ★★★
-        # 統計手法を決定する（動的データ対応）
+        # ▼▼▼ ロジック修正 ▼▼▼
+        # 統計手法を決定する
+        # 実データが少ない場合の統計手法調整
         if is_significant_holiday:
-            # 統合システムの適応的統計手法を使用
+            current_statistic_method = "中央値"
             analysis_logger.info(
-                f" -> 曜日 '{dow_name}' は統合システムの適応的統計手法を適用"
+                f" -> 曜日 '{dow_name}' は実績僅少のため、統計手法を「{current_statistic_method}」に自動調整しました。"
             )
-            current_statistic_method = "adaptive"  # 統合システム標識
         else:
             current_statistic_method = statistic_method
 
@@ -405,37 +318,8 @@ def calculate_pattern_based_need(
                     values_for_stat_calc = values_filtered_outlier
             need_calculated_val = 0.0
             if values_for_stat_calc:
-                # ★★★ 統合システム適用 ★★★
-                if current_statistic_method == "adaptive" and _UNIFIED_SYSTEM_AVAILABLE:
-                    # 統合システムのAdaptiveStatisticsEngineを使用
-                    try:
-                        need_value, confidence, method = _unified_stats_engine.calculate_need(
-                            historical_data=values_for_stat_calc,
-                            target_confidence=0.75
-                        )
-                        need_calculated_val = need_value
-                        analysis_logger.info(
-                            f"[UNIFIED] 時間帯 {time_slot_val} ({dow_name}): "
-                            f"統合Need={need_value:.2f}, 信頼度={confidence:.3f}, 手法={method}"
-                        )
-                        
-                        # 低信頼度の警告
-                        if confidence < 0.3:
-                            analysis_logger.warning(
-                                f"[UNIFIED] 時間帯 {time_slot_val}: 低信頼度 {confidence:.3f}"
-                            )
-                    except Exception as e:
-                        analysis_logger.error(f"[UNIFIED] 統合システムエラー: {e}")
-                        # フォールバック: 平均値
-                        need_calculated_val = np.mean(values_for_stat_calc)
-                        
-                elif current_statistic_method == "adaptive":
-                    # 統合システム不可の場合のフォールバック
-                    analysis_logger.warning("[UNIFIED] 統合システム不可、平均値で代替")
-                    need_calculated_val = np.mean(values_for_stat_calc)
-                        
-                # 従来の統計手法
-                elif current_statistic_method == "10パーセンタイル":
+                # 決定された統計手法に基づいて計算
+                if current_statistic_method == "10パーセンタイル":
                     need_calculated_val = np.percentile(values_for_stat_calc, 10)
                 elif current_statistic_method == "25パーセンタイル":
                     need_calculated_val = np.percentile(values_for_stat_calc, 25)
@@ -462,49 +346,6 @@ def calculate_pattern_based_need(
                     f"[DEBUG_NEED_DETAIL] Need上限適用判定: 元データ中央値={np.median(values_at_slot_current):.1f}。制限後Need={need_calculated_val:.2f}"
                 )
 
-            # ★★★ 動的連続勤務考慮のNeed値調整 ★★★
-            if continuous_shift_detector:
-                sample_date = ref_start_date + dt.timedelta(days=day_of_week_idx)
-                
-                # 動的検出器を使用（メソッド名を適切に調整）
-                if hasattr(continuous_shift_detector, 'should_adjust_need_dynamic'):
-                    should_adjust, continuing_count, rule_info = continuous_shift_detector.should_adjust_need_dynamic(
-                        time_slot_val, sample_date.strftime('%Y-%m-%d')
-                    )
-                else:
-                    # フォールバック：従来のロジック
-                    should_adjust, continuing_count = continuous_shift_detector.should_adjust_need(
-                        time_slot_val, sample_date.strftime('%Y-%m-%d')
-                    )
-                    rule_info = "従来ルール"
-                
-                if should_adjust and continuing_count > 0:
-                    # 動的調整方法の適用
-                    original_need = need_calculated_val
-                    
-                    # 基本調整：継続勤務者数を考慮
-                    base_adjustment = max(need_calculated_val, continuing_count)
-                    
-                    # 時間帯別の追加調整
-                    if time_slot_val.startswith('00:') or time_slot_val.startswith('01:'):
-                        # 深夜時間帯：継続勤務者の疲労を考慮して増員
-                        fatigue_adjustment = continuing_count * 0.2
-                        adjusted_need = base_adjustment + fatigue_adjustment
-                    elif time_slot_val.startswith('06:') or time_slot_val.startswith('07:'):
-                        # 早朝時間帯：引き継ぎ重視
-                        handover_adjustment = continuing_count * 0.1
-                        adjusted_need = base_adjustment + handover_adjustment
-                    else:
-                        adjusted_need = base_adjustment
-                    
-                    need_calculated_val = adjusted_need
-                    
-                    log.info(
-                        f"[DYNAMIC_NEED] {dow_name} {time_slot_val}: "
-                        f"継続勤務者{continuing_count}名考慮 (ルール: {rule_info}) "
-                        f"Need {original_need:.2f} → {adjusted_need:.2f}"
-                    )
-
             # 調整係数の適用
             need_calculated_val *= adjustment_factor
             
@@ -512,14 +353,7 @@ def calculate_pattern_based_need(
             if is_significant_holiday:
                 # データが少ない場合は、実際の最大値を上限として設定
                 max_actual_val = max(values_at_slot_current) if values_at_slot_current else 0
-                
-                # 実績が0の場合の汎用的処理（曜日に関係なく）
-                if max_actual_val == 0:
-                    # 実績が0の場合、Needも0に設定（過大評価を防ぐ）
-                    original_need = need_calculated_val
-                    need_calculated_val = 0.0
-                    log.info(f"[ZERO_DATA_FIX] {dow_name} {time_slot_val}: 実績0のためNeedを {original_need:.2f} → {need_calculated_val:.2f} に修正")
-                elif need_calculated_val > max_actual_val * 1.5:  # 実際の最大値の1.5倍を上限
+                if need_calculated_val > max_actual_val * 1.5:  # 実際の最大値の1.5倍を上限
                     original_need = need_calculated_val
                     need_calculated_val = max_actual_val * 1.5
                     log.info(f"[STATS_FIX] {dow_name} {time_slot_val}: Need値を {original_need:.2f} → {need_calculated_val:.2f} に制限（実データ考慮）")
@@ -589,7 +423,7 @@ def _filter_work_records(long_df: pd.DataFrame) -> pd.DataFrame:
 
 def build_heatmap(
     long_df: pd.DataFrame,
-    out_dir: "str | Path",
+    out_dir: str | Path,
     slot_minutes: int = 30,
     *,
     need_calc_method: str | None = None,
@@ -711,23 +545,7 @@ def build_heatmap(
         )
 
     # 重要: 通常勤務のレコードのみでヒートマップ作成
-    # 注意：明け番シフトは元の日付で処理され、0:00-11:59の時間帯も含まれる
     df_for_heatmap_actuals = _filter_work_records(long_df)
-    
-    # 明け番シフトのデバッグ：早朝時間帯のデータがあるかチェック
-    if not df_for_heatmap_actuals.empty and "time" in df_for_heatmap_actuals.columns:
-        all_times = df_for_heatmap_actuals["time"].unique()
-        early_morning_times = [t for t in all_times if isinstance(t, str) and t.startswith(("00:", "01:", "02:", "03:", "04:", "05:", "06:", "07:"))]
-        if early_morning_times:
-            log.info(f"[OVERNIGHT_DEBUG] 実績データに早朝時間帯を検出: {sorted(early_morning_times)}")
-            # 早朝時間帯のレコード数確認
-            early_morning_records = df_for_heatmap_actuals[df_for_heatmap_actuals["time"].isin(early_morning_times)]
-            log.info(f"[OVERNIGHT_DEBUG] 早朝時間帯レコード数: {len(early_morning_records)}")
-            if not early_morning_records.empty and "code" in early_morning_records.columns:
-                early_codes = early_morning_records["code"].unique()
-                log.info(f"[OVERNIGHT_DEBUG] 早朝時間帯のシフトコード: {early_codes}")
-        else:
-            log.info("[OVERNIGHT_DEBUG] 実績データに早朝時間帯（00:xx-07:xx）が見つかりません")
     out_dir_path = Path(out_dir)
     out_dir_path.mkdir(parents=True, exist_ok=True)
     all_date_labels_in_period_str: List[str] = (
@@ -735,7 +553,6 @@ def build_heatmap(
         if all_dates_in_period_list
         else []
     )
-    
     time_index_labels = pd.Index(gen_labels(slot_minutes), name="time")
 
     if df_for_heatmap_actuals.empty and not all_date_labels_in_period_str:
@@ -764,95 +581,12 @@ def build_heatmap(
         )
         return
 
-    # 明け番シフトデバッグ：ds列から時間抽出前の状況確認
-    if not df_for_heatmap_actuals.empty:
-        log.info(f"[OVERNIGHT_DEBUG] time/date_lbl変換前のレコード数: {len(df_for_heatmap_actuals)}")
-        sample_ds = df_for_heatmap_actuals["ds"].head(5).tolist()
-        log.info(f"[OVERNIGHT_DEBUG] ds列のサンプル値: {sample_ds}")
-        
-        # 明け番関連のコードがあるレコードの確認
-        if "code" in df_for_heatmap_actuals.columns:
-            overnight_codes = ['明', 'アケ', 'ake', '明け', 'AKE']
-            overnight_records = df_for_heatmap_actuals[df_for_heatmap_actuals["code"].isin(overnight_codes)]
-            if not overnight_records.empty:
-                log.info(f"[OVERNIGHT_DEBUG] 明け番レコード数: {len(overnight_records)}")
-                overnight_ds_sample = overnight_records["ds"].head(3).tolist()
-                log.info(f"[OVERNIGHT_DEBUG] 明け番のds値サンプル: {overnight_ds_sample}")
-    
     df_for_heatmap_actuals["time"] = pd.to_datetime(
         df_for_heatmap_actuals["ds"], errors="coerce"
     ).dt.strftime("%H:%M")
     df_for_heatmap_actuals["date_lbl"] = pd.to_datetime(
         df_for_heatmap_actuals["ds"], errors="coerce"
     ).dt.strftime("%Y-%m-%d")
-    
-    # 明け番シフトデバッグ：time/date_lbl変換後の確認
-    if not df_for_heatmap_actuals.empty:
-        unique_times = df_for_heatmap_actuals["time"].unique()
-        early_times = [t for t in unique_times if t.startswith(("00:", "01:", "02:", "03:", "04:", "05:", "06:", "07:"))]
-        log.info(f"[OVERNIGHT_DEBUG] 変換後の早朝時間帯: {sorted(early_times)}")
-        
-        if "code" in df_for_heatmap_actuals.columns:
-            overnight_codes = ['明', 'アケ', 'ake', '明け', 'AKE']
-            overnight_records = df_for_heatmap_actuals[df_for_heatmap_actuals["code"].isin(overnight_codes)]
-            if not overnight_records.empty:
-                overnight_times = overnight_records["time"].unique()
-                log.info(f"[OVERNIGHT_DEBUG] 明け番レコードの時間帯: {sorted(overnight_times)}")
-    
-    # ★★★ 動的連続勤務重複カウント防止システム ★★★
-    if not long_df.empty:
-        try:
-            from .dynamic_continuous_shift_detector import DynamicContinuousShiftDetector
-            
-            # 設定ファイルパスの決定
-            config_path = Path(__file__).parent.parent / "config" / "dynamic_continuous_shift_config.json"
-            
-            detector = DynamicContinuousShiftDetector(config_path)
-            
-            # wt_dfも含めて動的検出
-            wt_df_for_detection = None
-            if 'wt_df' in locals() or 'wt_df' in globals():
-                wt_df_for_detection = wt_df if 'wt_df' in locals() else globals().get('wt_df')
-            
-            continuous_shifts = detector.detect_continuous_shifts(long_df, wt_df_for_detection)
-            
-            # 動的重複除去対象の特定
-            duplicates_to_remove = set()
-            slot_minutes = 15  # 動的に取得も可能
-            
-            for date_str in df_for_heatmap_actuals["date_lbl"].unique():
-                if hasattr(detector, 'get_dynamic_duplicate_time_slots'):
-                    duplicates = detector.get_dynamic_duplicate_time_slots(date_str, slot_minutes)
-                else:
-                    # フォールバック
-                    from .continuous_shift_detector import ContinuousShiftDetector
-                    fallback_detector = ContinuousShiftDetector()
-                    fallback_shifts = fallback_detector.detect_continuous_shifts(long_df)
-                    duplicates = fallback_detector.get_duplicate_time_slots(date_str)
-                
-                for staff, time_slot in duplicates:
-                    duplicates_to_remove.add((staff, time_slot, date_str))
-            
-            # 重複レコードの除去
-            if duplicates_to_remove:
-                original_count = len(df_for_heatmap_actuals)
-                mask = ~df_for_heatmap_actuals.apply(
-                    lambda row: (row['staff'], row['time'], row['date_lbl']) in duplicates_to_remove,
-                    axis=1
-                )
-                df_for_heatmap_actuals = df_for_heatmap_actuals[mask]
-                removed_count = original_count - len(df_for_heatmap_actuals)
-                
-                log.info(f"[DYNAMIC_DUPLICATE_REMOVAL] 動的連続勤務重複除去: {removed_count}件のレコードを除去")
-                log.debug(f"[DYNAMIC_DUPLICATE_REMOVAL] 除去対象: {duplicates_to_remove}")
-                
-                # 検出統計の出力
-                summary = detector.get_detection_summary()
-                log.info(f"[DYNAMIC_DUPLICATE_REMOVAL] 検出統計: {summary}")
-                
-        except Exception as e:
-            log.warning(f"[DYNAMIC_DUPLICATE_REMOVAL] 動的重複除去処理エラー: {e}")
-            # フォールバック処理は既存コードをそのまま実行
     df_for_heatmap_actuals.dropna(
         subset=["time", "date_lbl", "staff", "role"], inplace=True
     )
@@ -960,7 +694,6 @@ def build_heatmap(
         adjustment_factor=need_adjustment_factor,
         include_zero_days=include_zero_days,
         all_dates_in_period=all_dates_in_period_list,
-        long_df=long_df,  # 連続勤務検出用にlong_dfを渡す
     )
 
     pivot_data_all_final = pd.DataFrame(
@@ -998,21 +731,10 @@ def build_heatmap(
                     f"曜日 {day_of_week_map} のneedパターンが見つかりません ({date_str_col_map})。Needは0とします。"
                 )
 
-    # 詳細なNeedデータをParquetファイルとして保存（datetime問題対応）
-    # カラム名を明示的に文字列として保存
-    need_df_for_save = need_all_final_for_summary.copy()
-    need_df_for_save.columns = [str(col) for col in need_df_for_save.columns]
-    
-    # PyArrowテーブルとして保存（カラム型を明示的に指定）
-    table = pa.Table.from_pandas(need_df_for_save, preserve_index=True)
-    
-    # メタデータにカラム型情報を追加
-    metadata = table.schema.metadata or {}
-    metadata[b'column_format'] = b'string_dates'
-    new_schema = table.schema.with_metadata(metadata)
-    table = table.cast(new_schema)
-    
-    pq.write_table(table, out_dir_path / "need_per_date_slot.parquet")
+    # 詳細なNeedデータをParquetファイルとして保存
+    need_all_final_for_summary.to_parquet(
+        out_dir_path / "need_per_date_slot.parquet"
+    )
     log.info("Need per date/slot data saved to need_per_date_slot.parquet.")
 
     upper_s_representative = (
@@ -1183,102 +905,33 @@ def build_heatmap(
                     if date not in actual_staff_for_role_need_input.columns:
                         actual_staff_for_role_need_input[date] = 0
 
-        # ★★★ 重要な修正：職種別need値を全体needから按分計算 ★★★
-        # 全体のneed_per_date_slot.parquetを読み込み
-        need_per_date_slot_file = out_dir_path / "need_per_date_slot.parquet"
-        
-        if need_per_date_slot_file.exists():
-            log.info(f"[ROLE_NEED] Using global need_per_date_slot.parquet for role {role_item_final_loop} proportional calculation")
-            
-            try:
-                # 全体のneed値を読み込み（詳細な日付×時間帯データ）
-                global_need_df = pd.read_parquet(need_per_date_slot_file)
-                
-                # 職種別のstaff比率を計算
-                role_staff_total = pivot_data_role_actual.sum().sum()
-                
-                # 全職種のstaff合計を計算（比率算出のため）
-                # pivot_data_all_finalから全体のstaff合計を計算
-                try:
-                    if not pivot_data_all_final.empty:
-                        date_cols_all = [c for c in pivot_data_all_final.columns 
-                                       if c not in SUMMARY5 and pd.to_datetime(c, errors='coerce') is not pd.NaT]
-                        if date_cols_all:
-                            all_staff_total = pivot_data_all_final[date_cols_all].sum().sum()
-                        else:
-                            raise ValueError("No date columns found in pivot_data_all_final")
-                    else:
-                        raise ValueError("pivot_data_all_final is empty")
-                except Exception as e:
-                    log.warning(f"[ROLE_NEED] Could not calculate accurate staff ratio for {role_item_final_loop}: {e}")
-                    # フォールバック：独立計算
-                    dow_need_pattern_role_df = calculate_pattern_based_need(
-                        actual_staff_for_role_need_input,
-                        ref_start_date_for_need,
-                        ref_end_date_for_need,
-                        final_statistic_method,
-                        need_remove_outliers,
-                        need_iqr_multiplier,
-                        slot_minutes_for_empty=slot_minutes,
-                        holidays=final_holidays_to_use,
-                        adjustment_factor=need_adjustment_factor,
-                        include_zero_days=include_zero_days,
-                        all_dates_in_period=all_dates_in_period_list,
-                    )
-                    need_r_series = dow_need_pattern_role_df.mean(axis=1).round()
+        dow_need_pattern_role_df = calculate_pattern_based_need(
+            actual_staff_for_role_need_input,
+            ref_start_date_for_need,
+            ref_end_date_for_need,
+            final_statistic_method,
+            need_remove_outliers,
+            need_iqr_multiplier,
+            slot_minutes_for_empty=slot_minutes,
+            holidays=final_holidays_to_use,
+            adjustment_factor=need_adjustment_factor,
+            include_zero_days=include_zero_days,
+            all_dates_in_period=all_dates_in_period_list,
+        )
+
+        need_df_role_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_role_final.columns, dtype=float).fillna(0)
+        for date_str_col_map in pivot_data_role_final.columns:
+            current_date_obj_map = dt.datetime.strptime(date_str_col_map, "%Y-%m-%d").date()
+            if current_date_obj_map in holidays_set:
+                need_df_role_final[date_str_col_map] = 0
+            else:
+                day_of_week_map = current_date_obj_map.weekday()
+                if day_of_week_map in dow_need_pattern_role_df.columns:
+                    need_df_role_final[date_str_col_map] = dow_need_pattern_role_df[day_of_week_map]
                 else:
-                    # 職種比率を計算
-                    role_ratio = role_staff_total / all_staff_total if all_staff_total > 0 else 0
-                    
-                    # ★★★ 修正：詳細Need値の全日程に比率を適用 ★★★
-                    # 各日付×時間帯の詳細Need値に職種比率を適用
-                    role_need_df = global_need_df * role_ratio
-                    
-                    # 時間帯別の平均Need値を算出（ヒートマップ用）
-                    need_r_series = role_need_df.mean(axis=1).round()
-                    
-                    # ★★★ 重要：詳細Need値も保存（後で出力） ★★★
-                    role_need_per_date_slot_file = out_dir_path / f"need_per_date_slot_role_{role_safe_name_final_loop}.parquet"
-                    role_need_df.to_parquet(role_need_per_date_slot_file)
-                    
-                    log.info(f"[ROLE_NEED] Role {role_item_final_loop}: staff_ratio={role_ratio:.4f}, "
-                           f"role_staff={role_staff_total}, all_staff={all_staff_total}, "
-                           f"detailed_need_sum={role_need_df.sum().sum():.2f}, avg_need_sum={need_r_series.sum():.2f}")
-            
-            except Exception as e:
-                log.warning(f"[ROLE_NEED] Failed to use proportional calculation for {role_item_final_loop}: {e}, falling back to independent calculation")
-                # フォールバック：従来の独立計算
-                dow_need_pattern_role_df = calculate_pattern_based_need(
-                    actual_staff_for_role_need_input,
-                    ref_start_date_for_need,
-                    ref_end_date_for_need,
-                    final_statistic_method,
-                    need_remove_outliers,
-                    need_iqr_multiplier,
-                    slot_minutes_for_empty=slot_minutes,
-                    holidays=final_holidays_to_use,
-                    adjustment_factor=need_adjustment_factor,
-                    include_zero_days=include_zero_days,
-                    all_dates_in_period=all_dates_in_period_list,
-                )
-                need_r_series = dow_need_pattern_role_df.mean(axis=1).round()
-        else:
-            log.warning(f"[ROLE_NEED] need_per_date_slot.parquet not found, using independent calculation for {role_item_final_loop}")
-            # フォールバック：従来の独立計算
-            dow_need_pattern_role_df = calculate_pattern_based_need(
-                actual_staff_for_role_need_input,
-                ref_start_date_for_need,
-                ref_end_date_for_need,
-                final_statistic_method,
-                need_remove_outliers,
-                need_iqr_multiplier,
-                slot_minutes_for_empty=slot_minutes,
-                holidays=final_holidays_to_use,
-                adjustment_factor=need_adjustment_factor,
-                include_zero_days=include_zero_days,
-                all_dates_in_period=all_dates_in_period_list,
-            )
-            need_r_series = dow_need_pattern_role_df.mean(axis=1).round()
+                    need_df_role_final[date_str_col_map] = 0
+
+        need_r_series = need_df_role_final.mean(axis=1).round()
 
         if upper_calc_method == _("下限値(Need) + 固定値"):
             fixed_val = (upper_calc_param or {}).get("fixed_value", 0)
@@ -1433,113 +1086,40 @@ def build_heatmap(
             else:
                 actual_staff_for_emp_need_input = pd.DataFrame(index=time_index_labels)
 
-        # ★★★ 修正：雇用形態別Need計算も按分ベースに統一 ★★★
-        if need_per_date_slot_file.exists():
-            log.info(f"[EMP_NEED] Using global need_per_date_slot.parquet for employment {emp_item_final_loop} proportional calculation")
-            
-            try:
-                # 全体のneed値を読み込み（詳細な日付×時間帯データ）
-                global_need_df = pd.read_parquet(need_per_date_slot_file)
-                
-                # 雇用形態別のstaff比率を計算
-                emp_staff_total = pivot_data_emp_actual.sum().sum()
-                
-                # 全雇用形態のstaff合計を計算（比率算出のため）
-                try:
-                    if not pivot_data_all_final.empty:
-                        date_cols_all = [c for c in pivot_data_all_final.columns 
-                                       if c not in SUMMARY5 and pd.to_datetime(c, errors='coerce') is not pd.NaT]
-                        if date_cols_all:
-                            all_staff_total = pivot_data_all_final[date_cols_all].sum().sum()
-                        else:
-                            raise ValueError("No date columns found in pivot_data_all_final")
-                    else:
-                        raise ValueError("pivot_data_all_final is empty")
-                        
-                    # 雇用形態比率を計算
-                    emp_ratio = emp_staff_total / all_staff_total if all_staff_total > 0 else 0
-                    
-                    # ★★★ 修正：詳細Need値の全日程に比率を適用 ★★★
-                    # 各日付×時間帯の詳細Need値に雇用形態比率を適用
-                    emp_need_df = global_need_df * emp_ratio
-                    
-                    # 時間帯別の平均Need値を算出（ヒートマップ用）
-                    need_e_series = emp_need_df.mean(axis=1).round()
-                    
-                    # ★★★ 重要：詳細Need値も保存（後で出力） ★★★
-                    emp_need_per_date_slot_file = out_dir_path / f"need_per_date_slot_emp_{emp_safe_name_final_loop}.parquet"
-                    emp_need_df.to_parquet(emp_need_per_date_slot_file)
-                    
-                    log.info(f"[EMP_NEED] Employment {emp_item_final_loop}: staff_ratio={emp_ratio:.4f}, "
-                           f"emp_staff={emp_staff_total}, all_staff={all_staff_total}, "
-                           f"detailed_need_sum={emp_need_df.sum().sum():.2f}, avg_need_sum={need_e_series.sum():.2f}")
-                    
-                    # 按分計算成功フラグ
-                    emp_proportional_success = True
-                    
-                except Exception as e:
-                    log.warning(f"[EMP_NEED] Could not calculate accurate staff ratio for {emp_item_final_loop}: {e}")
-                    emp_proportional_success = False
-                    
-            except Exception as e:
-                log.warning(f"[EMP_NEED] Failed to use proportional calculation for {emp_item_final_loop}: {e}, falling back to independent calculation")
-                emp_proportional_success = False
-        else:
-            log.warning(f"[EMP_NEED] need_per_date_slot.parquet not found, using independent calculation for {emp_item_final_loop}")
-            emp_proportional_success = False
-            
-        # フォールバック：従来の独立計算
-        if not emp_proportional_success:
-            # 重要な修正：雇用形態別でも全期間の日付を補完
-            if include_zero_days and all_dates_in_period_list:
-                for date in all_dates_in_period_list:
-                    if ref_start_date_for_need <= date <= ref_end_date_for_need and date not in final_holidays_to_use:
-                        if date not in actual_staff_for_emp_need_input.columns:
-                            actual_staff_for_emp_need_input[date] = 0
+        # 重要な修正：雇用形態別でも全期間の日付を補完
+        if include_zero_days and all_dates_in_period_list:
+            for date in all_dates_in_period_list:
+                if ref_start_date_for_need <= date <= ref_end_date_for_need and date not in final_holidays_to_use:
+                    if date not in actual_staff_for_emp_need_input.columns:
+                        actual_staff_for_emp_need_input[date] = 0
 
-            dow_need_pattern_emp_df = calculate_pattern_based_need(
-                actual_staff_for_emp_need_input,
-                ref_start_date_for_need,
-                ref_end_date_for_need,
-                final_statistic_method,
-                need_remove_outliers,
-                need_iqr_multiplier,
-                slot_minutes_for_empty=slot_minutes,
-                holidays=final_holidays_to_use,
-                adjustment_factor=need_adjustment_factor,
-                include_zero_days=include_zero_days,
-                all_dates_in_period=all_dates_in_period_list,
-            )
-            
-            need_e_series = dow_need_pattern_emp_df.mean(axis=1).round()
+        dow_need_pattern_emp_df = calculate_pattern_based_need(
+            actual_staff_for_emp_need_input,
+            ref_start_date_for_need,
+            ref_end_date_for_need,
+            final_statistic_method,
+            need_remove_outliers,
+            need_iqr_multiplier,
+            slot_minutes_for_empty=slot_minutes,
+            holidays=final_holidays_to_use,
+            adjustment_factor=need_adjustment_factor,
+            include_zero_days=include_zero_days,
+            all_dates_in_period=all_dates_in_period_list,
+        )
 
-        # ★★★ 修正：按分計算成功時は詳細Need値を使用 ★★★
-        if emp_proportional_success:
-            # 按分で計算済みのneed_e_seriesを使用
-            need_df_emp_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_emp_final.columns, dtype=float).fillna(0)
-            
-            # 各日付に need_e_series の値を設定（休日は0）
-            for date_str_col_map in pivot_data_emp_final.columns:
-                current_date_obj_map = dt.datetime.strptime(date_str_col_map, "%Y-%m-%d").date()
-                if current_date_obj_map in holidays_set:
-                    need_df_emp_final[date_str_col_map] = 0
+        need_df_emp_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_emp_final.columns, dtype=float).fillna(0)
+        for date_str_col_map in pivot_data_emp_final.columns:
+            current_date_obj_map = dt.datetime.strptime(date_str_col_map, "%Y-%m-%d").date()
+            if current_date_obj_map in holidays_set:
+                need_df_emp_final[date_str_col_map] = 0
+            else:
+                day_of_week_map = current_date_obj_map.weekday()
+                if day_of_week_map in dow_need_pattern_emp_df.columns:
+                    need_df_emp_final[date_str_col_map] = dow_need_pattern_emp_df[day_of_week_map]
                 else:
-                    need_df_emp_final[date_str_col_map] = need_e_series
-        else:
-            # 従来方式：曜日パターンベース
-            need_df_emp_final = pd.DataFrame(index=time_index_labels, columns=pivot_data_emp_final.columns, dtype=float).fillna(0)
-            for date_str_col_map in pivot_data_emp_final.columns:
-                current_date_obj_map = dt.datetime.strptime(date_str_col_map, "%Y-%m-%d").date()
-                if current_date_obj_map in holidays_set:
                     need_df_emp_final[date_str_col_map] = 0
-                else:
-                    day_of_week_map = current_date_obj_map.weekday()
-                    if day_of_week_map in dow_need_pattern_emp_df.columns:
-                        need_df_emp_final[date_str_col_map] = dow_need_pattern_emp_df[day_of_week_map]
-                    else:
-                        need_df_emp_final[date_str_col_map] = 0
-            
-            need_e_series = need_df_emp_final.mean(axis=1).round()
+
+        need_e_series = need_df_emp_final.mean(axis=1).round()
         upper_e_series = (
             derive_max_staff(pivot_data_emp_actual, max_method)
             if not pivot_data_emp_actual.empty
@@ -1638,56 +1218,4 @@ def build_heatmap(
         leave_statistics=leave_stats,  # 休暇統計をメタデータに追加
     )
     validate_need_calculation(need_all_final_for_summary, pivot_data_all_final)
-    
-    # ★★★ Need合計値の整合性検証 ★★★
-    log.info("[NEED_VALIDATION] Need値の整合性を検証します...")
-    
-    try:
-        # 全体Need総計
-        if need_per_date_slot_file.exists():
-            global_need_df = pd.read_parquet(need_per_date_slot_file)
-            global_need_total = global_need_df.sum().sum()
-            log.info(f"[NEED_VALIDATION] 全体Need総計: {global_need_total:.2f}")
-            
-            # 職種別Need総計
-            role_need_total = 0
-            role_need_files = list(out_dir_path.glob("need_per_date_slot_role_*.parquet"))
-            
-            for role_need_file in role_need_files:
-                if role_need_file.exists():
-                    role_need_df = pd.read_parquet(role_need_file)
-                    role_sum = role_need_df.sum().sum()
-                    role_need_total += role_sum
-                    role_name = role_need_file.stem.replace("need_per_date_slot_role_", "")
-                    log.info(f"[NEED_VALIDATION] 職種別Need '{role_name}': {role_sum:.2f}")
-            
-            # 雇用形態別Need総計
-            emp_need_total = 0
-            emp_need_files = list(out_dir_path.glob("need_per_date_slot_emp_*.parquet"))
-            
-            for emp_need_file in emp_need_files:
-                if emp_need_file.exists():
-                    emp_need_df = pd.read_parquet(emp_need_file)
-                    emp_sum = emp_need_df.sum().sum()
-                    emp_need_total += emp_sum
-                    emp_name = emp_need_file.stem.replace("need_per_date_slot_emp_", "")
-                    log.info(f"[NEED_VALIDATION] 雇用形態別Need '{emp_name}': {emp_sum:.2f}")
-            
-            # 整合性チェック
-            role_diff = abs(global_need_total - role_need_total)
-            emp_diff = abs(global_need_total - emp_need_total)
-            
-            log.info(f"[NEED_VALIDATION] 職種別Need総計: {role_need_total:.2f} (差: {role_diff:.2f})")
-            log.info(f"[NEED_VALIDATION] 雇用形態別Need総計: {emp_need_total:.2f} (差: {emp_diff:.2f})")
-            
-            # 許容誤差（1%以内）でのチェック
-            tolerance = global_need_total * 0.01 if global_need_total > 0 else 1.0
-            if role_diff <= tolerance and emp_diff <= tolerance:
-                log.info("[NEED_VALIDATION] ✅ Need値の整合性: OK（誤差は許容範囲内）")
-            else:
-                log.warning(f"[NEED_VALIDATION] ⚠️ Need値の整合性: 要注意（許容誤差: {tolerance:.2f}）")
-                
-    except Exception as e:
-        log.warning(f"[NEED_VALIDATION] Need値整合性検証でエラー: {e}")
-    
     log.info("[heatmap.build_heatmap] ヒートマップ生成処理完了。")

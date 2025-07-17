@@ -50,12 +50,8 @@ SHEET_COL_ALIAS = {
     "雇用形態": "employment",
     "雇用区分": "employment",
     "employment": "employment",
-    # 文字化け対応
-    "����": "staff",        # 職員の文字化け
-    "�E��": "role",         # 職種の文字化け
-    "�ٗp�`��": "employment", # 雇用形態の文字化け
 }
-DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日"}
+DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}
 
 # 新規追加: 休暇コードの明示的定義
 LEAVE_CODES = {
@@ -145,7 +141,7 @@ def _expand(
     current_time = s_time
     max_slots = (24 * 60) // slot_minutes + 1
 
-    while current_time < e_time and len(slots) < max_slots:
+    while (current_time < e_time or (current_time == e_time and e_time.time() == dt.time(0, 0))) and len(slots) < max_slots:
         analysis_logger.info(
             f"[DEBUG_EXPAND] スロット追加: {current_time.strftime('%H:%M')}. 現在時刻 < 終了時刻: {current_time < e_time}, 終了時刻が0:00: {e_time.time() == dt.time(0,0)}, 追加継続条件: {(current_time < e_time or (current_time == e_time and e_time.time() == dt.time(0, 0)))}"
         )
@@ -364,8 +360,6 @@ def ingest_excel(
     records: list[dict] = []
     unknown_codes: set[str] = set()
     all_dates_from_headers: set[dt.date] = set()
-    # 重複チェック用セット: (staff, ds) の組み合わせを記録
-    staff_datetime_set: set[tuple[str, dt.datetime]] = set()
     year_val: int | None = None
     month_val: int | None = None
     if year_month_cell_location:
@@ -479,15 +473,14 @@ def ingest_excel(
                 if parsed_dt:
                     date_col_map[str(c)] = parsed_dt
                     continue
-            # If year/month parsing fails or is not available, try direct date parsing
-            parsed_dt = _parse_as_date(str(c))
-            if parsed_dt:
-                date_col_map[str(c)] = parsed_dt
-            else:
-                if not str(c).startswith("Unnamed:"):
-                    log.warning(
-                        f"シート '{sheet_name_actual}' の日付列パースに失敗しました: 元の列名='{c}'"
-                    )
+                parsed_dt = _parse_as_date(str(c))
+                if parsed_dt:
+                    date_col_map[str(c)] = parsed_dt
+                else:
+                    if not str(c).startswith("Unnamed:"):
+                        log.warning(
+                            f"シート '{sheet_name_actual}' の日付列パースに失敗しました: 元の列名='{c}'"
+                        )
 
         analysis_logger.info(
             f"[DEBUG_INGEST] 認識された日付列ヘッダーとそのパース結果: {sorted([(k, v.strftime('%Y-%m-%d')) for k,v in date_col_map.items()])}"
@@ -598,9 +591,6 @@ def ingest_excel(
                         
                         # 日付またぎ判定
                         current_date = date_val_parsed_dt_date
-                        
-                        # 日付またぎ判定（全シフト共通）
-                        # シフト開始時刻より前の時刻は翌日とする
                         if shift_start_time and slot_time < shift_start_time:
                             current_date += dt.timedelta(days=1)
 
@@ -608,19 +598,6 @@ def ingest_excel(
                             current_date,
                             slot_time,
                         )
-                        
-                        # 動的重複チェック: 同一職員・同一時刻の重複を防ぐ
-                        staff_datetime_key = (staff, record_datetime)
-                        if staff_datetime_key in staff_datetime_set:
-                            log.warning(
-                                f"重複スロット検出: スタッフ '{staff}' が {record_datetime.strftime('%Y-%m-%d %H:%M')} に既に記録済み。"
-                                f"シフトコード '{code_val}' をスキップします。"
-                            )
-                            continue
-                        
-                        # 重複チェック用セットに追加
-                        staff_datetime_set.add(staff_datetime_key)
-                        
                         records.append(
                             {
                                 "ds": record_datetime,

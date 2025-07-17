@@ -288,7 +288,7 @@ def run_fairness(
     summary_df["dev_approval_rate"] = _dev(summary_df["approval_rate"], summary_df["approval_rate"].mean())
     summary_df["dev_consecutive"] = _dev(summary_df["consecutive_leave_freq"], summary_df["consecutive_leave_freq"].mean())
     summary_df["unfairness_score"] = (
-        summary_df[["dev_night_ratio", "dev_work_slots", "dev_consecutive"]].mean(axis=1)
+        summary_df[["dev_night_ratio", "dev_work_slots", "dev_approval_rate", "dev_consecutive"]].mean(axis=1)
     )
     summary_df["unfairness_rank"] = summary_df["unfairness_score"].rank(method="min", ascending=False).astype(int)
     summary_df = summary_df.sort_values("unfairness_rank").reset_index(drop=True)

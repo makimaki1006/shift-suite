@@ -342,20 +342,12 @@ def shortage_and_brief(
         "--- shortage_time.xlsx / shortage_ratio.xlsx / shortage_freq.xlsx 計算デバッグ (全体) 終了 ---"
     )
 
-    # ===== 完全データドリブン方式: 実データ直接使用 =====
-    log.info(f"[DYNAMIC_NEED] 完全データドリブンな動的Need計算を開始します。")
-    log.info(f"[DYNAMIC_NEED] 各職種のヒートマップから実際のNeed値を直接使用します。")
-
     role_kpi_rows: List[Dict[str, Any]] = []
     monthly_role_rows: List[Dict[str, Any]] = []
     processed_role_names_list = []
 
     for fp_role_heatmap_item in out_dir_path.glob("heat_*.xlsx"):
         if fp_role_heatmap_item.name == "heat_ALL.xlsx":
-            continue
-        
-        # 🔧 修正: 雇用形態ファイル（heat_emp_*）を除外
-        if fp_role_heatmap_item.name.startswith("heat_emp_"):
             continue
 
         role_name_current = fp_role_heatmap_item.stem.replace("heat_", "")
@@ -439,68 +431,22 @@ def shortage_and_brief(
             d in estimated_holidays_set if d else False for d in parsed_role_dates
         ]
 
-        # ===== 職種別詳細Need値を使用 =====
-        try:
-            # ★★★ 修正：職種別詳細Need値ファイルを使用 ★★★
-            role_safe_name = role_name_current.replace("/", "_").replace("\\", "_").replace(":", "_")
-            role_need_per_date_slot_file = out_dir_path / f"need_per_date_slot_role_{role_safe_name}.parquet"
-            
-            if role_need_per_date_slot_file.exists():
-                log.info(f"[ROLE_NEED] {role_name_current}: 職種別詳細Need値ファイルを使用します。")
-                
-                # 職種別の詳細Need値を読み込み
-                need_df_role = pd.read_parquet(role_need_per_date_slot_file)
-                
-                # 時間軸のインデックスを合わせる
-                need_df_role = need_df_role.reindex(index=time_labels, fill_value=0)
-                
-                # Need値検証ログ
-                total_role_need = need_df_role.sum().sum()
-                log.info(f"[ROLE_NEED] {role_name_current}: 職種別詳細Need総計={total_role_need:.1f}")
-                
-            else:
-                # フォールバック：従来のヒートマップデータ使用
-                log.warning(f"[ROLE_NEED] {role_name_current}: 詳細Need値ファイルが見つかりません。ヒートマップデータを使用します。")
-                
-                # 日付列を特定
-                date_columns_in_role_heat = [
-                    str(col) for col in role_heat_current_df.columns 
-                    if col not in SUMMARY5 and _parse_as_date(str(col)) is not None
-                ]
-                
-                if date_columns_in_role_heat:
-                    # ヒートマップの実績データをNeed値として使用（従来方式）
-                    log.info(f"[FALLBACK] {role_name_current}: {len(date_columns_in_role_heat)}個の日付列を発見")
-                    need_df_role = role_heat_current_df[date_columns_in_role_heat].copy()
-                    
-                    # 時間軸のインデックスを合わせる
-                    need_df_role = need_df_role.reindex(index=time_labels, fill_value=0)
-                    
-                    # 実データ検証ログ
-                    total_actual_need = need_df_role.sum().sum()
-                    log.info(f"[FALLBACK] {role_name_current}: 実データから取得した総Need={total_actual_need:.1f}")
-                    
-                else:
-                    log.warning(f"[FALLBACK] {role_name_current}: 日付列が見つからないため、エラー")
-                    raise ValueError("日付列が見つかりません")
-                
-        except Exception as e:
-            log.warning(f"[DYNAMIC_NEED] {role_name_current}: 実データ使用に失敗、フォールバック: {e}")
-            # フォールバック: 従来の平均Need値を使用
-            need_df_role = pd.DataFrame(
-                np.repeat(
-                    role_need_per_time_series_orig_for_role.values[:, np.newaxis],
-                    len(role_staff_actual_data_df.columns),
-                    axis=1,
-                ),
-                index=role_need_per_time_series_orig_for_role.index,
-                columns=role_staff_actual_data_df.columns,
-            )
-            log.info(f"[DYNAMIC_NEED] {role_name_current}: フォールバック処理が完了")
-        
-        if 'need_df_role' not in locals():
-            # 最終的なフォールバック
-            log.warning(f"[DYNAMIC_NEED] {role_name_current}: need_df_roleが設定されていません - 緊急フォールバック実行")
+        # need_df_role の構築ロジックを修正
+        # need_per_date_slot_df があれば、それに基づいて need_df_role を再構築する
+        if not need_per_date_slot_df.empty:
+            log.info(f"[shortage] {role_name_current}: need_per_date_slot.parquet を使用してNeedを再構築します。")
+            # 該当職種のヒートマップに存在する日付列を基準にする
+            need_df_role = pd.DataFrame(index=time_labels, columns=role_staff_actual_data_df.columns, dtype=float).fillna(0)
+
+            # この職種が必要とされる時間帯インデックスを取得 (平均パターンから)
+            time_indices_for_role = role_need_per_time_series_orig_for_role[
+                role_need_per_time_series_orig_for_role > 0
+            ].index
+
+            for date_col in need_df_role.columns:
+                if date_col in need_per_date_slot_df.columns:
+                    # 特定の日付の、特定の時間帯のNeed値をコピーする
+                    need_df_role.loc[time_indices_for_role, date_col] = need_per_date_slot_df.loc[time_indices_for_role, date_col]
         else:
             # フォールバック: 従来の平均Needに基づく計算方法
             log.info(f"[shortage] {role_name_current}: 従来の平均Needデータを使用します。")
@@ -688,18 +634,8 @@ def shortage_and_brief(
             drop=True
         )
 
-    # 🔧 修正: 職種データのみを保存（雇用形態データの混入を防ぐ）
     fp_shortage_role = out_dir_path / "shortage_role_summary.parquet"
-    if not role_summary_df.empty:
-        # 職種のみをフィルタ（emp_で始まる雇用形態データを除外）
-        clean_role_df = role_summary_df[~role_summary_df['role'].str.startswith('emp_', na=False)].copy()
-        clean_role_df.to_parquet(fp_shortage_role, index=False)
-        log.info(f"[SHORTAGE_FIX] 職種別データのみ保存: {len(clean_role_df)}件 (除外: {len(role_summary_df) - len(clean_role_df)}件)")
-        
-        # 🔧 重要: 以降の処理でもclean_role_dfを使用（metaファイル生成含む）
-        role_summary_df = clean_role_df
-    else:
-        role_summary_df.to_parquet(fp_shortage_role, index=False)
+    role_summary_df.to_parquet(fp_shortage_role, index=False)
     if not monthly_role_df.empty:
         monthly_role_df.to_parquet(
             out_dir_path / "shortage_role_monthly.parquet",
@@ -761,35 +697,12 @@ def shortage_and_brief(
             )
             continue
 
-        # ★★★ 修正：雇用形態別詳細Need値を使用 ★★★
-        emp_safe_name = emp_name_current.replace("/", "_").replace("\\", "_").replace(":", "_")
-        emp_need_per_date_slot_file = out_dir_path / f"need_per_date_slot_emp_{emp_safe_name}.parquet"
-        
-        if emp_need_per_date_slot_file.exists():
-            log.info(f"[EMP_NEED] {emp_name_current}: 雇用形態別詳細Need値ファイルを使用します。")
-            
-            # 雇用形態別の詳細Need値を読み込み
-            emp_need_df = pd.read_parquet(emp_need_per_date_slot_file)
-            
-            # 時間軸のインデックスを合わせる
-            emp_need_df = emp_need_df.reindex(index=time_labels, fill_value=0)
-            
-            # Need値検証ログ
-            total_emp_need = emp_need_df.sum().sum()
-            log.info(f"[EMP_NEED] {emp_name_current}: 雇用形態別詳細Need総計={total_emp_need:.1f}")
-            
-            # 時間帯別平均Need値を算出（既存の処理との互換性のため）
-            emp_need_series = emp_need_df.mean(axis=1).fillna(0).clip(lower=0)
-            
-        else:
-            # フォールバック：従来のヒートマップデータ使用
-            log.warning(f"[EMP_NEED] {emp_name_current}: 詳細Need値ファイルが見つかりません。ヒートマップデータを使用します。")
-            emp_need_series = (
-                emp_heat_current_df["need"]
-                .reindex(index=time_labels)
-                .fillna(0)
-                .clip(lower=0)
-            )
+        emp_need_series = (
+            emp_heat_current_df["need"]
+            .reindex(index=time_labels)
+            .fillna(0)
+            .clip(lower=0)
+        )
         emp_date_columns = [
             str(c)
             for c in emp_heat_current_df.columns
@@ -998,17 +911,8 @@ def shortage_and_brief(
     # ── text summary output ────────────────────────────────────────────────
     summary_fp = out_dir_path / "shortage_summary.txt"
     try:
-        # 🔧 修正: 職種のみを対象とした合計計算（雇用形態の重複を除外）
-        role_only_df = role_summary_df[~role_summary_df['role'].str.startswith('emp_', na=False)] if not role_summary_df.empty else pd.DataFrame()
-        
-        if not role_only_df.empty:
-            total_lack_h = int(round(role_only_df.get("lack_h", pd.Series()).sum()))
-            total_excess_h = int(round(role_only_df.get("excess_h", pd.Series()).sum()))
-        else:
-            total_lack_h = 0
-            total_excess_h = 0
-            
-        log.info(f"[SHORTAGE_FIX] 職種のみでの合計計算: 不足={total_lack_h}h, 過剰={total_excess_h}h")
+        total_lack_h = int(round(role_summary_df.get("lack_h", pd.Series()).sum()))
+        total_excess_h = int(round(role_summary_df.get("excess_h", pd.Series()).sum()))
         summary_lines = [
             f"total_lack_hours: {total_lack_h}",
             f"total_excess_hours: {total_excess_h}",

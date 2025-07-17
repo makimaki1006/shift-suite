@@ -1,14 +1,3 @@
-﻿# ===============================================================================
-# Shift-Suite Requirements
-# ===============================================================================
-# 
-# 機能切り分け:
-# - 基本機能: 下記の core, visual/web, ML（基本）のみで動作
-# - 高度機能: Advanced Forecasting & Seasonal Analysis の追加ライブラリが必要
-#   高度機能を有効にするには dash_app.py の ENABLE_ADVANCED_FEATURES = True に設定
-#
-# ===============================================================================
-
 # ───── core ─────
 pandas==2.2.*
 numpy==1.26.*
@@ -34,12 +23,6 @@ gymnasium>=0.29
 torch  # ← 修正
 statsmodels>=0.14  # ← 追記
 pillow>=10.0      # ← 念のため追記を推奨
-
-# ───── Advanced Forecasting & Seasonal Analysis ─────
-tensorflow>=2.15.0  # for LSTM models in advanced forecasting and fatigue prediction
-scipy>=1.12.0       # for spectral analysis and signal processing
-pmdarima>=2.0.4     # for auto SARIMA parameter selection
-xgboost>=2.0.3      # for ensemble models in turnover prediction
 
 # ─── misc / utils ───
 python-pptx>=0.6
