@@ -189,6 +189,8 @@ def safe_callback(func):
 
 def data_get(key: str, default=None):
     """Load a data asset lazily from the current scenario directory."""
+    global CURRENT_SCENARIO_DIR
+    
     log.debug(f"data_get('{key}'): キャッシュを検索中...")
     if key in DATA_CACHE:
         log.debug(f"data_get('{key}'): キャッシュで発見。")
@@ -209,7 +211,6 @@ def data_get(key: str, default=None):
         for fallback_path in fallback_paths:
             if fallback_path.exists():
                 log.info(f"フォールバック: {fallback_path}を使用します")
-                global CURRENT_SCENARIO_DIR
                 CURRENT_SCENARIO_DIR = fallback_path
                 break
         else:
