@@ -1143,6 +1143,19 @@ def create_ppt_report_tab() -> html.Div:
     ])
 
 
+def create_correlation_matrix_tab() -> html.Div:
+    """相関マトリックスタブを作成"""
+    return html.Div([
+        html.H3("職員間相関マトリックス", style={'marginBottom': '20px'}),
+        html.P("全職員間の共働頻度に基づく相関関係を可視化します。"),
+        dcc.Loading(
+            id="loading-correlation-matrix",
+            type="circle",
+            children=html.Div(id='correlation-matrix-content')
+        )
+    ])
+
+
 def create_individual_analysis_tab() -> html.Div:
     """職員個別分析タブを作成"""
     long_df = data_get('long_df', pd.DataFrame())
@@ -1154,6 +1167,21 @@ def create_individual_analysis_tab() -> html.Div:
 
     return html.Div([
         html.H3("職員個別分析", style={'marginBottom': '20px'}),
+        html.Div([
+            html.Label("分析タイプ:", style={'marginRight': '10px'}),
+            dcc.RadioItems(
+                id='individual-analysis-type',
+                options=[
+                    {'label': '基本分析', 'value': 'basic'},
+                    {'label': '同職種限定分析', 'value': 'same_role'},
+                    {'label': '全職種詳細分析', 'value': 'all_roles'},
+                    {'label': '相関マトリックス', 'value': 'correlation'}
+                ],
+                value='basic',
+                inline=True,
+                style={'marginBottom': '20px'}
+            )
+        ]),
         html.P("分析したい職員を以下から選択してください。"),
         dcc.Dropdown(
             id='individual-staff-dropdown',
@@ -1532,6 +1560,7 @@ def update_main_content(selected_scenario, data_status):
         dcc.Tab(label='サマリーレポート', value='summary_report'),
         dcc.Tab(label='PPTレポート', value='ppt_report'),
         dcc.Tab(label='職員個別分析', value='individual_analysis'),
+        dcc.Tab(label='相関マトリックス', value='correlation_matrix'),
         dcc.Tab(label='チーム分析', value='team_analysis'),
         dcc.Tab(label='作成ブループリント', value='blueprint_analysis'),
         dcc.Tab(label='ロジック解明', value='logic_analysis'),
@@ -1583,6 +1612,8 @@ def update_tab_content(active_tab, selected_scenario, data_status):
         return create_ppt_report_tab()  # type: ignore
     elif active_tab == 'individual_analysis':
         return create_individual_analysis_tab()
+    elif active_tab == 'correlation_matrix':
+        return create_correlation_matrix_tab()
     elif active_tab == 'team_analysis':
         return create_team_analysis_tab()
     elif active_tab == 'blueprint_analysis':
@@ -2182,13 +2213,23 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
 
 @app.callback(
     Output('individual-analysis-content', 'children'),
-    Input('individual-staff-dropdown', 'value')
+    [Input('individual-staff-dropdown', 'value'),
+     Input('individual-analysis-type', 'value')]
 )
-def update_individual_analysis_content(selected_staff):
+def update_individual_analysis_content(selected_staff, analysis_type):
     """職員選択に応じて分析コンテンツを更新する"""
     if not selected_staff:
         raise PreventUpdate
-
+    
+    # 分析タイプに応じて処理を分岐
+    if analysis_type == 'correlation':
+        return create_staff_correlation_content(selected_staff)
+    elif analysis_type == 'same_role':
+        return create_same_role_analysis_content(selected_staff)
+    elif analysis_type == 'all_roles':
+        return create_all_roles_analysis_content(selected_staff)
+    
+    # 基本分析（デフォルト）
     # 必要なデータを一括で読み込む
     long_df = data_get('long_df', pd.DataFrame())
     fatigue_df = data_get('fatigue_score', pd.DataFrame())
@@ -2874,6 +2915,311 @@ def update_progress_bar(n_intervals, progress_data):
 
     return figure, messages.get(stage, '処理中...')
 
+
+# --- 追加分析関数 ---
+def create_staff_correlation_content(selected_staff):
+    """職員個別分析の相関マトリックスコンテンツを作成"""
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.P("データが見つかりません。")
+    
+    # 選択された職員と他の職員の共働マトリックスを作成
+    staff_list = sorted(long_df['staff'].unique())
+    pivot_df = long_df.pivot_table(
+        index='ds', 
+        columns='staff', 
+        values='parsed_slots_count', 
+        fill_value=0
+    )
+    
+    # 相関マトリックスを計算
+    correlation_matrix = pivot_df.corr()
+    
+    # 選択された職員の相関をハイライト
+    if selected_staff in correlation_matrix.columns:
+        staff_correlations = correlation_matrix[selected_staff].sort_values(ascending=False)
+        staff_correlations = staff_correlations[staff_correlations.index != selected_staff]  # 自分を除外
+        
+        # 相関マトリックスのヒートマップ
+        fig_heatmap = px.imshow(
+            correlation_matrix.values,
+            labels=dict(x="職員", y="職員", color="相関係数"),
+            x=correlation_matrix.columns,
+            y=correlation_matrix.index,
+            color_continuous_scale='RdBu_r',
+            aspect="auto",
+            title=f"{selected_staff}さんと他の職員の相関マトリックス"
+        )
+        fig_heatmap.update_layout(
+            width=800, 
+            height=600,
+            xaxis={'side': 'bottom'},
+            yaxis={'autorange': 'reversed'}
+        )
+        
+        # トップ相関の棒グラフ
+        top_correlations = staff_correlations.head(10)
+        fig_bar = px.bar(
+            x=top_correlations.values,
+            y=top_correlations.index,
+            orientation='h',
+            title=f"{selected_staff}さんとの相関係数 Top 10",
+            labels={'x': '相関係数', 'y': '職員'}
+        )
+        fig_bar.update_layout(height=400)
+        
+        return html.Div([
+            html.H4(f"{selected_staff}さんの相関分析"),
+            html.P("共働パターンに基づく職員間の相関関係を表示します。"),
+            dcc.Graph(figure=fig_heatmap),
+            dcc.Graph(figure=fig_bar)
+        ])
+    else:
+        return html.P(f"{selected_staff}さんのデータが見つかりません。")
+
+
+def create_same_role_analysis_content(selected_staff):
+    """同職種限定分析コンテンツを作成"""
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.P("データが見つかりません。")
+    
+    staff_df = long_df[long_df['staff'] == selected_staff]
+    if staff_df.empty:
+        return html.P(f"{selected_staff}さんのデータが見つかりません。")
+    
+    # 職員の主要な職種を取得
+    staff_roles = staff_df['role'].value_counts()
+    if staff_roles.empty:
+        return html.P(f"{selected_staff}さんの職種情報が見つかりません。")
+    
+    primary_role = staff_roles.index[0]
+    same_role_df = long_df[long_df['role'] == primary_role]
+    
+    # 同職種の職員リスト
+    same_role_staff = sorted(same_role_df['staff'].unique())
+    
+    # 勤務パターン比較
+    comparison_data = []
+    for staff in same_role_staff[:10]:  # 上位10人まで
+        staff_work = same_role_df[same_role_df['staff'] == staff]
+        if not staff_work.empty and 'code' in staff_work.columns:
+            work_hours = staff_work['parsed_slots_count'].sum() * 0.5
+            night_work = staff_work[staff_work['code'].str.contains('夜', na=False)]['parsed_slots_count'].sum() * 0.5 if any(staff_work['code'].str.contains('夜', na=False)) else 0
+            comparison_data.append({
+                '職員': staff,
+                '総勤務時間': work_hours,
+                '夜勤時間': night_work,
+                '夜勤率': night_work / work_hours if work_hours > 0 else 0
+            })
+    
+    if comparison_data:
+        comparison_df = pd.DataFrame(comparison_data)
+        fig_comparison = px.bar(
+            comparison_df,
+            x='職員',
+            y='総勤務時間',
+            title=f"{primary_role}職の勤務時間比較",
+            color='夜勤率',
+            color_continuous_scale='viridis'
+        )
+        
+        return html.Div([
+            html.H4(f"{selected_staff}さんの同職種分析（{primary_role}）"),
+            html.P(f"{selected_staff}さんと同じ{primary_role}職の他の職員との比較分析です。"),
+            dcc.Graph(figure=fig_comparison),
+            html.Div([
+                html.H5("同職種職員一覧"),
+                dash_table.DataTable(
+                    data=comparison_df.to_dict('records'),
+                    columns=[{'name': i, 'id': i} for i in comparison_df.columns],
+                    style_cell={'textAlign': 'left'},
+                    style_data_conditional=[
+                        {
+                            'if': {'filter_query': f'{{職員}} = {selected_staff}'},
+                            'backgroundColor': '#3D9970',
+                            'color': 'white',
+                        }
+                    ]
+                )
+            ])
+        ])
+    else:
+        return html.P(f"{primary_role}職のデータが不十分です。")
+
+
+def create_all_roles_analysis_content(selected_staff):
+    """全職種詳細分析コンテンツを作成"""
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.P("データが見つかりません。")
+    
+    staff_df = long_df[long_df['staff'] == selected_staff]
+    if staff_df.empty:
+        return html.P(f"{selected_staff}さんのデータが見つかりません。")
+    
+    # 職種別勤務分析
+    role_analysis = staff_df.groupby('role').agg({
+        'parsed_slots_count': 'sum',
+        'ds': 'count'
+    }).reset_index()
+    role_analysis.columns = ['職種', '総スロット数', '勤務日数']
+    role_analysis['総勤務時間'] = role_analysis['総スロット数'] * 0.5
+    
+    if not role_analysis.empty:
+        # 職種別勤務時間の円グラフ
+        fig_pie = px.pie(
+            role_analysis,
+            values='総勤務時間',
+            names='職種',
+            title=f"{selected_staff}さんの職種別勤務時間割合"
+        )
+        
+        # 時系列分析（日別勤務時間）
+        daily_work = staff_df.groupby(staff_df['ds'].dt.date)['parsed_slots_count'].sum() * 0.5
+        fig_timeline = px.line(
+            x=daily_work.index,
+            y=daily_work.values,
+            title=f"{selected_staff}さんの日別勤務時間推移",
+            labels={'x': '日付', 'y': '勤務時間(時間)'}
+        )
+        
+        # 曜日別分析
+        staff_df['dow'] = staff_df['ds'].dt.day_name()
+        dow_analysis = staff_df.groupby('dow')['parsed_slots_count'].sum() * 0.5
+        fig_dow = px.bar(
+            x=dow_analysis.index,
+            y=dow_analysis.values,
+            title=f"{selected_staff}さんの曜日別勤務時間",
+            labels={'x': '曜日', 'y': '勤務時間(時間)'}
+        )
+        
+        return html.Div([
+            html.H4(f"{selected_staff}さんの全職種詳細分析"),
+            html.P("全職種にわたる詳細な勤務パターン分析です。"),
+            
+            html.Div([
+                html.Div([
+                    dcc.Graph(figure=fig_pie)
+                ], style={'width': '50%', 'display': 'inline-block'}),
+                html.Div([
+                    dash_table.DataTable(
+                        data=role_analysis.to_dict('records'),
+                        columns=[{'name': i, 'id': i} for i in role_analysis.columns],
+                        style_cell={'textAlign': 'left'}
+                    )
+                ], style={'width': '50%', 'display': 'inline-block', 'verticalAlign': 'top', 'paddingLeft': '20px'})
+            ]),
+            
+            dcc.Graph(figure=fig_timeline),
+            dcc.Graph(figure=fig_dow)
+        ])
+    else:
+        return html.P(f"{selected_staff}さんの詳細データが不十分です。")
+
+
+# 相関マトリックスタブ用のコールバックを追加
+@app.callback(
+    Output('correlation-matrix-content', 'children'),
+    Input('tab-content', 'children'),
+    prevent_initial_call=True
+)
+def update_correlation_matrix_content(tab_content):
+    """相関マトリックスコンテンツを更新"""
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        return html.P("データが見つかりません。")
+    
+    # 全職員の相関マトリックスを作成
+    staff_list = sorted(long_df['staff'].unique())
+    if len(staff_list) < 2:
+        return html.P("相関分析には少なくとも2人以上の職員が必要です。")
+    
+    # 職員別の勤務パターンマトリックスを作成
+    pivot_df = long_df.pivot_table(
+        index='ds', 
+        columns='staff', 
+        values='parsed_slots_count', 
+        fill_value=0
+    )
+    
+    # 相関マトリックスを計算
+    correlation_matrix = pivot_df.corr()
+    
+    # ヒートマップで表示
+    fig_heatmap = px.imshow(
+        correlation_matrix.values,
+        labels=dict(x="職員", y="職員", color="相関係数"),
+        x=correlation_matrix.columns,
+        y=correlation_matrix.index,
+        color_continuous_scale='RdBu_r',
+        aspect="auto",
+        title="全職員間の勤務パターン相関マトリックス",
+        zmin=-1,
+        zmax=1
+    )
+    
+    # サイズを職員数に応じて調整
+    matrix_size = len(staff_list)
+    fig_height = max(600, matrix_size * 25)
+    fig_width = max(800, matrix_size * 25)
+    
+    fig_heatmap.update_layout(
+        width=fig_width,
+        height=fig_height,
+        xaxis={'side': 'bottom'},
+        yaxis={'autorange': 'reversed'},
+        font={'size': max(8, 14 - matrix_size // 10)}
+    )
+    
+    # 高相関ペアのリストを作成
+    high_corr_pairs = []
+    for i in range(len(correlation_matrix.columns)):
+        for j in range(i+1, len(correlation_matrix.columns)):
+            staff1 = correlation_matrix.columns[i]
+            staff2 = correlation_matrix.columns[j]
+            corr_value = correlation_matrix.iloc[i, j]
+            if not pd.isna(corr_value) and abs(corr_value) > 0.3:  # 闾値を設定
+                high_corr_pairs.append({
+                    '職員1': staff1,
+                    '職員2': staff2,
+                    '相関係数': round(corr_value, 3),
+                    '関係性': '正の相関' if corr_value > 0 else '負の相関'
+                })
+    
+    high_corr_df = pd.DataFrame(high_corr_pairs).sort_values('相関係数', key=abs, ascending=False)
+    
+    return html.Div([
+        html.Div([
+            html.H5("相関マトリックスの見方"),
+            html.Ul([
+                html.Li("赤い色：正の相関（似たような勤務パターン）"),
+                html.Li("青い色：負の相関（異なる勤務パターン）"),
+                html.Li("白色：相関なし（独立した勤務パターン）")
+            ])
+        ], style={'backgroundColor': '#f0f0f0', 'padding': '10px', 'marginBottom': '20px', 'borderRadius': '5px'}),
+        
+        dcc.Graph(figure=fig_heatmap),
+        
+        html.Div([
+            html.H5("高相関ペア一覧（|相関係数| > 0.3）"),
+            dash_table.DataTable(
+                data=high_corr_df.head(20).to_dict('records') if not high_corr_df.empty else [],
+                columns=[{'name': i, 'id': i} for i in high_corr_df.columns] if not high_corr_df.empty else [],
+                style_cell={'textAlign': 'left'},
+                style_data_conditional=[
+                    {
+                        'if': {'filter_query': '{相関係数} > 0.5'},
+                        'backgroundColor': '#ffcccc',
+                    },
+                    {
+                        'if': {'filter_query': '{相関係数} < -0.5'},
+                        'backgroundColor': '#ccccff',
+                    }
+                ]
+            ) if not high_corr_df.empty else html.P("高相関ペアが見つかりませんでした。")
+        ], style={'marginTop': '20px'})
+    ])
 
 
 # --- アプリケーション起動 ---
