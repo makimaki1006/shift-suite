@@ -1574,8 +1574,8 @@ def update_main_content(selected_scenario, data_status):
         dcc.Tab(label='需要予測', value='forecast'),
         dcc.Tab(label='公平性', value='fairness'),
         dcc.Tab(label='基準乖離分析', value='gap'),
-        dcc.Tab(label='サマリーレポート', value='summary_report'),
-        dcc.Tab(label='PPTレポート', value='ppt_report'),
+        # dcc.Tab(label='サマリーレポート', value='summary_report'),  # 非表示
+        # dcc.Tab(label='PPTレポート', value='ppt_report'),  # 非表示
         dcc.Tab(label='職員個別分析', value='individual_analysis'),
         dcc.Tab(label='相関マトリックス', value='correlation_matrix'),
         dcc.Tab(label='チーム分析', value='team_analysis'),
