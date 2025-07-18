@@ -198,7 +198,23 @@ def data_get(key: str, default=None):
 
     if CURRENT_SCENARIO_DIR is None:
         log.warning("CURRENT_SCENARIO_DIRが未設定のため、データ取得をスキップします。")
-        return default
+        # プロダクション環境用のフォールバック
+        fallback_paths = [
+            Path("./analysis_results"),
+            Path("./temp_analysis_results"),
+            Path("./analysis_results_20/out_mean_based"),
+            Path("./analysis_results_20/out_median_based"),
+            Path("./analysis_results_20/out_p25_based")
+        ]
+        for fallback_path in fallback_paths:
+            if fallback_path.exists():
+                log.info(f"フォールバック: {fallback_path}を使用します")
+                global CURRENT_SCENARIO_DIR
+                CURRENT_SCENARIO_DIR = fallback_path
+                break
+        else:
+            log.error("有効なシナリオディレクトリが見つかりません")
+            return default
 
     search_dirs = [CURRENT_SCENARIO_DIR, CURRENT_SCENARIO_DIR.parent]
     log.debug(f"Searching {search_dirs} for key {key}")
@@ -1789,11 +1805,21 @@ def update_shortage_ratio_heatmap(scope, detail_values):
     elif scope == 'employment' and detail_values and detail_values[0] != 'ALL':
         key_suffix = f"emp_{safe_filename(detail_values[0])}"
 
-    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_all"
+    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_ALL"
     df_heat = data_get(heat_key, pd.DataFrame())
 
     if df_heat.empty:
-        return html.Div("選択された条件のヒートマップデータが見つかりません。")  # type: ignore
+        error_msg = f"選択された条件のヒートマップデータが見つかりません。\n"
+        error_msg += f"探索キー: {heat_key}\n"
+        if CURRENT_SCENARIO_DIR:
+            error_msg += f"シナリオディレクトリ: {CURRENT_SCENARIO_DIR}\n"
+            # 利用可能なheatファイルを表示
+            heat_files = list(CURRENT_SCENARIO_DIR.glob("heat_*.parquet"))
+            if heat_files:
+                error_msg += f"利用可能なヒートマップファイル: {[f.name for f in heat_files]}"
+            else:
+                error_msg += "ヒートマップファイルが全く見つかりません。分析が実行されていない可能性があります。"
+        return html.Div(dcc.Markdown(error_msg.replace('\n', '  \n')))  # type: ignore
 
     date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
     staff_df = df_heat[date_cols]
@@ -1917,11 +1943,21 @@ def update_optimization_content(scope, detail_values):
     elif scope == 'employment' and detail_values and detail_values[0] != 'ALL':
         key_suffix = f"emp_{safe_filename(detail_values[0])}"
 
-    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_all"
+    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_ALL"
     df_heat = data_get(heat_key, pd.DataFrame())
 
     if df_heat.empty:
-        return html.Div("選択された条件の最適化分析データが見つかりません。")
+        error_msg = f"選択された条件の最適化分析データが見つかりません。\n"
+        error_msg += f"探索キー: {heat_key}\n"
+        if CURRENT_SCENARIO_DIR:
+            error_msg += f"シナリオディレクトリ: {CURRENT_SCENARIO_DIR}\n"
+            # 利用可能なheatファイルを表示
+            heat_files = list(CURRENT_SCENARIO_DIR.glob("heat_*.parquet"))
+            if heat_files:
+                error_msg += f"利用可能なヒートマップファイル: {[f.name for f in heat_files]}"
+            else:
+                error_msg += "ヒートマップファイルが全く見つかりません。分析が実行されていない可能性があります。"
+        return html.Div(dcc.Markdown(error_msg.replace('\n', '  \n')))
 
     date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
     staff_df = df_heat[date_cols]
