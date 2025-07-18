@@ -51,7 +51,7 @@ SHEET_COL_ALIAS = {
     "雇用区分": "employment",
     "employment": "employment",
 }
-DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日", "明"}
+DOW_TOKENS = {"月", "火", "水", "木", "金", "土", "日"}
 
 # 新規追加: 休暇コードの明示的定義
 LEAVE_CODES = {
