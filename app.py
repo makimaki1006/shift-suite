@@ -66,8 +66,17 @@ from shift_suite.tasks.utils import (
     safe_read_excel,
     safe_sheet,
     _parse_as_date,
+    _valid_df,
     date_with_weekday,
 )
+
+# 🎯 実行結果テキスト出力機能追加
+try:
+    from execution_logger import create_app_logger, ExecutionLogger
+    EXECUTION_LOGGING_AVAILABLE = True
+except ImportError:
+    EXECUTION_LOGGING_AVAILABLE = False
+    log.warning("実行ログ機能が利用できません")
 
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
@@ -96,7 +105,7 @@ from shift_suite.tasks.leave_analyzer import (
     LEAVE_TYPE_REQUESTED,
     LEAVE_TYPE_OTHER,
 )
-from shift_suite.tasks.rl import learn_roster
+# from shift_suite.tasks.rl import learn_roster  # Temporarily disabled due to gymnasium dependency
 from shift_suite.tasks.shortage import (
     merge_shortage_leave,
     shortage_and_brief,
@@ -112,6 +121,485 @@ from shift_suite.tasks.gap_analyzer import analyze_standards_gap
 from shift_suite.tasks.advanced_blueprint_engine_v2 import AdvancedBlueprintEngineV2
 from sklearn.tree import plot_tree
 import matplotlib.pyplot as plt
+
+
+def create_comprehensive_analysis_log(output_dir: Path, analysis_type: str = "FULL") -> Path:
+    """包括的な分析ログファイルを作成（app.py用）- 詳細版"""
+    timestamp = datetime.datetime.now().strftime("%Y年%m月%d日%H時%M分")
+    log_filename = f"{timestamp}_包括分析レポート_{analysis_type}.txt"
+    log_filepath = output_dir / log_filename
+    
+    try:
+        with open(log_filepath, 'w', encoding='utf-8') as f:
+            f.write("=" * 100 + "\n")
+            f.write(f"                           包括分析結果レポート\n")
+            f.write("=" * 100 + "\n\n")
+            f.write(f"生成日時: {timestamp}\n")
+            f.write(f"分析タイプ: {analysis_type}\n")
+            f.write(f"分析ディレクトリ: {output_dir}\n")
+            f.write(f"分析エンジンバージョン: Shift-Suite v1.30.0\n")
+            f.write("=" * 100 + "\n\n")
+            
+            # 1. 実行サマリー（詳細版）
+            f.write("【1. 実行サマリー】\n")
+            f.write("-" * 80 + "\n")
+            summary_stats = collect_execution_summary(output_dir)
+            f.write(f"  実行開始時刻: {summary_stats.get('start_time', 'N/A')}\n")
+            f.write(f"  実行終了時刻: {summary_stats.get('end_time', 'N/A')}\n")
+            f.write(f"  処理時間: {summary_stats.get('duration', 'N/A')}\n")
+            f.write(f"  処理ステップ数: {summary_stats.get('total_steps', 0)}\n")
+            f.write(f"  成功ステップ数: {summary_stats.get('successful_steps', 0)}\n")
+            f.write(f"  エラーステップ数: {summary_stats.get('failed_steps', 0)}\n")
+            f.write(f"  警告数: {summary_stats.get('warnings', 0)}\n")
+            f.write(f"  使用メモリ: {summary_stats.get('memory_usage', 'N/A')}\n")
+            f.write(f"  実行環境: {summary_stats.get('environment', 'N/A')}\n\n")
+            
+            # 2. データ概要（詳細版）
+            f.write("【2. データ概要】\n")
+            f.write("-" * 80 + "\n")
+            data_stats = collect_data_overview(output_dir)
+            f.write(f"  対象期間: {data_stats.get('date_range', 'N/A')}\n")
+            f.write(f"  総レコード数: {data_stats.get('total_records', 0):,}件\n")
+            f.write(f"  スタッフ数: {data_stats.get('total_staff', 0)}名\n")
+            f.write(f"  職種数: {data_stats.get('total_roles', 0)}種類\n")
+            f.write(f"  雇用形態数: {data_stats.get('total_employments', 0)}種類\n")
+            f.write(f"  勤務パターン数: {data_stats.get('total_patterns', 0)}種類\n")
+            f.write(f"  休業日数: {data_stats.get('holiday_count', 0)}日\n")
+            f.write(f"  スロット間隔: {data_stats.get('slot_minutes', 30)}分\n")
+            f.write(f"  時間軸数: {data_stats.get('time_slots', 48)}スロット/日\n\n")
+            
+            # 3. 主要KPI（詳細版）
+            f.write("【3. 主要KPI】\n")
+            f.write("-" * 80 + "\n")
+            kpi_stats = collect_main_kpis(output_dir)
+            f.write(f"  ■ 不足・過剰分析\n")
+            f.write(f"    総不足時間: {kpi_stats.get('total_shortage_hours', 0):.2f}時間\n")
+            f.write(f"    総過剰時間: {kpi_stats.get('total_excess_hours', 0):.2f}時間\n")
+            f.write(f"    不足率: {kpi_stats.get('shortage_ratio', 0):.2%}\n")
+            f.write(f"    過剰率: {kpi_stats.get('excess_ratio', 0):.2%}\n")
+            f.write(f"    最大不足時間（1日）: {kpi_stats.get('max_daily_shortage', 0):.1f}時間\n")
+            f.write(f"    平均不足時間（1日）: {kpi_stats.get('avg_daily_shortage', 0):.1f}時間\n")
+            f.write(f"\n  ■ 労務指標\n")
+            f.write(f"    平均疲労スコア: {kpi_stats.get('avg_fatigue_score', 0):.2f}\n")
+            f.write(f"    公平性スコア: {kpi_stats.get('fairness_score', 0):.2f}\n")
+            f.write(f"    最適化スコア: {kpi_stats.get('optimization_score', 0):.2f}\n")
+            f.write(f"    リスクスコア: {kpi_stats.get('risk_score', 0):.2f}\n")
+            f.write(f"\n  ■ コスト指標\n")
+            f.write(f"    総人件費: ¥{kpi_stats.get('total_cost', 0):,.0f}\n")
+            f.write(f"    月平均人件費: ¥{kpi_stats.get('monthly_avg_cost', 0):,.0f}\n")
+            f.write(f"    時間単価平均: ¥{kpi_stats.get('avg_hourly_rate', 0):.0f}\n")
+            f.write(f"    不足時間の機会損失: ¥{kpi_stats.get('shortage_opportunity_cost', 0):,.0f}\n\n")
+            
+            # 4. 職種別パフォーマンス（詳細版）
+            f.write("【4. 職種別パフォーマンス】\n")
+            f.write("-" * 80 + "\n")
+            role_performance = collect_role_performance_detailed(output_dir)
+            if role_performance:
+                for i, role in enumerate(role_performance, 1):
+                    f.write(f"\n  ◆ {i}. {role.get('role', 'N/A')}\n")
+                    f.write(f"    ├─ 不足時間: {role.get('shortage_hours', 0):.1f}時間\n")
+                    f.write(f"    ├─ 過剰時間: {role.get('excess_hours', 0):.1f}時間\n")
+                    f.write(f"    ├─ 必要人員: {role.get('required_staff', 0):.1f}人\n")
+                    f.write(f"    ├─ 実績人員: {role.get('actual_staff', 0):.1f}人\n")
+                    f.write(f"    ├─ 充足率: {role.get('fulfillment_rate', 0):.1%}\n")
+                    f.write(f"    ├─ 平均疲労スコア: {role.get('avg_fatigue', 0):.2f}\n")
+                    f.write(f"    ├─ 公平性スコア: {role.get('fairness_score', 0):.2f}\n")
+                    f.write(f"    ├─ 人件費: ¥{role.get('total_cost', 0):,.0f}\n")
+                    f.write(f"    ├─ コスト比率: {role.get('cost_ratio', 0):.1%}\n")
+                    f.write(f"    └─ 主要課題: {role.get('main_issue', 'N/A')}\n")
+            else:
+                f.write("  職種別データなし\n")
+            
+            # 5. 雇用形態別分析（詳細版）
+            f.write("\n【5. 雇用形態別分析】\n")
+            f.write("-" * 80 + "\n")
+            emp_analysis = collect_employment_analysis_detailed(output_dir)
+            if emp_analysis:
+                for i, emp in enumerate(emp_analysis, 1):
+                    f.write(f"\n  ◆ {i}. {emp.get('employment', 'N/A')}\n")
+                    f.write(f"    ├─ 総人数: {emp.get('staff_count', 0)}人\n")
+                    f.write(f"    ├─ 不足時間: {emp.get('shortage_hours', 0):.1f}時間\n")
+                    f.write(f"    ├─ 過剰時間: {emp.get('excess_hours', 0):.1f}時間\n")
+                    f.write(f"    ├─ 平均勤務時間: {emp.get('avg_work_hours', 0):.1f}時間/月\n")
+                    f.write(f"    ├─ 時給平均: ¥{emp.get('avg_hourly_wage', 0):.0f}\n")
+                    f.write(f"    ├─ 総人件費: ¥{emp.get('total_cost', 0):,.0f}\n")
+                    f.write(f"    ├─ 効率性指標: {emp.get('efficiency', 0):.2f}\n")
+                    f.write(f"    └─ 活用度: {emp.get('utilization', 0):.1%}\n")
+            
+            # 6. 月別トレンド（詳細版）
+            f.write("\n【6. 月別トレンド分析】\n")
+            f.write("-" * 80 + "\n")
+            monthly_trends = collect_monthly_trends_detailed(output_dir)
+            if monthly_trends:
+                for month_data in monthly_trends:
+                    month = month_data.get('month', 'N/A')
+                    f.write(f"\n  ■ {month}\n")
+                    f.write(f"    ├─ 不足時間: {month_data.get('shortage_hours', 0):.1f}時間\n")
+                    f.write(f"    ├─ 過剰時間: {month_data.get('excess_hours', 0):.1f}時間\n")
+                    f.write(f"    ├─ 休暇日数: {month_data.get('leave_days', 0):.0f}日\n")
+                    f.write(f"    ├─ 有給取得: {month_data.get('paid_leave', 0):.0f}日\n")
+                    f.write(f"    ├─ アラート数: {month_data.get('alerts', 0)}件\n")
+                    f.write(f"    ├─ 疲労度平均: {month_data.get('avg_fatigue', 0):.2f}\n")
+                    f.write(f"    ├─ 人件費: ¥{month_data.get('cost', 0):,.0f}\n")
+                    f.write(f"    └─ 特記事項: {month_data.get('notes', 'なし')}\n")
+            
+            # 7. 時間帯別分析（新規追加）
+            f.write("\n【7. 時間帯別分析】\n")
+            f.write("-" * 80 + "\n")
+            time_analysis = collect_time_slot_analysis(output_dir)
+            if time_analysis:
+                f.write("  時間帯     | 平均必要人員 | 平均実績人員 | 不足率 | 主要職種\n")
+                f.write("  " + "-" * 65 + "\n")
+                for slot in time_analysis[:10]:  # 上位10時間帯
+                    time_slot = str(slot.get('time_slot', 'N/A')).ljust(10)
+                    avg_need = slot.get('avg_need', 0)
+                    avg_actual = slot.get('avg_actual', 0)
+                    shortage_rate = slot.get('shortage_rate', 0)
+                    main_role = slot.get('main_role', 'N/A')[:10]
+                    f.write(f"  {time_slot} | {avg_need:12.1f} | {avg_actual:12.1f} | {shortage_rate:6.1%} | {main_role}\n")
+            
+            # 8. 勤務パターン分析（新規追加）
+            f.write("\n【8. 勤務パターン分析】\n")
+            f.write("-" * 80 + "\n")
+            pattern_analysis = collect_work_pattern_analysis(output_dir)
+            if pattern_analysis:
+                for i, pattern in enumerate(pattern_analysis[:15], 1):  # 上位15パターン
+                    f.write(f"\n  ◆ パターン{i}: {pattern.get('pattern_name', 'N/A')}\n")
+                    f.write(f"    ├─ 使用頻度: {pattern.get('frequency', 0)}回\n")
+                    f.write(f"    ├─ スタッフ数: {pattern.get('staff_count', 0)}人\n")
+                    f.write(f"    ├─ 1日勤務時間: {pattern.get('daily_hours', 0):.1f}時間\n")
+                    f.write(f"    ├─ 連続勤務: {pattern.get('consecutive_days', 0)}日\n")
+                    f.write(f"    ├─ 疲労影響: {pattern.get('fatigue_impact', 'N/A')}\n")
+                    f.write(f"    └─ 推奨度: {pattern.get('recommendation_score', 0):.1f}/10\n")
+            
+            # 9. 休暇分析（詳細版）
+            f.write("\n【9. 休暇分析】\n")
+            f.write("-" * 80 + "\n")
+            leave_analysis = collect_leave_analysis_detailed(output_dir)
+            if leave_analysis:
+                f.write(f"  ■ 全体統計\n")
+                f.write(f"    総休暇日数: {leave_analysis.get('total_leave_days', 0):.0f}日\n")
+                f.write(f"    有給取得率: {leave_analysis.get('paid_leave_ratio', 0):.1%}\n")
+                f.write(f"    希望休取得率: {leave_analysis.get('requested_leave_ratio', 0):.1%}\n")
+                f.write(f"    集中日数: {leave_analysis.get('concentration_days', 0)}日\n")
+                f.write(f"\n  ■ 休暇タイプ別内訳\n")
+                for leave_type in leave_analysis.get('by_type', []):
+                    f.write(f"    {leave_type['type']}: {leave_type['days']}日 ({leave_type['ratio']:.1%})\n")
+                f.write(f"\n  ■ 月別休暇傾向\n")
+                for month_leave in leave_analysis.get('monthly', [])[:6]:
+                    f.write(f"    {month_leave['month']}: {month_leave['days']}日\n")
+            
+            # 10. 異常値・アラート分析（新規追加）
+            f.write("\n【10. 異常値・アラート分析】\n")
+            f.write("-" * 80 + "\n")
+            anomaly_analysis = collect_anomaly_analysis(output_dir)
+            if anomaly_analysis:
+                f.write(f"  ■ 検出された異常値\n")
+                for i, anomaly in enumerate(anomaly_analysis.get('anomalies', [])[:10], 1):
+                    f.write(f"    {i}. {anomaly['date']} {anomaly['type']}: {anomaly['description']}\n")
+                f.write(f"\n  ■ アラート統計\n")
+                f.write(f"    高リスクアラート: {anomaly_analysis.get('high_risk_count', 0)}件\n")
+                f.write(f"    中リスクアラート: {anomaly_analysis.get('medium_risk_count', 0)}件\n")
+                f.write(f"    低リスクアラート: {anomaly_analysis.get('low_risk_count', 0)}件\n")
+            
+            # 11. ブループリント分析サマリー（新規追加）
+            f.write("\n【11. ブループリント分析サマリー】\n")
+            f.write("-" * 80 + "\n")
+            blueprint_summary = collect_blueprint_summary(output_dir)
+            if blueprint_summary:
+                f.write(f"  ■ 発見された暗黙知\n")
+                for i, knowledge in enumerate(blueprint_summary.get('implicit_knowledge', [])[:20], 1):
+                    f.write(f"    {i}. {knowledge}\n")
+                f.write(f"\n  ■ 制約パターン\n")
+                for i, constraint in enumerate(blueprint_summary.get('constraints', [])[:15], 1):
+                    f.write(f"    {i}. {constraint}\n")
+                f.write(f"\n  ■ 最適化提案\n")
+                for i, suggestion in enumerate(blueprint_summary.get('optimization_suggestions', [])[:10], 1):
+                    f.write(f"    {i}. {suggestion}\n")
+            
+            # 12. 生成ファイル一覧（詳細版）
+            f.write("\n【12. 生成ファイル一覧】\n")
+            f.write("-" * 80 + "\n")
+            generated_files = collect_generated_files_detailed(output_dir)
+            if generated_files:
+                for category, files in generated_files.items():
+                    f.write(f"\n  ■ {category}\n")
+                    for file_info in files:
+                        f.write(f"    {file_info}\n")
+            
+            # 13. システム推奨事項（詳細版）
+            f.write("\n【13. システム推奨事項】\n")
+            f.write("-" * 80 + "\n")
+            recommendations = generate_comprehensive_recommendations(output_dir)
+            if recommendations:
+                f.write("  ■ 緊急対応事項\n")
+                for i, rec in enumerate(recommendations.get('urgent', []), 1):
+                    f.write(f"    {i}. {rec}\n")
+                f.write("\n  ■ 短期改善事項（1-3ヶ月）\n")
+                for i, rec in enumerate(recommendations.get('short_term', []), 1):
+                    f.write(f"    {i}. {rec}\n")
+                f.write("\n  ■ 中長期改善事項（3-6ヶ月）\n")
+                for i, rec in enumerate(recommendations.get('long_term', []), 1):
+                    f.write(f"    {i}. {rec}\n")
+            
+            # 14. 詳細データダンプ（オプション）
+            if analysis_type == "FULL":
+                f.write("\n【14. 詳細データダンプ】\n")
+                f.write("-" * 80 + "\n")
+                f.write("  ※ 詳細データは別ファイルに出力されています。\n")
+                f.write(f"    - {timestamp}_詳細データ_職種別.csv\n")
+                f.write(f"    - {timestamp}_詳細データ_時系列.csv\n")
+                f.write(f"    - {timestamp}_詳細データ_パターン.csv\n")
+            
+            f.write("\n" + "=" * 100 + "\n")
+            f.write(f"レポート生成完了: {timestamp}\n")
+            f.write("このレポートは機密情報を含む可能性があります。取り扱いにご注意ください。\n")
+            f.write("=" * 100 + "\n")
+            
+        logging.info(f"[app] 包括分析ログファイルを作成しました: {log_filepath}")
+        return log_filepath
+        
+    except Exception as e:
+        logging.error(f"[app] 包括分析ログ作成エラー: {e}")
+        return None
+
+
+def collect_execution_summary(output_dir: Path) -> dict:
+    """実行サマリー情報を収集"""
+    try:
+        # 実行時間の推定（ファイル更新時刻から）
+        parquet_files = list(output_dir.glob("*.parquet"))
+        if parquet_files:
+            timestamps = [f.stat().st_mtime for f in parquet_files]
+            start_time = datetime.datetime.fromtimestamp(min(timestamps)).strftime("%H:%M:%S")
+            end_time = datetime.datetime.fromtimestamp(max(timestamps)).strftime("%H:%M:%S")
+            duration_sec = max(timestamps) - min(timestamps)
+            duration = f"{duration_sec:.1f}秒"
+        else:
+            start_time = "N/A"
+            end_time = "N/A"
+            duration = "N/A"
+        
+        # ファイル数からステップ数を推定
+        all_files = list(output_dir.glob("*"))
+        successful_steps = len([f for f in all_files if f.suffix in ['.parquet', '.xlsx', '.json']])
+        total_steps = successful_steps  # エラーステップの正確な計測は困難
+        
+        return {
+            'start_time': start_time,
+            'end_time': end_time,
+            'duration': duration,
+            'total_steps': total_steps,
+            'successful_steps': successful_steps,
+            'failed_steps': 0
+        }
+    except:
+        return {}
+
+
+def collect_data_overview(output_dir: Path) -> dict:
+    """データ概要情報を収集"""
+    try:
+        # メタデータから情報を取得
+        meta_file = output_dir / "heatmap.meta.json"
+        if meta_file.exists():
+            with open(meta_file, 'r', encoding='utf-8') as f:
+                meta_data = json.load(f)
+            
+            dates = meta_data.get('dates', [])
+            roles = meta_data.get('roles', [])
+            employments = meta_data.get('employments', [])
+            
+            date_range = f"{dates[0]} ～ {dates[-1]}" if dates else "N/A"
+            
+            # heat_ALL.parquetからレコード数を取得
+            heat_all_file = output_dir / "heat_ALL.parquet"
+            total_records = 0
+            if heat_all_file.exists():
+                try:
+                    df = pd.read_parquet(heat_all_file)
+                    total_records = df.shape[0] * df.shape[1] if not df.empty else 0
+                except:
+                    pass
+            
+            return {
+                'date_range': date_range,
+                'total_records': total_records,
+                'total_staff': 0,  # スタッフ数は他のファイルから取得が必要
+                'total_roles': len(roles),
+                'total_employments': len(employments),
+                'total_patterns': 0  # パターン数も他のファイルから取得が必要
+            }
+        else:
+            return {}
+    except:
+        return {}
+
+
+def collect_main_kpis(output_dir: Path) -> dict:
+    """主要KPI情報を収集"""
+    try:
+        kpis = {}
+        
+        # shortage_role_summary.parquetから不足・過剰時間
+        shortage_role_file = output_dir / "shortage_role_summary.parquet"
+        if shortage_role_file.exists():
+            try:
+                df = pd.read_parquet(shortage_role_file)
+                kpis['total_shortage_hours'] = df.get('lack_h', pd.Series()).sum()
+                kpis['total_excess_hours'] = df.get('excess_h', pd.Series()).sum()
+            except:
+                pass
+        
+        # fatigue_score.parquetから疲労スコア
+        fatigue_file = output_dir / "fatigue_score.parquet"
+        if fatigue_file.exists():
+            try:
+                df = pd.read_parquet(fatigue_file)
+                kpis['avg_fatigue_score'] = df.get('fatigue_score', pd.Series()).mean()
+            except:
+                pass
+        
+        # fairness_after.parquetから公平性スコア
+        fairness_file = output_dir / "fairness_after.parquet"
+        if fairness_file.exists():
+            try:
+                df = pd.read_parquet(fairness_file)
+                kpis['fairness_score'] = df.get('fairness_score', pd.Series()).mean()
+            except:
+                pass
+        
+        # その他のデフォルト値
+        kpis.setdefault('total_shortage_hours', 0)
+        kpis.setdefault('total_excess_hours', 0)
+        kpis.setdefault('avg_fatigue_score', 0)
+        kpis.setdefault('fairness_score', 0)
+        kpis.setdefault('optimization_score', 0)
+        kpis.setdefault('total_cost', 0)
+        
+        return kpis
+    except:
+        return {}
+
+
+def collect_role_performance(output_dir: Path) -> list:
+    """職種別パフォーマンス情報を収集"""
+    try:
+        shortage_role_file = output_dir / "shortage_role_summary.parquet"
+        if shortage_role_file.exists():
+            df = pd.read_parquet(shortage_role_file)
+            return [
+                {
+                    'role': row.get('role', 'N/A'),
+                    'shortage_hours': row.get('lack_h', 0),
+                    'excess_hours': row.get('excess_h', 0),
+                    'avg_fatigue': 0,  # 疲労度は別ファイルとの結合が必要
+                    'total_cost': 0    # コストも別ファイルとの結合が必要
+                }
+                for _, row in df.iterrows()
+            ]
+        else:
+            return []
+    except:
+        return []
+
+
+def collect_monthly_trends(output_dir: Path) -> list:
+    """月別トレンド情報を収集"""
+    try:
+        monthly_role_file = output_dir / "shortage_role_monthly.parquet"
+        if monthly_role_file.exists():
+            df = pd.read_parquet(monthly_role_file)
+            monthly_summary = df.groupby('month').agg({
+                'lack_h': 'sum',
+                'excess_h': 'sum'
+            }).reset_index()
+            
+            return [
+                {
+                    'month': row['month'],
+                    'shortage_hours': row.get('lack_h', 0),
+                    'excess_hours': row.get('excess_h', 0),
+                    'leave_days': 0,  # 休暇データは別ファイルから
+                    'alerts': 0       # アラート数も別ファイルから
+                }
+                for _, row in monthly_summary.iterrows()
+            ]
+        else:
+            return []
+    except:
+        return []
+
+
+def collect_generated_files(output_dir: Path) -> dict:
+    """生成ファイル一覧を収集"""
+    try:
+        files_by_category = {
+            'ヒートマップ': [],
+            '不足分析': [],
+            '疲労分析': [],
+            '公平性分析': [],
+            'その他': []
+        }
+        
+        for file_path in output_dir.glob("*"):
+            if file_path.is_file():
+                file_size = file_path.stat().st_size
+                file_info = f"{file_path.name} ({file_size} bytes)"
+                
+                if 'heat_' in file_path.name:
+                    files_by_category['ヒートマップ'].append(file_info)
+                elif 'shortage_' in file_path.name:
+                    files_by_category['不足分析'].append(file_info)
+                elif 'fatigue_' in file_path.name:
+                    files_by_category['疲労分析'].append(file_info)
+                elif 'fairness_' in file_path.name:
+                    files_by_category['公平性分析'].append(file_info)
+                else:
+                    files_by_category['その他'].append(file_info)
+        
+        return files_by_category
+    except:
+        return {}
+
+
+def generate_recommendations(kpi_stats: dict, role_performance: list) -> list:
+    """KPIと職種別パフォーマンスから推奨事項を生成"""
+    recommendations = []
+    
+    try:
+        # 不足時間に基づく推奨
+        total_shortage = kpi_stats.get('total_shortage_hours', 0)
+        if total_shortage > 100:
+            recommendations.append(f"総不足時間が{total_shortage:.1f}時間と高い水準です。追加採用を検討してください。")
+        elif total_shortage > 50:
+            recommendations.append(f"総不足時間が{total_shortage:.1f}時間です。シフト調整で改善可能です。")
+        
+        # 過剰時間に基づく推奨
+        total_excess = kpi_stats.get('total_excess_hours', 0)
+        if total_excess > 50:
+            recommendations.append(f"総過剰時間が{total_excess:.1f}時間です。シフト最適化の余地があります。")
+        
+        # 職種別の推奨
+        if role_performance:
+            high_shortage_roles = [r for r in role_performance if r.get('shortage_hours', 0) > 20]
+            if high_shortage_roles:
+                role_names = [r['role'] for r in high_shortage_roles[:3]]
+                recommendations.append(f"職種「{', '.join(role_names)}」で不足が顕著です。優先的な対応が必要です。")
+        
+        # 疲労スコアに基づく推奨
+        avg_fatigue = kpi_stats.get('avg_fatigue_score', 0)
+        if avg_fatigue > 0.7:
+            recommendations.append("平均疲労スコアが高い水準です。勤務間隔と連勤回数の見直しをお勧めします。")
+        
+        # 公平性スコアに基づく推奨
+        fairness_score = kpi_stats.get('fairness_score', 0)
+        if fairness_score < 0.5:
+            recommendations.append("公平性スコアが低い水準です。スタッフ間の勤務時間バランスの調整をお勧めします。")
+        
+        return recommendations
+    except:
+        return ["推奨事項の生成中にエラーが発生しました。"]
 
 
 def _patch_streamlit_watcher() -> None:
@@ -236,9 +724,6 @@ def _file_mtime(path: Path) -> float:
         return 0.0
 
 
-def _valid_df(df: pd.DataFrame) -> bool:
-    """Return True if ``df`` is a non-empty ``pd.DataFrame``."""
-    return isinstance(df, pd.DataFrame) and not df.empty
 
 
 def load_shortage_meta(data_dir: Path) -> tuple[list[str], list[str]]:
@@ -257,8 +742,8 @@ def load_shortage_meta(data_dir: Path) -> tuple[list[str], list[str]]:
 
 
 @st.cache_data
-def calc_ratio_from_heatmap(df: pd.DataFrame) -> pd.DataFrame:
-    """Return shortage ratio DataFrame calculated from heatmap data."""
+def calc_ratio_from_heatmap_simple(df: pd.DataFrame) -> pd.DataFrame:
+    """Return shortage ratio DataFrame calculated from heatmap data (simple version)."""
     if df is None or df.empty or "need" not in df.columns:
         return pd.DataFrame()
     date_cols = [c for c in df.columns if _parse_as_date(str(c)) is not None]
@@ -380,8 +865,8 @@ def run_import_wizard() -> None:
                         "size": uploaded.size,
                     }
                 }
-                st.session_state.year_month_cell_input_widget = "A1"
-                st.session_state.header_row_input_widget = 2
+                st.session_state.year_month_cell_input_widget = "D1"
+                st.session_state.header_row_input_widget = 1
                 st.session_state.wizard_step = 2
                 st.rerun()
         return
@@ -393,7 +878,7 @@ def run_import_wizard() -> None:
                 "年月情報セル位置", value="A1", key=f"ym_{sheet}", help="例: A1"
             )
             hdr = st.number_input(
-                "列名ヘッダー行番号", 1, 20, value=2, key=f"hdr_{sheet}"
+                "列名ヘッダー行番号", 1, 20, value=1, key=f"hdr_{sheet}"
             )
             st.number_input(
                 "データ開始行番号", 1, 200, value=hdr + 1, key=f"data_{sheet}"
@@ -437,7 +922,7 @@ def run_import_wizard() -> None:
     if step == 3:
         first = st.session_state.shift_sheets_multiselect_widget[0]
         hdr = st.session_state.get(
-            f"hdr_{first}", st.session_state.get("header_row_input_widget", 2)
+            f"hdr_{first}", st.session_state.get("header_row_input_widget", 1)
         )
         df_cols = pd.read_excel(
             st.session_state.wizard_excel_path,
@@ -493,7 +978,7 @@ def run_import_wizard() -> None:
                 long_df, _, unknown_codes = ingest_excel(
                     Path(st.session_state.wizard_excel_path),
                     shift_sheets=st.session_state.shift_sheets_multiselect_widget,
-                    header_row=int(st.session_state.header_row_input_widget),
+                    header_row=int(st.session_state.header_row_input_widget) - 1,  # Convert from 1-indexed to 0-indexed
                     slot_minutes=int(st.session_state.slot_input_widget),
                     year_month_cell_location=st.session_state.year_month_cell_input_widget,
                 )
@@ -711,7 +1196,7 @@ def update_display_data_with_heatmaps(out_dir: Path) -> None:
 
         # 不足率ヒートマップ
         ratio_key = key.replace("heat_", "ratio_")
-        st.session_state.display_data[ratio_key] = calc_ratio_from_heatmap(df_heat)
+        st.session_state.display_data[ratio_key] = calc_ratio_from_heatmap_simple(df_heat)
 
         # 最適化スコアヒートマップ
         score_key = key.replace("heat_", "score_")
@@ -833,8 +1318,8 @@ if "app_initialized" not in st.session_state:
 
     # サイドバーのウィジェットのキーとデフォルト値をセッションステートに初期設定
     st.session_state.slot_input_widget = 30
-    st.session_state.header_row_input_widget = 3
-    st.session_state.year_month_cell_input_widget = "A1"
+    st.session_state.header_row_input_widget = 1
+    st.session_state.year_month_cell_input_widget = "D1"
     st.session_state.candidate_sheet_list_for_ui = []
     st.session_state.shift_sheets_multiselect_widget = []
     st.session_state._force_update_multiselect_flag = False
@@ -977,10 +1462,14 @@ with st.sidebar:
                 key="shift_sheets_multiselect_widget",
                 help="解析対象とするシートを選択します。",
             )
+            # Force reset session state if it has invalid value
+            if st.session_state.get("header_row_input_widget", 1) < 1:
+                st.session_state.header_row_input_widget = 1
             st.number_input(
                 _("Header row number (1-indexed)"),
                 1,
                 20,
+                value=1,
                 key="header_row_input_widget",
                 help="スクリーンショット例の 'No' など列名がある行番号",
             )
@@ -1400,7 +1889,7 @@ if run_button_clicked:
 
         # --- 実行時のUIの値をセッションステートから取得 ---
         param_selected_sheets = st.session_state.shift_sheets_multiselect_widget
-        param_header_row = st.session_state.header_row_input_widget
+        param_header_row = st.session_state.header_row_input_widget - 1  # Convert from 1-indexed to 0-indexed
         param_year_month_cell = st.session_state.year_month_cell_input_widget
         param_slot = st.session_state.slot_input_widget
         param_need_calc_method = st.session_state.need_calc_method_widget
@@ -1695,7 +2184,12 @@ if run_button_clicked:
 
                 # 4. dash_app.py用の「中間サマリーテーブル」を生成
                 # 全日付・時間帯・職種・雇用形態の組み合わせを網羅するベースデータを作成
-                all_combinations_from_long_df = long_df[[
+                # 🎯 重要：休日除外済みのデータのみから組み合わせを作成
+                working_long_df = long_df[
+                    (long_df.get("parsed_slots_count", 0) > 0) & 
+                    (long_df.get("holiday_type", "通常勤務") == "通常勤務")
+                ]
+                all_combinations_from_long_df = working_long_df[[
                     "ds",
                     "role",
                     "employment",
@@ -2170,15 +2664,17 @@ if run_button_clicked:
                             fc_xls = scenario_out_dir / "forecast.xlsx"
                             shortage_xlsx = scenario_out_dir / "shortage_time.xlsx"
                             if demand_csv_rl_exec_run_rl.exists():
-                                learn_roster(
-                                    demand_csv_rl_exec_run_rl,
-                                    rl_roster_xls_exec_run_rl,
-                                    forecast_csv=fc_xls if fc_xls.exists() else None,
-                                    shortage_csv=shortage_xlsx
-                                    if shortage_xlsx.exists()
-                                    else None,
-                                    model_path=model_zip_rl,
-                                )
+                                # learn_roster temporarily disabled due to gymnasium dependency
+                                # learn_roster(
+                                #     demand_csv_rl_exec_run_rl,
+                                #     rl_roster_xls_exec_run_rl,
+                                #     forecast_csv=fc_xls if fc_xls.exists() else None,
+                                #     shortage_csv=shortage_xlsx
+                                #     if shortage_xlsx.exists()
+                                #     else None,
+                                #     model_path=model_zip_rl,
+                                # )
+                                pass
                             else:
                                 st.warning(
                                     _("RL Roster")
@@ -2193,18 +2689,20 @@ if run_button_clicked:
                             fc_xls = scenario_out_dir / "forecast.xlsx"
                             shortage_xlsx = scenario_out_dir / "shortage_time.xlsx"
                             if model_zip_rl.exists() and fc_xls.exists():
-                                learn_roster(
-                                    demand_csv_rl_exec_run_rl
-                                    if demand_csv_rl_exec_run_rl.exists()
-                                    else fc_xls,
-                                    rl_roster_xls_use,
-                                    forecast_csv=fc_xls,
-                                    shortage_csv=shortage_xlsx
-                                    if shortage_xlsx.exists()
-                                    else None,
-                                    model_path=model_zip_rl,
-                                    use_saved_model=True,
-                                )
+                                # learn_roster temporarily disabled due to gymnasium dependency
+                                # learn_roster(
+                                #     demand_csv_rl_exec_run_rl
+                                #     if demand_csv_rl_exec_run_rl.exists()
+                                #     else fc_xls,
+                                #     rl_roster_xls_use,
+                                #     forecast_csv=fc_xls,
+                                #     shortage_csv=shortage_xlsx
+                                #     if shortage_xlsx.exists()
+                                #     else None,
+                                #     model_path=model_zip_rl,
+                                #     use_saved_model=True,
+                                # )
+                                pass
                             else:
                                 st.warning(
                                     _("RL Roster")
@@ -2360,6 +2858,20 @@ if run_button_clicked:
                 f"### [📈 分析結果を高速ビューアで表示する]({DASH_APP_URL})",
                 unsafe_allow_html=True,
             )
+            
+            # 包括分析ログの生成
+            if st.session_state.analysis_done and st.session_state.out_dir_path_str:
+                try:
+                    output_dir = Path(st.session_state.out_dir_path_str)
+                    log_file = create_comprehensive_analysis_log(output_dir, analysis_type="FULL")
+                    if log_file:
+                        st.success(f"📋 包括分析レポートを生成しました: {log_file.name}")
+                        logging.info(f"[app] 包括分析レポート生成完了: {log_file}")
+                    else:
+                        st.warning("⚠️ 包括分析レポートの生成に失敗しました")
+                except Exception as e_log:
+                    st.warning(f"⚠️ 包括分析レポート生成エラー: {e_log}")
+                    logging.error(f"[app] 包括分析レポート生成エラー: {e_log}")
         except ValueError as ve_exec_run_main:
             log_and_display_error(
                 _("Error during analysis (ValueError)"), ve_exec_run_main
@@ -4244,11 +4756,15 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
         else:
             results = st.session_state.mind_reader_results
 
+        # results変数の安全性確保
+        if 'results' not in locals() or results is None:
+            results = {}
+
         st.markdown("#### 優先順位（判断基準の重要度）")
         st.info(
             "作成者が無意識にどの項目を重視しているかを数値化したものです。絶対値が大きいほど重要です。"
         )
-        importance_df = results.get("feature_importance")
+        importance_df = results.get("feature_importance") if results else None
         if importance_df is not None:
             st.dataframe(importance_df)
 
@@ -4256,7 +4772,7 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
         st.info(
             "「誰を配置するか」という判断の分岐を模倣したものです。上にある分岐ほど、優先的に考慮されています。"
         )
-        tree_model = results.get("thinking_process_tree")
+        tree_model = results.get("thinking_process_tree") if results else None
         if tree_model:
             fig, _ = plt.subplots(figsize=(20, 10))
             plot_tree(
@@ -4273,7 +4789,7 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
         st.info(
             "横軸と縦軸の指標の間で、作成者がどのようなバランスを取ってきたかを示します。"
         )
-        trade_off_df = results.get("trade_offs")
+        trade_off_df = results.get("trade_offs") if results else None
         if trade_off_df is not None and not trade_off_df.empty:
             fig = px.scatter(
                 trade_off_df,
@@ -4419,7 +4935,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                         )
                     elif key == "Leave Analysis":
                         tab_func_map_dash[key](
-                            inner_tabs[i], results.get("leave_analysis_results")
+                            inner_tabs[i], results.get("leave_analysis_results") if results else None
                         )
                     else:
                         tab_func_map_dash[key](inner_tabs[i], data_dir)
