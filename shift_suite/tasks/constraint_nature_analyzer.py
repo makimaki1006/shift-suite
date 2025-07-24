@@ -20,6 +20,8 @@ import pandas as pd
 from scipy import stats
 from scipy.signal import find_peaks
 
+from .constants import CONSTRAINT_ANALYSIS_PARAMETERS
+
 log = logging.getLogger(__name__)
 
 class ConstraintType(Enum):
@@ -45,8 +47,8 @@ class ConstraintNatureAnalyzer:
     """勤務制約の性質を判別する高度分析エンジン"""
     
     def __init__(self):
-        self.min_observation_weeks = 8  # 最小観測期間（週）
-        self.confidence_threshold = 0.7  # 判定に必要な最低信頼度
+        self.min_observation_weeks = CONSTRAINT_ANALYSIS_PARAMETERS["min_observation_weeks"]  # 最小観測期間（週）
+        self.confidence_threshold = CONSTRAINT_ANALYSIS_PARAMETERS["confidence_threshold"]  # 判定に必要な最低信頼度
         
     def analyze_weekly_constraints(self, long_df: pd.DataFrame) -> List[ConstraintAnalysis]:
         """
@@ -145,29 +147,29 @@ class ConstraintNatureAnalyzer:
         recommendations = []
         
         # 判定基準1: 最大値が一定で変動が小さい
-        if std_days < 0.5:  # 変動が非常に小さい
-            confidence += 0.4
-            evidence["low_variation"] = f"標準偏差{std_days:.2f} < 0.5"
+        if std_days < CONSTRAINT_ANALYSIS_PARAMETERS["low_variation_threshold"]:  # 変動が非常に小さい
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["low_variation_evidence_weight"]
+            evidence["low_variation"] = f"標準偏差{std_days:.2f} < {CONSTRAINT_ANALYSIS_PARAMETERS['low_variation_threshold']}"
             
         # 判定基準2: 最大値を超える週が皆無
         exceed_weeks = (weekly_counts > max_days).sum()
         if exceed_weeks == 0:
-            confidence += 0.3
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["no_exceed_evidence_weight"]
             evidence["no_exceed"] = "最大値を超える週が0週"
         
         # 判定基準3: 最大値近辺での頻度が高い
         near_max_ratio = (weekly_counts >= max_days - 0.5).mean()
-        if near_max_ratio >= 0.6:  # 60%以上が最大値近辺
-            confidence += 0.2
+        if near_max_ratio >= CONSTRAINT_ANALYSIS_PARAMETERS["near_max_ratio_threshold"]:  # 指定%以上が最大値近辺
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["high_concentration_weight"]
             evidence["concentrated_at_max"] = f"最大値近辺の週が{near_max_ratio:.1%}"
             
         # 判定基準4: 段階的減少パターン（上限に向けた調整）
         gradual_increase = self._detect_gradual_trend_to_limit(weekly_counts, max_days)
         if gradual_increase:
-            confidence += 0.1
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["consistency_bonus_weight"]
             evidence["gradual_approach"] = "上限に向けた段階的調整パターンを検出"
             
-        if confidence >= 0.7:
+        if confidence >= self.confidence_threshold:
             recommendations.extend([
                 f"週{threshold}日が上限制約の可能性が高い",
                 "緊急時以外は超過させない",
@@ -196,16 +198,16 @@ class ConstraintNatureAnalyzer:
         below_min_weeks = (weekly_counts < min_days).sum()
         below_min_ratio = below_min_weeks / len(weekly_counts)
         
-        if below_min_ratio <= 0.1:  # 10%以下
-            confidence += 0.4
+        if below_min_ratio <= CONSTRAINT_ANALYSIS_PARAMETERS["below_min_ratio_threshold"]:  # 指定%以下
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["low_variation_evidence_weight"]
             evidence["rare_below_min"] = f"最小値未満の週が{below_min_ratio:.1%}"
             
         # 判定基準2: 最小値以上での分布が右寄り
         above_min_counts = weekly_counts[weekly_counts >= min_days]
         if len(above_min_counts) > 0:
             skewness = stats.skew(above_min_counts)
-            if skewness > 0.5:  # 右寄り分布
-                confidence += 0.2
+            if skewness > CONSTRAINT_ANALYSIS_PARAMETERS["skewness_threshold"]:  # 右寄り分布
+                confidence += CONSTRAINT_ANALYSIS_PARAMETERS["high_concentration_weight"]
                 evidence["right_skewed"] = f"最小値以上の分布が右寄り(歪度{skewness:.2f})"
                 
         # 判定基準3: 緊急時・繁忙期での増加パターン
@@ -218,11 +220,11 @@ class ConstraintNatureAnalyzer:
                 
         # 判定基準4: 時系列での上昇トレンド
         trend_slope = self._calculate_trend_slope(weekly_counts)
-        if trend_slope > 0.01:  # 上昇傾向
-            confidence += 0.2
+        if trend_slope > CONSTRAINT_ANALYSIS_PARAMETERS["trend_slope_threshold"]:  # 上昇傾向
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["high_concentration_weight"]
             evidence["upward_trend"] = f"週勤務日数の上昇トレンド(傾き{trend_slope:.3f})"
             
-        if confidence >= 0.7:
+        if confidence >= self.confidence_threshold:
             recommendations.extend([
                 f"週{threshold}日が下限希望の可能性が高い",
                 "収入確保等の理由で最低限の勤務日数を維持したい",
@@ -249,13 +251,13 @@ class ConstraintNatureAnalyzer:
         
         # 判定基準1: 最頻値の集中度が高い
         mode_ratio = (weekly_counts == mode_days).mean()
-        if mode_ratio >= 0.7:  # 70%以上が最頻値
+        if mode_ratio >= CONSTRAINT_ANALYSIS_PARAMETERS["mode_concentration_threshold"]:  # 指定%以上が最頻値
             confidence += 0.5
             evidence["high_mode_concentration"] = f"最頻値{mode_days}日の週が{mode_ratio:.1%}"
             
         # 判定基準2: 標準偏差が小さい（安定性）
-        if std_days < 0.7:
-            confidence += 0.3
+        if std_days < CONSTRAINT_ANALYSIS_PARAMETERS["mode_concentration_threshold"]:
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["no_exceed_evidence_weight"]
             evidence["low_standard_deviation"] = f"標準偏差{std_days:.2f} < 0.7"
             
         # 判定基準3: 最頻値からの乖離が両側に分散
@@ -265,11 +267,11 @@ class ConstraintNatureAnalyzer:
         
         if positive_dev > 0 and negative_dev > 0:
             balance_ratio = min(positive_dev, negative_dev) / max(positive_dev, negative_dev)
-            if balance_ratio >= 0.3:  # 両側に30%以上の比率で分散
-                confidence += 0.2
+            if balance_ratio >= CONSTRAINT_ANALYSIS_PARAMETERS["deviation_balance_threshold"]:  # 両側に指定%以上の比率で分散
+                confidence += CONSTRAINT_ANALYSIS_PARAMETERS["high_concentration_weight"]
                 evidence["balanced_deviation"] = f"最頻値からの乖離が両側に分散(バランス比{balance_ratio:.2f})"
                 
-        if confidence >= 0.7:
+        if confidence >= self.confidence_threshold:
             recommendations.extend([
                 f"週{threshold:.0f}日が固定希望の可能性が高い",
                 "ワークライフバランス重視",
@@ -313,8 +315,8 @@ class ConstraintNatureAnalyzer:
         seasonal_variance = monthly_avg.var()
         overall_variance = weekly_counts.var()
         
-        if seasonal_variance > overall_variance * 0.5:  # 季節変動が全体変動の50%以上
-            confidence += 0.4
+        if seasonal_variance > overall_variance * CONSTRAINT_ANALYSIS_PARAMETERS["low_variation_threshold"]:  # 季節変動が全体変動の指定%以上
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["low_variation_evidence_weight"]
             evidence["seasonal_variance"] = f"季節変動が全体変動の{seasonal_variance/overall_variance:.1%}"
             
             # 特定月での極端な変化を検出
@@ -322,8 +324,8 @@ class ConstraintNatureAnalyzer:
             min_month = monthly_avg.idxmin()
             range_ratio = (monthly_avg.max() - monthly_avg.min()) / monthly_avg.mean()
             
-            if range_ratio > 0.3:  # 30%以上の変動
-                confidence += 0.3
+            if range_ratio > CONSTRAINT_ANALYSIS_PARAMETERS["range_variation_threshold"]:  # 指定%以上の変動
+                confidence += CONSTRAINT_ANALYSIS_PARAMETERS["no_exceed_evidence_weight"]
                 evidence["extreme_seasonal_change"] = f"{max_month}月最多({monthly_avg.max():.1f}日), {min_month}月最少({monthly_avg.min():.1f}日)"
                 recommendations.extend([
                     f"{max_month}月は勤務増加傾向",
@@ -350,32 +352,32 @@ class ConstraintNatureAnalyzer:
         recommendations = []
         
         # 判定基準1: 変動が大きい
-        if std_days > 1.0:
-            confidence += 0.3
-            evidence["high_variation"] = f"標準偏差{std_days:.2f} > 1.0"
+        if std_days > CONSTRAINT_ANALYSIS_PARAMETERS["flexibility_std_threshold"]:
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["no_exceed_evidence_weight"]
+            evidence["high_variation"] = f"標準偏差{std_days:.2f} > {CONSTRAINT_ANALYSIS_PARAMETERS['flexibility_std_threshold']}"
             
         # 判定基準2: 広い範囲に分散
         range_days = weekly_counts.max() - weekly_counts.min()
         if range_days >= 3:  # 3日以上の幅
-            confidence += 0.3
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["no_exceed_evidence_weight"]
             evidence["wide_range"] = f"勤務日数の幅{range_days}日 >= 3日"
             
         # 判定基準3: 特定の値への集中がない
         value_counts = weekly_counts.value_counts()
         max_concentration = value_counts.max() / len(weekly_counts)
-        if max_concentration < 0.5:  # 最頻値でも50%未満
-            confidence += 0.2
-            evidence["no_strong_preference"] = f"最大集中度{max_concentration:.1%} < 50%"
+        if max_concentration < CONSTRAINT_ANALYSIS_PARAMETERS["max_concentration_threshold"]:  # 最頻値でも指定%未満
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["high_concentration_weight"]
+            evidence["no_strong_preference"] = f"最大集中度{max_concentration:.1%} < {CONSTRAINT_ANALYSIS_PARAMETERS['max_concentration_threshold']:.0%}"
             
         # 判定基準4: ランダム性の検証（ラン検定）
         median_days = weekly_counts.median()
         runs = self._count_runs(weekly_counts, median_days)
         expected_runs = len(weekly_counts) / 2
-        if abs(runs - expected_runs) / expected_runs < 0.3:  # 期待値の±30%以内
-            confidence += 0.2
+        if abs(runs - expected_runs) / expected_runs < CONSTRAINT_ANALYSIS_PARAMETERS["random_pattern_tolerance"]:  # 期待値の±指定%以内
+            confidence += CONSTRAINT_ANALYSIS_PARAMETERS["high_concentration_weight"]
             evidence["random_pattern"] = f"ラン数{runs}が期待値{expected_runs:.1f}に近い"
             
-        if confidence >= 0.7:
+        if confidence >= self.confidence_threshold:
             recommendations.extend([
                 "柔軟な勤務パターン（特定の制約なし）",
                 "状況に応じて勤務日数を調整可能",

@@ -6,10 +6,12 @@ shift_suite.tasks.utils  v1.2.0 – UTF-8 write_meta 版
 * 共通ユーティリティ
 * 2025-05-06
     - write_meta(): Windows でも文字化けしないよう `encoding="utf-8"` を明示
-      （既定 CP932 だと “–” などの Unicode 文字列で UnicodeEncodeError）
+      （既定 CP932 だと "–" などの Unicode 文字列で UnicodeEncodeError）
     - 旧 API・関数名は一切変更なし
 * 2025-05-16
     - build_stats.py から _parse_as_date を移設
+* 2025-07-21
+    - dash_app.py と app.py から _valid_df を統合
 """
 
 from __future__ import annotations
@@ -41,9 +43,117 @@ from .constants import SUMMARY5
 # ────────────────── 1. ロガー ──────────────────
 configure_logging()
 log = logging.getLogger(__name__)
+analysis_logger = logging.getLogger('analysis')
 
 
-# ────────────────── 2. Excel 日付ユーティリティ ──────────────────
+# ────────────────── 2. 休暇除外フィルター（統合版） ──────────────────
+def apply_rest_exclusion_filter(df: pd.DataFrame, context: str = "unknown", for_display: bool = False, exclude_leave_records: bool = False) -> pd.DataFrame:
+    """
+    データパイプライン全体で使用する統一的な休暇除外フィルター
+    
+    Args:
+        df: 対象データフレーム
+        context: 適用箇所の説明（ログ用）
+        for_display: True の場合、表示用として実績0の勤務日も保持
+        exclude_leave_records: True の場合、holiday_type != '通常勤務' のレコードを除外
+    
+    Returns:
+        フィルタリング済みデータフレーム
+    """
+    if df.empty:
+        return df
+    
+    original_count = len(df)
+    analysis_logger.info(f"[RestExclusion] {context}: フィルター開始 ({original_count}レコード)")
+    
+    # 1. スタッフ名による除外（最も重要）
+    if 'staff' in df.columns:
+        rest_patterns = [
+            '×', 'X', 'x',           # 基本的な休み記号
+            '休', '休み', '休暇',      # 日本語の休み
+            '欠', '欠勤',             # 欠勤
+            'OFF', 'off', 'Off',     # オフ
+            '-', '−', '―',           # ハイフン類
+            'nan', 'NaN', 'null',    # NULL値系
+            '有', '有休',             # 有給
+            '特', '特休',             # 特休
+            '代', '代休',             # 代休
+            '振', '振休'              # 振替休日
+        ]
+        
+        excluded_by_pattern = {}
+        for pattern in rest_patterns:
+            if pattern.strip():  
+                pattern_mask = (
+                    (df['staff'].str.strip() == pattern) |
+                    (df['staff'].str.contains(pattern, na=False, regex=False))
+                )
+                excluded_count = pattern_mask.sum()
+                if excluded_count > 0:
+                    excluded_by_pattern[pattern] = excluded_count
+                    df = df[~pattern_mask]
+        
+        # 空文字・NaN除外
+        empty_mask = (
+            df['staff'].isna() |
+            (df['staff'].str.strip() == '') |
+            (df['staff'].str.strip() == ' ') |
+            (df['staff'].str.strip() == '　')
+        )
+        excluded_count = empty_mask.sum()
+        if excluded_count > 0:
+            excluded_by_pattern['empty'] = excluded_count
+            df = df[~empty_mask]
+        
+        if excluded_by_pattern:
+            analysis_logger.info(f"[RestExclusion] {context}: スタッフ名による除外: {excluded_by_pattern}")
+    
+    # 2. parsed_slots_count による除外
+    if 'parsed_slots_count' in df.columns:
+        zero_slots_mask = df['parsed_slots_count'] <= 0
+        zero_slots_count = zero_slots_mask.sum()
+        if zero_slots_count > 0:
+            df = df[~zero_slots_mask]
+            analysis_logger.info(f"[RestExclusion] {context}: 0スロット除外: {zero_slots_count}件")
+    
+    # 3. staff_count による除外（事前集計データ用）
+    # 🎯 表示用フィルター分離: 表示用の場合はstaff_count=0でも保持
+    if 'staff_count' in df.columns and not for_display:
+        # 按分計算用: 実績0を除外（精度向上）
+        if 'holiday_type' not in df.columns:
+            # holiday_typeがない場合のみ、以前の動作を維持
+            zero_staff_mask = df['staff_count'] <= 0
+            zero_staff_count = zero_staff_mask.sum()
+            if zero_staff_count > 0:
+                df = df[~zero_staff_mask]
+                analysis_logger.info(f"[RestExclusion] {context}: 0人数除外: {zero_staff_count}件")
+    elif 'staff_count' in df.columns and for_display:
+        # 表示用: 実績0の勤務日も保持（俯瞰的観察用）
+        analysis_logger.info(f"[RestExclusion] {context}: 表示用のため実績0の勤務日も保持")
+    
+    # 4. holiday_type による除外（明示的に要求された場合のみ）
+    if 'holiday_type' in df.columns and exclude_leave_records:
+        holiday_mask = df['holiday_type'] != '通常勤務'
+        holiday_count = holiday_mask.sum()
+        if holiday_count > 0:
+            df = df[~holiday_mask]
+            analysis_logger.info(f"[RestExclusion] {context}: 休暇タイプ除外: {holiday_count}件")
+    elif 'holiday_type' in df.columns:
+        # 休暇レコードを保持（デフォルト動作）
+        holiday_count = (df['holiday_type'] != '通常勤務').sum()
+        if holiday_count > 0:
+            analysis_logger.info(f"[RestExclusion] {context}: 休暇レコード保持: {holiday_count}件 (exclude_leave_records=False)")
+    
+    final_count = len(df)
+    total_excluded = original_count - final_count
+    exclusion_rate = total_excluded / original_count if original_count > 0 else 0
+    
+    analysis_logger.info(f"[RestExclusion] {context}: 完了: {original_count} -> {final_count} (除外: {total_excluded}件, {exclusion_rate:.1%})")
+    
+    return df
+
+
+# ────────────────── 3. Excel 日付ユーティリティ ──────────────────
 def excel_date(excel_serial: Any) -> dt.date | None:
     """Excel 1900 シリアル or pandas.Timestamp 等 → date"""  #  docstring変更
     if excel_serial in (None, "", np.nan):
@@ -361,52 +471,6 @@ def _parse_as_date(column_name: Any) -> dt.date | None:
         log.debug(f"[DATE_PARSE] 日曜日を検出: {column_name} → {result}")
     return result
 
-    if isinstance(column_name, str):
-        # SUMMARY5 に含まれる列名は日付ではないと明確に判定
-        if column_name.lower() in [s.lower() for s in SUMMARY5]:
-            return None
-
-        # まずは YYYY-MM-DD のような部分文字列を正規表現で抽出してみる
-        m = re.search(r"(\d{4}-\d{1,2}-\d{1,2})", column_name)
-        if m:
-            try:
-                return pd.to_datetime(m.group(1), errors="raise").date()
-            except (ValueError, TypeError, pd.errors.ParserError):
-                pass
-
-        try:
-            # "YYYY-MM-DD HH:MM:SS" のような文字列を想定し、空白で分割して日付部分を抽出
-            return pd.to_datetime(column_name.split(" ")[0], errors="raise").date()
-        except (ValueError, TypeError, pd.errors.ParserError):
-            # Excel日付シリアル値のような文字列 "45321.0" や "45321" もここで処理できるか試す
-            try:
-                if "." in column_name:  # "45321.0"
-                    excel_serial = float(column_name)
-                else:  # "45321"
-                    excel_serial = int(column_name)
-                if 0 < excel_serial < 200000:  # 妥当な範囲
-                    return (
-                        datetime(1899, 12, 30) + timedelta(days=excel_serial)
-                    ).date()
-            except ValueError:
-                pass  # 文字列から数値への変換失敗
-        return None  # 上記でパースできなければ None
-
-    if isinstance(column_name, (int, float)):  # Excelシリアル値
-        try:
-            # Excelの日付は1899-12-30が0
-            # 有効なExcel日付シリアルの範囲を考慮 (例: 1 (1900-01-01) から、現実的な未来の日付まで)
-            # Pythonのintやfloatが巨大な場合にOverflowErrorを避ける
-            if (
-                column_name > 0 and column_name < 200000
-            ):  # 200000は約2444年なので十分なはず
-                return (
-                    datetime(1899, 12, 30) + timedelta(days=int(column_name))
-                ).date()
-        except (ValueError, OverflowError, TypeError):  # TypeErrorも追加
-            return None
-    return None
-
 
 # ────────────────── 8. Date + Weekday Helpers ──────────────────
 def date_with_weekday(date_val: Any) -> str:
@@ -479,7 +543,13 @@ def log_need_calculation_summary(
                 )
 
 
-# ────────────────── 9. Public Re-export ──────────────────
+# ────────────────── 9. DataFrame Validation ──────────────────
+def _valid_df(df: pd.DataFrame) -> bool:
+    """Return True if df is a non-empty pandas DataFrame."""
+    return isinstance(df, pd.DataFrame) and not df.empty
+
+
+# ────────────────── 10. Public Re-export ──────────────────
 __all__: Sequence[str] = [
     "log",
     "excel_date",
@@ -495,6 +565,7 @@ __all__: Sequence[str] = [
     "derive_max_staff",
     "calculate_jain_index",
     "_parse_as_date",  # 追加
+    "_valid_df",       # 統合追加
     "date_with_weekday",
     "validate_need_calculation",
     "log_need_calculation_summary",

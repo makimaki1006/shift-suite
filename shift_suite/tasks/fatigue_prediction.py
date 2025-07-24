@@ -24,6 +24,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import warnings
 
 from .utils import log, save_df_parquet, write_meta
+from .constants import SLOT_HOURS, NIGHT_START_HOUR, NIGHT_END_HOUR, is_night_shift_time
 
 # TensorFlow/Keras for deep learning models
 try:
@@ -33,10 +34,10 @@ try:
     from tensorflow.keras.optimizers import Adam
     from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
     _HAS_TENSORFLOW = True
-    log.info("[fatigue_prediction] TensorFlow detected — Deep learning models enabled")
+    log.info("[fatigue_prediction] TensorFlow detected -- Deep learning models enabled")
 except ImportError:
     _HAS_TENSORFLOW = False
-    log.warning("[fatigue_prediction] TensorFlow not available — Deep learning models disabled")
+    log.warning("[fatigue_prediction] TensorFlow not available -- Deep learning models disabled")
 
 
 class FatiguePredictionEngine:
@@ -101,14 +102,15 @@ class FatiguePredictionEngine:
                     }
                 else:
                     # 勤務日の特徴量
-                    work_hours = len(day_data) * 0.5  # 30分スロット想定
+                    work_hours = len(day_data) * SLOT_HOURS  # スロット時間（DEFAULT_SLOT_MINUTESから動的計算）
                     start_times = pd.to_datetime(day_data['ds']).dt.hour + pd.to_datetime(day_data['ds']).dt.minute / 60
                     start_time_var = start_times.std() if len(start_times) > 1 else 0
                     
-                    # 夜勤判定（20時以降または6時以前）
+                    # 夜勤判定（統一された定数を使用）
+                    hours = pd.to_datetime(day_data['ds']).dt.hour
                     night_hours = day_data[
-                        (pd.to_datetime(day_data['ds']).dt.hour >= 20) | 
-                        (pd.to_datetime(day_data['ds']).dt.hour < 6)
+                        (hours >= NIGHT_START_HOUR) | 
+                        (hours < NIGHT_END_HOUR)
                     ]
                     is_night = 1 if len(night_hours) > 0 else 0
                     

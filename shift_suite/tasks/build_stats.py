@@ -20,7 +20,7 @@ from typing import Any, Dict, Iterable, List, Set
 import numpy as np
 import pandas as pd
 
-from .constants import SUMMARY5
+from .constants import SUMMARY5, SLOT_HOURS, BUILD_STATS_PARAMETERS
 from .utils import _parse_as_date
 
 log = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ def build_stats(
             )
         return
 
-    slot_hours = 0.5
+    slot_hours = SLOT_HOURS
     if len(heat_all_df.index) > 1:
         try:
             time_index_dt_series = pd.to_datetime(
@@ -120,14 +120,14 @@ def build_stats(
                 time2_dt = valid_times[1]
                 slot_hours = (time2_dt - time1_dt).total_seconds() / 3600
                 if slot_hours <= 0:
-                    slot_hours = 0.5
-                    log.warning("スロット幅計算結果0以下、0.5h使用")
+                    slot_hours = SLOT_HOURS
+                    log.warning(f"スロット幅計算結果0以下、{SLOT_HOURS}h使用")
             else:
-                slot_hours = 0.5
-                log.warning("有効時間帯インデックス2未満、0.5h使用")
+                slot_hours = SLOT_HOURS
+                log.warning(f"有効時間帯インデックス2未満、{SLOT_HOURS}h使用")
         except Exception as e_slot:
-            slot_hours = 0.5
-            log.warning(f"スロット幅計算失敗({e_slot})、0.5h使用")
+            slot_hours = SLOT_HOURS
+            log.warning(f"スロット幅計算失敗({e_slot})、{SLOT_HOURS}h使用")
     log.info(f"計算に使用するスロット幅: {slot_hours} 時間")
 
     date_columns_in_heat = [
@@ -306,7 +306,7 @@ def build_stats(
         try:
             df_staff_stats = pd.read_excel(staff_stats_fp, sheet_name="by_staff")
             if {"staff", "night_ratio"}.issubset(df_staff_stats.columns):
-                high_night = df_staff_stats[df_staff_stats["night_ratio"] > 0.5]
+                high_night = df_staff_stats[df_staff_stats["night_ratio"] > BUILD_STATS_PARAMETERS["night_shift_ratio_threshold"]]
                 for _, row in high_night.iterrows():
                     alerts_rows.append(
                         {
@@ -340,7 +340,7 @@ def build_stats(
                     consecutive += 1
                 else:
                     consecutive = 1
-                if consecutive >= 2:
+                if consecutive >= BUILD_STATS_PARAMETERS["consecutive_shortage_months"]:
                     alerts_rows.append(
                         {
                             "category": "persistent_shortage",

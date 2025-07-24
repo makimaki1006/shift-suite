@@ -33,20 +33,20 @@ try:
     from statsmodels.tsa.stattools import adfuller
     from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
     _HAS_STATSMODELS = True
-    log.info("[seasonal_analysis] Statsmodels detected — Advanced seasonal analysis enabled")
+    log.info("[seasonal_analysis] Statsmodels detected -- Advanced seasonal analysis enabled")
 except ImportError:
     _HAS_STATSMODELS = False
-    log.warning("[seasonal_analysis] Statsmodels not available — Basic seasonal analysis only")
+    log.warning("[seasonal_analysis] Statsmodels not available -- Basic seasonal analysis only")
 
 # SciPyライブラリ
 try:
     from scipy import signal, stats
     from scipy.fft import fft, fftfreq
     _HAS_SCIPY = True
-    log.info("[seasonal_analysis] SciPy detected — Spectral analysis enabled")
+    log.info("[seasonal_analysis] SciPy detected -- Spectral analysis enabled")
 except ImportError:
     _HAS_SCIPY = False
-    log.warning("[seasonal_analysis] SciPy not available — Spectral analysis disabled")
+    log.warning("[seasonal_analysis] SciPy not available -- Spectral analysis disabled")
 
 
 class SeasonalAnalysisEngine:

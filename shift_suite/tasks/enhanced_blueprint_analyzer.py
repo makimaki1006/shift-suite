@@ -39,13 +39,14 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from scipy import stats
+from .constants import STATISTICAL_THRESHOLDS
 
 log = logging.getLogger(__name__)
 
 # 統計的分析の閾値設定
-STATISTICAL_CONFIDENCE = 0.95  # 95%信頼区間
-MIN_SAMPLE_SIZE = 10          # 最小サンプルサイズ
-SIGNIFICANT_DEVIATION = 2.0    # 標準偏差の何倍で有意とするか
+STATISTICAL_CONFIDENCE = STATISTICAL_THRESHOLDS["confidence_level"]  # 95%信頼区間
+MIN_SAMPLE_SIZE = STATISTICAL_THRESHOLDS["min_sample_size"]          # 最小サンプルサイズ
+SIGNIFICANT_DEVIATION = STATISTICAL_THRESHOLDS["significant_deviation"]    # 標準偏差の何倍で有意とするか
 
 
 @dataclass
@@ -102,7 +103,7 @@ class EnhancedBlueprintAnalyzer:
             "segments": self._analyze_by_segments(long_df),
             "statistical_summary": statistical_insights,
             "rule_count": len(validated_rules),
-            "high_confidence_rules": [r for r in validated_rules if r.confidence_score >= 0.8]
+            "high_confidence_rules": [r for r in validated_rules if r.confidence_score >= STATISTICAL_THRESHOLDS["high_confidence_threshold"]]
         }
     
     def _discover_personal_rules(self, long_df: pd.DataFrame) -> List[ShiftRule]:
@@ -134,7 +135,7 @@ class EnhancedBlueprintAnalyzer:
             weekly_constraints = constraint_results.get('weekly_constraints', [])
             
             for analysis in weekly_constraints:
-                if analysis.confidence_score >= 0.7:  # 70%以上の信頼度
+                if analysis.confidence_score >= STATISTICAL_THRESHOLDS["correlation_threshold"]:  # 70%以上の信頼度
                     # 制約の性質に応じたルール説明を生成
                     nature_desc = self._generate_constraint_description(analysis)
                     
@@ -203,13 +204,13 @@ class EnhancedBlueprintAnalyzer:
             
             # 上限値の特定（平均 + 1σ以下で95%が収まる）
             upper_limit = mean_days + std_days
-            consistent_limit = weekly_days.quantile(0.95)
+            consistent_limit = weekly_days.quantile(STATISTICAL_THRESHOLDS["quantile_95"])
             
             # ルールとして有効か判定
             if max_days <= consistent_limit and std_days < 1.0:  # 一貫性がある
                 confidence = 1.0 - (std_days / mean_days) if mean_days > 0 else 0.0
                 
-                if confidence >= 0.7:  # 70%以上の信頼度
+                if confidence >= STATISTICAL_THRESHOLDS["correlation_threshold"]:  # 70%以上の信頼度
                     rule = ShiftRule(
                         staff_name=staff,
                         rule_type="週勤務日数制限（基本分析）",
@@ -255,7 +256,7 @@ class EnhancedBlueprintAnalyzer:
                 expected_freq = total_possible_days / 7
                 chi2_stat, p_value = stats.chisquare(weekday_counts.reindex(range(7), fill_value=0))
                 
-                if p_value < 0.05:  # 有意な偏り
+                if p_value < STATISTICAL_THRESHOLDS["significance_alpha"]:  # 有意な偏り
                     confidence = 1.0 - p_value
                     
                     rule = ShiftRule(
@@ -291,7 +292,7 @@ class EnhancedBlueprintAnalyzer:
             used_codes = sorted(staff_df['code'].unique())
             
             # 制限ルールの判定（全コードの50%未満しか使用していない）
-            if len(used_codes) < len(all_codes) * 0.5 and len(used_codes) >= 1:
+            if len(used_codes) < len(all_codes) * STATISTICAL_THRESHOLDS["code_restriction_threshold"] and len(used_codes) >= 1:
                 
                 # 統計的検定: コード使用が有意に制限されているか
                 code_usage_ratio = len(used_codes) / len(all_codes)
@@ -362,7 +363,7 @@ class EnhancedBlueprintAnalyzer:
                     # ポアソン検定で有意性を確認
                     p_value = stats.poisson.sf(observed_count - 1, expected_count)
                     
-                    if ratio >= 2.0 and p_value < 0.05:  # 期待値の2倍以上で有意
+                    if ratio >= STATISTICAL_THRESHOLDS["synergy_detection_high"] and p_value < STATISTICAL_THRESHOLDS["significance_alpha"]:  # 期待値の2倍以上で有意
                         rule = ShiftRule(
                             staff_name=f"{staff1} & {staff2}",
                             rule_type="組み合わせ優遇",
@@ -379,7 +380,7 @@ class EnhancedBlueprintAnalyzer:
                         )
                         rules.append(rule)
                     
-                    elif ratio <= 0.5 and observed_count == 0:  # 期待値の半分以下で共起なし
+                    elif ratio <= STATISTICAL_THRESHOLDS["synergy_detection_low"] and observed_count == 0:  # 期待値の半分以下で共起なし
                         rule = ShiftRule(
                             staff_name=f"{staff1} & {staff2}",
                             rule_type="組み合わせ回避",

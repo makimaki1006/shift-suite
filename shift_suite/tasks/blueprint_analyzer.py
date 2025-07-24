@@ -7,17 +7,18 @@ from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
+from shift_suite.tasks.constants import SLOT_HOURS, STATISTICAL_THRESHOLDS, FATIGUE_PARAMETERS, NIGHT_START_HOUR, NIGHT_END_HOUR
 
-# --- analysis thresholds ---
-SYNERGY_HIGH_THRESHOLD = 1.5
-SYNERGY_LOW_THRESHOLD = 0.3
-VETERAN_RATIO_THRESHOLD = 0.7
-ROLE_RATIO_THRESHOLD = 0.4
-MONTH_END_RATIO_THRESHOLD = 1.2
-WEEKEND_RATIO_THRESHOLD = 0.7
-EARLY_MONTH_RATIO_THRESHOLD = 0.1
-ROLE_COMBO_RATIO_THRESHOLD = 0.1
-NEW_STAFF_ONLY_RATIO_THRESHOLD = 0.01
+# --- analysis thresholds (統一された定数を使用) ---
+SYNERGY_HIGH_THRESHOLD = STATISTICAL_THRESHOLDS["synergy_high_threshold"]
+SYNERGY_LOW_THRESHOLD = STATISTICAL_THRESHOLDS["synergy_low_threshold"]
+VETERAN_RATIO_THRESHOLD = STATISTICAL_THRESHOLDS["veteran_ratio_threshold"]
+ROLE_RATIO_THRESHOLD = STATISTICAL_THRESHOLDS["role_ratio_threshold"]
+MONTH_END_RATIO_THRESHOLD = STATISTICAL_THRESHOLDS["month_end_ratio_threshold"]
+WEEKEND_RATIO_THRESHOLD = STATISTICAL_THRESHOLDS["weekend_ratio_threshold"]
+EARLY_MONTH_RATIO_THRESHOLD = STATISTICAL_THRESHOLDS["early_month_ratio_threshold"]
+ROLE_COMBO_RATIO_THRESHOLD = STATISTICAL_THRESHOLDS["role_combo_ratio_threshold"]
+NEW_STAFF_ONLY_RATIO_THRESHOLD = STATISTICAL_THRESHOLDS["new_staff_only_ratio_threshold"]
 
 log = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ def _analyze_workload_distribution(long_df: pd.DataFrame) -> list:
     time_staff_counts.columns = ['time', 'avg_staff']
 
     # 繁忙時間帯を特定（上位25%）
-    threshold = time_staff_counts['avg_staff'].quantile(0.75)
+    threshold = time_staff_counts['avg_staff'].quantile(STATISTICAL_THRESHOLDS["quantile_75"])
     busy_times = time_staff_counts[time_staff_counts['avg_staff'] >= threshold]['time'].tolist()
 
     if not busy_times:
@@ -763,7 +764,7 @@ class FactExtractor:
             hours = staff_df['ds'].dt.hour
             if len(hours) > 0:
                 early_morning_ratio = (hours < 6).sum() / len(hours)
-                if early_morning_ratio > 0.3:
+                if early_morning_ratio > FATIGUE_PARAMETERS["early_morning_threshold"]:
                     facts.append({
                         "スタッフ": staff,
                         "事実タイプ": "早朝勤務",
@@ -772,8 +773,9 @@ class FactExtractor:
                         "確信度": min(1.0, len(hours) / 50),
                     })
 
-                night_ratio = (hours >= 22).sum() / len(hours)
-                if night_ratio > 0.3:
+                night_hours_mask = hours.apply(lambda h: h >= NIGHT_START_HOUR or h < NIGHT_END_HOUR)
+                night_ratio = night_hours_mask.sum() / len(hours)
+                if night_ratio > FATIGUE_PARAMETERS["night_shift_threshold"]:
                     facts.append({
                         "スタッフ": staff,
                         "事実タイプ": "深夜勤務",
@@ -869,7 +871,7 @@ class FactExtractor:
 
             if total_days > 0 and work_days > 0:
                 work_ratio = work_days / total_days
-                avg_hours_per_day = (staff_df['parsed_slots_count'].sum() * 0.5) / work_days
+                avg_hours_per_day = (staff_df['parsed_slots_count'].sum() * SLOT_HOURS) / work_days
 
                 if work_ratio < 0.2:
                     facts.append({

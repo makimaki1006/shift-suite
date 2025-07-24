@@ -12,6 +12,7 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
+from shift_suite.tasks.constants import SLOT_HOURS
 
 log = logging.getLogger(__name__)
 
@@ -272,7 +273,7 @@ class ShiftCreationProcessReconstructor:
         new_state.assigned_slots[staff].append(slot_time)
         
         # 労働時間を更新
-        new_state.staff_hours[staff] = new_state.staff_hours.get(staff, 0) + 0.5
+        new_state.staff_hours[staff] = new_state.staff_hours.get(staff, 0) + SLOT_HOURS
         
         # 連続勤務日数を更新
         current_date = slot_time.date()
@@ -328,7 +329,7 @@ class ShiftCreationProcessReconstructor:
         if staff not in state.assigned_slots:
             return 0.0
         daily_slots = [s for s in state.assigned_slots[staff] if s.date() == date]
-        return len(daily_slots) * 0.5
+        return len(daily_slots) * SLOT_HOURS
 
     def _learn_decision_patterns(self) -> Dict[str, Any]:
         """決定履歴から作成者の選好パターンを学習"""

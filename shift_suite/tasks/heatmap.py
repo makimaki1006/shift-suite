@@ -14,7 +14,7 @@ from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.styles import PatternFill
 from openpyxl.utils import get_column_letter
 
-from .constants import SUMMARY5
+from .constants import SUMMARY5, DEFAULT_SLOT_MINUTES
 from shift_suite.i18n import translate as _
 
 # 'log' という名前でロガーを取得 (utils.pyからインポートされるlogと同じ)
@@ -30,6 +30,105 @@ from .utils import (
 )
 
 analysis_logger = logging.getLogger('analysis')
+
+def create_timestamped_heatmap_log(heatmap_results: dict, output_dir: Path) -> Path:
+    """タイムスタンプ付きのヒートマップ生成ログファイルを作成"""
+    import datetime as dt
+    
+    timestamp = dt.datetime.now().strftime("%Y年%m月%d日%H時%M分")
+    log_filename = f"{timestamp}_ヒートマップ生成ログ.txt"
+    log_filepath = output_dir / log_filename
+    
+    try:
+        with open(log_filepath, 'w', encoding='utf-8') as f:
+            f.write(f"=== ヒートマップ生成結果レポート ===\n")
+            f.write(f"生成日時: {timestamp}\n")
+            f.write(f"出力ディレクトリ: {output_dir}\n")
+            f.write("=" * 50 + "\n\n")
+            
+            # 1. 全体統計
+            f.write("【1. 全体統計】\n")
+            overall_stats = heatmap_results.get('overall_stats', {})
+            f.write(f"  対象期間: {overall_stats.get('start_date', 'N/A')} ～ {overall_stats.get('end_date', 'N/A')}\n")
+            f.write(f"  総レコード数: {overall_stats.get('total_records', 0):,}件\n")
+            f.write(f"  勤務レコード数: {overall_stats.get('work_records', 0):,}件\n")
+            f.write(f"  休暇レコード数: {overall_stats.get('leave_records', 0):,}件\n")
+            f.write(f"  推定休業日数: {overall_stats.get('estimated_holidays', 0)}日\n")
+            f.write(f"  スロット間隔: {overall_stats.get('slot_minutes', 0)}分\n\n")
+            
+            # 2. 職種別統計
+            f.write("【2. 職種別統計】\n")
+            role_stats = heatmap_results.get('role_stats', [])
+            if role_stats:
+                f.write("  職種名             | ファイル生成 | Need計算 | データ行数\n")
+                f.write("  " + "-" * 50 + "\n")
+                for role in role_stats:
+                    role_name = str(role.get('role', 'N/A'))[:15].ljust(15)
+                    file_status = "✓" if role.get('file_created', False) else "✗"
+                    need_status = "✓" if role.get('need_calculated', False) else "✗"
+                    data_rows = role.get('data_rows', 0)
+                    f.write(f"  {role_name} |      {file_status}       |    {need_status}     | {data_rows:8d}\n")
+            else:
+                f.write("  職種データなし\n")
+            f.write("\n")
+            
+            # 3. 雇用形態別統計
+            f.write("【3. 雇用形態別統計】\n")
+            emp_stats = heatmap_results.get('employment_stats', [])
+            if emp_stats:
+                f.write("  雇用形態           | ファイル生成 | Need計算 | データ行数\n")
+                f.write("  " + "-" * 50 + "\n")
+                for emp in emp_stats:
+                    emp_name = str(emp.get('employment', 'N/A'))[:15].ljust(15)
+                    file_status = "✓" if emp.get('file_created', False) else "✗"
+                    need_status = "✓" if emp.get('need_calculated', False) else "✗"
+                    data_rows = emp.get('data_rows', 0)
+                    f.write(f"  {emp_name} |      {file_status}       |    {need_status}     | {data_rows:8d}\n")
+            else:
+                f.write("  雇用形態データなし\n")
+            f.write("\n")
+            
+            # 4. Need計算パラメータ
+            f.write("【4. Need計算パラメータ】\n")
+            need_params = heatmap_results.get('need_calculation_params', {})
+            f.write(f"  統計手法: {need_params.get('statistic_method', 'N/A')}\n")
+            f.write(f"  参照期間: {need_params.get('ref_start_date', 'N/A')} ～ {need_params.get('ref_end_date', 'N/A')}\n")
+            f.write(f"  外れ値除去: {need_params.get('remove_outliers', False)}\n")
+            f.write(f"  IQR乗数: {need_params.get('iqr_multiplier', 'N/A')}\n")
+            f.write(f"  休業日含む: {need_params.get('include_zero_days', True)}\n")
+            f.write(f"  調整係数: {need_params.get('adjustment_factor', 1.0)}\n\n")
+            
+            # 5. 生成ファイル一覧
+            f.write("【5. 生成ファイル一覧】\n")
+            generated_files = heatmap_results.get('generated_files', [])
+            if generated_files:
+                for file_info in generated_files:
+                    f.write(f"  ✓ {file_info}\n")
+            else:
+                f.write("  ファイル情報なし\n")
+            f.write("\n")
+            
+            # 6. 警告・エラー
+            warnings = heatmap_results.get('warnings', [])
+            errors = heatmap_results.get('errors', [])
+            if warnings or errors:
+                f.write("【6. 警告・エラー情報】\n")
+                for warning in warnings:
+                    f.write(f"  [警告] {warning}\n")
+                for error in errors:
+                    f.write(f"  [エラー] {error}\n")
+            else:
+                f.write("【6. 警告・エラー情報】\n  なし\n")
+            
+            f.write("\n" + "=" * 50 + "\n")
+            f.write("ヒートマップ生成レポート終了\n")
+            
+        log.info(f"[heatmap] ヒートマップ生成ログファイルを作成しました: {log_filepath}")
+        return log_filepath
+        
+    except Exception as e:
+        log.error(f"[heatmap] ログファイル作成エラー: {e}")
+        return None
 
 # 新規追加: 通常勤務の判定用定数
 DEFAULT_HOLIDAY_TYPE = "通常勤務"
@@ -125,7 +224,7 @@ def calculate_pattern_based_need(
     statistic_method: str,
     remove_outliers: bool,
     iqr_multiplier: float = 1.5,
-    slot_minutes_for_empty: int = 30,
+    slot_minutes_for_empty: int = DEFAULT_SLOT_MINUTES,
     *,
     holidays: set[dt.date] | None = None,
     adjustment_factor: float = 1.0,
@@ -424,7 +523,7 @@ def _filter_work_records(long_df: pd.DataFrame) -> pd.DataFrame:
 def build_heatmap(
     long_df: pd.DataFrame,
     out_dir: str | Path,
-    slot_minutes: int = 30,
+    slot_minutes: int = DEFAULT_SLOT_MINUTES,
     *,
     need_calc_method: str | None = None,
     need_stat_method: str | None = None,
@@ -931,6 +1030,12 @@ def build_heatmap(
                 else:
                     need_df_role_final[date_str_col_map] = 0
 
+        # 職種別の詳細Needデータを保存
+        need_df_role_final.to_parquet(
+            out_dir_path / f"need_per_date_slot_role_{role_safe_name_final_loop}.parquet"
+        )
+        log.info(f"Role-specific need data saved to need_per_date_slot_role_{role_safe_name_final_loop}.parquet")
+
         need_r_series = need_df_role_final.mean(axis=1).round()
 
         if upper_calc_method == _("下限値(Need) + 固定値"):
@@ -1119,6 +1224,12 @@ def build_heatmap(
                 else:
                     need_df_emp_final[date_str_col_map] = 0
 
+        # 雇用形態別の詳細Needデータを保存
+        need_df_emp_final.to_parquet(
+            out_dir_path / f"need_per_date_slot_emp_{emp_safe_name_final_loop}.parquet"
+        )
+        log.info(f"Employment-specific need data saved to need_per_date_slot_emp_{emp_safe_name_final_loop}.parquet")
+
         need_e_series = need_df_emp_final.mean(axis=1).round()
         upper_e_series = (
             derive_max_staff(pivot_data_emp_actual, max_method)
@@ -1218,4 +1329,100 @@ def build_heatmap(
         leave_statistics=leave_stats,  # 休暇統計をメタデータに追加
     )
     validate_need_calculation(need_all_final_for_summary, pivot_data_all_final)
+    
+    # タイムスタンプ付きのヒートマップ生成ログを作成
+    try:
+        # 統計情報を収集
+        work_records_count = len(df_for_heatmap_actuals) if not df_for_heatmap_actuals.empty else 0
+        leave_records_count = leave_stats.get('leave_records', 0) if leave_stats else 0
+        total_records_count = leave_stats.get('total_records', 0) if leave_stats else 0
+        
+        # 生成されたファイルリスト
+        generated_files = []
+        generated_files.append(f"heat_ALL.parquet ({fp_all_path.stat().st_size} bytes)")
+        generated_files.append(f"heat_ALL.xlsx ({fp_all_xlsx_path.stat().st_size} bytes)")
+        
+        # 職種別ファイル
+        for role_item in unique_roles_list_final_loop:
+            role_safe_name = safe_sheet(str(role_item))
+            role_parquet = out_dir_path / f"heat_{role_safe_name}.parquet"
+            role_excel = out_dir_path / f"heat_{role_safe_name}.xlsx"
+            role_need = out_dir_path / f"need_per_date_slot_role_{role_safe_name}.parquet"
+            if role_parquet.exists():
+                generated_files.append(f"heat_{role_safe_name}.parquet ({role_parquet.stat().st_size} bytes)")
+            if role_excel.exists():
+                generated_files.append(f"heat_{role_safe_name}.xlsx ({role_excel.stat().st_size} bytes)")
+            if role_need.exists():
+                generated_files.append(f"need_per_date_slot_role_{role_safe_name}.parquet ({role_need.stat().st_size} bytes)")
+        
+        # 雇用形態別ファイル
+        for emp_item in unique_employments_list_final_loop:
+            emp_safe_name = safe_sheet(str(emp_item))
+            emp_parquet = out_dir_path / f"heat_emp_{emp_safe_name}.parquet"
+            emp_excel = out_dir_path / f"heat_emp_{emp_safe_name}.xlsx"
+            emp_need = out_dir_path / f"need_per_date_slot_emp_{emp_safe_name}.parquet"
+            if emp_parquet.exists():
+                generated_files.append(f"heat_emp_{emp_safe_name}.parquet ({emp_parquet.stat().st_size} bytes)")
+            if emp_excel.exists():
+                generated_files.append(f"heat_emp_{emp_safe_name}.xlsx ({emp_excel.stat().st_size} bytes)")
+            if emp_need.exists():
+                generated_files.append(f"need_per_date_slot_emp_{emp_safe_name}.parquet ({emp_need.stat().st_size} bytes)")
+        
+        # メタデータファイル
+        meta_file = out_dir_path / "heatmap.meta.json"
+        if meta_file.exists():
+            generated_files.append(f"heatmap.meta.json ({meta_file.stat().st_size} bytes)")
+        
+        # 全体needファイル
+        need_file = out_dir_path / "need_per_date_slot.parquet"
+        if need_file.exists():
+            generated_files.append(f"need_per_date_slot.parquet ({need_file.stat().st_size} bytes)")
+        
+        heatmap_results = {
+            'overall_stats': {
+                'start_date': all_date_labels_in_period_str[0] if all_date_labels_in_period_str else 'N/A',
+                'end_date': all_date_labels_in_period_str[-1] if all_date_labels_in_period_str else 'N/A',
+                'total_records': total_records_count,
+                'work_records': work_records_count,
+                'leave_records': leave_records_count,
+                'estimated_holidays': len(estimated_holidays_set),
+                'slot_minutes': slot_minutes
+            },
+            'role_stats': [
+                {
+                    'role': role,
+                    'file_created': (out_dir_path / f"heat_{safe_sheet(str(role))}.parquet").exists(),
+                    'need_calculated': (out_dir_path / f"need_per_date_slot_role_{safe_sheet(str(role))}.parquet").exists(),
+                    'data_rows': len(df_for_heatmap_actuals[df_for_heatmap_actuals['role'] == role]) if not df_for_heatmap_actuals.empty else 0
+                }
+                for role in unique_roles_list_final_loop
+            ],
+            'employment_stats': [
+                {
+                    'employment': emp,
+                    'file_created': (out_dir_path / f"heat_emp_{safe_sheet(str(emp))}.parquet").exists(),
+                    'need_calculated': (out_dir_path / f"need_per_date_slot_emp_{safe_sheet(str(emp))}.parquet").exists(),
+                    'data_rows': len(df_for_heatmap_actuals[df_for_heatmap_actuals.get('employment', pd.Series()) == emp]) if not df_for_heatmap_actuals.empty and 'employment' in df_for_heatmap_actuals.columns else 0
+                }
+                for emp in unique_employments_list_final_loop
+            ],
+            'need_calculation_params': {
+                'statistic_method': final_statistic_method,
+                'ref_start_date': ref_start_date_for_need.isoformat(),
+                'ref_end_date': ref_end_date_for_need.isoformat(),
+                'remove_outliers': need_remove_outliers,
+                'iqr_multiplier': need_iqr_multiplier if need_remove_outliers else None,
+                'include_zero_days': include_zero_days,
+                'adjustment_factor': need_adjustment_factor
+            },
+            'generated_files': generated_files,
+            'warnings': [],
+            'errors': []
+        }
+        
+        create_timestamped_heatmap_log(heatmap_results, out_dir_path)
+        
+    except Exception as e:
+        log.error(f"[heatmap] タイムスタンプ付きログ生成エラー: {e}")
+    
     log.info("[heatmap.build_heatmap] ヒートマップ生成処理完了。")

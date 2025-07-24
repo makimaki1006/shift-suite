@@ -4,7 +4,9 @@ from typing import Mapping, Literal
 
 import pandas as pd
 
-SLOT_MINUTES = 30
+from .constants import DEFAULT_SLOT_MINUTES, SLOT_HOURS
+
+SLOT_MINUTES = DEFAULT_SLOT_MINUTES  # Backward compatibility
 
 
 def calculate_daily_cost(
@@ -44,7 +46,7 @@ def calculate_daily_cost(
     if "parsed_slots_count" in df.columns:
         df = df[df["parsed_slots_count"] > 0]
 
-    hours_per_slot = slot_minutes / 60.0
+    hours_per_slot = SLOT_HOURS
     df["wage"] = df[by].map(wages).fillna(0)
     df["cost"] = df["wage"] * hours_per_slot
 

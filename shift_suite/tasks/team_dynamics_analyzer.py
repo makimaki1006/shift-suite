@@ -23,6 +23,8 @@ from scipy.spatial.distance import cosine
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
+from .constants import TEAM_DYNAMICS_PARAMETERS
+
 log = logging.getLogger(__name__)
 
 @dataclass
@@ -62,8 +64,8 @@ class TeamDynamicsAnalyzer:
     """チームダイナミクス・相性分析エンジン"""
     
     def __init__(self):
-        self.compatibility_threshold = 0.7  # 相性良好の閾値
-        self.emergency_score_threshold = 0.6  # 緊急対応可能の閾値
+        self.compatibility_threshold = TEAM_DYNAMICS_PARAMETERS["compatibility_threshold_good"]  # 相性良好の閾値
+        self.emergency_score_threshold = TEAM_DYNAMICS_PARAMETERS["emergency_score_threshold"]  # 緊急対応可能の閾値
         
     def analyze_team_dynamics(self, long_df: pd.DataFrame) -> Dict[str, any]:
         """チームダイナミクスの包括分析"""
@@ -273,9 +275,9 @@ class TeamDynamicsAnalyzer:
             
             # 4. 総合ストレス耐性スコア
             overall_resilience = (
-                adaptation_score * 0.3 +
-                consecutive_tolerance * 0.4 +
-                peak_period_performance * 0.3
+                adaptation_score * TEAM_DYNAMICS_PARAMETERS["adaptation_weight"] +
+                consecutive_tolerance * TEAM_DYNAMICS_PARAMETERS["consecutive_tolerance_weight"] +
+                peak_period_performance * TEAM_DYNAMICS_PARAMETERS["peak_performance_weight"]
             )
             
             stress_analysis[staff] = {
@@ -355,7 +357,7 @@ class TeamDynamicsAnalyzer:
         recommendations = []
         
         # 1. 高相性ペアの活用推奨
-        excellent_pairs = [c for c in compatibility_results if c.compatibility_score >= 0.9]
+        excellent_pairs = [c for c in compatibility_results if c.compatibility_score >= TEAM_DYNAMICS_PARAMETERS["compatibility_threshold_excellent"]]
         if excellent_pairs:
             recommendations.append(
                 f"優秀な相性ペア{len(excellent_pairs)}組の積極活用を推奨"
@@ -371,14 +373,14 @@ class TeamDynamicsAnalyzer:
             )
         
         # 3. 緊急対応体制の提案
-        emergency_ready = [e.staff_name for e in emergency_capacity if e.flexibility_score >= 0.8]
+        emergency_ready = [e.staff_name for e in emergency_capacity if e.flexibility_score >= TEAM_DYNAMICS_PARAMETERS["emergency_ready_threshold"]]
         if len(emergency_ready) < 3:
             recommendations.append(
                 "緊急対応可能スタッフが不足。クロストレーニング実施を推奨"
             )
         
         # 4. リスクペアの警告
-        risky_pairs = [c for c in compatibility_results if c.compatibility_score < 0.3]
+        risky_pairs = [c for c in compatibility_results if c.compatibility_score < TEAM_DYNAMICS_PARAMETERS["compatibility_threshold_risky"]]
         if risky_pairs:
             recommendations.append(
                 f"相性に課題のあるペア{len(risky_pairs)}組について配置注意が必要"
@@ -398,13 +400,13 @@ class TeamDynamicsAnalyzer:
         pattern_similarity = self._calculate_pattern_similarity(staff1, staff2, working_df)
         
         # パフォーマンス指標（簡易版）
-        performance_score = 0.7  # 実際の実装では具体的なKPIを使用
+        performance_score = TEAM_DYNAMICS_PARAMETERS["performance_default_score"]  # 実際の実装では具体的なKPIを使用
         
         # 重み付き合成
         compatibility_score = (
-            freq_score * 0.3 +
-            pattern_similarity * 0.4 +
-            performance_score * 0.3
+            freq_score * TEAM_DYNAMICS_PARAMETERS["frequency_weight"] +
+            pattern_similarity * TEAM_DYNAMICS_PARAMETERS["pattern_weight"] +
+            performance_score * TEAM_DYNAMICS_PARAMETERS["performance_weight"]
         )
         
         return min(compatibility_score, 1.0)
@@ -435,7 +437,7 @@ class TeamDynamicsAnalyzer:
         """パフォーマンス影響の分析"""
         
         # 簡易実装：共起日数に基づく影響度
-        impact_score = min(len(co_occurrence_days) / 20, 1.0)  # 20日を上限として正規化
+        impact_score = min(len(co_occurrence_days) / TEAM_DYNAMICS_PARAMETERS["impact_normalization_days"], 1.0)  # 指定日数を上限として正規化
         
         return impact_score
     
@@ -453,9 +455,9 @@ class TeamDynamicsAnalyzer:
         overlap_ratio = len(set(staff1_df['ds'].dt.date).intersection(set(staff2_df['ds'].dt.date))) / \
                        len(set(staff1_df['ds'].dt.date).union(set(staff2_df['ds'].dt.date)))
         
-        if overlap_ratio > 0.7:
+        if overlap_ratio > TEAM_DYNAMICS_PARAMETERS["overlap_ratio_high"]:
             synergy_factors.append("高い勤務時間重複")
-        elif overlap_ratio < 0.3:
+        elif overlap_ratio < TEAM_DYNAMICS_PARAMETERS["overlap_ratio_low"]:
             risk_factors.append("勤務時間重複が少ない")
         
         # 職種の組み合わせ
@@ -474,11 +476,11 @@ class TeamDynamicsAnalyzer:
                                              performance_impact: float) -> str:
         """相性に基づく推奨事項"""
         
-        if compatibility_score >= 0.8:
+        if compatibility_score >= TEAM_DYNAMICS_PARAMETERS["compatibility_threshold_high"]:
             return "積極的なペア配置を推奨"
-        elif compatibility_score >= 0.6:
+        elif compatibility_score >= TEAM_DYNAMICS_PARAMETERS["compatibility_threshold_decent"]:
             return "条件が合えばペア配置可能"
-        elif compatibility_score >= 0.4:
+        elif compatibility_score >= TEAM_DYNAMICS_PARAMETERS["compatibility_threshold_acceptable"]:
             return "短時間での組み合わせは可能"
         else:
             return "ペア配置は避けることを推奨"
@@ -489,9 +491,9 @@ class TeamDynamicsAnalyzer:
         total_days = len(staff_df['ds'].dt.date.unique())
         data_span = (staff_df['ds'].max() - staff_df['ds'].min()).days
         
-        if total_days < 20 or data_span < 60:
+        if total_days < TEAM_DYNAMICS_PARAMETERS["experience_newcomer_days"] or data_span < TEAM_DYNAMICS_PARAMETERS["experience_newcomer_span"]:
             return "新人"
-        elif total_days < 50 or data_span < 180:
+        elif total_days < TEAM_DYNAMICS_PARAMETERS["experience_midlevel_days"] or data_span < TEAM_DYNAMICS_PARAMETERS["experience_midlevel_span"]:
             return "中堅"
         else:
             return "ベテラン"
@@ -509,9 +511,9 @@ class TeamDynamicsAnalyzer:
             # 線形回帰で増加率を計算
             x = np.arange(len(codes_over_time))
             slope, _, _, _, _ = stats.linregress(x, codes_over_time)
-            learning_speed = max(0.0, min(slope / 2, 1.0))  # 正規化
+            learning_speed = max(0.0, min(slope / TEAM_DYNAMICS_PARAMETERS["slope_normalization_factor"], 1.0))  # 正規化
         else:
-            learning_speed = 0.5  # デフォルト値
+            learning_speed = TEAM_DYNAMICS_PARAMETERS["learning_default_speed"]  # デフォルト値
             
         return learning_speed
     
@@ -520,9 +522,9 @@ class TeamDynamicsAnalyzer:
         
         # 使用頻度の低い勤務区分を成長領域として特定
         code_counts = staff_df['code'].value_counts()
-        growth_areas = code_counts[code_counts <= 2].index.tolist()
+        growth_areas = code_counts[code_counts <= TEAM_DYNAMICS_PARAMETERS["skill_growth_min_frequency"]].index.tolist()
         
-        return growth_areas[:3]  # 上位3つまで
+        return growth_areas[:TEAM_DYNAMICS_PARAMETERS["max_growth_areas"]]  # 上位指定数まで
     
     def _assess_mentoring_capacity(self, staff_df: pd.DataFrame, experience_level: str) -> float:
         """メンタリング能力の評価"""
@@ -530,11 +532,11 @@ class TeamDynamicsAnalyzer:
         if experience_level == "ベテラン":
             # 勤務区分の多様性をメンタリング能力の指標とする
             code_diversity = len(staff_df['code'].unique())
-            mentoring_capacity = min(code_diversity / 10, 1.0)
+            mentoring_capacity = min(code_diversity / TEAM_DYNAMICS_PARAMETERS["mentoring_diversity_factor"], 1.0)
         elif experience_level == "中堅":
-            mentoring_capacity = 0.5
+            mentoring_capacity = TEAM_DYNAMICS_PARAMETERS["mentoring_capacity_default"]
         else:
-            mentoring_capacity = 0.1
+            mentoring_capacity = TEAM_DYNAMICS_PARAMETERS["mentoring_capacity_low"]
             
         return mentoring_capacity
     
@@ -559,7 +561,7 @@ class TeamDynamicsAnalyzer:
                     mentor_role == staff_role):
                     potential_mentors.append(mentor_candidate)
         
-        return potential_mentors[:2]  # 最大2名
+        return potential_mentors[:TEAM_DYNAMICS_PARAMETERS["max_mentors_per_person"]]  # 最大指定人数
     
     def _generate_task_recommendations(self, experience_level: str, 
                                      skill_growth_areas: List[str]) -> List[str]:
@@ -579,7 +581,7 @@ class TeamDynamicsAnalyzer:
         weekday_variance = staff_df.groupby(staff_df['ds'].dt.dayofweek).size().var()
         code_diversity = len(staff_df['code'].unique())
         
-        flexibility = min((code_diversity / 10 + 1 / (1 + weekday_variance)) / 2, 1.0)
+        flexibility = min((code_diversity / TEAM_DYNAMICS_PARAMETERS["flexibility_code_factor"] + 1 / (1 + weekday_variance)) / TEAM_DYNAMICS_PARAMETERS["flexibility_variance_weight"], 1.0)
         
         return flexibility
     
@@ -590,7 +592,7 @@ class TeamDynamicsAnalyzer:
         role_count = len(staff_df['role'].unique())
         code_count = len(staff_df['code'].unique())
         
-        cross_training_level = min((role_count + code_count) / 15, 1.0)
+        cross_training_level = min((role_count + code_count) / TEAM_DYNAMICS_PARAMETERS["cross_training_normalization_factor"], 1.0)
         
         return cross_training_level
     
@@ -601,7 +603,7 @@ class TeamDynamicsAnalyzer:
         consecutive_days = self._calculate_max_consecutive(staff_df)
         hours_variance = staff_df['parsed_slots_count'].var()
         
-        resilience = min(consecutive_days / 7 + 1 / (1 + hours_variance), 1.0)
+        resilience = min(consecutive_days / TEAM_DYNAMICS_PARAMETERS["stress_consecutive_days_factor"] + 1 / (1 + hours_variance), 1.0)
         
         return resilience
     
@@ -612,7 +614,7 @@ class TeamDynamicsAnalyzer:
         total_days = len(staff_df['ds'].dt.date.unique())
         data_span = (staff_df['ds'].max() - staff_df['ds'].min()).days
         
-        availability = min(total_days / max(data_span, 1) * 2, 1.0)
+        availability = min(total_days / max(data_span, 1) * TEAM_DYNAMICS_PARAMETERS["emergency_availability_factor"], 1.0)
         
         return availability
     
@@ -627,11 +629,11 @@ class TeamDynamicsAnalyzer:
         
         combined_score = (flexibility_score + emergency_availability) / 2
         
-        if combined_score >= 0.8:
+        if combined_score >= TEAM_DYNAMICS_PARAMETERS["response_time_instant_threshold"]:
             return "即座対応可能"
-        elif combined_score >= 0.6:
+        elif combined_score >= TEAM_DYNAMICS_PARAMETERS["response_time_quick_threshold"]:
             return "短時間で対応可能"
-        elif combined_score >= 0.4:
+        elif combined_score >= TEAM_DYNAMICS_PARAMETERS["response_time_adjusted_threshold"]:
             return "調整後対応可能"
         else:
             return "対応困難"
@@ -656,16 +658,16 @@ class TeamDynamicsAnalyzer:
         """連続勤務耐性の評価"""
         
         max_consecutive = self._calculate_max_consecutive(staff_df)
-        tolerance = min(max_consecutive / 7, 1.0)  # 7日を上限として正規化
+        tolerance = min(max_consecutive / TEAM_DYNAMICS_PARAMETERS["consecutive_tolerance_factor"], 1.0)  # 指定日数を上限として正規化
         
         return tolerance
     
     def _assess_peak_period_performance(self, staff_df: pd.DataFrame) -> float:
         """繁忙期対応力の評価"""
         
-        # 月末（21日以降）の勤務頻度で繁忙期対応力を評価
-        month_end_days = staff_df[staff_df['ds'].dt.day >= 21]
-        total_month_end_possible = len(staff_df[staff_df['ds'].dt.day >= 21]['ds'].dt.date.unique())
+        # 月末（指定日以降）の勤務頻度で繁忙期対応力を評価
+        month_end_days = staff_df[staff_df['ds'].dt.day >= TEAM_DYNAMICS_PARAMETERS["month_end_threshold"]]
+        total_month_end_possible = len(staff_df[staff_df['ds'].dt.day >= TEAM_DYNAMICS_PARAMETERS["month_end_threshold"]]['ds'].dt.date.unique())
         
         if total_month_end_possible > 0:
             peak_performance = len(month_end_days) / total_month_end_possible
@@ -677,11 +679,11 @@ class TeamDynamicsAnalyzer:
     def _categorize_stress_level(self, overall_resilience: float) -> str:
         """ストレスレベルのカテゴリ分類"""
         
-        if overall_resilience >= 0.8:
+        if overall_resilience >= TEAM_DYNAMICS_PARAMETERS["stress_high_threshold"]:
             return "高ストレス耐性"
-        elif overall_resilience >= 0.6:
+        elif overall_resilience >= TEAM_DYNAMICS_PARAMETERS["stress_medium_threshold"]:
             return "中ストレス耐性"
-        elif overall_resilience >= 0.4:
+        elif overall_resilience >= TEAM_DYNAMICS_PARAMETERS["stress_low_threshold"]:
             return "低ストレス耐性"
         else:
             return "ストレス注意"
@@ -722,7 +724,7 @@ class TeamDynamicsAnalyzer:
         if team_characteristics['experience_balance'] == "メンタリング関係":
             scenarios.append("新人指導")
         
-        if pair.compatibility_score >= 0.9:
+        if pair.compatibility_score >= TEAM_DYNAMICS_PARAMETERS["compatibility_threshold_excellent"]:
             scenarios.append("重要業務担当")
         
         if not scenarios:

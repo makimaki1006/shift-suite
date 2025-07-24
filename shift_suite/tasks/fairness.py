@@ -7,6 +7,8 @@ import pandas as pd
 
 from .analyzers.rest_time import RestTimeAnalyzer
 from .leave_analyzer import approval_rate_by_staff
+from .constants import NIGHT_START_TIME, NIGHT_END_TIME, is_night_shift_time, FATIGUE_PARAMETERS
+from .utils import calculate_jain_index
 
 log = logging.getLogger(__name__)
 
@@ -45,32 +47,15 @@ def _extract_time_series(df: pd.DataFrame) -> pd.Series:
 
 def _is_night(
     time_obj: dt.time,
-    night_start: dt.time = dt.time(22, 0),
-    night_end: dt.time = dt.time(5, 59),
+    night_start: dt.time = NIGHT_START_TIME,
+    night_end: dt.time = NIGHT_END_TIME,
 ) -> bool:
     """
     指定された時刻が夜勤時間帯かどうかを判定する。
-    デフォルトは 22:00 - 05:59 (翌朝)。
+    統一された定数を使用: 22:00 - 05:59 (翌朝)。
     """
-    if night_start <= night_end:
-        return night_start <= time_obj <= night_end
-    else:
-        return time_obj >= night_start or time_obj <= night_end
+    return is_night_shift_time(time_obj)
 
-
-def calculate_jain_index(values):
-    """Calculate Jain's fairness index"""
-    if len(values) == 0:
-        return 0.0
-    values = values.dropna()
-    if len(values) == 0:
-        return 0.0
-    sum_values = values.sum()
-    sum_squares = (values**2).sum()
-    n = len(values)
-    if sum_squares == 0:
-        return 1.0
-    return (sum_values**2) / (n * sum_squares)
 
 
 def run_fairness(

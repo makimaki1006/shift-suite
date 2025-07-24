@@ -17,16 +17,17 @@ from pathlib import Path
 import logging
 
 import pandas as pd
+from .constants import WAGE_RATES, COST_PARAMETERS
 
 log = logging.getLogger(__name__)
 
 
 def analyze_cost_benefit(
     out_dir: Path,
-    wage_direct: int = 1500,
-    wage_temp: int = 2200,
-    hiring_cost_once: int = 180_000,
-    penalty_per_lack_h: int = 4_000,
+    wage_direct: int = WAGE_RATES["regular_staff"],
+    wage_temp: int = WAGE_RATES["temporary_staff"],
+    hiring_cost_once: int = COST_PARAMETERS["hiring_cost_once"],
+    penalty_per_lack_h: int = COST_PARAMETERS["penalty_per_shortage_hour"],
 ) -> pd.DataFrame:
     """
     コストシミュレーションを実施し、Excel ファイルに保存

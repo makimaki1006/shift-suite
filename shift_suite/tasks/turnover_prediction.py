@@ -26,15 +26,16 @@ from sklearn.linear_model import LogisticRegression
 import warnings
 
 from .utils import log, save_df_parquet, write_meta
+from .constants import SLOT_HOURS, NIGHT_START_HOUR, NIGHT_END_HOUR, is_night_shift_time
 
 # XGBoost (optional)
 try:
     import xgboost as xgb
     _HAS_XGBOOST = True
-    log.info("[turnover_prediction] XGBoost detected — Enhanced model available")
+    log.info("[turnover_prediction] XGBoost detected -- Enhanced model available")
 except ImportError:
     _HAS_XGBOOST = False
-    log.warning("[turnover_prediction] XGBoost not available — Using sklearn models")
+    log.warning("[turnover_prediction] XGBoost not available -- Using sklearn models")
 
 
 class TurnoverPredictionEngine:
@@ -104,22 +105,22 @@ class TurnoverPredictionEngine:
                     continue
                 
                 # 基本勤務統計
-                total_hours = len(month_data) * 0.5  # 30分スロット想定
+                total_hours = len(month_data) * SLOT_HOURS  # スロット時間（DEFAULT_SLOT_MINUTESから動的計算）
                 work_days = month_data['date'].dt.date.nunique()
                 avg_hours_per_day = total_hours / work_days if work_days > 0 else 0
                 
                 # 勤務時間の不規則性
-                daily_hours = month_data.groupby(month_data['date'].dt.date).size() * 0.5
+                daily_hours = month_data.groupby(month_data['date'].dt.date).size() * SLOT_HOURS
                 hours_variance = daily_hours.var() if len(daily_hours) > 1 else 0
                 
                 # 勤務開始時刻の不規則性
                 start_times = month_data['date'].dt.hour + month_data['date'].dt.minute / 60
                 start_time_variance = start_times.var() if len(start_times) > 1 else 0
                 
-                # 夜勤比率
+                # 夜勤比率（統一された定数を使用）
                 night_hours = month_data[
-                    (month_data['date'].dt.hour >= 20) | 
-                    (month_data['date'].dt.hour < 6)
+                    (month_data['date'].dt.hour >= NIGHT_START_HOUR) | 
+                    (month_data['date'].dt.hour < NIGHT_END_HOUR)
                 ]
                 night_ratio = len(night_hours) / len(month_data) if len(month_data) > 0 else 0
                 

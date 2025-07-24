@@ -34,11 +34,11 @@ try:
     import pmdarima as pm
 
     _HAS_PMDARIMA = True
-    log.info("[forecast] pmdarima detected — auto_arima enabled")
+    log.info("[forecast] pmdarima detected -- auto_arima enabled")
 except ImportError:
     _HAS_PMDARIMA = False
     log.warning(
-        "[forecast] pmdarima not installed — ARIMA auto-search disabled; "
+        "[forecast] pmdarima not installed -- ARIMA auto-search disabled; "
         "run `pip install pmdarima` to enable"
     )
 

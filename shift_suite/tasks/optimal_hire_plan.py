@@ -14,9 +14,10 @@ def _get_shift_pattern_hours(
     """勤務区分シートから、各勤務コードの時間帯セットを読み込む"""
     try:
         from .io_excel import load_shift_patterns
+        from .constants import DEFAULT_SLOT_MINUTES
 
         _, code2slots = load_shift_patterns(
-            excel_path, sheet_name=master_sheet_name, slot_minutes=30
+            excel_path, sheet_name=master_sheet_name, slot_minutes=DEFAULT_SLOT_MINUTES
         )
         return {code: set(slots) for code, slots in code2slots.items()}
     except Exception as e:  # noqa: BLE001

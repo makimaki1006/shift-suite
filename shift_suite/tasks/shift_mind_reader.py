@@ -19,6 +19,7 @@ from .analyzers import (
 )
 from .fatigue import _features as calc_fatigue_features
 from .fairness import calculate_jain_index
+from .constants import SLOT_HOURS
 
 log = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ class ShiftMindReader:
 
         staff_features = pd.DataFrame(index=long_df["staff"].unique())
         staff_features["total_hours"] = (
-            df_until_now.groupby("staff")["ds"].count() * 0.5
+            df_until_now.groupby("staff")["ds"].count() * SLOT_HOURS
         )
 
         def _consecutive(s: pd.Series) -> int:
@@ -187,7 +188,7 @@ class ShiftMindReader:
             for opt in dp.options:
                 staff_id = opt["staff"]
                 feats = {
-                    "total_hours": current_features.loc[staff_id].get("total_hours", 0) + 0.5,
+                    "total_hours": current_features.loc[staff_id].get("total_hours", 0) + SLOT_HOURS,
                     "consecutive_days": current_features.loc[staff_id].get("consecutive_days", 0),
                     "recent_rest_hours": current_features.loc[staff_id].get("recent_rest_hours", 0),
                     "attendance_rate": current_features.loc[staff_id].get("attendance_rate", 0),

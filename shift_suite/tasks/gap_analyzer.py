@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+from shift_suite.tasks.constants import SLOT_HOURS
 
 
 def analyze_standards_gap(
@@ -27,7 +28,7 @@ def analyze_standards_gap(
     gap_summary = pd.DataFrame(
         {
             "role": list(manual_need_values.keys()),
-            "total_gap_hours": [gap_heatmap.sum() * 0.5] * len(manual_need_values),
+            "total_gap_hours": [gap_heatmap.sum() * SLOT_HOURS] * len(manual_need_values),
         }
     )
 

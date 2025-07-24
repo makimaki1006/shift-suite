@@ -27,8 +27,28 @@ from .utils import (
 )
 
 # 新しい汎用統計エンジン
-from ..core.statistics_engine import AdaptiveStatisticsEngine
-from ..core.data_models import StaffRecord, DailyStaffSummary, NeedCalculationResult
+# from ..core.statistics_engine import AdaptiveStatisticsEngine
+# from ..core.data_models import StaffRecord, DailyStaffSummary, NeedCalculationResult
+
+# Temporary replacement classes for missing core modules
+class AdaptiveStatisticsEngine:
+    def calculate_need(self, historical_data, target_confidence=0.75):
+        import numpy as np
+        values = np.array(historical_data)
+        need_value = float(np.percentile(values, 75)) if len(values) > 0 else 0.0
+        confidence = 0.75
+        method = "p75_fallback"
+        return need_value, confidence, method
+
+class NeedCalculationResult:
+    def __init__(self, date, time_slot, need_count, confidence, calculation_method, data_points, raw_data):
+        self.date = date
+        self.time_slot = time_slot
+        self.need_count = need_count
+        self.confidence = confidence
+        self.calculation_method = calculation_method
+        self.data_points = data_points
+        self.raw_data = raw_data
 
 analysis_logger = logging.getLogger('analysis')
 

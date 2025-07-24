@@ -9,6 +9,7 @@ import pandas as pd
 
 from .utils import log, save_df_parquet
 from .analyzers.rest_time import RestTimeAnalyzer
+from .constants import NIGHT_START_HOUR, NIGHT_END_HOUR, is_night_shift_time, FATIGUE_PARAMETERS
 
 
 def _features(long_df: pd.DataFrame, slot_minutes: int = 30) -> pd.DataFrame:
@@ -41,9 +42,9 @@ def _features(long_df: pd.DataFrame, slot_minutes: int = 30) -> pd.DataFrame:
 
     def _cat(row: pd.Series) -> str:
         if (
-            row["start_hour"] >= 22
+            is_night_shift_time(int(row["start_hour"]))
             or row["cross_mid"]
-            or row["end_hour_adj"] <= 6
+            or row["end_hour_adj"] <= NIGHT_END_HOUR
         ):
             return "night"
         return "day"
@@ -62,8 +63,9 @@ def _features(long_df: pd.DataFrame, slot_minutes: int = 30) -> pd.DataFrame:
 
     # ④ rest time penalty
     rest_df = RestTimeAnalyzer().analyze(df, slot_minutes=slot_minutes)
-    rest_df["penalty"] = (11 - rest_df["rest_hours"]).clip(lower=0)
-    rest_penalty = rest_df.groupby("staff")["penalty"].mean() / 11
+    min_rest_hours = FATIGUE_PARAMETERS["min_rest_hours"]
+    rest_df["penalty"] = (min_rest_hours - rest_df["rest_hours"]).clip(lower=0)
+    rest_penalty = rest_df.groupby("staff")["penalty"].mean() / min_rest_hours
 
     # ⑤ consecutive working days (existing logic)
     consec_metrics = []
@@ -156,9 +158,9 @@ def train_fatigue(
     w = weights_default
 
     consec_score = (
-        0.6 * X.get("consec3_ratio", 0)
-        + 0.3 * X.get("consec4_ratio", 0)
-        + 0.1 * X.get("consec5_ratio", 0)
+        FATIGUE_PARAMETERS["consecutive_3_days_weight"] * X.get("consec3_ratio", 0)
+        + FATIGUE_PARAMETERS["consecutive_4_days_weight"] * X.get("consec4_ratio", 0)
+        + FATIGUE_PARAMETERS["consecutive_5_days_weight"] * X.get("consec5_ratio", 0)
     )
 
     norm_df = X.rank(pct=True)

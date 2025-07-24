@@ -19,12 +19,13 @@ import math
 from pathlib import Path
 
 import pandas as pd
+from .constants import WAGE_RATES, COST_PARAMETERS
 
 # ──────────────────────────────────────────────────────────────────────────────
-# User-tunable constants
-MONTHLY_HOURS_FTE = 160  # 月あたり 1 FTE が賄える労働時間
-RECRUIT_COST_PER_HIRE = 200_000  # 1 人あたり採用コスト (求人広告・紹介料など)
-AVG_HOURLY_WAGE = 1_300  # 想定・自社スタッフ平均時給（円）
+# User-tunable constants (統一された定数を使用)
+MONTHLY_HOURS_FTE = COST_PARAMETERS["monthly_hours_fte"]      # 月あたり 1 FTE が賄える労働時間
+RECRUIT_COST_PER_HIRE = COST_PARAMETERS["recruit_cost_per_hire"]  # 1 人あたり採用コスト
+AVG_HOURLY_WAGE = WAGE_RATES["average_hourly_wage"]           # 想定・自社スタッフ平均時給（円）
 
 
 # ──────────────────────────────────────────────────────────────────────────────
