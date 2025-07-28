@@ -75,8 +75,9 @@ try:
     from execution_logger import create_app_logger, ExecutionLogger
     EXECUTION_LOGGING_AVAILABLE = True
 except ImportError:
+    # create_app_logger, ExecutionLogger  # 未使用のためコメントアウト
     EXECUTION_LOGGING_AVAILABLE = False
-    log.warning("実行ログ機能が利用できません")
+    # log.warning("実行ログ機能が利用できません")  # 不要な警告のためコメントアウト
 
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
@@ -96,7 +97,7 @@ from shift_suite.tasks.fatigue import train_fatigue
 from shift_suite.tasks.forecast import build_demand_series, forecast_need
 from shift_suite.tasks.h2hire import build_hire_plan as build_hire_plan_from_kpi
 from shift_suite.tasks.heatmap import build_heatmap
-from shift_suite.tasks.hire_plan import build_hire_plan
+from shift_suite.tasks.hire_plan import build_hire_plan as build_hire_plan_standard
 
 # ── Shift-Suite task modules ─────────────────────────────────────────────────
 from shift_suite.tasks.io_excel import SHEET_COL_ALIAS, _normalize, ingest_excel
@@ -121,6 +122,15 @@ from shift_suite.tasks.gap_analyzer import analyze_standards_gap
 from shift_suite.tasks.advanced_blueprint_engine_v2 import AdvancedBlueprintEngineV2
 from sklearn.tree import plot_tree
 import matplotlib.pyplot as plt
+
+# ★Truth-Driven Analysis System (向上した分析機能)
+from shift_suite.tasks.enhanced_data_ingestion import (
+    TruthAssuredDataIngestion, 
+    ingest_excel_with_quality_assurance
+)
+from shift_suite.tasks.truth_assured_decomposer import TruthAssuredDecomposer
+from shift_suite.tasks.hierarchical_truth_analyzer import HierarchicalTruthAnalyzer
+from shift_suite.tasks.weekday_role_need_visualizer import WeekdayRoleNeedAnalyzer
 
 
 def create_comprehensive_analysis_log(output_dir: Path, analysis_type: str = "FULL") -> Path:
@@ -812,10 +822,54 @@ def excel_cell_to_row_col(cell: str) -> tuple[int, int] | None:
     return int(row_txt) - 1, col - 1
 
 
+def estimate_date_range_from_excel(excel_path: Path, sheet_name: str, header_row: int) -> list[datetime.date] | None:
+    """📅 Excelファイルから参照期間を自動推定"""
+    try:
+        # ヘッダー行を読み込んで日付列を検出
+        df_header = pd.read_excel(excel_path, sheet_name=sheet_name, header=header_row, nrows=1)
+        
+        date_columns = []
+        for col in df_header.columns:
+            col_str = str(col)
+            # 日付らしい列名を検出 (例: "1/1", "2024/1/1", "01/01"など)
+            if re.search(r'\d{1,4}[/-]\d{1,2}([/-]\d{1,4})?', col_str):
+                try:
+                    # 日付として解析を試行
+                    parsed_date = pd.to_datetime(col_str, errors='coerce')
+                    if pd.notna(parsed_date):
+                        date_columns.append(parsed_date.date())
+                except:
+                    continue
+        
+        if len(date_columns) >= 2:
+            date_columns.sort()
+            start_date = date_columns[0]
+            end_date = date_columns[-1]
+            return [start_date, end_date]
+        
+        return None
+        
+    except Exception as e:
+        log.warning(f"日付範囲自動推定エラー: {e}")
+        return None
+
+
 def run_import_wizard() -> None:
     """Show step-by-step wizard for Excel ingest."""
     step = st.session_state.get("wizard_step", 1)
     st.header("📥 Excel Import Wizard")
+    
+    # 📊 プログレス表示
+    progress_value = (step - 1) / 3  # 4ステップ想定
+    st.progress(progress_value, text=f"ステップ {step}/4")
+    
+    # 🔙 戻るボタンの実装 (Step 2以降で表示)
+    if step > 1:
+        col_back, col_spacer = st.columns([1, 4])
+        with col_back:
+            if st.button("🔙 前のステップに戻る", key=f"back_step_{step}"):
+                st.session_state.wizard_step = step - 1
+                st.rerun()
 
     if step == 1:
         default_excel = os.getenv("SHIFT_SUITE_DEFAULT_EXCEL")
@@ -867,6 +921,7 @@ def run_import_wizard() -> None:
                 }
                 st.session_state.year_month_cell_input_widget = "D1"
                 st.session_state.header_row_input_widget = 1
+                st.session_state.data_start_row_input_widget = 3
                 st.session_state.wizard_step = 2
                 st.rerun()
         return
@@ -875,13 +930,13 @@ def run_import_wizard() -> None:
         for sheet in st.session_state.shift_sheets_multiselect_widget:
             st.subheader(sheet)
             ym = st.text_input(
-                "年月情報セル位置", value="A1", key=f"ym_{sheet}", help="例: A1"
+                "年月情報セル位置", value="D1", key=f"ym_{sheet}", help="例: D1"
             )
             hdr = st.number_input(
                 "列名ヘッダー行番号", 1, 20, value=1, key=f"hdr_{sheet}"
             )
-            st.number_input(
-                "データ開始行番号", 1, 200, value=hdr + 1, key=f"data_{sheet}"
+            data_start = st.number_input(
+                "データ開始行番号", 1, 20, value=3, key=f"data_{sheet}", help="データが開始される行番号"
             )
             df_prev = pd.read_excel(
                 st.session_state.wizard_excel_path,
@@ -890,6 +945,20 @@ def run_import_wizard() -> None:
                 nrows=10,
             )
             st.dataframe(df_prev, use_container_width=True)
+            
+            # 📅 参照期間の自動推定を実行
+            auto_date_range = estimate_date_range_from_excel(
+                st.session_state.wizard_excel_path, sheet, int(hdr) - 1
+            )
+            if auto_date_range and len(auto_date_range) == 2:
+                if f"auto_start_{sheet}" not in st.session_state:
+                    st.session_state[f"auto_start_{sheet}"] = auto_date_range[0]
+                    st.session_state[f"auto_end_{sheet}"] = auto_date_range[1]
+                    st.success(f"📅 参照期間を自動推定: {auto_date_range[0]} ～ {auto_date_range[1]}")
+                    # 実際の参照期間ウィジェットに反映
+                    if "need_ref_start_date_widget" not in st.session_state:
+                        st.session_state.need_ref_start_date_widget = auto_date_range[0]
+                        st.session_state.need_ref_end_date_widget = auto_date_range[1]
             rc = excel_cell_to_row_col(ym)
             ym_text = "N/A"
             if rc is not None:
@@ -1320,6 +1389,7 @@ if "app_initialized" not in st.session_state:
     st.session_state.slot_input_widget = 30
     st.session_state.header_row_input_widget = 1
     st.session_state.year_month_cell_input_widget = "D1"
+    st.session_state.data_start_row_input_widget = 3
     st.session_state.candidate_sheet_list_for_ui = []
     st.session_state.shift_sheets_multiselect_widget = []
     st.session_state._force_update_multiselect_flag = False
@@ -2038,16 +2108,36 @@ if run_button_clicked:
                             fairness_df.to_parquet(base_out_dir / "fairness_after.parquet")
                         except Exception as e_conv:
                             log.warning(f"fairness_after.xlsx conversion failed: {e_conv}")
-                if "Fatigue" in param_ext_opts:
-                    fatigue_weights = {
-                        "start_var": st.session_state.get("weight_start_var_widget", 1.0),
-                        "diversity": st.session_state.get("weight_diversity_widget", 1.0),
-                        "worktime_var": st.session_state.get("weight_worktime_var_widget", 1.0),
-                        "short_rest": st.session_state.get("weight_short_rest_widget", 1.0),
-                        "consecutive": st.session_state.get("weight_consecutive_widget", 1.0),
-                        "night_ratio": st.session_state.get("weight_night_ratio_widget", 1.0),
-                    }
-                    train_fatigue(long_df, base_out_dir, weights=fatigue_weights)
+                # if "Fatigue" in param_ext_opts:
+                #     fatigue_weights = {
+                #         "start_var": st.session_state.get("weight_start_var_widget", 1.0),
+                #         "diversity": st.session_state.get("weight_diversity_widget", 1.0),
+                #         "worktime_var": st.session_state.get("weight_worktime_var_widget", 1.0),
+                #         "short_rest": st.session_state.get("weight_short_rest_widget", 1.0),
+                #         "consecutive": st.session_state.get("weight_consecutive_widget", 1.0),
+                #         "night_ratio": st.session_state.get("weight_night_ratio_widget", 1.0),
+                #     }
+                #     train_fatigue(long_df, base_out_dir, weights=fatigue_weights)
+                #     
+                #     # Copy fatigue analysis files to all scenarios
+                #     try:
+                #         fatigue_xlsx = base_out_dir / "fatigue_score.xlsx"
+                #         fatigue_parquet = base_out_dir / "fatigue_score.parquet"
+                #         
+                #         if fatigue_xlsx.exists() or fatigue_parquet.exists():
+                #             for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                #                 if fatigue_xlsx.exists():
+                #                     target_xlsx = Path(scenario_path) / "fatigue_score.xlsx"
+                #                     shutil.copy2(fatigue_xlsx, target_xlsx)
+                #                 if fatigue_parquet.exists():
+                #                     target_parquet = Path(scenario_path) / "fatigue_score.parquet"
+                #                     shutil.copy2(fatigue_parquet, target_parquet)
+                #                 
+                #                 log.info(f"疲労度分析結果を {scenario_name} にコピーしました")
+                #         else:
+                #             log.warning("疲労度分析ファイルが生成されませんでした")
+                #     except Exception as e_fatigue_copy:
+                #         log.warning(f"疲労度分析結果のコピー中にエラー: {e_fatigue_copy}")
                 if _("Leave Analysis") in param_ext_opts:
                     daily_leave_df = leave_analyzer.get_daily_leave_counts(long_df, target_leave_types=param_leave_target_types)
                     if not daily_leave_df.empty:
@@ -2093,10 +2183,16 @@ if run_button_clicked:
             except Exception as e_common:
                 log.warning(f"common analysis failed: {e_common}")
 
+            # Store scenario directories for file copying
+            st.session_state.current_scenario_dirs = {}
+            
             for scenario_key, scenario_params in analysis_scenarios.items():
                 st.info(f"シナリオ '{scenario_params['name']}' の分析を開始...")
                 scenario_out_dir = base_out_dir / f"out_{scenario_key}"
                 scenario_out_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Store scenario directory mapping
+                st.session_state.current_scenario_dirs[scenario_key] = scenario_out_dir
 
                 try:
                     shutil.copy(intermediate_parquet_path, scenario_out_dir / "intermediate_data.parquet")
@@ -2448,6 +2544,24 @@ if run_button_clicked:
                                 leave_csv = scenario_out_dir / "leave_analysis.csv"
                                 daily_summary.to_csv(leave_csv, index=False)
 
+                                # Copy leave analysis files to all scenarios
+                                try:
+                                    for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                        if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                            target_leave_csv = Path(scenario_path) / "leave_analysis.csv"
+                                            daily_summary.to_csv(target_leave_csv, index=False)
+                                            
+                                            # Also copy leave_ratio_breakdown.csv if it exists
+                                            if "leave_ratio_breakdown" in st.session_state.leave_analysis_results:
+                                                ratio_target = Path(scenario_path) / "leave_ratio_breakdown.csv"
+                                                st.session_state.leave_analysis_results["leave_ratio_breakdown"].to_csv(
+                                                    ratio_target, index=False
+                                                )
+                                            
+                                            log.info(f"休暇分析結果を {scenario_name} にコピーしました")
+                                except Exception as e_copy:
+                                    log.warning(f"休暇分析結果のコピー中にエラー: {e_copy}")
+
                                 # Also generate shortage_leave.xlsx for the Shortage tab
                                 merge_shortage_leave(scenario_out_dir, leave_csv=leave_csv)
                             except FileNotFoundError:
@@ -2474,7 +2588,7 @@ if run_button_clicked:
 
             # 他の追加モジュールの実行
 
-            skip_opts = {"Fairness", "Fatigue", "Cluster", "Skill"}
+            skip_opts = {"Fairness", "Cluster", "Skill"}
             for opt_module_name_exec_run in st.session_state.available_ext_opts_widget:
                 if (
                     opt_module_name_exec_run in param_ext_opts
@@ -2502,6 +2616,21 @@ if run_button_clicked:
                                 )
                                 st.session_state.analysis_status["stats"] = "success"
                                 st.success("✅ Stats (統計情報) 生成完了")
+                                
+                                # Copy Stats files to all scenarios
+                                try:
+                                    for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                        if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                            for file_name in ["stats_alerts.parquet", "stats_daily_metrics_raw.parquet", 
+                                                            "stats_monthly_summary.parquet", "stats_overall_summary.parquet", 
+                                                            "stats_summary.txt"]:
+                                                source_file = scenario_out_dir / file_name
+                                                if source_file.exists():
+                                                    target_file = Path(scenario_path) / file_name
+                                                    shutil.copy2(source_file, target_file)
+                                                    log.info(f"Stats結果を {scenario_name} にコピーしました: {file_name}")
+                                except Exception as e_copy:
+                                    log.warning(f"Stats結果のコピー中にエラー: {e_copy}")
                             else:
                                 st.session_state.analysis_status["stats"] = "skipped"
                                 st.warning(
@@ -2509,6 +2638,18 @@ if run_button_clicked:
                                 )
                         elif opt_module_name_exec_run == "Anomaly":
                             detect_anomaly(scenario_out_dir)
+                            
+                            # Copy Anomaly files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        source_file = scenario_out_dir / "anomaly_days.parquet"
+                                        if source_file.exists():
+                                            target_file = Path(scenario_path) / "anomaly_days.parquet"
+                                            shutil.copy2(source_file, target_file)
+                                            log.info(f"Anomaly結果を {scenario_name} にコピーしました")
+                            except Exception as e_copy:
+                                log.warning(f"Anomaly結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "Fatigue":
                             fatigue_weights = {
                                 "start_var": st.session_state.get("weight_start_var_widget", 1.0),
@@ -2518,13 +2659,23 @@ if run_button_clicked:
                                 "consecutive": st.session_state.get("weight_consecutive_widget", 1.0),
                                 "night_ratio": st.session_state.get("weight_night_ratio_widget", 1.0),
                             }
-                            result_df = train_fatigue(
-                                long_df, scenario_out_dir, weights=fatigue_weights
+                            # train_fatigueはモデルを返すが、内部でファイルを生成する
+                            model = train_fatigue(
+                                long_df, scenario_out_dir, weights=fatigue_weights, slot_minutes=param_slot
                             )
-                            if result_df is not None and not getattr(result_df, "empty", True):
-                                result_df.to_parquet(
-                                    scenario_out_dir / "fatigue_score.parquet"
-                                )
+                            
+                            # Copy Fatigue files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        for file_name in ["fatigue_score.xlsx", "fatigue_score.parquet"]:
+                                            source_file = scenario_out_dir / file_name
+                                            if source_file.exists():
+                                                target_file = Path(scenario_path) / file_name
+                                                shutil.copy2(source_file, target_file)
+                                                log.info(f"疲労度分析結果を {scenario_name} にコピーしました: {file_name}")
+                            except Exception as e_copy:
+                                log.warning(f"疲労度分析結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "Cluster":
                             cluster_staff(long_df, scenario_out_dir)
                         elif opt_module_name_exec_run == "Skill":
@@ -2555,6 +2706,19 @@ if run_button_clicked:
                                 st.session_state.rest_time_monthly.to_csv(
                                     scenario_out_dir / "rest_time_monthly.csv", index=False
                                 )
+                            
+                            # Copy Rest Time Analysis files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        for file_name in ["rest_time.csv", "rest_time_monthly.csv"]:
+                                            source_file = scenario_out_dir / file_name
+                                            if source_file.exists():
+                                                target_file = Path(scenario_path) / file_name
+                                                shutil.copy2(source_file, target_file)
+                                                log.info(f"Rest Time Analysis結果を {scenario_name} にコピーしました: {file_name}")
+                            except Exception as e_copy:
+                                log.warning(f"Rest Time Analysis結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "Work Pattern Analysis":
                             wpa = WorkPatternAnalyzer()
                             st.session_state.work_pattern_results = wpa.analyze(long_df)
@@ -2569,6 +2733,19 @@ if run_button_clicked:
                                     scenario_out_dir / "work_pattern_monthly.csv",
                                     index=False,
                                 )
+                            
+                            # Copy Work Pattern Analysis files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        for file_name in ["work_patterns.csv", "work_pattern_monthly.csv"]:
+                                            source_file = scenario_out_dir / file_name
+                                            if source_file.exists():
+                                                target_file = Path(scenario_path) / file_name
+                                                shutil.copy2(source_file, target_file)
+                                                log.info(f"Work Pattern Analysis結果を {scenario_name} にコピーしました: {file_name}")
+                            except Exception as e_copy:
+                                log.warning(f"Work Pattern Analysis結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "Attendance Analysis":
                             st.session_state.attendance_results = (
                                 AttendanceBehaviorAnalyzer().analyze(long_df)
@@ -2576,6 +2753,18 @@ if run_button_clicked:
                             st.session_state.attendance_results.to_csv(
                                 scenario_out_dir / "attendance.csv", index=False
                             )
+                            
+                            # Copy Attendance Analysis files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        source_file = scenario_out_dir / "attendance.csv"
+                                        if source_file.exists():
+                                            target_file = Path(scenario_path) / "attendance.csv"
+                                            shutil.copy2(source_file, target_file)
+                                            log.info(f"Attendance Analysis結果を {scenario_name} にコピーしました")
+                            except Exception as e_copy:
+                                log.warning(f"Attendance Analysis結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "Low Staff Load":
                             lsl = LowStaffLoadAnalyzer()
                             st.session_state.low_staff_load_results = lsl.analyze(
@@ -2584,6 +2773,18 @@ if run_button_clicked:
                             st.session_state.low_staff_load_results.to_csv(
                                 scenario_out_dir / "low_staff_load.csv", index=False
                             )
+                            
+                            # Copy Low Staff Load files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        source_file = scenario_out_dir / "low_staff_load.csv"
+                                        if source_file.exists():
+                                            target_file = Path(scenario_path) / "low_staff_load.csv"
+                                            shutil.copy2(source_file, target_file)
+                                            log.info(f"Low Staff Load結果を {scenario_name} にコピーしました")
+                            except Exception as e_copy:
+                                log.warning(f"Low Staff Load結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "Combined Score":
                             rest_df = (
                                 st.session_state.rest_time_results
@@ -2608,6 +2809,18 @@ if run_button_clicked:
                             st.session_state.combined_score_results.to_csv(
                                 scenario_out_dir / "combined_score.csv", index=False
                             )
+                            
+                            # Copy Combined Score files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        source_file = scenario_out_dir / "combined_score.csv"
+                                        if source_file.exists():
+                                            target_file = Path(scenario_path) / "combined_score.csv"
+                                            shutil.copy2(source_file, target_file)
+                                            log.info(f"Combined Score結果を {scenario_name} にコピーしました")
+                            except Exception as e_copy:
+                                log.warning(f"Combined Score結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "Need forecast":
                             demand_csv_exec_run_fc = scenario_out_dir / "demand_series.csv"
                             forecast_xls_exec_run_fc = (
@@ -2650,6 +2863,19 @@ if run_button_clicked:
                                             )
                                         except Exception as e_conv:
                                             log.warning(f"forecast parquet conversion error: {e_conv}")
+                                    
+                                    # Copy Need forecast files to all scenarios
+                                    try:
+                                        for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                            if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                                for file_name in ["demand_series.csv", "demand_series.meta.json", "forecast.parquet", "forecast.json", "forecast.summary.txt", "forecast_history.csv"]:
+                                                    source_file = scenario_out_dir / file_name
+                                                    if source_file.exists():
+                                                        target_file = Path(scenario_path) / file_name
+                                                        shutil.copy2(source_file, target_file)
+                                                        log.info(f"Need forecast結果を {scenario_name} にコピーしました: {file_name}")
+                                    except Exception as e_copy:
+                                        log.warning(f"Need forecast結果のコピー中にエラー: {e_copy}")
                                 else:
                                     st.warning(
                                         _("Need forecast")
@@ -2712,15 +2938,28 @@ if run_button_clicked:
                             demand_csv_hp_exec_run_hp = (
                                 scenario_out_dir / "demand_series.csv"
                             )
-                            hire_xls_exec_run_hp = scenario_out_dir / "hire_plan.xlsx"
+                            hire_xls_exec_run_hp = scenario_out_dir / "hire_plan.parquet"
                             if demand_csv_hp_exec_run_hp.exists():
-                                build_hire_plan(
+                                build_hire_plan_standard(
                                     demand_csv_hp_exec_run_hp,
                                     hire_xls_exec_run_hp,
                                     param_std_work_hours,
                                     param_safety_factor,
                                     param_target_coverage,
                                 )
+                                
+                                # Copy Hire plan files to all scenarios
+                                try:
+                                    for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                        if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                            for file_name in ["hire_plan.parquet", "hire_plan.txt", "hire_plan_meta.parquet"]:
+                                                source_file = scenario_out_dir / file_name
+                                                if source_file.exists():
+                                                    target_file = Path(scenario_path) / file_name
+                                                    shutil.copy2(source_file, target_file)
+                                                    log.info(f"Hire plan結果を {scenario_name} にコピーしました: {file_name}")
+                                except Exception as e_copy:
+                                    log.warning(f"Hire plan結果のコピー中にエラー: {e_copy}")
                             else:
                                 st.warning(
                                     _("Hire Plan")
@@ -2734,6 +2973,19 @@ if run_button_clicked:
                                 param_hiring_cost,
                                 param_penalty_lack,
                             )
+                            
+                            # Copy Cost/Benefit files to all scenarios
+                            try:
+                                for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                    if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                        for file_name in ["cost_benefit.parquet", "cost_benefit_summary.txt"]:
+                                            source_file = scenario_out_dir / file_name
+                                            if source_file.exists():
+                                                target_file = Path(scenario_path) / file_name
+                                                shutil.copy2(source_file, target_file)
+                                                log.info(f"Cost/Benefit結果を {scenario_name} にコピーしました: {file_name}")
+                            except Exception as e_copy:
+                                log.warning(f"Cost/Benefit結果のコピー中にエラー: {e_copy}")
                         elif opt_module_name_exec_run == "最適採用計画":
                             if (
                                 st.session_state.analysis_status.get("shortage")
@@ -2766,6 +3018,19 @@ if run_button_clicked:
                                         scenario_out_dir, original_excel_path
                                     )
                                     st.success("✅ 最適採用計画 生成完了")
+                                    
+                                    # Copy 最適採用計画 files to all scenarios
+                                    try:
+                                        for scenario_name, scenario_path in st.session_state.current_scenario_dirs.items():
+                                            if scenario_path != scenario_out_dir:  # Don't copy to itself
+                                                for file_name in ["optimal_hire_plan.parquet", "shortage_weekday_timeslot_summary.xlsx"]:
+                                                    source_file = scenario_out_dir / file_name
+                                                    if source_file.exists():
+                                                        target_file = Path(scenario_path) / file_name
+                                                        shutil.copy2(source_file, target_file)
+                                                        log.info(f"最適採用計画結果を {scenario_name} にコピーしました: {file_name}")
+                                    except Exception as e_copy:
+                                        log.warning(f"最適採用計画結果のコピー中にエラー: {e_copy}")
                                 except Exception as e_opt_hire:
                                     log.error(
                                         f"最適採用計画の生成中にエラーが発生しました: {e_opt_hire}",
@@ -4747,9 +5012,11 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
                 with st.spinner("思考を解読中..."):
                     engine = AdvancedBlueprintEngineV2()
                     long_df = st.session_state.get("long_df")
+                    wt_df = st.session_state.get("wt_df")  # 勤務区分データも取得
                     if long_df is not None and not long_df.empty:
-                        results = engine.run_full_blueprint_analysis(long_df)
+                        results = engine.run_full_blueprint_analysis(long_df, wt_df)
                         st.session_state.mind_reader_results = results["mind_reading"]
+                        st.session_state.mece_facility_facts = results["mece_facility_facts"]
                         st.rerun()
                     else:
                         st.error("分析の元となる勤務データが見つかりません。")
@@ -4798,6 +5065,201 @@ def display_mind_reader_tab(tab_container, data_dir: Path) -> None:
                 title="コスト vs 公平性 トレードオフ",
             )
             st.plotly_chart(fig, use_container_width=True)
+
+
+def display_mece_facts_tab(tab_container, data_dir: Path) -> None:
+    """MECE事実抽出結果表示タブ"""
+    with tab_container:
+        st.subheader("📋 施設ルール事実抽出 (軸1)")
+        st.info("過去シフト実績からMECE分解により抽出された施設固有の運用ルール事実")
+        
+        # MECE事実抽出結果がない場合の処理
+        if "mece_facility_facts" not in st.session_state:
+            st.warning("MECE事実抽出を実行してください。Mind Readerタブから実行できます。")
+            return
+        
+        mece_results = st.session_state.get("mece_facility_facts", {})
+        human_readable = mece_results.get("human_readable", {})
+        
+        if not human_readable:
+            st.warning("抽出された事実データがありません。")
+            return
+        
+        # 抽出サマリー表示
+        summary = human_readable.get("抽出事実サマリー", {})
+        if summary:
+            st.markdown("### 📊 抽出サマリー")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("総事実数", summary.get("総事実数", 0))
+            with col2:
+                st.metric("カテゴリー数", len(summary) - 1)  # '総事実数'を除く
+            with col3:
+                extraction_metadata = mece_results.get("extraction_metadata", {})
+                data_quality = extraction_metadata.get("data_quality", {})
+                st.metric("データ完全性", f"{data_quality.get('completeness_ratio', 0):.1%}")
+        
+        # 確信度別分類表示
+        confidence_classification = human_readable.get("確信度別分類", {})
+        if confidence_classification:
+            st.markdown("### 🎯 確信度別事実分類")
+            
+            high_conf_tab, med_conf_tab, low_conf_tab = st.tabs(["高確信度 (≥80%)", "中確信度 (50-80%)", "低確信度 (<50%)"])
+            
+            with high_conf_tab:
+                high_facts = confidence_classification.get("高確信度", [])
+                if high_facts:
+                    st.success(f"高確信度事実: {len(high_facts)}件")
+                    for i, fact in enumerate(high_facts[:20], 1):  # 最大20件表示
+                        with st.expander(f"事実 {i}: {fact['カテゴリー']} > {fact['サブカテゴリー']}"):
+                            st.json(fact['詳細'])
+                else:
+                    st.info("高確信度の事実はありません")
+            
+            with med_conf_tab:
+                med_facts = confidence_classification.get("中確信度", [])
+                if med_facts:
+                    st.warning(f"中確信度事実: {len(med_facts)}件")
+                    for i, fact in enumerate(med_facts[:20], 1):
+                        with st.expander(f"事実 {i}: {fact['カテゴリー']} > {fact['サブカテゴリー']}"):
+                            st.json(fact['詳細'])
+                else:
+                    st.info("中確信度の事実はありません")
+            
+            with low_conf_tab:
+                low_facts = confidence_classification.get("低確信度", [])
+                if low_facts:
+                    st.error(f"低確信度事実: {len(low_facts)}件 (要確認)")
+                    for i, fact in enumerate(low_facts[:20], 1):
+                        with st.expander(f"事実 {i}: {fact['カテゴリー']} > {fact['サブカテゴリー']}"):
+                            st.json(fact['詳細'])
+                else:
+                    st.info("低確信度の事実はありません")
+        
+        # MECE分解事実詳細表示
+        mece_facts = human_readable.get("MECE分解事実", {})
+        if mece_facts:
+            st.markdown("### 🔍 MECE分解事実詳細")
+            
+            for category, facts in mece_facts.items():
+                if facts:
+                    with st.expander(f"{category} ({len(facts)}件)", expanded=False):
+                        facts_df = pd.DataFrame(facts)
+                        st.dataframe(facts_df, use_container_width=True)
+        
+        # 機械実行用制約データプレビュー
+        machine_readable = mece_results.get("machine_readable", {})
+        if machine_readable:
+            st.markdown("### 🤖 AI実行用制約データ")
+            
+            hard_constraints = machine_readable.get("hard_constraints", [])
+            soft_constraints = machine_readable.get("soft_constraints", [])
+            preferences = machine_readable.get("preferences", [])
+            
+            constraint_col1, constraint_col2, constraint_col3 = st.columns(3)
+            with constraint_col1:
+                st.metric("ハード制約", len(hard_constraints))
+            with constraint_col2:
+                st.metric("ソフト制約", len(soft_constraints))
+            with constraint_col3:
+                st.metric("推奨設定", len(preferences))
+            
+            if st.checkbox("制約データ詳細を表示"):
+                if hard_constraints:
+                    st.markdown("#### ハード制約 (必須遵守)")
+                    hard_df = pd.DataFrame([{
+                        "ID": c.get("id", ""),
+                        "タイプ": c.get("type", ""),
+                        "カテゴリー": c.get("category", ""),
+                        "確信度": c.get("confidence", 0),
+                        "優先度": c.get("priority", "")
+                    } for c in hard_constraints])
+                    st.dataframe(hard_df, use_container_width=True)
+                
+                if soft_constraints:
+                    st.markdown("#### ソフト制約 (可能な限り遵守)")
+                    soft_df = pd.DataFrame([{
+                        "ID": c.get("id", ""),
+                        "タイプ": c.get("type", ""),
+                        "カテゴリー": c.get("category", ""),
+                        "確信度": c.get("confidence", 0),
+                        "優先度": c.get("priority", "")
+                    } for c in soft_constraints])
+                    st.dataframe(soft_df, use_container_width=True)
+        
+        # メタデータ表示
+        extraction_metadata = mece_results.get("extraction_metadata", {})
+        if extraction_metadata and st.checkbox("抽出メタデータを表示"):
+            st.markdown("### 📈 抽出メタデータ")
+            st.json(extraction_metadata)
+        
+        # 機械実行用制約データエクスポート
+        st.markdown("### 💾 制約データエクスポート")
+        st.info("AIシフト作成システムで利用可能な制約データをJSONファイルとしてエクスポートできます。")
+        
+        export_col1, export_col2 = st.columns(2)
+        
+        with export_col1:
+            if st.button("🤖 AI実行用制約データをエクスポート", use_container_width=True):
+                constraints_json = machine_readable
+                
+                # ファイル名にタイムスタンプを追加
+                import datetime as dt
+                timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"facility_constraints_{timestamp}.json"
+                
+                # JSONデータをバイト形式に変換
+                import json
+                json_str = json.dumps(constraints_json, ensure_ascii=False, indent=2)
+                json_bytes = json_str.encode('utf-8')
+                
+                st.download_button(
+                    label="📥 制約データをダウンロード (JSON)",
+                    data=json_bytes,
+                    file_name=filename,
+                    mime="application/json",
+                    use_container_width=True
+                )
+                
+                st.success(f"制約データが準備されました: {filename}")
+                st.info(f"ハード制約: {len(constraints_json.get('hard_constraints', []))}件、ソフト制約: {len(constraints_json.get('soft_constraints', []))}件")
+        
+        with export_col2:
+            if st.button("📋 人間確認用レポートをエクスポート", use_container_width=True):
+                # 人間確認用の詳細レポートを生成
+                report_data = {
+                    "report_metadata": {
+                        "generated_at": dt.datetime.now().isoformat(),
+                        "report_type": "MECE施設ルール事実抽出レポート",
+                        "data_period": extraction_metadata.get("data_period", {}),
+                        "data_quality": extraction_metadata.get("data_quality", {})
+                    },
+                    "summary": summary,
+                    "confidence_classification": confidence_classification,
+                    "detailed_facts": mece_facts,
+                    "constraints_preview": {
+                        "hard_constraints_count": len(machine_readable.get("hard_constraints", [])),
+                        "soft_constraints_count": len(machine_readable.get("soft_constraints", [])),
+                        "preferences_count": len(machine_readable.get("preferences", []))
+                    }
+                }
+                
+                timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+                report_filename = f"facility_facts_report_{timestamp}.json"
+                
+                report_json_str = json.dumps(report_data, ensure_ascii=False, indent=2)
+                report_json_bytes = report_json_str.encode('utf-8')
+                
+                st.download_button(
+                    label="📥 確認用レポートをダウンロード (JSON)",
+                    data=report_json_bytes,
+                    file_name=report_filename,
+                    mime="application/json",
+                    use_container_width=True
+                )
+                
+                st.success(f"確認用レポートが準備されました: {report_filename}")
+                st.info("このレポートは人間による確認・検証用です。")
 
 
 def display_ppt_tab(tab_container, data_dir_ignored, key_prefix: str = ""):
@@ -4895,6 +5357,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
             data_dir = Path(out_dir_path)
             tab_keys_en_dash = [
                 "Mind Reader",
+                "MECE Facts",
                 "Overview",
                 "Heatmap",
                 "Shortage",
@@ -4913,6 +5376,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
             inner_tabs = st.tabs(tab_labels_dash)
             tab_func_map_dash = {
                 "Mind Reader": display_mind_reader_tab,
+                "MECE Facts": display_mece_facts_tab,
                 "Overview": display_overview_tab,
                 "Heatmap": display_heatmap_tab,
                 "Shortage": display_shortage_tab,
@@ -4999,6 +5463,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
 
     tab_keys_en_dash = [
         "Mind Reader",
+        "MECE Facts",
         "Overview",
         "Heatmap",
         "Shortage",
@@ -5019,6 +5484,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
     if extracted_data_dir:
         tab_function_map_dash = {
             "Mind Reader": display_mind_reader_tab,
+            "MECE Facts": display_mece_facts_tab,
             "Overview": display_overview_tab,
             "Heatmap": display_heatmap_tab,
             "Shortage": display_shortage_tab,
