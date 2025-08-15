@@ -6457,10 +6457,10 @@ def update_tab_visibility(active_tab, selected_scenario, data_status):
     """タブの表示制御（CSS visibility方式）"""
     if not selected_scenario or not data_status:
         raise PreventUpdate
-    
+
     # 全タブのスタイル定義
     all_tabs = [
-        'overview', 'heatmap', 'shortage', 'optimization', 'leave',
+        'overview', 'heatmap', 'shortage', 'proportional_abolition', 'optimization', 'leave',
         'cost', 'hire_plan', 'fatigue', 'forecast', 'fairness',
         'gap', 'individual_analysis', 'team_analysis', 'blueprint_analysis', 'fact_book_analysis', 'mece_constraint_system', 'logic_analysis', 'ai_analysis', 'truth_discovery'
     ]
