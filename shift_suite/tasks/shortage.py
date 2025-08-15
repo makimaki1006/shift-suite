@@ -20,7 +20,6 @@ import pandas as pd
 from .. import config
 from .constants import SUMMARY5  # 🔧 修正: 動的値使用
 from .utils import _parse_as_date, gen_labels, log, save_df_parquet, write_meta
-from .proportional_calculator import calculate_proportional_shortage
 from .time_axis_shortage_calculator import calculate_time_axis_shortage
 from .occupation_specific_calculator import calculate_occupation_specific_shortage
 
@@ -41,7 +40,7 @@ def create_timestamped_log(analysis_results: Dict, output_dir: Path) -> Path:
     
     try:
         with open(log_filepath, 'w', encoding='utf-8') as f:
-            f.write(f"=== 27,486.5時間問題 - 詳細計算過程分析 ===\n")
+            f.write("=== 27,486.5時間問題 - 詳細計算過程分析 ===\n")
             f.write(f"生成日時: {timestamp}\n")
             f.write(f"分析ディレクトリ: {output_dir}\n")
             f.write("=" * 70 + "\n\n")
@@ -76,7 +75,7 @@ def create_timestamped_log(analysis_results: Dict, output_dir: Path) -> Path:
                     # 時間帯別統計
                     hourly_shortage = shortage_df.sum(axis=1)
                     top_shortage_times = hourly_shortage.nlargest(5)
-                    f.write(f"\n  【最も不足の多い時間帯 TOP5】\n")
+                    f.write("\n  【最も不足の多い時間帯 TOP5】\n")
                     for time_slot, shortage_count in top_shortage_times.items():
                         f.write(f"    {time_slot}: {shortage_count:.1f}スロット ({shortage_count * slot_hours:.1f}時間)\n")
                     
@@ -85,7 +84,7 @@ def create_timestamped_log(analysis_results: Dict, output_dir: Path) -> Path:
                     if period_days > 60:  # 2ヶ月以上
                         months_estimated = period_days / 30
                         monthly_avg = total_shortage_hours / months_estimated
-                        f.write(f"\n  ⚠️ 【期間依存性分析】\n")
+                        f.write("\n  ⚠️ 【期間依存性分析】\n")
                         f.write(f"    推定期間: {months_estimated:.1f}ヶ月\n")
                         f.write(f"    月平均不足: {monthly_avg:.1f}時間/月\n")
                         f.write(f"    日平均不足: {monthly_avg/30:.1f}時間/日\n")
@@ -454,8 +453,26 @@ def validate_need_data(need_df):
         need_df = need_df.clip(upper=1.5)  # FINAL_FIX: 上限1.5人に厳格制限
         # 理由: 30分スロットに1.5人以上は統計的過大推定
         log.warning("[NEED_CAPPED] Need values capped to 1.5 people/slot (FINAL_FIX)")
-    
+
     return need_df
+
+
+def align_need_staff_columns(need_df: pd.DataFrame, staff_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Restrict both DataFrames to their common day columns.
+
+    Any non-overlapping columns are dropped and a warning is emitted to avoid
+    mismatched days inflating shortage calculations.
+    """
+
+    common_cols = need_df.columns.intersection(staff_df.columns)
+    if len(common_cols) != len(need_df.columns) or len(common_cols) != len(staff_df.columns):
+        extra_need = need_df.columns.difference(common_cols).tolist()
+        extra_staff = staff_df.columns.difference(common_cols).tolist()
+        log.warning(
+            "[shortage] Mismatched day columns detected; dropping non-overlapping days: "
+            f"need_only={extra_need}, staff_only={extra_staff}"
+        )
+    return need_df[common_cols], staff_df[common_cols]
 
 
 def detect_period_dependency_risk(period_days, total_shortage):
@@ -703,11 +720,14 @@ def shortage_and_brief(
     
     # Need データの検証・制限
     need_df_all = validate_need_data(need_df_all)
-    
-    # 不足時間計算（最初に定義）
-    lack_count_overall_df = (
-        (need_df_all - staff_actual_data_all_df)
+
+    # 列の不一致を解消してから不足時間を計算
+    need_df_all, staff_actual_data_all_df = align_need_staff_columns(
+        need_df_all, staff_actual_data_all_df
     )
+
+    # 不足時間計算（最初に定義）
+    lack_count_overall_df = need_df_all - staff_actual_data_all_df
     
     # COMPREHENSIVE_FIX: 期間正規化の統合
     # 期間が30日と大きく異なる場合は正規化適用
@@ -970,7 +990,7 @@ def shortage_and_brief(
         # 妥当性判定
         if avg_shortage_per_day > 1000:  # 1日1000時間以上は明らかに異常
             log.warning(f"⚠️ [VALIDITY_CHECK] 異常な不足時間検出: {avg_shortage_per_day:.0f}時間/日")
-            log.warning(f"⚠️ [VALIDITY_CHECK] 期間依存性問題の可能性があります")
+            log.warning("⚠️ [VALIDITY_CHECK] 期間依存性問題の可能性があります")
             
             # 🎯 緊急修正: 期間正規化を適用
             if period_days > 60:  # 2ヶ月以上の場合
@@ -1290,8 +1310,6 @@ def shortage_and_brief(
             log.warning(f"⚠️ [shortage] 異常な不足時間検出: {role_name_current}")
             log.warning(f"  total_lack_hours_for_role: {total_lack_hours_for_role:.0f}時間")
             log.warning(f"  slot_hours: {slot_hours:.2f}")
-            log.warning(f"  lack_count合計: {lack_count_role_df.sum().sum():.0f}人")
-            log.warning(f"  計算式確認: {lack_count_role_df.sum().sum():.0f} × {slot_hours:.2f} = {total_lack_hours_for_role:.0f}")
         
         role_kpi_rows.append(
             {
@@ -1770,7 +1788,7 @@ def shortage_and_brief(
             weekday_summary_df.to_parquet(weekday_summary_path, index=False)
             log.info(f"[shortage] 曜日別タイムスロットサマリー生成: {weekday_summary_path.name}")
         else:
-            log.warning(f"[shortage] shortage_time.parquetが見つからないため、曜日別サマリーをスキップ")
+            log.warning("[shortage] shortage_time.parquetが見つからないため、曜日別サマリーをスキップ")
     except Exception as e:
         log.error(f"[shortage] 曜日別サマリー生成エラー: {e}")
     
