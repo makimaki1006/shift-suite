@@ -385,89 +385,138 @@ html {
 
 /* ===== DASH COMPONENT STYLES ===== */
 
-/* Tab Styles - Fix for inactive tab text visibility */
-.custom-tab {
-    color: #586069 !important;  /* Dark gray text for inactive tabs */
-    background-color: #f0f0f0 !important;
-    border: 1px solid #d1d5da !important;
+/* Dash Tabs - 実際のDashクラス名を使用 */
+.tab-parent {
+    margin-bottom: 1rem !important;
+}
+
+.tab-container .tab {
+    color: #586069 !important;  /* 非アクティブタブの文字色 */
+    background-color: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
     border-bottom: none !important;
-    padding: 0.5rem 1rem !important;
+    padding: 0.75rem 1.25rem !important;
     margin-right: 2px !important;
     border-radius: 0.375rem 0.375rem 0 0 !important;
     font-weight: 500 !important;
     transition: all 0.15s ease-in-out !important;
 }
 
-.custom-tab:hover {
-    color: #24292e !important;
-    background-color: #e1e4e8 !important;
+.tab-container .tab:hover {
+    color: #212529 !important;
+    background-color: #e9ecef !important;
     text-decoration: none !important;
 }
 
-/* Active tab styles */
-.custom-tab--selected {
-    color: #24292e !important;  /* Dark text for active tab */
+/* アクティブタブ */
+.tab-container .tab--selected {
+    color: #212529 !important;  /* アクティブタブの文字色 */
     background-color: #ffffff !important;
-    border-color: #d1d5da !important;
-    font-weight: bold !important;
-    box-shadow: 0 -2px 4px rgba(0,0,0,0.1) !important;
+    border-color: #dee2e6 !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid #ffffff !important;
+    position: relative !important;
+    z-index: 1 !important;
 }
 
-/* Tab container */
-.tab-container {
-    border-bottom: 1px solid #d1d5da !important;
-    margin-bottom: 1rem !important;
+/* タブコンテンツ境界線 */
+.tab-content {
+    border-top: 1px solid #dee2e6 !important;
+    padding-top: 1rem !important;
 }
 
-/* Dropdown/Select Styles - Fix for white text on white background */
-.Select-control, .dash-dropdown .Select-control {
-    color: #000000 !important;
+/* Dash Dropdown - より具体的なセレクター */
+div[data-dash-is-loading="false"] .Select-control,
+.dash-dropdown .Select-control,
+._dash-dropdown .Select-control {
+    color: #212529 !important;
     background-color: #ffffff !important;
     border: 1px solid #ced4da !important;
     border-radius: var(--border-radius) !important;
+    min-height: 38px !important;
 }
 
-.Select-value-label, .dash-dropdown .Select-value-label {
-    color: #000000 !important;
+div[data-dash-is-loading="false"] .Select-value-label,
+.dash-dropdown .Select-value-label,
+._dash-dropdown .Select-value-label {
+    color: #212529 !important;
     font-weight: 500 !important;
+    line-height: 1.5 !important;
 }
 
-.Select-placeholder, .dash-dropdown .Select-placeholder {
+div[data-dash-is-loading="false"] .Select-placeholder,
+.dash-dropdown .Select-placeholder,
+._dash-dropdown .Select-placeholder {
     color: #6c757d !important;
+    font-style: italic !important;
 }
 
-.Select-input, .dash-dropdown .Select-input {
-    color: #000000 !important;
+div[data-dash-is-loading="false"] .Select-input input,
+.dash-dropdown .Select-input input,
+._dash-dropdown .Select-input input {
+    color: #212529 !important;
 }
 
-/* Dropdown menu items */
-.Select-option, .dash-dropdown .Select-option {
-    color: #000000 !important;
+/* ドロップダウンメニューアイテム */
+div[data-dash-is-loading="false"] .Select-option,
+.dash-dropdown .Select-option,
+._dash-dropdown .Select-option {
+    color: #212529 !important;
     background-color: #ffffff !important;
     padding: 0.5rem 0.75rem !important;
+    border-bottom: 1px solid #f8f9fa !important;
 }
 
-.Select-option:hover, .dash-dropdown .Select-option:hover {
+div[data-dash-is-loading="false"] .Select-option:hover,
+.dash-dropdown .Select-option:hover,
+._dash-dropdown .Select-option:hover {
     color: #ffffff !important;
     background-color: var(--primary-color) !important;
 }
 
-.Select-option.is-focused, .dash-dropdown .Select-option.is-focused {
+div[data-dash-is-loading="false"] .Select-option.is-focused,
+.dash-dropdown .Select-option.is-focused,
+._dash-dropdown .Select-option.is-focused {
     color: #ffffff !important;
     background-color: var(--primary-color) !important;
 }
 
-.Select-option.is-selected, .dash-dropdown .Select-option.is-selected {
+div[data-dash-is-loading="false"] .Select-option.is-selected,
+.dash-dropdown .Select-option.is-selected,
+._dash-dropdown .Select-option.is-selected {
     color: #ffffff !important;
     background-color: #0056b3 !important;
+    font-weight: 600 !important;
 }
 
-/* Multi-select specific styles */
+/* マルチセレクト */
 .Select-multi-value-wrapper .Select-value {
-    color: #000000 !important;
+    color: #212529 !important;
     background-color: #e9ecef !important;
     border: 1px solid #ced4da !important;
     border-radius: 0.25rem !important;
+    margin: 2px !important;
+    padding: 2px 6px !important;
+}
+
+/* 汎用的なテキスト可読性の強制修正 */
+/* すべてのDashコンポーネントに対する強制スタイル */
+.dash-dropdown, .dash-dropdown *, 
+._dash-dropdown, ._dash-dropdown *,
+.Select, .Select *,
+.tab-container, .tab-container *,
+.tab-parent, .tab-parent * {
+    color: #212529 !important;
+}
+
+/* 白いテキストを防ぐための包括的ルール */
+div[style*="color: white"],
+div[style*="color: #fff"],
+div[style*="color: #ffffff"],
+span[style*="color: white"],
+span[style*="color: #fff"],
+span[style*="color: #ffffff"] {
+    color: #212529 !important;
 }
 
 /* Input fields in Dash components */
@@ -475,6 +524,33 @@ html {
     color: #495057 !important;
     background-color: #ffffff !important;
     border: 1px solid #ced4da !important;
+}
+
+/* Dashコンポーネント全体のデフォルト色 */
+._dash-undo-redo, .dash-table-container, .dash-graph {
+    color: #212529 !important;
+}
+
+/* 特定のDashクラスの修正 */
+.dash-bootstrap-container * {
+    color: inherit !important;
+}
+
+/* タブ関連の詳細修正 */
+[data-value] {
+    color: #212529 !important;
+}
+
+/* より具体的なタブスタイル */
+.tabs__tab {
+    color: #6c757d !important;
+    background-color: #f8f9fa !important;
+}
+
+.tabs__tab--selected {
+    color: #212529 !important;
+    background-color: #ffffff !important;
+    font-weight: 700 !important;
 }
 
 /* Table styles for better readability */
