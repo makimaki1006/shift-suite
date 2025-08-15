@@ -315,11 +315,17 @@ class TimeAxisShortageCalculator:
             self.slot_minutes = best_match
             self.slot_hours = best_match / 60.0
             self.detected_slot_info = {
-                'detected_minutes': best_match,
+                'slot_minutes': best_match,
+                'slot_hours': best_match / 60.0,
                 'confidence': best_score,
-                'original_patterns': minutes_list
+                'detected_pattern': slot_patterns.get(best_match, minutes_list),
+                'actual_minutes': minutes_list,
             }
             log.info(f"[TimeAxis] 動的スロット検出: {best_match}分 (信頼度: {best_score:.2f})")
+
+    def get_detected_slot_info(self) -> Optional[Dict]:
+        """検出されたスロット情報を取得"""
+        return self.detected_slot_info
 
 def calculate_time_axis_shortage(
     working_data: pd.DataFrame, 
