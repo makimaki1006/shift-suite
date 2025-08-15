@@ -1,4 +1,0 @@
-# シフト分析システム日次監視タスク
-0 8 * * * /usr/bin/python3 /path/to/daily_monitor.py
-*/5 * * * * /usr/bin/python3 /path/to/health_check.py
-*/10 * * * * /usr/bin/python3 /path/to/performance_monitor.py

@@ -1,2 +1,0 @@
-model: ETS
-mape: 0.049

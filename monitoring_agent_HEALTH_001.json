@@ -1,8 +1,0 @@
-{
-  "agent_id": "HEALTH_001",
-  "name": "システムヘルスチェックエージェント",
-  "type": "health_monitor",
-  "script": "#!/usr/bin/env python3\n# システムヘルスチェックエージェント\nimport os\nimport json\nimport datetime\n\ndef check_system_health():\n    health_metrics = {\n        'timestamp': datetime.datetime.now().isoformat(),\n        'file_system': check_file_system(),\n        'process_status': check_processes(),\n        'log_errors': check_error_logs(),\n        'overall_score': 0\n    }\n    \n    # スコア計算\n    scores = [\n        health_metrics['file_system']['score'],\n        health_metrics['process_status']['score'],\n        100 - min(health_metrics['log_errors']['error_count'], 100)\n    ]\n    health_metrics['overall_score'] = sum(scores) / len(scores)\n    \n    return health_metrics\n\ndef check_file_system():\n    critical_files = ['app.py', 'dash_app.py']\n    existing = sum(1 for f in critical_files if os.path.exists(f))\n    return {\n        'total': len(critical_files),\n        'existing': existing,\n        'score': (existing / len(critical_files)) * 100\n    }\n\ndef check_processes():\n    # プロセスチェックのシミュレーション\n    return {\n        'app_running': True,\n        'dash_running': True,\n        'score': 100\n    }\n\ndef check_error_logs():\n    # エラーログチェックのシミュレーション\n    return {\n        'error_count': 0,\n        'last_error': None\n    }\n\nif __name__ == \"__main__\":\n    result = check_system_health()\n    print(json.dumps(result, indent=2))\n",
-  "interval": 300,
-  "enabled": true
-}

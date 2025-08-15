@@ -1,2 +1,0 @@
-total_lack_hours: 676
-total_excess_hours: 616
