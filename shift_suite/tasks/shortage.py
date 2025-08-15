@@ -413,23 +413,44 @@ def validate_and_cap_shortage(shortage_df, period_days, slot_hours):
     # 設定値
     MAX_SHORTAGE_PER_DAY = 5  # FINAL_FIX: 現実的な1日最大5時間
     # 理由: 24時間制でも1日5時間不足が現実的上限
-    
+    # まずは日毎に不足時間を集計し、日次上限を超える分を制限
+    daily_totals = shortage_df.sum(axis=1) * slot_hours
+    capped_dates = []
+    for day, total in daily_totals.items():
+        if total > MAX_SHORTAGE_PER_DAY:
+            scale = MAX_SHORTAGE_PER_DAY / total
+            shortage_df.loc[day] *= scale
+            capped_dates.append(str(day))
+            log.warning(f"[DAILY_CAP] {day}: {total:.1f}h -> {MAX_SHORTAGE_PER_DAY}h")
+
+    capped = bool(capped_dates)
+
+    if capped_dates:
+        log.warning(f"[DAILY_CAP] Dates capped: {', '.join(capped_dates)}")
+
+    # 日次制限後の総不足時間を計算し、依然として全体上限を超える場合は比例縮小
     total_shortage = shortage_df.sum().sum() * slot_hours
     max_allowed = MAX_SHORTAGE_PER_DAY * period_days
-    
+
     if total_shortage > max_allowed:
-        log.warning(f"[ANOMALY_DETECTED] Abnormal shortage time: {total_shortage:.0f}h > {max_allowed:.0f}h")
-        log.warning(f"[ANOMALY_DETECTED] Period: {period_days} days, Daily avg: {total_shortage/period_days:.0f}h/day")
-        
+        log.warning(
+            f"[ANOMALY_DETECTED] Abnormal shortage time: {total_shortage:.0f}h > {max_allowed:.0f}h"
+        )
+        log.warning(
+            f"[ANOMALY_DETECTED] Period: {period_days} days, Daily avg: {total_shortage/period_days:.0f}h/day"
+        )
+
         # 比例縮小で制限
         scale_factor = max_allowed / total_shortage
         shortage_df = shortage_df * scale_factor
-        
-        log.warning(f"[CAPPED] Limitation applied: scale={scale_factor:.3f}, after={max_allowed:.0f}h")
-        
-        return shortage_df, True  # 制限適用フラグ
-    
-    return shortage_df, False
+
+        log.warning(
+            f"[CAPPED] Limitation applied: scale={scale_factor:.3f}, after={max_allowed:.0f}h"
+        )
+
+        capped = True
+
+    return shortage_df, capped
 
 
 def validate_need_data(need_df):
