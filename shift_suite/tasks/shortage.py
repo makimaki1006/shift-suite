@@ -747,8 +747,29 @@ def shortage_and_brief(
         need_df_all, staff_actual_data_all_df
     )
 
-    # 不足時間計算（最初に定義）
-    lack_count_overall_df = need_df_all - staff_actual_data_all_df
+    # 期間依存性リスクの事前チェックとデータ期間の制御
+    temp_lack_df = need_df_all - staff_actual_data_all_df
+    pre_total_shortage = temp_lack_df.sum().sum() * slot_hours
+    pre_risk = detect_period_dependency_risk(period_days, pre_total_shortage)
+
+    MAX_PERIOD_DAYS = 90
+    if period_days > MAX_PERIOD_DAYS:
+        log.warning(
+            f"[PERIOD_PRECHECK] {period_days}日分のデータを検出。{MAX_PERIOD_DAYS}日に切り詰めます。"
+        )
+        keep_cols = date_columns_in_heat_all[:MAX_PERIOD_DAYS]
+        need_df_all = need_df_all[keep_cols]
+        staff_actual_data_all_df = staff_actual_data_all_df[keep_cols]
+        temp_lack_df = temp_lack_df[keep_cols]
+        date_columns_in_heat_all = keep_cols
+        period_days = len(keep_cols)
+    elif pre_risk["risk_level"] in ["high", "critical"]:
+        log.warning(
+            f"[PERIOD_PRECHECK] Period dependency risk detected: {pre_risk['risk_level']}"
+        )
+
+    # 不足時間計算（最終確定）
+    lack_count_overall_df = temp_lack_df
     
     # COMPREHENSIVE_FIX: 期間正規化の統合
     # 期間が30日と大きく異なる場合は正規化適用
