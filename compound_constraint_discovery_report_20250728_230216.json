@@ -1,0 +1,6428 @@
+{
+  "system_metadata": {
+    "system_name": "複合制約発見システム",
+    "version": "3.0.0",
+    "timestamp": "2025-07-28T23:02:16.462484",
+    "analyzed_files": [
+      "勤務表　勤務時間_トライアル.xlsx",
+      "test_shift_data.xlsx",
+      "デイ_テスト用データ_休日精緻.xlsx",
+      "デイ_テスト用データ_休日精緻_backup.xlsx",
+      "temp_デイ_テスト用データ_休日精緻.xlsx",
+      "ショートステイ_テスト用データ.xlsx",
+      "ショート_テスト用データ.xlsx"
+    ],
+    "total_files": 7
+  },
+  "constraint_discovery_summary": {
+    "basic_constraints": 419,
+    "enhanced_constraints": 4,
+    "total_constraints": 423,
+    "high_confidence_count": 170,
+    "constraint_type_distribution": {
+      "dynamic_soft": 417,
+      "static_soft": 2,
+      "static_hard": 4
+    },
+    "constraint_axis_distribution": {
+      "time": 393,
+      "staff": 30
+    }
+  },
+  "file_analysis_stats": {
+    "勤務表　勤務時間_トライアル.xlsx": {
+      "staff_count": 36,
+      "shift_codes": 34,
+      "constraint_rules": 129,
+      "implicit_rules": 29,
+      "file_size": 94503
+    },
+    "test_shift_data.xlsx": {
+      "staff_count": 36,
+      "shift_codes": 34,
+      "constraint_rules": 129,
+      "implicit_rules": 29,
+      "file_size": 56828
+    },
+    "デイ_テスト用データ_休日精緻.xlsx": {
+      "staff_count": 27,
+      "shift_codes": 26,
+      "constraint_rules": 8,
+      "implicit_rules": 4,
+      "file_size": 41040
+    },
+    "デイ_テスト用データ_休日精緻_backup.xlsx": {
+      "staff_count": 27,
+      "shift_codes": 26,
+      "constraint_rules": 8,
+      "implicit_rules": 4,
+      "file_size": 28242
+    },
+    "temp_デイ_テスト用データ_休日精緻.xlsx": {
+      "staff_count": 19,
+      "shift_codes": 26,
+      "constraint_rules": 8,
+      "implicit_rules": 4,
+      "file_size": 28138
+    },
+    "ショートステイ_テスト用データ.xlsx": {
+      "staff_count": 11,
+      "shift_codes": 16,
+      "constraint_rules": 0,
+      "implicit_rules": 0,
+      "file_size": 22103
+    },
+    "ショート_テスト用データ.xlsx": {
+      "staff_count": 26,
+      "shift_codes": 23,
+      "constraint_rules": 137,
+      "implicit_rules": 32,
+      "file_size": 22102
+    }
+  },
+  "all_constraint_rules": [
+    {
+      "rule_id": "TEMPORAL_DAILY_く_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 5",
+      "action": "推奨シフト == 'B～１６'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 6",
+      "action": "推奨シフト == 'B～１３'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 3",
+      "action": "推奨シフト == 'AM'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 5",
+      "action": "推奨シフト == 'B12～16'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_な_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'な' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.36428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 5",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ひ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ひ' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 3",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_も_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.39999999999999997
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_も_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.39999999999999997
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_く_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 5",
+      "action": "推奨シフト == 'B～１６'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 6",
+      "action": "推奨シフト == 'B～１３'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 3",
+      "action": "推奨シフト == 'AM'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 5",
+      "action": "推奨シフト == 'B12～16'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_な_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'な' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.36428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 5",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ひ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ひ' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 3",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_も_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.39999999999999997
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_も_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.39999999999999997
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_有ユウ_有給ユウキュウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '有ユウ'",
+      "action": "シフト == '有給ユウキュウ' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_冬フユ_施設休",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '冬フユ'",
+      "action": "シフト == '施設休' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_×_希望休キボウキュウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '×'",
+      "action": "シフト == '希望休キボウキュウ' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_休ヤス_施設休",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '休ヤス'",
+      "action": "シフト == '施設休' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_有ユウ_有給ユウキュウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '有ユウ'",
+      "action": "シフト == '有給ユウキュウ' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_冬フユ_施設休",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '冬フユ'",
+      "action": "シフト == '施設休' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_×_希望休キボウキュウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '×'",
+      "action": "シフト == '希望休キボウキュウ' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_休ヤス_施設休",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '休ヤス'",
+      "action": "シフト == '施設休' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_有ユウ_有給ユウキュウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '有ユウ'",
+      "action": "シフト == '有給ユウキュウ' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_冬フユ_施設休",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '冬フユ'",
+      "action": "シフト == '施設休' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_×_希望休キボウキュウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '×'",
+      "action": "シフト == '希望休キボウキュウ' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "STAFF_SPEC_休ヤス_施設休",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '休ヤス'",
+      "action": "シフト == '施設休' (優先度: 50%)",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "INFO: 推奨配置と異なる",
+      "evidence": {
+        "specialization_score": 0.5,
+        "evidence_count": 1,
+        "continuity": 0.5,
+        "concentration": 1.0
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_康　美枝コウミエ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '康　美枝コウミエ' AND 曜日 == 4",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_康　美枝コウミエ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '康　美枝コウミエ' AND 曜日 == 6",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_康　美枝コウミエ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '康　美枝コウミエ' AND 曜日 == 0",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_山田　真由美ヤマダマユミ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '山田　真由美ヤマダマユミ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_瀬尾　豊美セオトヨミ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '瀬尾　豊美セオトヨミ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_星野　由記子ホシノユキコ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '星野　由記子ホシノユキコ' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.14285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_櫻屋　統也サクラヤトウヤ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '櫻屋　統也サクラヤトウヤ' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.14285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_三村　富美子ミムラフミコ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.7999999999999999
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_三村　富美子ミムラフミコ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ' AND 曜日 == 4",
+      "action": "推奨シフト == '遅'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.7999999999999999
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_三村　富美子ミムラフミコ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ' AND 曜日 == 5",
+      "action": "推奨シフト == '遅'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.7999999999999999
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_三村　富美子ミムラフミコ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.7999999999999999
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_堀部　マリアホリベ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '堀部　マリアホリベ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小林　勝コバヤシマサル_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小林　勝コバヤシマサル' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6142857142857142
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小林　勝コバヤシマサル_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小林　勝コバヤシマサル' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6142857142857142
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　順子カナザワジュンコ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　順子カナザワジュンコ' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_住吉　金子スミヨシカネコ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '住吉　金子スミヨシカネコ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_住吉　金子スミヨシカネコ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '住吉　金子スミヨシカネコ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_住吉　金子スミヨシカネコ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '住吉　金子スミヨシカネコ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク日勤ニッキン_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク日勤ニッキン_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク日勤ニッキン_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク日勤ニッキン_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永山　香子ナガヤマカオリコ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永山　香子ナガヤマカオリコ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.35714285714285715
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小澤　修オザワオサム_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 曜日 == 5",
+      "action": "推奨シフト == '夜'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8857142857142858
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小澤　修オザワオサム_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 曜日 == 6",
+      "action": "推奨シフト == '明'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8857142857142858
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小澤　修オザワオサム_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8857142857142858
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　理沙カナザワリサ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　理沙カナザワリサ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_渡邊　マイラワタナベ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '渡邊　マイラワタナベ' AND 曜日 == 4",
+      "action": "推奨シフト == '夜'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5357142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_渡邊　マイラワタナベ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '渡邊　マイラワタナベ' AND 曜日 == 5",
+      "action": "推奨シフト == '明'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5357142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_渡邊　マイラワタナベ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '渡邊　マイラワタナベ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5357142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永井　テレシタナガイ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永井　テレシタナガイ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永井　テレシタナガイ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永井　テレシタナガイ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_高橋　直美タカハシナオミ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_高橋　直美タカハシナオミ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_高橋　直美タカハシナオミ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_高橋　直美タカハシナオミ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_高橋　直美タカハシナオミ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 曜日 == 0",
+      "action": "推奨シフト == '夜'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（金子）カネコ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（金子）カネコ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（金子）カネコ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（金子）カネコ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（金子）カネコ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（金子）カネコ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（カワシマ）_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（カワシマ）' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_水山　美鮮ミズヤマミセン_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '水山　美鮮ミズヤマミセン' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_水山　美鮮ミズヤマミセン_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '水山　美鮮ミズヤマミセン' AND 曜日 == 4",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_水山　美鮮ミズヤマミセン_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '水山　美鮮ミズヤマミセン' AND 曜日 == 5",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_柘植　由香利ツゲユカリ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '柘植　由香利ツゲユカリ' AND 曜日 == 4",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_柘植　由香利ツゲユカリ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '柘植　由香利ツゲユカリ' AND 曜日 == 5",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_柘植　由香利ツゲユカリ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '柘植　由香利ツゲユカリ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_柘植　由香利ツゲユカリ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '柘植　由香利ツゲユカリ' AND 曜日 == 0",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.5714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_松井　京子マツイキョウコ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '松井　京子マツイキョウコ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_松井　京子マツイキョウコ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '松井　京子マツイキョウコ' AND 曜日 == 5",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_松井　京子マツイキョウコ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '松井　京子マツイキョウコ' AND 曜日 == 6",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_松井　京子マツイキョウコ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '松井　京子マツイキョウコ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_姜　揚華キョウアハナ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '姜　揚華キョウアハナ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_姜　揚華キョウアハナ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '姜　揚華キョウアハナ' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_姜　揚華キョウアハナ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '姜　揚華キョウアハナ' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_姜　揚華キョウアハナ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '姜　揚華キョウアハナ' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_姜　揚華キョウアハナ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '姜　揚華キョウアハナ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_佐野　一貴サノカズキ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_佐野　一貴サノカズキ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 曜日 == 4",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_佐野　一貴サノカズキ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 曜日 == 5",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_佐野　一貴サノカズキ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 曜日 == 6",
+      "action": "推奨シフト == '〇'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_佐野　一貴サノカズキ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 1.0,
+      "measurement": 100.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 1.0,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ENHANCED_有ユウ_3FILES",
+      "constraint_type": "static_hard",
+      "axis": "staff",
+      "condition": "スタッフ == '有ユウ'",
+      "action": "シフト == '有給ユウキュウ' (優先度: 50%) [複数ファイル確認済み: 3ファイル]",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "ERROR: 複数ファイル一貫性違反",
+      "evidence": {
+        "file_consistency_count": 3,
+        "evidence_rules": [
+          "STAFF_SPEC_有ユウ_有給ユウキュウ",
+          "STAFF_SPEC_有ユウ_有給ユウキュウ",
+          "STAFF_SPEC_有ユウ_有給ユウキュウ"
+        ],
+        "avg_measurement": 50.0,
+        "consistency_strength": "HIGH"
+      },
+      "rule_category": "enhanced"
+    },
+    {
+      "rule_id": "ENHANCED_冬フユ_3FILES",
+      "constraint_type": "static_hard",
+      "axis": "staff",
+      "condition": "スタッフ == '冬フユ'",
+      "action": "シフト == '施設休' (優先度: 50%) [複数ファイル確認済み: 3ファイル]",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "ERROR: 複数ファイル一貫性違反",
+      "evidence": {
+        "file_consistency_count": 3,
+        "evidence_rules": [
+          "STAFF_SPEC_冬フユ_施設休",
+          "STAFF_SPEC_冬フユ_施設休",
+          "STAFF_SPEC_冬フユ_施設休"
+        ],
+        "avg_measurement": 50.0,
+        "consistency_strength": "HIGH"
+      },
+      "rule_category": "enhanced"
+    },
+    {
+      "rule_id": "ENHANCED_×_3FILES",
+      "constraint_type": "static_hard",
+      "axis": "staff",
+      "condition": "スタッフ == '×'",
+      "action": "シフト == '希望休キボウキュウ' (優先度: 50%) [複数ファイル確認済み: 3ファイル]",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "ERROR: 複数ファイル一貫性違反",
+      "evidence": {
+        "file_consistency_count": 3,
+        "evidence_rules": [
+          "STAFF_SPEC_×_希望休キボウキュウ",
+          "STAFF_SPEC_×_希望休キボウキュウ",
+          "STAFF_SPEC_×_希望休キボウキュウ"
+        ],
+        "avg_measurement": 50.0,
+        "consistency_strength": "HIGH"
+      },
+      "rule_category": "enhanced"
+    },
+    {
+      "rule_id": "ENHANCED_休ヤス_3FILES",
+      "constraint_type": "static_hard",
+      "axis": "staff",
+      "condition": "スタッフ == '休ヤス'",
+      "action": "シフト == '施設休' (優先度: 50%) [複数ファイル確認済み: 3ファイル]",
+      "confidence": 1.0,
+      "measurement": 50.0,
+      "violation_penalty": "ERROR: 複数ファイル一貫性違反",
+      "evidence": {
+        "file_consistency_count": 3,
+        "evidence_rules": [
+          "STAFF_SPEC_休ヤス_施設休",
+          "STAFF_SPEC_休ヤス_施設休",
+          "STAFF_SPEC_休ヤス_施設休"
+        ],
+        "avg_measurement": 50.0,
+        "consistency_strength": "HIGH"
+      },
+      "rule_category": "enhanced"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_け",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_と",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_ぬ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_け",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_と",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_ぬ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_高橋　直美タカハシナオミ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_佐野　一貴サノカズキ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 90%)",
+      "confidence": 0.9047619047619048,
+      "measurement": 90.47619047619048,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.9047619047619048,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_カイテク日勤ニッキン",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 86%)",
+      "confidence": 0.8571428571428571,
+      "measurement": 85.71428571428571,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8571428571428571,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_永井　テレシタナガイ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 86%)",
+      "confidence": 0.8571428571428571,
+      "measurement": 85.71428571428571,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8571428571428571,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_姜　揚華キョウアハナ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '姜　揚華キョウアハナ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 86%)",
+      "confidence": 0.8571428571428571,
+      "measurement": 85.71428571428571,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8571428571428571,
+        "pattern_variations": 3
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_こ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 81%)",
+      "confidence": 0.8095238095238095,
+      "measurement": 80.95238095238095,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8095238095238095,
+        "pattern_variations": 4
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_こ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 81%)",
+      "confidence": 0.8095238095238095,
+      "measurement": 80.95238095238095,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8095238095238095,
+        "pattern_variations": 4
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_三村　富美子ミムラフミコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 81%)",
+      "confidence": 0.8095238095238095,
+      "measurement": 80.95238095238095,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8095238095238095,
+        "pattern_variations": 3
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_小澤　修オザワオサム",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 81%)",
+      "confidence": 0.8095238095238095,
+      "measurement": 80.95238095238095,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8095238095238095,
+        "pattern_variations": 2
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_カイテク（金子）カネコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（金子）カネコ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 81%)",
+      "confidence": 0.8095238095238095,
+      "measurement": 80.95238095238095,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.8095238095238095,
+        "pattern_variations": 3
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_あ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'あ' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.1142857142857143
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_い_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'い' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 3",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_く_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 2",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_く_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 3",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 1",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_さ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'さ' AND 曜日 == 3",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_た_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た' AND 曜日 == 4",
+      "action": "推奨シフト == '夜ヨル'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.32857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_つ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'つ' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 1",
+      "action": "推奨シフト == 'B12～16'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_な_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'な' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.36428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 3",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ふ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ふ' AND 曜日 == 3",
+      "action": "推奨シフト == 'AB'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 2",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 4",
+      "action": "推奨シフト == 'B8:30～'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 1",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_も_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.39999999999999997
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_あ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'あ' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.1142857142857143
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_い_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'い' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 3",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_く_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 2",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_く_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 3",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 1",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_け_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_こ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'こ' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_さ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'さ' AND 曜日 == 3",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_た_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た' AND 曜日 == 4",
+      "action": "推奨シフト == '夜ヨル'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.32857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_つ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'つ' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 1",
+      "action": "推奨シフト == 'B12～16'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_と_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'と' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_な_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'な' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.36428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 3",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ぬ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ぬ' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 3",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ふ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ふ' AND 曜日 == 3",
+      "action": "推奨シフト == 'AB'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ま_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ま' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 2",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 4",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_む_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'む' AND 曜日 == 4",
+      "action": "推奨シフト == 'B8:30～'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.48571428571428577
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 1",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 4",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_も_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も' AND 曜日 == 2",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.39999999999999997
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_や_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 曜日 == 1",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_康　美枝コウミエ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '康　美枝コウミエ' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_山田　真由美ヤマダマユミ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '山田　真由美ヤマダマユミ' AND 曜日 == 1",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_山田　真由美ヤマダマユミ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '山田　真由美ヤマダマユミ' AND 曜日 == 4",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_三村　富美子ミムラフミコ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ' AND 曜日 == 1",
+      "action": "推奨シフト == '遅'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.7999999999999999
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_三村　富美子ミムラフミコ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ' AND 曜日 == 2",
+      "action": "推奨シフト == '遅'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.7999999999999999
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小林　勝コバヤシマサル_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小林　勝コバヤシマサル' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6142857142857142
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　順子カナザワジュンコ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　順子カナザワジュンコ' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_住吉　金子スミヨシカネコ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '住吉　金子スミヨシカネコ' AND 曜日 == 2",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_住吉　金子スミヨシカネコ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '住吉　金子スミヨシカネコ' AND 曜日 == 4",
+      "action": "推奨シフト == '浴'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク日勤ニッキン_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク日勤ニッキン_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 曜日 == 2",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク日勤ニッキン_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク日勤ニッキン' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小澤　修オザワオサム_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.8857142857142858
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小澤　修オザワオサム_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 曜日 == 2",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.8857142857142858
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小澤　修オザワオサム_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 曜日 == 3",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.8857142857142858
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小澤　修オザワオサム_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小澤　修オザワオサム' AND 曜日 == 4",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.8857142857142858
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　理沙カナザワリサ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　理沙カナザワリサ' AND 曜日 == 1",
+      "action": "推奨シフト == '夜'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　理沙カナザワリサ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　理沙カナザワリサ' AND 曜日 == 2",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永井　テレシタナガイ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永井　テレシタナガイ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 曜日 == 2",
+      "action": "推奨シフト == '夜'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永井　テレシタナガイ_3",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永井　テレシタナガイ' AND 曜日 == 3",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9142857142857144
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_高橋　直美タカハシナオミ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 曜日 == 1",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_高橋　直美タカハシナオミ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '高橋　直美タカハシナオミ' AND 曜日 == 2",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（金子）カネコ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（金子）カネコ' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（金子）カネコ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（金子）カネコ' AND 曜日 == 2",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6571428571428571
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（カワシマ）_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（カワシマ）' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（カワシマ）_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（カワシマ）' AND 曜日 == 2",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_水山　美鮮ミズヤマミセン_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '水山　美鮮ミズヤマミセン' AND 曜日 == 1",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.5428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_松井　京子マツイキョウコ_4",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '松井　京子マツイキョウコ' AND 曜日 == 4",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.6857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_姜　揚華キョウアハナ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '姜　揚華キョウアハナ' AND 曜日 == 1",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.8285714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_佐野　一貴サノカズキ_1",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 曜日 == 1",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_佐野　一貴サノカズキ_2",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '佐野　一貴サノカズキ' AND 曜日 == 2",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.8,
+      "measurement": 80.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.8,
+        "pattern_strength": 0.9428571428571428
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_松井　京子マツイキョウコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '松井　京子マツイキョウコ' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 76%)",
+      "confidence": 0.7619047619047619,
+      "measurement": 76.19047619047619,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.7619047619047619,
+        "pattern_variations": 4
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_い_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'い' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 6",
+      "action": "推奨シフト == '夜ヨル'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 0",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_く_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_さ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'さ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_し_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'し' AND 曜日 == 5",
+      "action": "推奨シフト == '夜ヨル'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_し_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'し' AND 曜日 == 6",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_せ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'せ' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_せ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'せ' AND 曜日 == 6",
+      "action": "推奨シフト == 'AB'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_た_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た' AND 曜日 == 5",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.32857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_た_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.32857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_つ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'つ' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_て_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'て' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_て_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'て' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_な_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'な' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.36428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 5",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_の_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'の' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.10714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_は_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'は' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.10714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ひ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ひ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ふ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ふ' AND 曜日 == 6",
+      "action": "推奨シフト == 'AB'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ほ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ほ' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ほ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ほ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_い_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'い' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 6",
+      "action": "推奨シフト == '夜ヨル'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_う_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う' AND 曜日 == 0",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_く_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'く' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4785714285714286
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_さ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'さ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_し_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'し' AND 曜日 == 5",
+      "action": "推奨シフト == '夜ヨル'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_し_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'し' AND 曜日 == 6",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_せ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'せ' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_せ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'せ' AND 曜日 == 6",
+      "action": "推奨シフト == 'AB'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_た_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た' AND 曜日 == 5",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.32857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_た_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.32857142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_つ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'つ' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_て_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'て' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_て_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'て' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_な_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'な' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.36428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 5",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_に_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ね_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_の_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'の' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.10714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_は_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'は' AND 曜日 == 5",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.10714285714285714
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ひ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ひ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ふ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ふ' AND 曜日 == 6",
+      "action": "推奨シフト == 'AB'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.22142857142857145
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ほ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ほ' AND 曜日 == 6",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_ほ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ほ' AND 曜日 == 0",
+      "action": "推奨シフト == '希'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_み_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'み' AND 曜日 == 0",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.4428571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_め_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め' AND 曜日 == 6",
+      "action": "推奨シフト == 'B'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5928571428571429
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_山田　真由美ヤマダマユミ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '山田　真由美ヤマダマユミ' AND 曜日 == 5",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_山田　真由美ヤマダマユミ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '山田　真由美ヤマダマユミ' AND 曜日 == 6",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_瀬尾　豊美セオトヨミ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '瀬尾　豊美セオトヨミ' AND 曜日 == 0",
+      "action": "推奨シフト == '〇'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_堀部　マリアホリベ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '堀部　マリアホリベ' AND 曜日 == 0",
+      "action": "推奨シフト == '浴'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.25
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小林　勝コバヤシマサル_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小林　勝コバヤシマサル' AND 曜日 == 6",
+      "action": "推奨シフト == '浴'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.6142857142857142
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_小林　勝コバヤシマサル_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小林　勝コバヤシマサル' AND 曜日 == 0",
+      "action": "推奨シフト == '3F'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.6142857142857142
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　順子カナザワジュンコ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　順子カナザワジュンコ' AND 曜日 == 5",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　順子カナザワジュンコ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　順子カナザワジュンコ' AND 曜日 == 6",
+      "action": "推奨シフト == '3F'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　順子カナザワジュンコ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　順子カナザワジュンコ' AND 曜日 == 0",
+      "action": "推奨シフト == '2F'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5785714285714285
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永山　香子ナガヤマカオリコ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永山　香子ナガヤマカオリコ' AND 曜日 == 5",
+      "action": "推奨シフト == '2F'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.35714285714285715
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_永山　香子ナガヤマカオリコ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '永山　香子ナガヤマカオリコ' AND 曜日 == 6",
+      "action": "推奨シフト == '2F'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.35714285714285715
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_栗原　珠美クリハラタマミ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '栗原　珠美クリハラタマミ' AND 曜日 == 6",
+      "action": "推奨シフト == '夜'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_栗原　珠美クリハラタマミ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '栗原　珠美クリハラタマミ' AND 曜日 == 0",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.21428571428571427
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　理沙カナザワリサ_5",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　理沙カナザワリサ' AND 曜日 == 5",
+      "action": "推奨シフト == '夜'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_金沢　理沙カナザワリサ_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　理沙カナザワリサ' AND 曜日 == 6",
+      "action": "推奨シフト == '明'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_渡邊　マイラワタナベ_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '渡邊　マイラワタナベ' AND 曜日 == 0",
+      "action": "推奨シフト == '夜'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5357142857142857
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（カワシマ）_6",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（カワシマ）' AND 曜日 == 6",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_DAILY_カイテク（カワシマ）_0",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'カイテク（カワシマ）' AND 曜日 == 0",
+      "action": "推奨シフト == '×'",
+      "confidence": 0.75,
+      "measurement": 75.0,
+      "violation_penalty": "INFO: 時間パターン逸脱",
+      "evidence": {
+        "pattern_ratio": 0.75,
+        "pattern_strength": 0.5857142857142856
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_や",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 71%)",
+      "confidence": 0.7142857142857143,
+      "measurement": 71.42857142857143,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.7142857142857143,
+        "pattern_variations": 4
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "TEMPORAL_WEEKLY_や",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や' AND 期間 == '週次'",
+      "action": "週次パターン維持 (一貫性: 71%)",
+      "confidence": 0.7142857142857143,
+      "measurement": 71.42857142857143,
+      "violation_penalty": "WARNING: 週次パターン破綻",
+      "evidence": {
+        "weekly_consistency": 0.7142857142857143,
+        "pattern_variations": 4
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_CONC_カイテク日勤ニッキン",
+      "constraint_type": "static_soft",
+      "axis": "staff",
+      "condition": "スタッフ == 'カイテク日勤ニッキン'",
+      "action": "シフト多様性確保",
+      "confidence": 0.7,
+      "measurement": 70.0,
+      "violation_penalty": "INFO: 過度な集中",
+      "evidence": {
+        "anomaly_type": "unusual_concentration"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_CONC_姜　揚華キョウアハナ",
+      "constraint_type": "static_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '姜　揚華キョウアハナ'",
+      "action": "シフト多様性確保",
+      "confidence": 0.7,
+      "measurement": 70.0,
+      "violation_penalty": "INFO: 過度な集中",
+      "evidence": {
+        "anomaly_type": "unusual_concentration"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_有ユウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '有ユウ'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6122448979591837,
+      "measurement": 61.224489795918366,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.3877551020408163,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_冬フユ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '冬フユ'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6122448979591837,
+      "measurement": 61.224489795918366,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.3877551020408163,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_×",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '×'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6122448979591837,
+      "measurement": 61.224489795918366,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.3877551020408163,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_休ヤス",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '休ヤス'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6122448979591837,
+      "measurement": 61.224489795918366,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.3877551020408163,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_有ユウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '有ユウ'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_冬フユ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '冬フユ'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_×",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '×'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_休ヤス",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '休ヤス'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_有ユウ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '有ユウ'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_冬フユ",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '冬フユ'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_×",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '×'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "WORKLOAD_休ヤス",
+      "constraint_type": "dynamic_soft",
+      "axis": "staff",
+      "condition": "スタッフ == '休ヤス'",
+      "action": "負荷増加推奨 (現在: 0.4倍)",
+      "confidence": 0.6037735849056604,
+      "measurement": 60.37735849056604,
+      "violation_penalty": "INFO: 負荷不足",
+      "evidence": {
+        "absolute_load": 1,
+        "relative_load": 0.39622641509433965,
+        "load_classification": "minimal_load"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_あ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'あ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_い",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'い'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_う",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_え",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'え'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_お",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'お'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_か",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'か'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_き",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'き'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_け",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_さ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'さ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_し",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'し'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_す",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'す'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_せ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'せ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_そ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'そ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_た",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ち",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ち'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_て",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'て'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_に",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ね",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_の",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'の'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_は",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'は'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ひ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ひ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ふ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ふ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_へ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'へ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ほ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ほ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_め",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_も",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_や",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_あ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'あ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_い",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'い'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_う",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'う'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_え",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'え'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_お",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'お'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_か",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'か'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_き",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'き'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_け",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'け'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_さ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'さ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_し",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'し'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_す",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'す'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_せ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'せ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_そ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'そ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_た",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'た'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ち",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ち'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_て",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'て'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_に",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'に'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ね",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ね'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_の",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'の'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_は",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'は'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ひ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ひ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ふ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ふ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_へ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'へ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_ほ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'ほ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_め",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'め'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_も",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'も'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_や",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == 'や'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_瀬尾　豊美セオトヨミ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '瀬尾　豊美セオトヨミ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_星野　由記子ホシノユキコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '星野　由記子ホシノユキコ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_見沢　和可子ミサワワカコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '見沢　和可子ミサワワカコ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_櫻屋　統也サクラヤトウヤ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '櫻屋　統也サクラヤトウヤ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_三村　富美子ミムラフミコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '三村　富美子ミムラフミコ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_堀部　マリアホリベ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '堀部　マリアホリベ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_小林　勝コバヤシマサル",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '小林　勝コバヤシマサル'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_金沢　順子カナザワジュンコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　順子カナザワジュンコ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_住吉　金子スミヨシカネコ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '住吉　金子スミヨシカネコ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_栗原　珠美クリハラタマミ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '栗原　珠美クリハラタマミ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_金沢　理沙カナザワリサ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '金沢　理沙カナザワリサ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    },
+    {
+      "rule_id": "ANOMALY_IRREG_渡邊　マイラワタナベ",
+      "constraint_type": "dynamic_soft",
+      "axis": "time",
+      "condition": "スタッフ == '渡邊　マイラワタナベ'",
+      "action": "パターン規則性向上",
+      "confidence": 0.6,
+      "measurement": 60.0,
+      "violation_penalty": "INFO: 不規則性高",
+      "evidence": {
+        "anomaly_type": "high_irregularity"
+      },
+      "rule_category": "basic"
+    }
+  ],
+  "compound_analysis_insights": {
+    "cross_file_consistency": 4,
+    "organizational_constraints": 0,
+    "constraint_strengthening_success": true,
+    "analysis_depth_improvement": "significant"
+  }
+}

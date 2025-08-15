@@ -1,7 +1,7 @@
 # shift_suite/tasks/utils.py
 # v1.2.1 ( _parse_as_date 移設)
 """
-shift_suite.tasks.utils  v1.2.0 – UTF-8 write_meta 版
+shift_suite.tasks.utils  v1.3.0 – 動的スロット対応版
 ────────────────────────────────────────────────────────
 * 共通ユーティリティ
 * 2025-05-06
@@ -12,6 +12,9 @@ shift_suite.tasks.utils  v1.2.0 – UTF-8 write_meta 版
     - build_stats.py から _parse_as_date を移設
 * 2025-07-21
     - dash_app.py と app.py から _valid_df を統合
+* 2025-07-29
+    - 動的スロット対応: validate_and_convert_slot_minutes追加
+    - 全体最適化対応: 統一された設定検証機能
 """
 
 from __future__ import annotations
@@ -569,4 +572,111 @@ __all__: Sequence[str] = [
     "date_with_weekday",
     "validate_need_calculation",
     "log_need_calculation_summary",
+    "validate_and_convert_slot_minutes",  # 動的スロット対応
+    "safe_slot_calculation",  # 安全な計算関数
 ]
+
+
+# ===== 動的スロット対応ユーティリティ =====
+
+def validate_and_convert_slot_minutes(slot_minutes: int, function_name: str = "unknown") -> float:
+    """
+    動的スロット設定の検証と時間変換
+    
+    Parameters
+    ----------
+    slot_minutes : int
+        スロット間隔（分）
+    function_name : str
+        呼び出し元関数名（ログ用）
+        
+    Returns
+    -------
+    float
+        スロット時間（時間単位）
+        
+    Raises
+    ------
+    ValueError
+        不正なslot_minutes値の場合
+    """
+    if slot_minutes is None:
+        raise ValueError(f"{function_name}: slot_minutes must not be None")
+    
+    if not isinstance(slot_minutes, (int, float)):
+        try:
+            slot_minutes = int(slot_minutes)
+        except (TypeError, ValueError):
+            raise ValueError(f"{function_name}: slot_minutes must be numeric, got {type(slot_minutes)}")
+    
+    if slot_minutes <= 0:
+        raise ValueError(f"{function_name}: slot_minutes must be positive, got {slot_minutes}")
+    
+    if slot_minutes > 1440:  # 24時間 = 1440分
+        raise ValueError(f"{function_name}: slot_minutes cannot exceed 1440 minutes (24 hours), got {slot_minutes}")
+    
+    slot_hours = slot_minutes / 60.0
+    log.debug(f"[{function_name}] 動的スロット設定: {slot_minutes}分 = {slot_hours}時間")
+    
+    return slot_hours
+
+
+def safe_slot_calculation(data, slot_minutes: int, operation: str = "sum", function_name: str = "unknown"):
+    """
+    安全なスロット計算（メモリ効率考慮）
+    
+    Parameters
+    ----------
+    data : pandas.DataFrame or pandas.Series
+        計算対象データ
+    slot_minutes : int
+        スロット間隔（分）
+    operation : str
+        実行する計算（'sum', 'mean', 'count'など）
+    function_name : str
+        呼び出し元関数名（ログ用）
+        
+    Returns
+    -------
+    float
+        計算結果（時間単位）
+    """
+    import pandas as pd
+    import numpy as np
+    
+    slot_hours = validate_and_convert_slot_minutes(slot_minutes, function_name)
+    
+    try:
+        if isinstance(data, pd.DataFrame):
+            data_size_mb = data.memory_usage(deep=True).sum() / 1024 / 1024
+        else:
+            data_size_mb = data.memory_usage(deep=True) / 1024 / 1024 if hasattr(data, 'memory_usage') else 0
+        
+        # 大規模データ（50MB超）の場合は効率的な計算を使用
+        if data_size_mb > 50:
+            log.info(f"[{function_name}] 大規模データ検出 ({data_size_mb:.1f}MB): 効率的計算を使用")
+            
+            if operation == "sum":
+                if isinstance(data, pd.DataFrame):
+                    total_sum = data.sum().sum()
+                else:
+                    total_sum = data.sum()
+                result = total_sum * slot_hours
+            else:
+                # その他の操作は通常通り
+                result = getattr(data * slot_hours, operation)()
+        else:
+            # 通常サイズのデータは修正後の方式を使用
+            if operation == "sum":
+                result = (data * slot_hours).sum()
+                if hasattr(result, 'sum'):  # DataFrameの場合
+                    result = result.sum()
+            else:
+                result = getattr(data * slot_hours, operation)()
+        
+        log.debug(f"[{function_name}] 計算完了: {operation}({data_size_mb:.1f}MB) = {result}")
+        return result
+        
+    except Exception as e:
+        log.error(f"[{function_name}] スロット計算エラー: {e}")
+        raise

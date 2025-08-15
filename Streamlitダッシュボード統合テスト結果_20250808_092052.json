@@ -1,0 +1,30 @@
+{
+  "test_success": true,
+  "success_rate": 100.0,
+  "test_results": {
+    "dashboard_simulation": {
+      "dashboard_simulation_completed": true,
+      "role_count": 5,
+      "shortage_roles": 3,
+      "surplus_roles": 2
+    },
+    "chart_data_preparation": {
+      "chart_data_ready": true,
+      "horizontal_bar_data": "        職種  過不足時間/日\n1      看護師     -2.9\n3      運転士     -1.3\n2    機能訓練士      3.2\n4  管理者・相談員      3.3\n0       介護      6.7",
+      "scatter_plot_data": "        職種  Need時間/日  実配置時間/日  現在スタッフ数        状態\n0       介護      45.2     38.5       12  SHORTAGE\n1      看護師      32.1     35.0        8   SURPLUS\n2    機能訓練士      18.4     15.2        4  SHORTAGE\n3      運転士      12.8     14.1        3   SURPLUS\n4  管理者・相談員      28.6     25.3        6  SHORTAGE",
+      "priority_matrix_data": "        職種  Need時間/日  実配置時間/日  過不足時間/日  現在スタッフ数        状態  優先度スコア\n0       介護      45.2     38.5      6.7       12  SHORTAGE    13.4\n2    機能訓練士      18.4     15.2      3.2        4  SHORTAGE     6.4\n4  管理者・相談員      28.6     25.3      3.3        6  SHORTAGE     6.6"
+    },
+    "streamlit_compatibility": {
+      "streamlit_compatible": true,
+      "dataframe_compatible": true,
+      "metrics_compatible": true,
+      "issues": []
+    }
+  },
+  "test_data_summary": {
+    "role_count": 5,
+    "organization_status": "SHORTAGE",
+    "total_shortage": 9.0
+  },
+  "test_timestamp": "2025-08-08T09:20:52.792881"
+}

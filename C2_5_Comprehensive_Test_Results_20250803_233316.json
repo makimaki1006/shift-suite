@@ -1,0 +1,191 @@
+{
+  "metadata": {
+    "test_execution_id": "C2_5_COMPREHENSIVE_TEST_20250803_233316",
+    "start_time": "2025-08-03T23:33:16.117363",
+    "end_time": "2025-08-03T23:33:16.245544",
+    "total_duration": "0:00:00.128185",
+    "test_environment": "Phase1-5統合環境"
+  },
+  "prerequisites_check": {
+    "file_checks": {
+      "c2-mobile-integrated.css": {
+        "exists": true,
+        "size": 10898,
+        "description": "Phase5統合CSS",
+        "non_empty": true
+      },
+      "c2-mobile-integrated.js": {
+        "exists": true,
+        "size": 10068,
+        "description": "Phase5統合JavaScript",
+        "non_empty": true
+      },
+      "c2-service-worker.js": {
+        "exists": true,
+        "size": 1739,
+        "description": "オフライン機能",
+        "non_empty": true
+      },
+      "c2-mobile-config-integrated.json": {
+        "exists": true,
+        "size": 1974,
+        "description": "Plotly設定",
+        "non_empty": true
+      },
+      "dash_app.py": {
+        "exists": true,
+        "size": 474696,
+        "description": "メインダッシュボード",
+        "non_empty": true
+      }
+    },
+    "all_met": true,
+    "missing_requirements": []
+  },
+  "test_results": {
+    "c2_5_1_integration": {
+      "success": false,
+      "integration_results": {
+        "file_integrity_check": {
+          "success": true,
+          "integrity_checks": {
+            "dash_app.py": {
+              "exists": true,
+              "size": 474696,
+              "size_ok": true,
+              "min_expected": 470000
+            },
+            "app.py": {
+              "exists": true,
+              "size": 311076,
+              "size_ok": true,
+              "min_expected": 300000
+            },
+            "c2-mobile-integrated.css": {
+              "exists": true,
+              "size": 10898,
+              "size_ok": true,
+              "min_expected": 2000
+            },
+            "c2-mobile-integrated.js": {
+              "exists": true,
+              "size": 10068,
+              "size_ok": true,
+              "min_expected": 2000
+            }
+          },
+          "check_type": "file_integrity"
+        },
+        "slot_hours_protection_check": {
+          "success": true,
+          "protection_results": {
+            "shift_suite/tasks/fact_extractor_prototype.py": {
+              "exists": true,
+              "slot_hours_multiplications": 4,
+              "slot_hours_definition": 1,
+              "protected": true
+            },
+            "shift_suite/tasks/lightweight_anomaly_detector.py": {
+              "exists": true,
+              "slot_hours_multiplications": 1,
+              "slot_hours_definition": 1,
+              "protected": true
+            }
+          },
+          "check_type": "slot_hours_protection"
+        },
+        "dash_app_integration_check": {
+          "success": true,
+          "integration_status": {
+            "c2-mobile-integrated.css": true,
+            "c2-mobile-integrated.js": true,
+            "viewport": true,
+            "index_string": true
+          },
+          "file_size": 474696,
+          "check_type": "dash_app_integration"
+        },
+        "phase_integration_check": {
+          "success": true,
+          "phase_results": {
+            "phase2_artifacts": {
+              "artifacts_found": [
+                "fact_extractor_prototype.py",
+                "FactBookVisualizer"
+              ],
+              "artifacts_missing": [],
+              "success": true
+            },
+            "phase3_artifacts": {
+              "artifacts_found": [
+                "lightweight_anomaly_detector.py"
+              ],
+              "artifacts_missing": [],
+              "success": true
+            },
+            "phase5_artifacts": {
+              "artifacts_found": [
+                "c2-mobile-integrated.css",
+                "c2-mobile-integrated.js"
+              ],
+              "artifacts_missing": [],
+              "success": true
+            }
+          },
+          "check_type": "phase_integration"
+        },
+        "css_js_integration_check": {
+          "success": false,
+          "integration_results": {
+            "c2-mobile-integrated.css": {
+              "exists": true,
+              "size": 10898,
+              "size_ok": true,
+              "content_checks": {
+                "@media": true,
+                "mobile": true,
+                "responsive": false
+              },
+              "content_ok": false,
+              "success": false
+            },
+            "c2-mobile-integrated.js": {
+              "exists": true,
+              "size": 10068,
+              "size_ok": true,
+              "content_checks": {
+                "mobile": true,
+                "touch": true,
+                "addEventListener": true
+              },
+              "content_ok": true,
+              "success": true
+            }
+          },
+          "check_type": "css_js_integration"
+        }
+      },
+      "test_type": "system_integration",
+      "timestamp": "2025-08-03T23:33:16.245418"
+    }
+  },
+  "overall_evaluation": {
+    "overall_success": false,
+    "quality_score": 0.0,
+    "test_success_rate": 0.0,
+    "issues": [
+      "c2_5_1_integration: 失敗"
+    ],
+    "recommendations": [
+      "品質スコア95以上を目指した追加改善",
+      "失敗したテスト項目の修正・再実行"
+    ],
+    "meets_success_criteria": false
+  },
+  "success": false,
+  "quality_score": 0.0,
+  "recommendations": [
+    "品質スコア95以上を目指した追加改善",
+    "失敗したテスト項目の修正・再実行"
+  ]
+}

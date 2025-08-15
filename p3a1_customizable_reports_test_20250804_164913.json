@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "dash_available": false,
+  "reports_ui_created": true,
+  "config_loaded": true,
+  "templates_available": true,
+  "report_types_defined": true,
+  "report_formats_defined": true,
+  "chart_types_defined": true,
+  "test_timestamp": "2025-08-04T16:49:13.122189"
+}

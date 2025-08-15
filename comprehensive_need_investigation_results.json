@@ -1,0 +1,51 @@
+{
+  "investigation_results": {
+    "basic_structure": {
+      "time_coverage": {
+        "total_slots": 21,
+        "start_time": "00:00:00",
+        "end_time": "17:30:00",
+        "average_gap_minutes": 52.5,
+        "missing_slots": 27,
+        "night_slots": 1,
+        "continuous": false
+      },
+      "density_analysis": {
+        "daily_variation_coefficient": 0.37084463076095764,
+        "hourly_variation_coefficient": 0.30436964929646154,
+        "data_sparsity": -8.63968253968254,
+        "density_ratio": 9.63968253968254
+      },
+      "distribution_analysis": {
+        "role_count": 11,
+        "employment_count": 3,
+        "cross_combinations": 13,
+        "role_distribution": {
+          "運転士": 1646,
+          "介護": 1585,
+          "看護師": 753,
+          "機能訓練士": 519,
+          "管理者・相談員": 387,
+          "事務・介護": 387,
+          "介護・相談員": 370,
+          "介護（W/3）": 200,
+          "介護（W/2）": 166,
+          "施設長・相談員": 30,
+          "事務": 30
+        },
+        "employment_distribution": {
+          "パート": 3237,
+          "正社員": 2364,
+          "スポット": 472
+        }
+      }
+    },
+    "source_analysis": {
+      "file_analyses": [
+        {
+          "role": "事務・介護",
+          "shape": [
+            48,
+            30
+          ],
+          "total_need": 

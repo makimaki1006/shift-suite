@@ -1,0 +1,2730 @@
+{
+  "system_metadata": {
+    "system_name": "強化制約発見システム",
+    "version": "4.0.0",
+    "timestamp": "2025-07-28T23:24:34.654767",
+    "target_file": "デイ_テスト用データ_休日精緻.xlsx",
+    "total_constraints": 263
+  },
+  "constraints_by_category": {
+    "勤務体制制約": [
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.375」は5回使用される標準勤務パターン",
+        "shift_code": "0.375",
+        "frequency": 5,
+        "confidence": 0.5,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.75」は2回使用される標準勤務パターン",
+        "shift_code": "0.75",
+        "frequency": 2,
+        "confidence": 0.2,
+        "constraint_level": "LOW"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.3541666666666667」は9回使用される標準勤務パターン",
+        "shift_code": "0.3541666666666667",
+        "frequency": 9,
+        "confidence": 0.9,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.7291666666666666」は9回使用される標準勤務パターン",
+        "shift_code": "0.7291666666666666",
+        "frequency": 9,
+        "confidence": 0.9,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「入浴介助ニュウヨクカイジョ」は2回使用される標準勤務パターン",
+        "shift_code": "入浴介助ニュウヨクカイジョ",
+        "frequency": 2,
+        "confidence": 0.2,
+        "constraint_level": "LOW"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.3958333333333333」は2回使用される標準勤務パターン",
+        "shift_code": "0.3958333333333333",
+        "frequency": 2,
+        "confidence": 0.2,
+        "constraint_level": "LOW"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.4791666666666667」は2回使用される標準勤務パターン",
+        "shift_code": "0.4791666666666667",
+        "frequency": 2,
+        "confidence": 0.2,
+        "constraint_level": "LOW"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.5」は3回使用される標準勤務パターン",
+        "shift_code": "0.5",
+        "frequency": 3,
+        "confidence": 0.3,
+        "constraint_level": "LOW"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「施設休」は2回使用される標準勤務パターン",
+        "shift_code": "施設休",
+        "frequency": 2,
+        "confidence": 0.2,
+        "constraint_level": "LOW"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.3333333333333333」は2.7時間勤務を表す",
+        "shift_code": "0.3333333333333333",
+        "estimated_hours": 2.6666666666666665,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.3541666666666667」は2.8時間勤務を表す",
+        "shift_code": "0.3541666666666667",
+        "estimated_hours": 2.8333333333333335,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.5」は4.0時間勤務を表す",
+        "shift_code": "0.5",
+        "estimated_hours": 4.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.3958333333333333」は3.2時間勤務を表す",
+        "shift_code": "0.3958333333333333",
+        "estimated_hours": 3.1666666666666665,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.7083333333333334」は5.7時間勤務を表す",
+        "shift_code": "0.7083333333333334",
+        "estimated_hours": 5.666666666666667,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.75」は6.0時間勤務を表す",
+        "shift_code": "0.75",
+        "estimated_hours": 6.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.7291666666666666」は5.8時間勤務を表す",
+        "shift_code": "0.7291666666666666",
+        "estimated_hours": 5.833333333333333,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.375」は3.0時間勤務を表す",
+        "shift_code": "0.375",
+        "estimated_hours": 3.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "勤務体制制約",
+        "description": "シフトコード「0.4791666666666667」は3.8時間勤務を表す",
+        "shift_code": "0.4791666666666667",
+        "estimated_hours": 3.8333333333333335,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "人員配置制約": [
+      {
+        "rule_type": "人員配置制約",
+        "description": "「有ユウ」は「有給ユウキュウ」シフトに100%特化",
+        "staff": "有ユウ",
+        "specialized_shift": "有給ユウキュウ",
+        "specialization_rate": 1.0,
+        "confidence": 0.1,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「冬フユ」は「施設休」シフトに100%特化",
+        "staff": "冬フユ",
+        "specialized_shift": "施設休",
+        "specialization_rate": 1.0,
+        "confidence": 0.1,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「×」は「希望休キボウキュウ」シフトに100%特化",
+        "staff": "×",
+        "specialized_shift": "希望休キボウキュウ",
+        "specialization_rate": 1.0,
+        "confidence": 0.1,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「休ヤス」は「施設休」シフトに100%特化",
+        "staff": "休ヤス",
+        "specialized_shift": "施設休",
+        "specialization_rate": 1.0,
+        "confidence": 0.1,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「●▲」は「0.3541666666666667」シフトを50%優先配置",
+        "staff": "●▲",
+        "preferred_shift": "0.3541666666666667",
+        "preference_rate": 0.5,
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「●▲」は「0.7291666666666666」シフトを50%優先配置",
+        "staff": "●▲",
+        "preferred_shift": "0.7291666666666666",
+        "preference_rate": 0.5,
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「本社」は「0.3541666666666667」シフトを50%優先配置",
+        "staff": "本社",
+        "preferred_shift": "0.3541666666666667",
+        "preference_rate": 0.5,
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「本社」は「0.7291666666666666」シフトを50%優先配置",
+        "staff": "本社",
+        "preferred_shift": "0.7291666666666666",
+        "preference_rate": 0.5,
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「◎」は多様なシフト（3種類）に対応可能",
+        "staff": "◎",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「浴ヨク」は多様なシフト（3種類）に対応可能",
+        "staff": "浴ヨク",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「マ」は多様なシフト（3種類）に対応可能",
+        "staff": "マ",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「Ｆ」は多様なシフト（3種類）に対応可能",
+        "staff": "Ｆ",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「○」は多様なシフト（3種類）に対応可能",
+        "staff": "○",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「▲」は多様なシフト（3種類）に対応可能",
+        "staff": "▲",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「●」は多様なシフト（3種類）に対応可能",
+        "staff": "●",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「浴●ヨク」は多様なシフト（3種類）に対応可能",
+        "staff": "浴●ヨク",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「研修ケンシュウ」は多様なシフト（3種類）に対応可能",
+        "staff": "研修ケンシュウ",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「●2H」は多様なシフト（3種類）に対応可能",
+        "staff": "●2H",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「●◎」は多様なシフト（3種類）に対応可能",
+        "staff": "●◎",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「◎×」は多様なシフト（3種類）に対応可能",
+        "staff": "◎×",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「●半ハン」は多様なシフト（3種類）に対応可能",
+        "staff": "●半ハン",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「半ハン」は多様なシフト（3種類）に対応可能",
+        "staff": "半ハン",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "人員配置制約",
+        "description": "「浴2Hヨク」は多様なシフト（3種類）に対応可能",
+        "staff": "浴2Hヨク",
+        "shift_variety": 3,
+        "diversity_score": 1.0,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "時間制約": [
+      {
+        "rule_type": "時間制約",
+        "description": "Day1では「0.3541666666666667」が9名で主要シフト",
+        "day": 1,
+        "dominant_shift": "0.3541666666666667",
+        "staff_count": 9,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "時間制約",
+        "description": "Day1の配置人員数は17名",
+        "day": 1,
+        "required_staff_count": 17,
+        "confidence": 1.0,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "時間制約",
+        "description": "Day2では「0.7291666666666666」が9名で主要シフト",
+        "day": 2,
+        "dominant_shift": "0.7291666666666666",
+        "staff_count": 9,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "時間制約",
+        "description": "Day2の配置人員数は17名",
+        "day": 2,
+        "required_staff_count": 17,
+        "confidence": 1.0,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "時間制約",
+        "description": "Day3では「入浴介助ニュウヨクカイジョ」が2名で主要シフト",
+        "day": 3,
+        "dominant_shift": "入浴介助ニュウヨクカイジョ",
+        "staff_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "時間制約",
+        "description": "Day3の配置人員数は19名",
+        "day": 3,
+        "required_staff_count": 19,
+        "confidence": 1.0,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "組み合わせ制約": [
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「○」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "○"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「◎×」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "◎×"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「●」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "●"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「●2H」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "●2H"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「●▲」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "●▲"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「●◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "●◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「●半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「▲」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "▲",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「◎×」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "◎×"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「●」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "●"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「●2H」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "●2H"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「●▲」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "●▲"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「●◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "●◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「●半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「○」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "○",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「◎×」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "◎×"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「●」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "●"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「●2H」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "●2H"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「●▲」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "●▲"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「●◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "●◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「●半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「●」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "●"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「●2H」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "●2H"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「●▲」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "●▲"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「●◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "●◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「●半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「◎×」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "◎×",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「●2H」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "●2H"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「●▲」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "●▲"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「●◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "●◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「●半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「●▲」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "●▲"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「●◎」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "●◎"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「●半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●2H」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●2H",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「●◎」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "●◎"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「●半ハン」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「マ」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "マ"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「半ハン」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "半ハン"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「浴2Hヨク」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「浴●ヨク」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「浴ヨク」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「研修ケンシュウ」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●▲」と「Ｆ」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●▲",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「●半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "●半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●◎」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●◎",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「マ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "マ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「●半ハン」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "●半ハン",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「マ」と「半ハン」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "マ",
+          "半ハン"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「マ」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "マ",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「マ」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "マ",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「マ」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "マ",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「マ」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "マ",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「マ」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "マ",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「マ」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "マ",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「半ハン」と「本社」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "半ハン",
+          "本社"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「半ハン」と「浴2Hヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "半ハン",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「半ハン」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "半ハン",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「半ハン」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "半ハン",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「半ハン」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "半ハン",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「半ハン」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "半ハン",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「本社」と「浴2Hヨク」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "本社",
+          "浴2Hヨク"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「本社」と「浴●ヨク」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "本社",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「本社」と「浴ヨク」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "本社",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「本社」と「研修ケンシュウ」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "本社",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「本社」と「Ｆ」は2回同日勤務（相性良好）",
+        "staff_pair": [
+          "本社",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 2,
+        "confidence": 0.4,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴2Hヨク」と「浴●ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴2Hヨク",
+          "浴●ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴2Hヨク」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴2Hヨク",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴2Hヨク」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴2Hヨク",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴2Hヨク」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴2Hヨク",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴●ヨク」と「浴ヨク」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴●ヨク",
+          "浴ヨク"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴●ヨク」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴●ヨク",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴●ヨク」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴●ヨク",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴ヨク」と「研修ケンシュウ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴ヨク",
+          "研修ケンシュウ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「浴ヨク」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "浴ヨク",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "組み合わせ制約",
+        "description": "「研修ケンシュウ」と「Ｆ」は3回同日勤務（相性良好）",
+        "staff_pair": [
+          "研修ケンシュウ",
+          "Ｆ"
+        ],
+        "co_occurrence_count": 3,
+        "confidence": 0.6,
+        "constraint_level": "MEDIUM"
+      }
+    ],
+    "継続性制約": [],
+    "役職制約": [
+      {
+        "rule_type": "役職制約",
+        "description": "「外会リーダーソトカイ」は役職者限定シフト（使用者: 1名）",
+        "role_shift": "外会リーダーソトカイ",
+        "authorized_staff": [
+          "●◎"
+        ],
+        "staff_count": 1,
+        "confidence": 0.9,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "役職制約",
+        "description": "「リーダー」は役職者限定シフト（使用者: 1名）",
+        "role_shift": "リーダー",
+        "authorized_staff": [
+          "◎"
+        ],
+        "staff_count": 1,
+        "confidence": 0.9,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "役職制約",
+        "description": "「リーダー午後半休ゴゴハンキュウ」は役職者限定シフト（使用者: 1名）",
+        "role_shift": "リーダー午後半休ゴゴハンキュウ",
+        "authorized_staff": [
+          "◎×"
+        ],
+        "staff_count": 1,
+        "confidence": 0.9,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "周期性制約": [
+      {
+        "rule_type": "周期性制約",
+        "description": "「◎」は1日間隔で勤務するパターン",
+        "staff": "◎",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「浴ヨク」は1日間隔で勤務するパターン",
+        "staff": "浴ヨク",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「マ」は1日間隔で勤務するパターン",
+        "staff": "マ",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「Ｆ」は1日間隔で勤務するパターン",
+        "staff": "Ｆ",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「○」は1日間隔で勤務するパターン",
+        "staff": "○",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「▲」は1日間隔で勤務するパターン",
+        "staff": "▲",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「●」は1日間隔で勤務するパターン",
+        "staff": "●",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「浴●ヨク」は1日間隔で勤務するパターン",
+        "staff": "浴●ヨク",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「研修ケンシュウ」は1日間隔で勤務するパターン",
+        "staff": "研修ケンシュウ",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「●2H」は1日間隔で勤務するパターン",
+        "staff": "●2H",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「●◎」は1日間隔で勤務するパターン",
+        "staff": "●◎",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「◎×」は1日間隔で勤務するパターン",
+        "staff": "◎×",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「●半ハン」は1日間隔で勤務するパターン",
+        "staff": "●半ハン",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「半ハン」は1日間隔で勤務するパターン",
+        "staff": "半ハン",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "周期性制約",
+        "description": "「浴2Hヨク」は1日間隔で勤務するパターン",
+        "staff": "浴2Hヨク",
+        "interval_days": 1,
+        "pattern_frequency": 2,
+        "confidence": 1.0,
+        "constraint_level": "MEDIUM"
+      }
+    ],
+    "例外制約": [
+      {
+        "rule_type": "例外制約",
+        "description": "「0.75」は稀少シフト（2回使用）",
+        "rare_shift": "0.75",
+        "usage_count": 2,
+        "rarity_score": 0.9622641509433962,
+        "confidence": 0.7,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「リーダー」は例外的シフト（1回のみ使用）",
+        "exception_shift": "リーダー",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「入浴介助ニュウヨクカイジョ」は稀少シフト（2回使用）",
+        "rare_shift": "入浴介助ニュウヨクカイジョ",
+        "usage_count": 2,
+        "rarity_score": 0.9622641509433962,
+        "confidence": 0.7,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「マシン」は例外的シフト（1回のみ使用）",
+        "exception_shift": "マシン",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「フリー」は例外的シフト（1回のみ使用）",
+        "exception_shift": "フリー",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「出勤シュッキン」は例外的シフト（1回のみ使用）",
+        "exception_shift": "出勤シュッキン",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「0.3333333333333333」は例外的シフト（1回のみ使用）",
+        "exception_shift": "0.3333333333333333",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「0.7083333333333334」は例外的シフト（1回のみ使用）",
+        "exception_shift": "0.7083333333333334",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「記帳キチョウ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "記帳キチョウ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「外介ソトカイ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "外介ソトカイ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「研修（新人研修）ケンシュウシンジンケンシュウ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "研修（新人研修）ケンシュウシンジンケンシュウ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「0.3958333333333333」は稀少シフト（2回使用）",
+        "rare_shift": "0.3958333333333333",
+        "usage_count": 2,
+        "rarity_score": 0.9622641509433962,
+        "confidence": 0.7,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「0.4791666666666667」は稀少シフト（2回使用）",
+        "rare_shift": "0.4791666666666667",
+        "usage_count": 2,
+        "rarity_score": 0.9622641509433962,
+        "confidence": 0.7,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「外会短期ソトカイタンキ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "外会短期ソトカイタンキ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「外会リーダーソトカイ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "外会リーダーソトカイ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「リーダー午後半休ゴゴハンキュウ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "リーダー午後半休ゴゴハンキュウ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「外会午後休みソトカイゴゴヤス」は例外的シフト（1回のみ使用）",
+        "exception_shift": "外会午後休みソトカイゴゴヤス",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「有給ユウキュウ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "有給ユウキュウ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「施設休」は稀少シフト（2回使用）",
+        "rare_shift": "施設休",
+        "usage_count": 2,
+        "rarity_score": 0.9622641509433962,
+        "confidence": 0.7,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「希望休キボウキュウ」は例外的シフト（1回のみ使用）",
+        "exception_shift": "希望休キボウキュウ",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "例外制約",
+        "description": "「半日出勤ハンニチシュッキン」は例外的シフト（1回のみ使用）",
+        "exception_shift": "半日出勤ハンニチシュッキン",
+        "usage_count": 1,
+        "rarity_score": 0.9811320754716981,
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "設備制約": [
+      {
+        "rule_type": "設備制約",
+        "description": "「入浴介助ニュウヨクカイジョ」は設備操作専門シフト",
+        "equipment_shift": "入浴介助ニュウヨクカイジョ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "設備制約",
+        "description": "「マシン」は設備操作専門シフト",
+        "equipment_shift": "マシン",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "設備制約",
+        "description": "「入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ」は設備操作専門シフト",
+        "equipment_shift": "入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "業務範囲制約": [
+      {
+        "rule_type": "業務範囲制約",
+        "description": "「入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ」は介護業務専門シフト",
+        "business_type": "介護",
+        "shift_code": "入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "施設特性制約": [
+      {
+        "rule_type": "施設特性制約",
+        "description": "「施設休」は施設サービス固有シフト",
+        "facility_type": "施設",
+        "shift_code": "施設休",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "エリア制約": [
+      {
+        "rule_type": "エリア制約",
+        "description": "「外介ソトカイ」はエリア限定シフト",
+        "area_indicator": "外",
+        "shift_code": "外介ソトカイ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "エリア制約",
+        "description": "「外会短期ソトカイタンキ」はエリア限定シフト",
+        "area_indicator": "外",
+        "shift_code": "外会短期ソトカイタンキ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "エリア制約",
+        "description": "「外会午後休みソトカイゴゴヤス」はエリア限定シフト",
+        "area_indicator": "外",
+        "shift_code": "外会午後休みソトカイゴゴヤス",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "エリア制約",
+        "description": "「外会リーダーソトカイ」はエリア限定シフト",
+        "area_indicator": "外",
+        "shift_code": "外会リーダーソトカイ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "エリア制約",
+        "description": "「入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ」はエリア限定シフト",
+        "area_indicator": "外",
+        "shift_code": "入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "運用時間制約": [
+      {
+        "rule_type": "運用時間制約",
+        "description": "「外会午後休みソトカイゴゴヤス」は午後時間帯限定シフト",
+        "time_period": "午後",
+        "shift_code": "外会午後休みソトカイゴゴヤス",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      },
+      {
+        "rule_type": "運用時間制約",
+        "description": "「リーダー午後半休ゴゴハンキュウ」は午後時間帯限定シフト",
+        "time_period": "午後",
+        "shift_code": "リーダー午後半休ゴゴハンキュウ",
+        "confidence": 0.8,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "配置基準制約": [
+      {
+        "rule_type": "配置基準制約",
+        "description": "日次配置人員は最小17名～最大19名（平均17.7名）",
+        "min_staff": 17,
+        "max_staff": 19,
+        "avg_staff": 17.666666666666668,
+        "confidence": 1.0,
+        "constraint_level": "HIGH"
+      }
+    ],
+    "役割定義制約": [
+      {
+        "rule_type": "役割定義制約",
+        "description": "「○」の役割範囲は3種類のシフトコード",
+        "staff": "○",
+        "role_scope": 3,
+        "shift_codes": [
+          "0.7291666666666666",
+          "0.3541666666666667",
+          "出勤シュッキン"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「予定」の役割範囲は0種類のシフトコード",
+        "staff": "予定",
+        "role_scope": 0,
+        "shift_codes": [],
+        "confidence": 0.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「◎」の役割範囲は3種類のシフトコード",
+        "staff": "◎",
+        "role_scope": 3,
+        "shift_codes": [
+          "リーダー",
+          "0.375",
+          "0.75"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「健有」の役割範囲は0種類のシフトコード",
+        "staff": "健有",
+        "role_scope": 0,
+        "shift_codes": [],
+        "confidence": 0.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「有ユウ」の役割範囲は1種類のシフトコード",
+        "staff": "有ユウ",
+        "role_scope": 1,
+        "shift_codes": [
+          "有給ユウキュウ"
+        ],
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「●×」の役割範囲は0種類のシフトコード",
+        "staff": "●×",
+        "role_scope": 0,
+        "shift_codes": [],
+        "confidence": 0.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「●2H」の役割範囲は3種類のシフトコード",
+        "staff": "●2H",
+        "role_scope": 3,
+        "shift_codes": [
+          "0.3958333333333333",
+          "0.4791666666666667",
+          "外会短期ソトカイタンキ"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「半ハン」の役割範囲は3種類のシフトコード",
+        "staff": "半ハン",
+        "role_scope": 3,
+        "shift_codes": [
+          "半日出勤ハンニチシュッキン",
+          "0.375",
+          "0.5"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「●半ハン」の役割範囲は3種類のシフトコード",
+        "staff": "●半ハン",
+        "role_scope": 3,
+        "shift_codes": [
+          "外会午後休みソトカイゴゴヤス",
+          "0.375",
+          "0.5"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「健×」の役割範囲は0種類のシフトコード",
+        "staff": "健×",
+        "role_scope": 0,
+        "shift_codes": [],
+        "confidence": 0.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「研修ケンシュウ」の役割範囲は3種類のシフトコード",
+        "staff": "研修ケンシュウ",
+        "role_scope": 3,
+        "shift_codes": [
+          "0.7291666666666666",
+          "0.3541666666666667",
+          "研修（新人研修）ケンシュウシンジンケンシュウ"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「夏」の役割範囲は0種類のシフトコード",
+        "staff": "夏",
+        "role_scope": 0,
+        "shift_codes": [],
+        "confidence": 0.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「本社」の役割範囲は2種類のシフトコード",
+        "staff": "本社",
+        "role_scope": 2,
+        "shift_codes": [
+          "0.7291666666666666",
+          "0.3541666666666667"
+        ],
+        "confidence": 0.2,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「◎×」の役割範囲は3種類のシフトコード",
+        "staff": "◎×",
+        "role_scope": 3,
+        "shift_codes": [
+          "リーダー午後半休ゴゴハンキュウ",
+          "0.375",
+          "0.5"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「休ヤス」の役割範囲は1種類のシフトコード",
+        "staff": "休ヤス",
+        "role_scope": 1,
+        "shift_codes": [
+          "施設休"
+        ],
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「▲」の役割範囲は3種類のシフトコード",
+        "staff": "▲",
+        "role_scope": 3,
+        "shift_codes": [
+          "0.7083333333333334",
+          "記帳キチョウ",
+          "0.3333333333333333"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「浴2Hヨク」の役割範囲は3種類のシフトコード",
+        "staff": "浴2Hヨク",
+        "role_scope": 3,
+        "shift_codes": [
+          "入浴介助ニュウヨクカイジョ",
+          "0.3958333333333333",
+          "0.4791666666666667"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「浴●ヨク」の役割範囲は3種類のシフトコード",
+        "staff": "浴●ヨク",
+        "role_scope": 3,
+        "shift_codes": [
+          "0.7291666666666666",
+          "0.3541666666666667",
+          "入浴介助兼外介護ニュウヨクカイジョケンガイカイゴ"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「●」の役割範囲は3種類のシフトコード",
+        "staff": "●",
+        "role_scope": 3,
+        "shift_codes": [
+          "外介ソトカイ",
+          "0.7291666666666666",
+          "0.3541666666666667"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「浴ヨク」の役割範囲は3種類のシフトコード",
+        "staff": "浴ヨク",
+        "role_scope": 3,
+        "shift_codes": [
+          "入浴介助ニュウヨクカイジョ",
+          "0.7291666666666666",
+          "0.3541666666666667"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「マ」の役割範囲は3種類のシフトコード",
+        "staff": "マ",
+        "role_scope": 3,
+        "shift_codes": [
+          "0.7291666666666666",
+          "0.3541666666666667",
+          "マシン"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「浴×」の役割範囲は0種類のシフトコード",
+        "staff": "浴×",
+        "role_scope": 0,
+        "shift_codes": [],
+        "confidence": 0.0,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「冬フユ」の役割範囲は1種類のシフトコード",
+        "staff": "冬フユ",
+        "role_scope": 1,
+        "shift_codes": [
+          "施設休"
+        ],
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「Ｆ」の役割範囲は3種類のシフトコード",
+        "staff": "Ｆ",
+        "role_scope": 3,
+        "shift_codes": [
+          "0.7291666666666666",
+          "0.3541666666666667",
+          "フリー"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「●◎」の役割範囲は3種類のシフトコード",
+        "staff": "●◎",
+        "role_scope": 3,
+        "shift_codes": [
+          "外会リーダーソトカイ",
+          "0.375",
+          "0.75"
+        ],
+        "confidence": 0.3,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「×」の役割範囲は1種類のシフトコード",
+        "staff": "×",
+        "role_scope": 1,
+        "shift_codes": [
+          "希望休キボウキュウ"
+        ],
+        "confidence": 0.1,
+        "constraint_level": "MEDIUM"
+      },
+      {
+        "rule_type": "役割定義制約",
+        "description": "「●▲」の役割範囲は2種類のシフトコード",
+        "staff": "●▲",
+        "role_scope": 2,
+        "shift_codes": [
+          "0.7291666666666666",
+          "0.3541666666666667"
+        ],
+        "confidence": 0.2,
+        "constraint_level": "MEDIUM"
+      }
+    ],
+    "協力体制制約": []
+  },
+  "achievement_status": {
+    "target": 100,
+    "actual": 263,
+    "achievement_rate": "263%",
+    "status": "SUCCESS"
+  }
+}

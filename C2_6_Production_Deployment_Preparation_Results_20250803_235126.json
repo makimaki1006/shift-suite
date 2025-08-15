@@ -1,0 +1,435 @@
+{
+  "metadata": {
+    "deployment_prep_id": "C2_6_DEPLOYMENT_PREP_20250803_235126",
+    "start_time": "2025-08-03T23:51:25.803544",
+    "end_time": "2025-08-03T23:51:26.724537",
+    "total_duration": "0:00:00.920997",
+    "c25_quality_score": 96.7,
+    "deployment_environment": "production_ready"
+  },
+  "c25_verification": {
+    "success": true,
+    "report_file": "C2_5_Final_Verification_Report_20250803_233615.md",
+    "missing_indicators": [],
+    "quality_score_verified": true,
+    "verification_method": "comprehensive_report_analysis"
+  },
+  "preparation_results": {
+    "step1_backup": {
+      "success": true,
+      "backup_results": {
+        "backup_directory": "PRODUCTION_BACKUP_C2_6_20250803_235125",
+        "backup_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125",
+        "backed_up_files": {
+          "dash_app.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/dash_app.py",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/dash_app.py",
+            "size": 474696,
+            "backup_size": 474696
+          },
+          "app.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/app.py",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/app.py",
+            "size": 311076,
+            "backup_size": 311076
+          },
+          "shift_suite/tasks/fact_extractor_prototype.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/shift_suite/tasks/fact_extractor_prototype.py",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/shift_suite/tasks/fact_extractor_prototype.py",
+            "size": 11248,
+            "backup_size": 11248
+          },
+          "shift_suite/tasks/lightweight_anomaly_detector.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/shift_suite/tasks/lightweight_anomaly_detector.py",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/shift_suite/tasks/lightweight_anomaly_detector.py",
+            "size": 14882,
+            "backup_size": 14882
+          },
+          "c2-mobile-integrated.css": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.css",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/c2-mobile-integrated.css",
+            "size": 11534,
+            "backup_size": 11534
+          },
+          "c2-mobile-integrated.js": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.js",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/c2-mobile-integrated.js",
+            "size": 10068,
+            "backup_size": 10068
+          },
+          "c2-service-worker.js": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-service-worker.js",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/c2-service-worker.js",
+            "size": 1739,
+            "backup_size": 1739
+          },
+          "c2-mobile-config-integrated.json": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-config-integrated.json",
+            "backup": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/PRODUCTION_BACKUP_C2_6_20250803_235125/c2-mobile-config-integrated.json",
+            "size": 1974,
+            "backup_size": 1974
+          }
+        },
+        "integrity_hashes": {
+          "dash_app.py": "01e4bd7f8f37814b3a912cf61c5e81e1",
+          "app.py": "1ef4644db7376376b31b0e0b218908c8",
+          "shift_suite/tasks/fact_extractor_prototype.py": "11600d54521604b7993fdb0628d59acd",
+          "shift_suite/tasks/lightweight_anomaly_detector.py": "7b44a5f728a76fe472516cfb869bc5f1",
+          "c2-mobile-integrated.css": "85f74161d3da2543bbbea013443e2917",
+          "c2-mobile-integrated.js": "998474080c59c9537d420c5aef4533c7",
+          "c2-service-worker.js": "4717a194f5ee26e0eda118538fb66b47",
+          "c2-mobile-config-integrated.json": "31e300d1f254d9a7d3aca2a75680e565"
+        }
+      },
+      "metadata": {
+        "backup_timestamp": "20250803_235125",
+        "c25_quality_score": 96.7,
+        "backup_purpose": "C2.6本番環境デプロイ準備",
+        "backed_up_files": [
+          "dash_app.py",
+          "app.py",
+          "shift_suite/tasks/fact_extractor_prototype.py",
+          "shift_suite/tasks/lightweight_anomaly_detector.py",
+          "c2-mobile-integrated.css",
+          "c2-mobile-integrated.js",
+          "c2-service-worker.js",
+          "c2-mobile-config-integrated.json"
+        ],
+        "integrity_hashes": {
+          "dash_app.py": "01e4bd7f8f37814b3a912cf61c5e81e1",
+          "app.py": "1ef4644db7376376b31b0e0b218908c8",
+          "shift_suite/tasks/fact_extractor_prototype.py": "11600d54521604b7993fdb0628d59acd",
+          "shift_suite/tasks/lightweight_anomaly_detector.py": "7b44a5f728a76fe472516cfb869bc5f1",
+          "c2-mobile-integrated.css": "85f74161d3da2543bbbea013443e2917",
+          "c2-mobile-integrated.js": "998474080c59c9537d420c5aef4533c7",
+          "c2-service-worker.js": "4717a194f5ee26e0eda118538fb66b47",
+          "c2-mobile-config-integrated.json": "31e300d1f254d9a7d3aca2a75680e565"
+        },
+        "backup_verification": "all_files_verified"
+      },
+      "step": "production_backup"
+    },
+    "step2_assets": {
+      "success": true,
+      "deployment_assets": {
+        "c2-mobile-integrated.css": {
+          "description": "統合CSS",
+          "source_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.css",
+          "asset_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/assets/c2-mobile-integrated.css",
+          "source_size": 11534,
+          "asset_size": 11534,
+          "integrity_verified": true
+        },
+        "c2-mobile-integrated.js": {
+          "description": "統合JavaScript",
+          "source_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.js",
+          "asset_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/assets/c2-mobile-integrated.js",
+          "source_size": 10068,
+          "asset_size": 10068,
+          "integrity_verified": true
+        },
+        "c2-service-worker.js": {
+          "description": "Service Worker",
+          "source_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-service-worker.js",
+          "asset_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/assets/c2-service-worker.js",
+          "source_size": 1739,
+          "asset_size": 1739,
+          "integrity_verified": true
+        },
+        "c2-mobile-config-integrated.json": {
+          "description": "Plotly統合設定",
+          "source_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-config-integrated.json",
+          "config_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/config/c2-mobile-config-integrated.json",
+          "integrity_verified": true
+        }
+      },
+      "assets_directory": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/assets",
+      "total_assets": 4,
+      "step": "asset_deployment"
+    },
+    "step3_config": {
+      "success": true,
+      "configuration_checks": {
+        "dash_app_integration": {
+          "checks": {
+            "c2_css_integration": true,
+            "c2_js_integration": true,
+            "viewport_meta": true,
+            "index_string_defined": true,
+            "service_worker_ready": true
+          },
+          "all_integrated": true,
+          "file_size": 474696
+        },
+        "slot_hours_protection": {
+          "shift_suite/tasks/fact_extractor_prototype.py": {
+            "slot_hours_multiplications": 4,
+            "slot_hours_definition": 1,
+            "protected": true
+          },
+          "shift_suite/tasks/lightweight_anomaly_detector.py": {
+            "slot_hours_multiplications": 1,
+            "slot_hours_definition": 1,
+            "protected": true
+          }
+        },
+        "plotly_config": {
+          "file_exists": true,
+          "config_loaded": true,
+          "config_keys": [
+            "mobile_config",
+            "mobile_layout",
+            "advanced_mobile_config",
+            "mobile_layout_extensions",
+            "chart_type_specific"
+          ],
+          "file_size": 1974
+        }
+      },
+      "step": "configuration_verification"
+    },
+    "step4_security": {
+      "success": true,
+      "security_checks": {
+        "file_permissions": {
+          "dash_app.py": {
+            "exists": true,
+            "readable": true,
+            "size": 474696,
+            "non_empty": true
+          },
+          "app.py": {
+            "exists": true,
+            "readable": true,
+            "size": 311076,
+            "non_empty": true
+          },
+          "c2-mobile-integrated.css": {
+            "exists": true,
+            "readable": true,
+            "size": 11534,
+            "non_empty": true
+          },
+          "c2-mobile-integrated.js": {
+            "exists": true,
+            "readable": true,
+            "size": 10068,
+            "non_empty": true
+          }
+        },
+        "security_elements": {
+          "no_hardcoded_secrets": true,
+          "https_ready": true,
+          "csp_compatible": true,
+          "xss_protection": true
+        },
+        "assets_security": {
+          "directory_exists": true,
+          "directory_accessible": true,
+          "assets_count": 3
+        }
+      },
+      "security_score": 100,
+      "step": "security_verification"
+    },
+    "step5_final": {
+      "success": true,
+      "package_name": "C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126",
+      "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126",
+      "packaged_files": {
+        "core_application": {
+          "dash_app.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/dash_app.py",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/core_application/dash_app.py",
+            "size": 474696
+          },
+          "app.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/app.py",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/core_application/app.py",
+            "size": 311076
+          }
+        },
+        "c2_assets": {
+          "c2-mobile-integrated.css": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.css",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/c2_assets/c2-mobile-integrated.css",
+            "size": 11534
+          },
+          "c2-mobile-integrated.js": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.js",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/c2_assets/c2-mobile-integrated.js",
+            "size": 10068
+          },
+          "c2-service-worker.js": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-service-worker.js",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/c2_assets/c2-service-worker.js",
+            "size": 1739
+          }
+        },
+        "configuration": {
+          "c2-mobile-config-integrated.json": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-config-integrated.json",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/configuration/c2-mobile-config-integrated.json",
+            "size": 1974
+          }
+        },
+        "protected_modules": {
+          "shift_suite/tasks/fact_extractor_prototype.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/shift_suite/tasks/fact_extractor_prototype.py",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/protected_modules/shift_suite/tasks/fact_extractor_prototype.py",
+            "size": 11248
+          },
+          "shift_suite/tasks/lightweight_anomaly_detector.py": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/shift_suite/tasks/lightweight_anomaly_detector.py",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/protected_modules/shift_suite/tasks/lightweight_anomaly_detector.py",
+            "size": 14882
+          }
+        },
+        "documentation": {
+          "C2_5_Final_Verification_Report_20250803_233615.md": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_5_Final_Verification_Report_20250803_233615.md",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/documentation/C2_5_Final_Verification_Report_20250803_233615.md",
+            "size": 3122
+          },
+          "C2_IMPLEMENTATION_SUMMARY.md": {
+            "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_IMPLEMENTATION_SUMMARY.md",
+            "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/documentation/C2_IMPLEMENTATION_SUMMARY.md",
+            "size": 737
+          }
+        }
+      },
+      "deployment_instructions": {
+        "deployment_package": "C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126",
+        "deployment_timestamp": "20250803_235126",
+        "c25_quality_score": 96.7,
+        "deployment_instructions": {
+          "step1": "assets/内のファイルを本番環境のassetsディレクトリに配置",
+          "step2": "core_application/内のファイルで既存ファイルを置換（バックアップ後）",
+          "step3": "configuration/内の設定ファイルを適切な場所に配置",
+          "step4": "protected_modules/内のファイルで対応モジュールを更新",
+          "step5": "本番環境でのテスト実行・動作確認"
+        },
+        "verification_steps": [
+          "SLOT_HOURS計算結果の一致確認",
+          "Phase2/3.1機能の正常動作確認",
+          "モバイル表示の改善確認",
+          "パフォーマンス劣化なし確認",
+          "エラーログ監視"
+        ],
+        "rollback_procedure": {
+          "backup_location": "PRODUCTION_BACKUP_C2_6_*",
+          "rollback_command": "バックアップからの完全復元",
+          "rollback_time": "15分以内"
+        },
+        "package_contents": {
+          "core_application": {
+            "dash_app.py": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/dash_app.py",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/core_application/dash_app.py",
+              "size": 474696
+            },
+            "app.py": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/app.py",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/core_application/app.py",
+              "size": 311076
+            }
+          },
+          "c2_assets": {
+            "c2-mobile-integrated.css": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.css",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/c2_assets/c2-mobile-integrated.css",
+              "size": 11534
+            },
+            "c2-mobile-integrated.js": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-integrated.js",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/c2_assets/c2-mobile-integrated.js",
+              "size": 10068
+            },
+            "c2-service-worker.js": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-service-worker.js",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/c2_assets/c2-service-worker.js",
+              "size": 1739
+            }
+          },
+          "configuration": {
+            "c2-mobile-config-integrated.json": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/c2-mobile-config-integrated.json",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/configuration/c2-mobile-config-integrated.json",
+              "size": 1974
+            }
+          },
+          "protected_modules": {
+            "shift_suite/tasks/fact_extractor_prototype.py": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/shift_suite/tasks/fact_extractor_prototype.py",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/protected_modules/shift_suite/tasks/fact_extractor_prototype.py",
+              "size": 11248
+            },
+            "shift_suite/tasks/lightweight_anomaly_detector.py": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/shift_suite/tasks/lightweight_anomaly_detector.py",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/protected_modules/shift_suite/tasks/lightweight_anomaly_detector.py",
+              "size": 14882
+            }
+          },
+          "documentation": {
+            "C2_5_Final_Verification_Report_20250803_233615.md": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_5_Final_Verification_Report_20250803_233615.md",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/documentation/C2_5_Final_Verification_Report_20250803_233615.md",
+              "size": 3122
+            },
+            "C2_IMPLEMENTATION_SUMMARY.md": {
+              "source": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_IMPLEMENTATION_SUMMARY.md",
+              "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126/documentation/C2_IMPLEMENTATION_SUMMARY.md",
+              "size": 737
+            }
+          }
+        }
+      },
+      "package_verification": {
+        "total_files_packaged": 10,
+        "all_categories_included": true,
+        "instructions_created": true,
+        "package_complete": true
+      },
+      "step": "deployment_package_creation"
+    }
+  },
+  "deployment_readiness": {
+    "ready_for_deployment": true,
+    "deployment_score": 100.0,
+    "step_results": {
+      "step1_backup": true,
+      "step2_assets": true,
+      "step3_config": true,
+      "step4_security": true,
+      "step5_final": true
+    },
+    "all_steps_successful": true,
+    "deployment_package": {
+      "package_name": "C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126",
+      "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126",
+      "instructions_file": "DEPLOYMENT_INSTRUCTIONS.json",
+      "deployment_ready": true
+    },
+    "recommendations": [
+      "本番環境への即座デプロイ可能",
+      "デプロイ後のモニタリング強化推奨",
+      "ユーザーフィードバック収集体制準備",
+      "段階的ロールアウト検討"
+    ],
+    "c25_quality_maintained": true,
+    "final_assessment": "本番展開準備完了"
+  },
+  "success": true,
+  "deployment_package": {
+    "package_name": "C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126",
+    "package_path": "/mnt/c/Users/fuji1/OneDrive/デスクトップ/シフト分析/C2_PRODUCTION_DEPLOYMENT_PACKAGE_20250803_235126",
+    "instructions_file": "DEPLOYMENT_INSTRUCTIONS.json",
+    "deployment_ready": true
+  },
+  "recommendations": [
+    "本番環境への即座デプロイ可能",
+    "デプロイ後のモニタリング強化推奨",
+    "ユーザーフィードバック収集体制準備",
+    "段階的ロールアウト検討"
+  ]
+}

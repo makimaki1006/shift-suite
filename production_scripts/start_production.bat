@@ -15,7 +15,7 @@ echo Security: ACTIVE
 echo Monitoring: RUNNING
 echo ========================================
 
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 echo Server starting on http://localhost:8050
 echo Press Ctrl+C to stop
 

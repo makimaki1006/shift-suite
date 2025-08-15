@@ -1,0 +1,223 @@
+{
+  "dynamic_compatibility_verified": true,
+  "current_system_analysis": {
+    "data_sources": {
+      "intermediate_data": {
+        "file_path": "extracted_results\\out_p25_based\\intermediate_data.parquet",
+        "is_dynamic": true,
+        "update_frequency": "REAL_TIME",
+        "impact_on_calculation": "DIRECT"
+      },
+      "need_files": {
+        "file_paths": [
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_事務・介護.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_介護.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_介護・相談員.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_介護（W_2）.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_介護（W_3）.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_機能訓練士.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_看護師.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_管理者・相談員.parquet",
+          "extracted_results\\out_p25_based\\need_per_date_slot_role_運転士.parquet"
+        ],
+        "is_dynamic": true,
+        "update_frequency": "PERIODIC",
+        "impact_on_calculation": "DIRECT"
+      }
+    },
+    "calculation_logic": {
+      "hardcoded_values": {
+        "period_days": 30,
+        "slot_hours": 0.5,
+        "expected_slots": 48
+      },
+      "dynamic_elements": {
+        "staff_count": "FROM_DATA",
+        "role_distribution": "FROM_DATA",
+        "need_values": "FROM_FILES"
+      },
+      "potential_static_assumptions": [
+        "30日間の期間固定",
+        "48スロット構造固定",
+        "0.5時間/スロット固定",
+        "Need値の更新頻度未考慮"
+      ]
+    },
+    "change_impact": {
+      "staff_addition": {
+        "data_change": "intermediate_data.parquetにレコード追加",
+        "calculation_impact": "自動反映（動的対応済み）",
+        "risk_level": "LOW"
+      },
+      "role_change": {
+        "data_change": "スタッフの職種変更",
+        "calculation_impact": "自動反映（動的対応済み）",
+        "risk_level": "LOW"
+      },
+      "period_extension": {
+        "data_change": "分析期間の延長（30日→60日）",
+        "calculation_impact": "手動調整必要",
+        "risk_level": "HIGH"
+      },
+      "need_update": {
+        "data_change": "Needファイルの値更新",
+        "calculation_impact": "自動反映（動的対応済み）",
+        "risk_level": "LOW"
+      },
+      "time_structure_change": {
+        "data_change": "スロット構造変更（48→24）",
+        "calculation_impact": "大幅修正必要",
+        "risk_level": "CRITICAL"
+      }
+    },
+    "overall_dynamic_readiness": {
+      "score": 64.0,
+      "level": "MEDIUM",
+      "total_risk_points": 18,
+      "max_risk_points": 50
+    }
+  },
+  "simulation_results": {
+    "staff_addition": {
+      "scenario": "介護スタッフ1名追加",
+      "baseline_shortage": -9.916666666666671,
+      "simulated_shortage": -16.516666666666666,
+      "change_detection": "True",
+      "expected_improvement": true
+    },
+    "need_increase": {
+      "scenario": "Need値20%増加",
+      "baseline_shortage": -9.916666666666671,
+      "simulated_shortage": 8.34333333333332,
+      "change_detection": "True",
+      "expected_worsening": true
+    },
+    "period_extension": {
+      "scenario": "期間延長（30日→45日）",
+      "baseline_shortage": -9.916666666666671,
+      "simulated_shortage": -6.611111111111107,
+      "change_detection": "True",
+      "period_adjustment_needed": true
+    }
+  },
+  "static_issues": {
+    "hardcoded_constants": [
+      {
+        "issue": "期間日数30日固定",
+        "location": "各計算関数内の \"/30\"",
+        "impact": "期間変更時に手動修正必要",
+        "severity": "HIGH"
+      },
+      {
+        "issue": "48スロット構造前提",
+        "location": "24時間検証ロジック",
+        "impact": "運営時間変更時に対応困難",
+        "severity": "MEDIUM"
+      },
+      {
+        "issue": "0.5時間/スロット固定",
+        "location": "UNIFIED_SLOT_HOURS定数",
+        "impact": "スロット間隔変更時に対応困難",
+        "severity": "MEDIUM"
+      }
+    ],
+    "configuration_dependencies": [
+      {
+        "issue": "Needファイル命名規則依存",
+        "location": "glob(\"need_per_date_slot_role_*.parquet\")",
+        "impact": "ファイル命名変更時に読み込み失敗",
+        "severity": "HIGH"
+      },
+      {
+        "issue": "NIGHT_SLOT固定識別",
+        "location": "role != \"NIGHT_SLOT\" 判定",
+        "impact": "夜間識別方法変更時に対応困難",
+        "severity": "MEDIUM"
+      }
+    ],
+    "data_structure_assumptions": [
+      {
+        "issue": "職種名の直接マッチング",
+        "location": "職種別Need算出",
+        "impact": "職種名変更時に不整合",
+        "severity": "HIGH"
+      }
+    ]
+  },
+  "improvement_plan": {
+    "improvement_actions": [
+      {
+        "action": "システム設定ファイルの導入",
+        "priority": "HIGH",
+        "description": "期間日数、スロット時間、構造設定を外部設定化",
+        "implementation": "config.json作成とシステム読み込み機能追加",
+        "benefit": "期間・構造変更時の手動修正を自動化"
+      },
+      {
+        "action": "データ構造自動検出機能",
+        "priority": "MEDIUM",
+        "description": "ファイル読み込み時の構造自動判定",
+        "implementation": "データ形状・命名規則の動的解析機能",
+        "benefit": "ファイル構造変更への自動適応"
+      },
+      {
+        "action": "計算パラメータ動的取得",
+        "priority": "HIGH",
+        "description": "データから期間・スロット情報を動的抽出",
+        "implementation": "データメタデータ解析による自動パラメータ設定",
+        "benefit": "手動設定不要、データ変更への自動追従"
+      },
+      {
+        "action": "職種マッピング柔軟化",
+        "priority": "MEDIUM",
+        "description": "職種名変更・追加への柔軟対応",
+        "implementation": "職種マスタ管理とマッピング機能",
+        "benefit": "職種体系変更時の継続性確保"
+      }
+    ],
+    "implementation_phases": [
+      "Phase 1: 設定ファイル化（1-2週間）",
+      "Phase 2: データ構造自動検出（2-3週間）",
+      "Phase 3: パラメータ動的化（1-2週間）",
+      "Phase 4: 職種マッピング（1週間）"
+    ],
+    "expected_benefits": [
+      "データ変更への自動適応",
+      "手動設定作業の削減",
+      "システム保守性の向上",
+      "運用変更時の柔軟性確保"
+    ]
+  },
+  "implementation_proposal": {
+    "proposal_title": "按分廃止システム動的対応強化提案",
+    "current_limitations": [
+      "期間日数30日固定によるフレキシビリティ不足",
+      "ファイル構造変更への手動対応必要",
+      "職種体系変更時の修正コスト",
+      "システム設定のハードコード化"
+    ],
+    "proposed_architecture": {
+      "config_layer": "設定管理レイヤー（config.json）",
+      "detection_layer": "データ構造自動検出レイヤー",
+      "calculation_layer": "パラメータ動的計算レイヤー",
+      "mapping_layer": "職種・データマッピング管理レイヤー"
+    },
+    "implementation_priority": {
+      "immediate": [
+        "設定ファイル化",
+        "パラメータ動的化"
+      ],
+      "short_term": [
+        "データ構造自動検出"
+      ],
+      "medium_term": [
+        "職種マッピング柔軟化"
+      ]
+    },
+    "risk_mitigation": [
+      "段階的実装による安定性確保",
+      "既存機能の後方互換性維持",
+      "充分なテスト期間の確保"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "dash_available": false,
+  "alert_ui_created": true,
+  "anomaly_detector_loaded": true,
+  "config_loaded": true,
+  "alert_levels_defined": true,
+  "alert_types_defined": true,
+  "test_timestamp": "2025-08-04T16:21:34.740948"
+}

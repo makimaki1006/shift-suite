@@ -1,0 +1,154 @@
+{
+  "test_metadata": {
+    "timestamp": "2025-08-12T23:18:15.976617",
+    "test_type": "comprehensive_hybrid_approach",
+    "version": "1.0.0"
+  },
+  "constraint_analysis": {
+    "constraints_found": [
+      {
+        "type": "workload_constraint",
+        "staff": "鈴木美子",
+        "constraint": "鈴木美子は低負荷傾向（112時間 vs 平均150.4時間）",
+        "confidence": 0.8,
+        "category": "負荷分散"
+      },
+      {
+        "type": "shift_preference_constraint",
+        "staff": "佐藤花子",
+        "constraint": "佐藤花子はNシフト特化（100.0%の集中度）",
+        "confidence": 0.9,
+        "category": "シフト偏好"
+      },
+      {
+        "type": "shift_preference_constraint",
+        "staff": "山田次郎",
+        "constraint": "山田次郎はEシフト特化（94.7%の集中度）",
+        "confidence": 0.9,
+        "category": "シフト偏好"
+      },
+      {
+        "type": "shift_preference_constraint",
+        "staff": "田中太郎",
+        "constraint": "田中太郎はDシフト特化（90.0%の集中度）",
+        "confidence": 0.9,
+        "category": "シフト偏好"
+      },
+      {
+        "type": "shift_preference_constraint",
+        "staff": "鈴木美子",
+        "constraint": "鈴木美子はDシフト特化（78.6%の集中度）",
+        "confidence": 0.9,
+        "category": "シフト偏好"
+      },
+      {
+        "type": "shift_preference_constraint",
+        "staff": "高橋一郎",
+        "constraint": "高橋一郎はLシフト特化（90.5%の集中度）",
+        "confidence": 0.9,
+        "category": "シフト偏好"
+      },
+      {
+        "type": "single_role_constraint",
+        "role": "相談員",
+        "constraint": "相談員は1名のみ（代替要員なし）",
+        "confidence": 1.0,
+        "category": "役割制約"
+      },
+      {
+        "type": "single_role_constraint",
+        "role": "看護師",
+        "constraint": "看護師は1名のみ（代替要員なし）",
+        "confidence": 1.0,
+        "category": "役割制約"
+      }
+    ],
+    "total_constraints": 8,
+    "category_distribution": {
+      "負荷分散": 1,
+      "シフト偏好": 5,
+      "役割制約": 2
+    },
+    "test_data_summary": {
+      "total_records": 752,
+      "staff_count": 5,
+      "date_range": "2024-01-01 - 2024-01-31",
+      "shift_types": [
+        "D",
+        "E",
+        "N",
+        "L"
+      ]
+    }
+  },
+  "performance_metrics": {
+    "baseline_scores": {
+      "depth": 19.6,
+      "practicality": 17.6
+    },
+    "improved_scores": {
+      "depth": 15.680000000000001,
+      "practicality": 30.1125
+    },
+    "improvement_factors": {
+      "depth": 0.8,
+      "practicality": 1.7109375
+    },
+    "contributing_factors": {
+      "total_constraints": 8,
+      "category_diversity": 3,
+      "avg_confidence": 0.9125
+    }
+  },
+  "usability_features": {
+    "readable_constraint_format": {
+      "description": "人間が読みやすい制約表現",
+      "implemented": true,
+      "example": "田中太郎は日勤特化（80%の集中度）"
+    },
+    "confidence_scoring": {
+      "description": "制約の信頼度スコア表示",
+      "implemented": true,
+      "example": "信頼度: 0.9 (90%)"
+    },
+    "category_organization": {
+      "description": "制約のカテゴリ別整理",
+      "implemented": true,
+      "example": "カテゴリ: 負荷分散, シフト偏好, 週末対応, 役割制約"
+    },
+    "progressive_disclosure": {
+      "description": "段階的な情報開示",
+      "implemented": true,
+      "example": "基本制約 → 詳細分析 → 高度制約"
+    }
+  },
+  "system_status": {
+    "lightweight_system": "operational",
+    "dependency_issues": "partially_resolved",
+    "core_functionality": "verified",
+    "user_readiness": "basic_ready"
+  },
+  "next_phase_plan": {
+    "immediate": [
+      "依存関係問題の完全解決",
+      "高度機械学習機能の段階的追加",
+      "実用システムへの統合"
+    ],
+    "short_term": [
+      "パフォーマンス最適化",
+      "ユーザーインターフェース改善",
+      "エラーハンドリング強化"
+    ],
+    "long_term": [
+      "商用レベル品質達成",
+      "スケーラビリティ確保",
+      "継続的改善システム構築"
+    ]
+  },
+  "success_criteria": {
+    "depth_score_target": "60%+",
+    "practicality_score_target": "70%+",
+    "user_satisfaction": "80%+",
+    "system_stability": "99%+"
+  }
+}

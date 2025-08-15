@@ -1,0 +1,51 @@
+{
+  "uat_execution_report": {
+    "execution_metadata": {
+      "execution_date": "2025-08-12T23:42:20.131443",
+      "execution_duration": "0:00:35.356204",
+      "total_tests": 6,
+      "environment": "Windows/Python"
+    },
+    "test_results": [
+      {
+        "test_id": "A0-S01",
+        "test_name": "システム起動テスト",
+        "status": "PASS",
+        "execution_time": 30.621404886245728,
+        "details": {
+          "startup_time_seconds": 30.621404886245728,
+          "modules_imported": [
+            "app",
+            "dash_app",
+            "utils"
+          ],
+          "critical_functions_accessible": true
+        },
+        "pass_criteria": "30秒以内起動",
+        "actual_result": "30.62秒で起動完了"
+      },
+      {
+        "test_id": "A1-S01",
+        "test_name": "標準データ処理テスト",
+        "status": "PASS",
+        "execution_time": 0.150620698928833,
+        "details": {
+          "total_records": 1248,
+          "staff_count": 5,
+          "date_range": "2024-01-01 07:00:00 - 2024-02-01 04:30:00",
+          "missing_columns": [],
+          "file_size_mb": 0.037329673767089844
+        },
+        "pass_criteria": "30秒以内処理 & 必須列存在",
+        "actual_result": "0.15秒で1248レコード処理完了"
+      },
+      {
+        "test_id": "A1-S02",
+        "test_name": "大容量データ処理テスト",
+        "status": "PASS",
+        "execution_time": 1.1841228008270264,
+        "details": {
+          "total_records": 17552,
+          "processing_time_minutes": 0.019735380013783773,
+          "memory_usage_mb": 5.6953125,
+          "data_integrity": 

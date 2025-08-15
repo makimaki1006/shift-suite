@@ -1,0 +1,60 @@
+{
+  "facility_name": "クリニックテンプレート",
+  "facility_type": "clinic",
+  "description": "日中営業のクリニック・診療所向け設定",
+  
+  "time": {
+    "slot_minutes": 30,
+    "night_start_hour": 20,
+    "night_end_hour": 8,
+    "early_morning_hour": 8
+  },
+  
+  "wage": {
+    "regular_staff": 1600,
+    "temporary_staff": 2200,
+    "average_hourly_wage": 1400,
+    "night_differential": 1.0,
+    "overtime_multiplier": 1.25,
+    "weekend_differential": 1.2
+  },
+  
+  "cost": {
+    "recruit_cost_per_hire": 120000,
+    "hiring_cost_once": 100000,
+    "penalty_per_shortage_hour": 2000,
+    "monthly_hours_fte": 120
+  },
+  
+  "statistical": {
+    "confidence_level": 0.85,
+    "significance_alpha": 0.15,
+    "correlation_threshold": 0.65,
+    "high_confidence_threshold": 0.70,
+    "min_sample_size": 5
+  },
+  
+  "fatigue": {
+    "min_rest_hours": 11,
+    "night_shift_threshold": 0.10,
+    "early_morning_threshold": 0.20,
+    "fatigue_alert_threshold": 0.75,
+    "consecutive_3_days_weight": 0.8,
+    "consecutive_4_days_weight": 0.2,
+    "consecutive_5_days_weight": 0.0
+  },
+  
+  "custom": {
+    "business_hours": {
+      "start": "09:00",
+      "end": "18:00",
+      "lunch_break": {
+        "start": "12:30",
+        "end": "14:00"
+      }
+    },
+    "appointment_slot_minutes": 15,
+    "reception_minimum_staff": 1,
+    "doctor_required_hours": ["09:00-12:30", "14:00-18:00"]
+  }
+}

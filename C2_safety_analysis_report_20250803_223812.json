@@ -1,0 +1,275 @@
+{
+  "timestamp": "2025-08-03T22:38:12.861132",
+  "analysis_type": "c2_pre_implementation_safety",
+  "system_status": "analyzed",
+  "syntax_check": {
+    "app.py": {
+      "status": "ok",
+      "file_size": 280959,
+      "lines": 185,
+      "critical_patterns": {
+        "slot_hours_multiplication": 0,
+        "slot_hours_definition": 0,
+        "parsed_slots_count": 6,
+        "dash_callback": 0,
+        "import_statements": 0,
+        "class_definitions": 0,
+        "function_definitions": 0
+      },
+      "has_slot_hours": false
+    },
+    "dash_app.py": {
+      "status": "ok",
+      "file_size": 409071,
+      "lines": 80,
+      "critical_patterns": {
+        "slot_hours_multiplication": 0,
+        "slot_hours_definition": 0,
+        "parsed_slots_count": 16,
+        "dash_callback": 0,
+        "import_statements": 0,
+        "class_definitions": 0,
+        "function_definitions": 0
+      },
+      "has_slot_hours": false
+    },
+    "shift_suite/__init__.py": {
+      "status": "ok",
+      "file_size": 2638,
+      "lines": 1,
+      "critical_patterns": {
+        "slot_hours_multiplication": 0,
+        "slot_hours_definition": 0,
+        "parsed_slots_count": 0,
+        "dash_callback": 0,
+        "import_statements": 0,
+        "class_definitions": 0,
+        "function_definitions": 0
+      },
+      "has_slot_hours": false
+    },
+    "shift_suite/tasks/utils.py": {
+      "status": "ok",
+      "file_size": 23909,
+      "lines": 2,
+      "critical_patterns": {
+        "slot_hours_multiplication": 0,
+        "slot_hours_definition": 0,
+        "parsed_slots_count": 3,
+        "dash_callback": 0,
+        "import_statements": 0,
+        "class_definitions": 0,
+        "function_definitions": 0
+      },
+      "has_slot_hours": false
+    },
+    "shift_suite/tasks/shortage.py": {
+      "status": "ok",
+      "file_size": 76673,
+      "lines": 91,
+      "critical_patterns": {
+        "slot_hours_multiplication": 0,
+        "slot_hours_definition": 0,
+        "parsed_slots_count": 0,
+        "dash_callback": 0,
+        "import_statements": 0,
+        "class_definitions": 0,
+        "function_definitions": 0
+      },
+      "has_slot_hours": false
+    },
+    "shift_suite/tasks/fact_extractor_prototype.py": {
+      "status": "ok",
+      "file_size": 9365,
+      "lines": 3,
+      "critical_patterns": {
+        "slot_hours_multiplication": 6,
+        "slot_hours_definition": 0,
+        "parsed_slots_count": 14,
+        "dash_callback": 0,
+        "import_statements": 0,
+        "class_definitions": 0,
+        "function_definitions": 0
+      },
+      "has_slot_hours": true
+    },
+    "shift_suite/tasks/lightweight_anomaly_detector.py": {
+      "status": "ok",
+      "file_size": 13161,
+      "lines": 2,
+      "critical_patterns": {
+        "slot_hours_multiplication": 3,
+        "slot_hours_definition": 0,
+        "parsed_slots_count": 3,
+        "dash_callback": 0,
+        "import_statements": 0,
+        "class_definitions": 0,
+        "function_definitions": 0
+      },
+      "has_slot_hours": true
+    }
+  },
+  "mobile_implementation": {
+    "dash_app.py": {
+      "status": "analyzed",
+      "file_size": 409071,
+      "mobile_features": {
+        "responsive_breakpoints": 0,
+        "viewport_meta": 1,
+        "media_queries": 3,
+        "mobile_classes": 0,
+        "responsive_functions": 2,
+        "device_detection": 19
+      },
+      "mobile_readiness": true
+    },
+    "dash_components/visualization_engine.py": {
+      "status": "analyzed",
+      "file_size": 16526,
+      "mobile_features": {
+        "responsive_breakpoints": 1,
+        "viewport_meta": 0,
+        "media_queries": 0,
+        "mobile_classes": 0,
+        "responsive_functions": 5,
+        "device_detection": 22
+      },
+      "mobile_readiness": true
+    },
+    "improved_ui_components.py": {
+      "status": "analyzed",
+      "file_size": 18568,
+      "mobile_features": {
+        "responsive_breakpoints": 0,
+        "viewport_meta": 0,
+        "media_queries": 0,
+        "mobile_classes": 0,
+        "responsive_functions": 1,
+        "device_detection": 0
+      },
+      "mobile_readiness": true
+    }
+  },
+  "dependency_analysis": {
+    "import_map": {
+      "app.py": [],
+      "dash_app.py": [],
+      "shift_suite/__init__.py": [],
+      "shift_suite/tasks/utils.py": [],
+      "shift_suite/tasks/shortage.py": [],
+      "shift_suite/tasks/fact_extractor_prototype.py": [],
+      "shift_suite/tasks/lightweight_anomaly_detector.py": []
+    },
+    "internal_dependencies": {
+      "app.py": [],
+      "dash_app.py": [],
+      "shift_suite/__init__.py": [],
+      "shift_suite/tasks/utils.py": [],
+      "shift_suite/tasks/shortage.py": [],
+      "shift_suite/tasks/fact_extractor_prototype.py": [],
+      "shift_suite/tasks/lightweight_anomaly_detector.py": []
+    },
+    "external_dependencies": [],
+    "circular_dependencies": []
+  },
+  "integration_safety": {
+    "phase2_integration": {
+      "file_exists": true,
+      "slot_hours_multiplications": 6,
+      "parsed_slots_usage": 14,
+      "has_proper_calculation": true
+    },
+    "phase31_integration": {
+      "file_exists": true,
+      "slot_hours_multiplications": 3,
+      "parsed_slots_usage": 3,
+      "has_proper_calculation": true
+    },
+    "slot_hours_consistency": {},
+    "calculation_chain": {}
+  },
+  "slot_hours_impact": {
+    "current_implementation": {
+      "affected_files": 3,
+      "files_detail": [
+        {
+          "file": "dash_app.py",
+          "slot_hours_count": 2,
+          "multiplication_count": 0,
+          "definition_present": false
+        },
+        {
+          "file": "shift_suite/tasks/fact_extractor_prototype.py",
+          "slot_hours_count": 6,
+          "multiplication_count": 4,
+          "definition_present": true
+        },
+        {
+          "file": "shift_suite/tasks/lightweight_anomaly_detector.py",
+          "slot_hours_count": 3,
+          "multiplication_count": 1,
+          "definition_present": true
+        }
+      ]
+    },
+    "potential_risks": [
+      "モバイル用UI変更による計算ロジック意図しない変更",
+      "レスポンシブ対応でのデータ表示フォーマット変更",
+      "JavaScript/CSS変更による数値処理への影響"
+    ],
+    "mobile_specific_risks": [],
+    "calculation_consistency": {}
+  },
+  "risk_assessment": {
+    "critical_risks": [],
+    "medium_risks": [
+      {
+        "type": "mobile_implementation_conflict",
+        "description": "既存モバイル実装との競合可能性",
+        "impact": "UI/UX不整合・表示エラー",
+        "priority": "high"
+      }
+    ],
+    "low_risks": [],
+    "mitigation_strategies": [
+      "段階的実装（小さな変更から開始）",
+      "各段階での包括的テスト実行",
+      "バックアップ作成・ロールバック準備",
+      "既存機能の動作確認テスト必須",
+      "Phase 2/3.1計算ロジック保護"
+    ]
+  },
+  "safety_score": 100,
+  "recommendations": [
+    {
+      "priority": "high",
+      "action": "バックアップ作成",
+      "description": "C2実装前に現在の全システムのバックアップ作成",
+      "before_c2": true
+    },
+    {
+      "priority": "high",
+      "action": "段階的実装",
+      "description": "小さな変更から開始し、各段階で動作確認",
+      "before_c2": false
+    },
+    {
+      "priority": "medium",
+      "action": "既存モバイル機能調査",
+      "description": "現在のレスポンシブ機能との重複・競合チェック",
+      "before_c2": true
+    },
+    {
+      "priority": "medium",
+      "action": "Phase 2/3.1保護",
+      "description": "SLOT_HOURS計算ロジックの保護・検証",
+      "before_c2": false
+    },
+    {
+      "priority": "low",
+      "action": "包括テスト計画",
+      "description": "全機能の回帰テスト計画策定",
+      "before_c2": true
+    }
+  ]
+}

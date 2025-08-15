@@ -1,0 +1,57 @@
+{
+  "purpose": "本番運用前の最終検証と改善点の抽出",
+  "scope": {
+    "included": [
+      "基本的なシフト分析機能",
+      "ダッシュボード表示",
+      "データインポート/エクスポート",
+      "レポート生成"
+    ],
+    "excluded": [
+      "高度なAI/ML機能（今後実装予定）",
+      "外部システム連携",
+      "カスタマイズ機能"
+    ]
+  },
+  "success_criteria": {
+    "system_availability": ">= 99%",
+    "average_response_time": "< 3秒",
+    "user_satisfaction": ">= 4.0/5.0",
+    "critical_bugs": 0,
+    "data_accuracy": ">= 99.5%"
+  },
+  "roles_responsibilities": {
+    "trial_users": [
+      "日常業務でシステムを使用",
+      "日次フィードバック提出",
+      "週次ミーティング参加",
+      "バグ・問題の報告"
+    ],
+    "support_team": [
+      "問い合わせ対応",
+      "システム監視",
+      "問題解決サポート",
+      "フィードバック集計"
+    ],
+    "development_team": [
+      "バグ修正",
+      "パフォーマンス改善",
+      "機能調整",
+      "次期バージョン準備"
+    ]
+  },
+  "communication_plan": {
+    "channels": [
+      "メール",
+      "チャット",
+      "週次ミーティング"
+    ],
+    "escalation_process": "通常→サポート→開発→管理層",
+    "response_time_sla": {
+      "critical": "1時間以内",
+      "high": "4時間以内",
+      "medium": "1営業日以内",
+      "low": "3営業日以内"
+    }
+  }
+}

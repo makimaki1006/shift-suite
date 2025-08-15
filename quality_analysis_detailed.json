@@ -1,0 +1,189 @@
+{
+  "overall_score": 0.6089170863336827,
+  "dimension_scores": {
+    "completeness": 0.5361111111111111,
+    "specificity": 0.5,
+    "actionability": 0.425,
+    "consistency": 0.9423914068909854,
+    "verifiability": 0.25,
+    "usability": 1.0
+  },
+  "critical_issues": [
+    {
+      "dimension": "completeness",
+      "current_score": 0.5361111111111111,
+      "severity": "high",
+      "impact": "システム全体の網羅性に重大な影響",
+      "specific_problems": [
+        "空のカテゴリーが多数存在",
+        "軸4-12でカテゴリー不足"
+      ]
+    },
+    {
+      "dimension": "specificity",
+      "current_score": 0.5,
+      "severity": "high",
+      "impact": "制約の実用性に大きな影響",
+      "specific_problems": [
+        "曖昧な表現が多用されている",
+        "数値基準が不明確"
+      ]
+    },
+    {
+      "dimension": "actionability",
+      "current_score": 0.425,
+      "severity": "high",
+      "impact": "AI実装時の実行可能性に致命的影響",
+      "specific_problems": [
+        "抽象的な制約が多い",
+        "IF-THEN構造が不完全"
+      ]
+    },
+    {
+      "dimension": "verifiability",
+      "current_score": 0.25,
+      "severity": "critical",
+      "impact": "品質保証に影響",
+      "specific_problems": []
+    }
+  ],
+  "improvement_opportunities": [
+    {
+      "dimension": "completeness",
+      "current_score": 0.5361111111111111,
+      "target_score": 0.7361111111111112,
+      "effort_level": "medium",
+      "quick_wins": [
+        "空カテゴリーにダミーデータ追加",
+        "類似制約の複製・調整"
+      ]
+    },
+    {
+      "dimension": "specificity",
+      "current_score": 0.5,
+      "target_score": 0.7,
+      "effort_level": "medium",
+      "quick_wins": []
+    }
+  ],
+  "detailed_findings": {
+    "completeness": {
+      "score": 0.5361111111111111,
+      "grade": "C+",
+      "strengths": [],
+      "weaknesses": [
+        "カテゴリー不足"
+      ],
+      "benchmark": {
+        "industry_standard": 0.85,
+        "best_practice": 0.95
+      }
+    },
+    "specificity": {
+      "score": 0.5,
+      "grade": "C+",
+      "strengths": [],
+      "weaknesses": [
+        "抽象的表現が多い"
+      ],
+      "benchmark": {
+        "industry_standard": 0.7,
+        "best_practice": 0.9
+      }
+    },
+    "actionability": {
+      "score": 0.425,
+      "grade": "C",
+      "strengths": [
+        "制約強化システムが実装済み"
+      ],
+      "weaknesses": [],
+      "benchmark": {
+        "industry_standard": 0.8,
+        "best_practice": 0.95
+      }
+    },
+    "consistency": {
+      "score": 0.9423914068909854,
+      "grade": "A+",
+      "strengths": [
+        "基本構造が統一されている"
+      ],
+      "weaknesses": [],
+      "benchmark": {
+        "industry_standard": 0.75,
+        "best_practice": 0.85
+      }
+    },
+    "verifiability": {
+      "score": 0.25,
+      "grade": "D",
+      "strengths": [],
+      "weaknesses": [],
+      "benchmark": {
+        "industry_standard": 0.7,
+        "best_practice": 0.85
+      }
+    },
+    "usability": {
+      "score": 1.0,
+      "grade": "A+",
+      "strengths": [],
+      "weaknesses": [],
+      "benchmark": {
+        "industry_standard": 0.65,
+        "best_practice": 0.8
+      }
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "type": "critical_fix",
+      "dimension": "completeness",
+      "action": "不足カテゴリーの実装と空カテゴリーの充実",
+      "priority": "high",
+      "estimated_effort": "medium",
+      "expected_improvement": 0.2
+    },
+    {
+      "type": "critical_fix",
+      "dimension": "specificity",
+      "action": "抽象的制約の具体化と数値基準の明確化",
+      "priority": "high",
+      "estimated_effort": "medium",
+      "expected_improvement": 0.2
+    },
+    {
+      "type": "critical_fix",
+      "dimension": "actionability",
+      "action": "IF-THEN構造の完全実装と実行可能性向上",
+      "priority": "high",
+      "estimated_effort": "medium",
+      "expected_improvement": 0.2
+    },
+    {
+      "type": "critical_fix",
+      "dimension": "verifiability",
+      "action": "検証方法の定義と品質メトリクスの追加",
+      "priority": "high",
+      "estimated_effort": "medium",
+      "expected_improvement": 0.2
+    },
+    {
+      "type": "enhancement",
+      "dimension": "completeness",
+      "action": "追加カテゴリーの段階的実装",
+      "priority": "medium",
+      "estimated_effort": "medium",
+      "expected_improvement": 0.1
+    },
+    {
+      "type": "enhancement",
+      "dimension": "specificity",
+      "action": "制約の詳細化と具体例の追加",
+      "priority": "medium",
+      "estimated_effort": "medium",
+      "expected_improvement": 0.1
+    }
+  ]
+}

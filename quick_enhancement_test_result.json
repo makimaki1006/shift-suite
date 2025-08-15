@@ -1,0 +1,27 @@
+{
+  "test_result": {
+    "type": "staff_count_constraint",
+    "rule": "日勤時間帯には最低2名の職員を配置する",
+    "confidence": 0.8,
+    "category": "staffing",
+    "execution_rule": {
+      "condition": "シフト時間帯に配置される職員数が基準値を下回る場合",
+      "action": "最低限必要な職員数を確保する",
+      "exception": "緊急時は一時的な基準緩和を許可"
+    },
+    "quantified_criteria": {
+      "minimum_value": 2,
+      "maximum_value": 10,
+      "confidence_level": "medium"
+    },
+    "actionability_score": 0.97,
+    "verification_method": {
+      "method": "スタッフ配置数の自動カウント",
+      "frequency": "リアルタイム",
+      "metrics": "配置人数, 職種別カウント"
+    },
+    "priority": "high"
+  },
+  "test_timestamp": "2025-07-28T13:09:08.785725",
+  "success": true
+}

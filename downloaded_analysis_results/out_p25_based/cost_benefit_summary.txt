@@ -1,0 +1,2 @@
+lowest_cost_scenario: Hire
+cost_jpy: 792000

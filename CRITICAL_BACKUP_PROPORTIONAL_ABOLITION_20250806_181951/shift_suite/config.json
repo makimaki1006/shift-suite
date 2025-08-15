@@ -1,0 +1,4 @@
+{
+  "forecast_period_days": 30
+  ,"optimization_weights": {"lack": 0.6, "excess": 0.4}
+}

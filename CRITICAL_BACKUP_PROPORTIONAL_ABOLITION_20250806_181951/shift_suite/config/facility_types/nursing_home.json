@@ -1,0 +1,57 @@
+{
+  "facility_name": "老人ホームテンプレート",
+  "facility_type": "nursing_home",
+  "description": "特別養護老人ホーム・介護老人保健施設向け設定",
+  
+  "time": {
+    "slot_minutes": 30,
+    "night_start_hour": 21,
+    "night_end_hour": 7,
+    "early_morning_hour": 7
+  },
+  
+  "wage": {
+    "regular_staff": 1400,
+    "temporary_staff": 2000,
+    "average_hourly_wage": 1200,
+    "night_differential": 1.25,
+    "overtime_multiplier": 1.25,
+    "weekend_differential": 1.05
+  },
+  
+  "cost": {
+    "recruit_cost_per_hire": 180000,
+    "hiring_cost_once": 150000,
+    "penalty_per_shortage_hour": 3000,
+    "monthly_hours_fte": 160
+  },
+  
+  "statistical": {
+    "confidence_level": 0.90,
+    "significance_alpha": 0.10,
+    "correlation_threshold": 0.70,
+    "high_confidence_threshold": 0.75,
+    "min_sample_size": 10
+  },
+  
+  "fatigue": {
+    "min_rest_hours": 11,
+    "night_shift_threshold": 0.35,
+    "early_morning_threshold": 0.35,
+    "fatigue_alert_threshold": 0.80,
+    "consecutive_3_days_weight": 0.7,
+    "consecutive_4_days_weight": 0.2,
+    "consecutive_5_days_weight": 0.1
+  },
+  
+  "custom": {
+    "care_level_multiplier": {
+      "要介護1-2": 1.0,
+      "要介護3-4": 1.3,
+      "要介護5": 1.6
+    },
+    "meal_time_minimum_staff": 1.5,
+    "bath_time_minimum_staff": 2.0,
+    "medication_certified_required": true
+  }
+}

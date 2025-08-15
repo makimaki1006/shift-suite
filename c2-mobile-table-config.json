@@ -1,0 +1,29 @@
+{
+  "mobile_table_style": {
+    "overflowX": "auto",
+    "minWidth": "100%",
+    "fontSize": "14px",
+    "border": "1px solid #ddd",
+    "borderRadius": "8px"
+  },
+  "mobile_cell_style": {
+    "padding": "12px 8px",
+    "textAlign": "left",
+    "whiteSpace": "nowrap",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "maxWidth": "150px"
+  },
+  "mobile_header_style": {
+    "backgroundColor": "#f8f9fa",
+    "fontWeight": "bold",
+    "fontSize": "14px",
+    "padding": "12px 8px",
+    "borderBottom": "2px solid #dee2e6"
+  },
+  "responsive_columns": {
+    "auto_width": true,
+    "min_width": "100px",
+    "max_width": "200px"
+  }
+}

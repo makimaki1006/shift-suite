@@ -1,0 +1,41 @@
+{
+  "facility_id": "sample_hospital",
+  "facility_name": "サンプル総合病院",
+  "facility_type": "general_hospital",
+  "description": "テスト用のサンプル病院設定",
+  
+  "wage": {
+    "regular_staff": 2000,
+    "temporary_staff": 2800,
+    "night_differential": 1.30
+  },
+  
+  "cost": {
+    "penalty_per_shortage_hour": 6000
+  },
+  
+  "statistical": {
+    "high_confidence_threshold": 0.90
+  },
+  
+  "custom": {
+    "emergency_staff_ratio": 1.3,
+    "icu_minimum_staff": 3,
+    "or_minimum_staff": 2,
+    "pediatric_staff_certification_required": true,
+    "special_units": {
+      "ICU": {
+        "minimum_staff": 3,
+        "nurse_patient_ratio": "1:2"
+      },
+      "手術室": {
+        "minimum_staff": 2,
+        "certified_staff_required": true
+      },
+      "救急": {
+        "minimum_staff": 2,
+        "24h_coverage": true
+      }
+    }
+  }
+}

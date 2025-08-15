@@ -1,0 +1,216 @@
+{
+  "week": 1,
+  "period": "2025-07-16 to 2025-07-22",
+  "statistics": {
+    "technical": {
+      "uptime_rate": {
+        "average": 99.87626827476821,
+        "median": 99.9,
+        "min": 99.75223256997317,
+        "max": 99.9,
+        "trend": "improving"
+      },
+      "response_time": {
+        "average": 1.7352317584843975,
+        "median": 1.6966539758965793,
+        "min": 1.6127099526217805,
+        "max": 2.021614164220791,
+        "trend": "declining"
+      },
+      "error_rate": {
+        "average": 0.09855295256295007,
+        "median": 0.07869861502647889,
+        "min": 0.05933465149730674,
+        "max": 0.19245526942991442,
+        "trend": "improving"
+      },
+      "throughput": {
+        "average": 890.2503493707147,
+        "median": 876.5016564510195,
+        "min": 809.4928617967264,
+        "max": 970.6511269009686,
+        "trend": "improving"
+      },
+      "memory_usage": {
+        "average": 85.5998489482244,
+        "median": 85.5115204446833,
+        "min": 82.37424628197383,
+        "max": 89.91698024185136,
+        "trend": "declining"
+      },
+      "cpu_usage": {
+        "average": 28.04587231536739,
+        "median": 27.152427952068166,
+        "min": 20.75236282730505,
+        "max": 36.8479174577143,
+        "trend": "improving"
+      }
+    },
+    "business": {
+      "efficiency_improvement": {
+        "average": 23.38723558249435,
+        "median": 23.179253500369402,
+        "min": 21.88519986571114,
+        "max": 24.753213300652277,
+        "trend": "improving"
+      },
+      "time_reduction": {
+        "average": 26.857137738155828,
+        "median": 26.34311772496289,
+        "min": 25.364458318738265,
+        "max": 28.311213083160812,
+        "trend": "declining"
+      },
+      "cost_reduction": {
+        "average": 189341.4250667661,
+        "median": 185359.91872686832,
+        "min": 181002.52007096302,
+        "max": 206066.64291436085,
+        "trend": "improving"
+      },
+      "roi": {
+        "average": 258.28428124941814,
+        "median": 260.0717922085364,
+        "min": 246.2840035787203,
+        "max": 268.69512979859354,
+        "trend": "improving"
+      },
+      "process_automation": {
+        "average": 80.06901444033001,
+        "median": 79.87441576004392,
+        "min": 76.945728756093,
+        "max": 83.03838598938226,
+        "trend": "improving"
+      },
+      "data_accuracy": {
+        "average": 100.0,
+        "median": 100.0,
+        "min": 100.0,
+        "max": 100.0,
+        "trend": "stable"
+      }
+    },
+    "user_experience": {
+      "satisfaction_score": {
+        "average": 86.46087661033256,
+        "median": 86.723167915879,
+        "min": 85.731574154262,
+        "max": 87.16397435765529,
+        "trend": "improving"
+      },
+      "ease_of_use": {
+        "average": 89.96044277430589,
+        "median": 90.16940390787506,
+        "min": 87.11949348226631,
+        "max": 92.51774883239169,
+        "trend": "improving"
+      },
+      "learning_curve": {
+        "average": 13.234360453177306,
+        "median": 13.589132399641336,
+        "min": 12.027222688518506,
+        "max": 13.771839014790846,
+        "trend": "improving"
+      },
+      "feature_adoption": {
+        "average": 79.10535771355218,
+        "median": 78.8693644828976,
+        "min": 77.35316426250625,
+        "max": 81.52847215814731,
+        "trend": "improving"
+      },
+      "support_requests": {
+        "average": 2.3838778434236843,
+        "median": 2.3073150917559344,
+        "min": 2.2525395207649526,
+        "max": 2.6926343004839146,
+        "trend": "declining"
+      },
+      "user_retention": {
+        "average": 96.9548370173145,
+        "median": 96.91331216432313,
+        "min": 95.58927771269958,
+        "max": 98.0,
+        "trend": "improving"
+      }
+    },
+    "operational": {
+      "incident_count": {
+        "average": 0.5714285714285714,
+        "median": 1,
+        "min": 0,
+        "max": 1,
+        "trend": "improving"
+      },
+      "recovery_time": {
+        "average": 15.340919770865057,
+        "median": 14.530043862208192,
+        "min": 13.060610035065567,
+        "max": 18.713754451030574,
+        "trend": "declining"
+      },
+      "maintenance_overhead": {
+        "average": 8.98349461460524,
+        "median": 9.300227967610518,
+        "min": 7.489450322014042,
+        "max": 10.039220993204014,
+        "trend": "improving"
+      },
+      "security_score": {
+        "average": 97.6440338974901,
+        "median": 97.47081697110377,
+        "min": 95.98900995523866,
+        "max": 100.0,
+        "trend": "improving"
+      },
+      "compliance_rate": {
+        "average": 100.0,
+        "median": 100.0,
+        "min": 100.0,
+        "max": 100.0,
+        "trend": "stable"
+      },
+      "backup_success": {
+        "average": 100.0,
+        "median": 100.0,
+        "min": 100.0,
+        "max": 100.0,
+        "trend": "stable"
+      }
+    }
+  },
+  "benchmark_comparison": {
+    "uptime_rate": {
+      "actual": 99.87626827476821,
+      "benchmark": 95.0,
+      "performance_ratio": 1.0513291397344022,
+      "status": "good"
+    },
+    "response_time": {
+      "actual": 1.7352317584843975,
+      "benchmark": 5.0,
+      "performance_ratio": 2.8814594797222632,
+      "status": "superior"
+    },
+    "error_rate": {
+      "actual": 0.09855295256295007,
+      "benchmark": 5.0,
+      "performance_ratio": 50.7341471764256,
+      "status": "superior"
+    },
+    "user_satisfaction": {
+      "actual": 86.46087661033256,
+      "benchmark": 70.0,
+      "performance_ratio": 1.235155380147608,
+      "status": "superior"
+    },
+    "data_accuracy": {
+      "actual": 100.0,
+      "benchmark": 95.0,
+      "performance_ratio": 1.0526315789473684,
+      "status": "good"
+    }
+  },
+  "alerts": [],
+  "recommendations": []
+}

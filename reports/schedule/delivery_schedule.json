@@ -1,0 +1,165 @@
+{
+  "timestamp": "2025-08-03T22:31:00.911168",
+  "total_jobs": 3,
+  "scheduled_jobs": [
+    {
+      "job_id": "delivery_daily_reports_20250803",
+      "report_type": "daily_reports",
+      "schedule": {
+        "enabled": true,
+        "time": "09:00",
+        "format": "summary",
+        "recipients": [
+          {
+            "type": "email",
+            "address": "management@company.com"
+          },
+          {
+            "type": "file",
+            "path": "reports/daily/"
+          }
+        ],
+        "content": [
+          "executive_summary",
+          "key_metrics",
+          "critical_alerts"
+        ]
+      },
+      "next_execution": "2025-08-04T09:00:00",
+      "status": "scheduled",
+      "created": "2025-08-03T22:31:00.906984"
+    },
+    {
+      "job_id": "delivery_weekly_reports_20250803",
+      "report_type": "weekly_reports",
+      "schedule": {
+        "enabled": true,
+        "day": "monday",
+        "time": "08:00",
+        "format": "comprehensive",
+        "recipients": [
+          {
+            "type": "email",
+            "address": "management@company.com"
+          },
+          {
+            "type": "email",
+            "address": "operations@company.com"
+          },
+          {
+            "type": "file",
+            "path": "reports/weekly/"
+          }
+        ],
+        "content": [
+          "full_analysis",
+          "trend_analysis",
+          "predictions",
+          "recommendations"
+        ]
+      },
+      "next_execution": "2025-08-04T08:00:00",
+      "status": "scheduled",
+      "created": "2025-08-03T22:31:00.907026"
+    },
+    {
+      "job_id": "delivery_monthly_reports_20250803",
+      "report_type": "monthly_reports",
+      "schedule": {
+        "enabled": true,
+        "day": 1,
+        "time": "07:00",
+        "format": "executive",
+        "recipients": [
+          {
+            "type": "email",
+            "address": "executives@company.com"
+          },
+          {
+            "type": "file",
+            "path": "reports/monthly/"
+          }
+        ],
+        "content": [
+          "strategic_overview",
+          "business_impact",
+          "roi_analysis",
+          "future_roadmap"
+        ]
+      },
+      "next_execution": "2025-09-01T07:00:00",
+      "status": "scheduled",
+      "created": "2025-08-03T22:31:00.907050"
+    }
+  ],
+  "config": {
+    "daily_reports": {
+      "enabled": true,
+      "time": "09:00",
+      "format": "summary",
+      "recipients": [
+        {
+          "type": "email",
+          "address": "management@company.com"
+        },
+        {
+          "type": "file",
+          "path": "reports/daily/"
+        }
+      ],
+      "content": [
+        "executive_summary",
+        "key_metrics",
+        "critical_alerts"
+      ]
+    },
+    "weekly_reports": {
+      "enabled": true,
+      "day": "monday",
+      "time": "08:00",
+      "format": "comprehensive",
+      "recipients": [
+        {
+          "type": "email",
+          "address": "management@company.com"
+        },
+        {
+          "type": "email",
+          "address": "operations@company.com"
+        },
+        {
+          "type": "file",
+          "path": "reports/weekly/"
+        }
+      ],
+      "content": [
+        "full_analysis",
+        "trend_analysis",
+        "predictions",
+        "recommendations"
+      ]
+    },
+    "monthly_reports": {
+      "enabled": true,
+      "day": 1,
+      "time": "07:00",
+      "format": "executive",
+      "recipients": [
+        {
+          "type": "email",
+          "address": "executives@company.com"
+        },
+        {
+          "type": "file",
+          "path": "reports/monthly/"
+        }
+      ],
+      "content": [
+        "strategic_overview",
+        "business_impact",
+        "roi_analysis",
+        "future_roadmap"
+      ]
+    }
+  }
+}

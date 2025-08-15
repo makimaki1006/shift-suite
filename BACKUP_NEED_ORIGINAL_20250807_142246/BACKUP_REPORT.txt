@@ -1,0 +1,16 @@
+Need積算ファイル 緊急バックアップレポート
+作成日時: 2025-08-07 14:23:06.824376
+バックアップ元: extracted_results\out_p25_based
+バックアップ先: BACKUP_NEED_ORIGINAL_20250807_142246
+対象ファイル数: 9
+
+ファイル整合性確認:
+  need_per_date_slot_role_事務・介護.parquet: OK
+  need_per_date_slot_role_介護.parquet: OK
+  need_per_date_slot_role_介護・相談員.parquet: OK
+  need_per_date_slot_role_介護（W_2）.parquet: OK
+  need_per_date_slot_role_介護（W_3）.parquet: OK
+  need_per_date_slot_role_機能訓練士.parquet: OK
+  need_per_date_slot_role_看護師.parquet: OK
+  need_per_date_slot_role_管理者・相談員.parquet: OK
+  need_per_date_slot_role_運転士.parquet: OK

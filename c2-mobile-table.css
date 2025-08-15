@@ -1,0 +1,77 @@
+
+/* C2 Phase3: データテーブル最適化 */
+/* dash_table のモバイル対応強化 */
+
+@media (max-width: 768px) {
+    /* データテーブルコンテナ */
+    .dash-table-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        margin: 16px 0 !important;
+    }
+    
+    /* テーブル本体 */
+    .dash-table-container table {
+        min-width: 100% !important;
+        font-size: 14px !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+    }
+    
+    /* テーブルヘッダー */
+    .dash-table-container th {
+        background-color: #f8f9fa !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        padding: 12px 8px !important;
+        border-bottom: 2px solid #dee2e6 !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10 !important;
+    }
+    
+    /* テーブルセル */
+    .dash-table-container td {
+        padding: 12px 8px !important;
+        border-bottom: 1px solid #eee !important;
+        vertical-align: middle !important;
+        max-width: 150px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+    
+    /* 選択可能セル */
+    .dash-table-container td:hover {
+        background-color: #f8f9fa !important;
+    }
+    
+    /* モバイル専用テーブルアクション */
+    .c2-mobile-table-actions {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 8px 12px !important;
+        background-color: #f8f9fa !important;
+        border-radius: 8px 8px 0 0 !important;
+        font-size: 12px !important;
+        color: #666 !important;
+    }
+    
+    .c2-mobile-table-info {
+        font-weight: 500 !important;
+    }
+    
+    .c2-mobile-table-scroll-hint {
+        font-style: italic !important;
+    }
+}
+
+/* タブレット調整 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .dash-table-container td {
+        max-width: 200px !important;
+    }
+}

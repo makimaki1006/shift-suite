@@ -1,0 +1,349 @@
+{
+  "metadata": {
+    "title": "品質管理プロセス設計書",
+    "version": "1.0",
+    "created": "2025-08-11T14:42:10.162840",
+    "purpose": "表現品質の体系的管理",
+    "scope": "全技術文書"
+  },
+  "expression_checklist": {
+    "metadata": {
+      "version": "1.0",
+      "created": "2025-08-11T14:42:10.162670",
+      "purpose": "技術文書の表現品質確保",
+      "scope": "全ての技術レポート・評価書・計画書"
+    },
+    "check_categories": {
+      "implementation_confusion": {
+        "name": "実装/確認の混同",
+        "severity": "高",
+        "check_points": [
+          {
+            "item": "「完全実装」表現の使用確認",
+            "correct_example": "機能確認完了",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(完全|新規|システム)?(実装)(済み|完了|中)?"
+          },
+          {
+            "item": "「実装済み」表現の使用確認",
+            "correct_example": "動作確認済み",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(完全|新規|システム)?(実装)(済み|完了|中)?"
+          },
+          {
+            "item": "「実装完了」表現の使用確認",
+            "correct_example": "利用可能確認",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(完全|新規|システム)?(実装)(済み|完了|中)?"
+          },
+          {
+            "item": "「新規実装」表現の使用確認",
+            "correct_example": "既存機能確認",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(完全|新規|システム)?(実装)(済み|完了|中)?"
+          },
+          {
+            "item": "「システム実装」表現の使用確認",
+            "correct_example": "システム動作確認",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(完全|新規|システム)?(実装)(済み|完了|中)?"
+          }
+        ],
+        "manual_check_points": [
+          "文脈における表現の適切性",
+          "技術的事実との整合性",
+          "業界標準表現との一致性",
+          "読み手への誤解可能性"
+        ]
+      },
+      "scope_exaggeration": {
+        "name": "範囲・規模の誇張",
+        "severity": "高",
+        "check_points": [
+          {
+            "item": "「全体最適化」表現の使用確認",
+            "correct_example": "機能修復",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(全体|システム全体|包括的|完全な|大幅な|劇的な)"
+          },
+          {
+            "item": "「システム全体」表現の使用確認",
+            "correct_example": "限定的改善",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(全体|システム全体|包括的|完全な|大幅な|劇的な)"
+          },
+          {
+            "item": "「包括的改善」表現の使用確認",
+            "correct_example": "部分的改善",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(全体|システム全体|包括的|完全な|大幅な|劇的な)"
+          },
+          {
+            "item": "「完全な」表現の使用確認",
+            "correct_example": "対象範囲の",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(全体|システム全体|包括的|完全な|大幅な|劇的な)"
+          },
+          {
+            "item": "「大幅な」表現の使用確認",
+            "correct_example": "段階的な",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(全体|システム全体|包括的|完全な|大幅な|劇的な)"
+          },
+          {
+            "item": "「劇的な」表現の使用確認",
+            "correct_example": "漸進的な",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(全体|システム全体|包括的|完全な|大幅な|劇的な)"
+          }
+        ],
+        "manual_check_points": [
+          "文脈における表現の適切性",
+          "技術的事実との整合性",
+          "業界標準表現との一致性",
+          "読み手への誤解可能性"
+        ]
+      },
+      "achievement_inflation": {
+        "name": "成果の過大表現",
+        "severity": "中",
+        "check_points": [
+          {
+            "item": "「大幅向上」表現の使用確認",
+            "correct_example": "改善",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(大幅|飛躍的|革命的|完全|100%|完璧な)(向上|改善|変化|達成|成功)"
+          },
+          {
+            "item": "「飛躍的改善」表現の使用確認",
+            "correct_example": "部分的向上",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(大幅|飛躍的|革命的|完全|100%|完璧な)(向上|改善|変化|達成|成功)"
+          },
+          {
+            "item": "「革命的変化」表現の使用確認",
+            "correct_example": "段階的変化",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(大幅|飛躍的|革命的|完全|100%|完璧な)(向上|改善|変化|達成|成功)"
+          },
+          {
+            "item": "「完全達成」表現の使用確認",
+            "correct_example": "目標達成",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(大幅|飛躍的|革命的|完全|100%|完璧な)(向上|改善|変化|達成|成功)"
+          },
+          {
+            "item": "「100%成功」表現の使用確認",
+            "correct_example": "要件満足",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(大幅|飛躍的|革命的|完全|100%|完璧な)(向上|改善|変化|達成|成功)"
+          },
+          {
+            "item": "「完璧な」表現の使用確認",
+            "correct_example": "適切な",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(大幅|飛躍的|革命的|完全|100%|完璧な)(向上|改善|変化|達成|成功)"
+          }
+        ],
+        "manual_check_points": [
+          "文脈における表現の適切性",
+          "技術的事実との整合性",
+          "業界標準表現との一致性",
+          "読み手への誤解可能性"
+        ]
+      },
+      "certainty_overstatement": {
+        "name": "確実性の過剰表現",
+        "severity": "低",
+        "check_points": [
+          {
+            "item": "「確実に」表現の使用確認",
+            "correct_example": "想定される",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(確実に|間違いなく|必ず|完全に|絶対に)"
+          },
+          {
+            "item": "「間違いなく」表現の使用確認",
+            "correct_example": "期待される",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(確実に|間違いなく|必ず|完全に|絶対に)"
+          },
+          {
+            "item": "「必ず」表現の使用確認",
+            "correct_example": "可能性が高い",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(確実に|間違いなく|必ず|完全に|絶対に)"
+          },
+          {
+            "item": "「完全に」表現の使用確認",
+            "correct_example": "適切に",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(確実に|間違いなく|必ず|完全に|絶対に)"
+          },
+          {
+            "item": "「絶対に」表現の使用確認",
+            "correct_example": "十分に",
+            "detection_method": "正規表現スキャン",
+            "regex_pattern": "(確実に|間違いなく|必ず|完全に|絶対に)"
+          }
+        ],
+        "manual_check_points": [
+          "文脈における表現の適切性",
+          "技術的事実との整合性",
+          "業界標準表現との一致性",
+          "読み手への誤解可能性"
+        ]
+      }
+    },
+    "severity_levels": {
+      "高": "即座修正必要",
+      "中": "レビュー時修正推奨",
+      "低": "継続監視"
+    },
+    "approval_criteria": {
+      "高重要度問題": 0,
+      "中重要度問題": "2以下",
+      "低重要度問題": "5以下",
+      "全体スコア": "90以上"
+    }
+  },
+  "objectivity_criteria": {
+    "evaluation_dimensions": {
+      "factual_accuracy": {
+        "name": "事実正確性",
+        "weight": 0.35,
+        "measurement": "技術的事実との整合率",
+        "excellent": "95%以上",
+        "good": "85-94%",
+        "acceptable": "75-84%",
+        "poor": "75%未満"
+      },
+      "expression_appropriateness": {
+        "name": "表現適切性",
+        "weight": 0.25,
+        "measurement": "誇張表現・不適切表現の件数",
+        "excellent": "0件",
+        "good": "1-2件",
+        "acceptable": "3-4件",
+        "poor": "5件以上"
+      },
+      "scope_clarity": {
+        "name": "範囲明確性",
+        "weight": 0.2,
+        "measurement": "作業範囲・影響範囲の明記度",
+        "excellent": "完全明記",
+        "good": "概ね明記",
+        "acceptable": "部分的明記",
+        "poor": "不明確"
+      },
+      "verification_coverage": {
+        "name": "検証網羅性",
+        "weight": 0.15,
+        "measurement": "主張に対する検証率",
+        "excellent": "90%以上",
+        "good": "70-89%",
+        "acceptable": "50-69%",
+        "poor": "50%未満"
+      },
+      "consistency": {
+        "name": "一貫性",
+        "weight": 0.05,
+        "measurement": "文書内表現の統一度",
+        "excellent": "完全一致",
+        "good": "概ね一致",
+        "acceptable": "部分的一致",
+        "poor": "不一致多数"
+      }
+    },
+    "scoring_method": {
+      "excellent": 4,
+      "good": 3,
+      "acceptable": 2,
+      "poor": 1
+    },
+    "grade_thresholds": {
+      "A": 3.5,
+      "B+": 3.0,
+      "B": 2.5,
+      "B-": 2.0,
+      "C+": 1.5,
+      "C": 1.0
+    }
+  },
+  "review_system": {
+    "review_stages": {
+      "stage_1_self_check": {
+        "name": "自己チェック段階",
+        "responsible": "作成者",
+        "duration": "30分",
+        "tools": [
+          "表現チェックリスト",
+          "自動検出スクリプト"
+        ],
+        "deliverable": "自己チェック報告書",
+        "pass_criteria": "高重要度問題0件"
+      },
+      "stage_2_peer_review": {
+        "name": "同僚レビュー段階",
+        "responsible": "同僚レビュアー",
+        "duration": "60分",
+        "tools": [
+          "客観性評価基準",
+          "レビューチェックシート"
+        ],
+        "deliverable": "同僚レビュー報告書",
+        "pass_criteria": "総合スコア2.5以上"
+      },
+      "stage_3_expert_audit": {
+        "name": "専門家監査段階",
+        "responsible": "技術専門家",
+        "duration": "90分",
+        "tools": [
+          "業界標準比較",
+          "第三者評価システム"
+        ],
+        "deliverable": "専門家監査報告書",
+        "pass_criteria": "全評価次元B以上"
+      }
+    },
+    "escalation_rules": {
+      "minor_issues": "Stage 1で解決",
+      "moderate_issues": "Stage 2で解決",
+      "major_issues": "Stage 3まで実施",
+      "critical_issues": "全段階実施 + 追加レビュー"
+    },
+    "quality_gates": [
+      "Stage 1: 基本品質確保",
+      "Stage 2: 客観性確認",
+      "Stage 3: 業界標準準拠"
+    ]
+  },
+  "implementation_timeline": {
+    "day_1": {
+      "tasks": [
+        "表現チェックリスト最終化",
+        "客観性評価基準文書化",
+        "レビュー体制手順書作成"
+      ],
+      "deliverables": [
+        "expression_checklist.json",
+        "objectivity_criteria.json",
+        "review_system_manual.md"
+      ],
+      "duration": "8時間"
+    },
+    "day_2": {
+      "tasks": [
+        "自動検出スクリプト基本版作成",
+        "レビューテンプレート作成",
+        "試験運用計画策定"
+      ],
+      "deliverables": [
+        "expression_detector.py",
+        "review_templates/",
+        "pilot_test_plan.md"
+      ],
+      "duration": "8時間"
+    }
+  }
+}

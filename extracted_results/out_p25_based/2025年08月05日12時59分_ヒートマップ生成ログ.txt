@@ -1,0 +1,88 @@
+=== ヒートマップ生成結果レポート ===
+生成日時: 2025年08月05日12時59分
+出力ディレクトリ: C:\Users\fuji1\AppData\Local\Temp\ShiftSuiteWizard_vc54ptdb\out\out_p25_based
+==================================================
+
+【1. 全体統計】
+  対象期間: 2025-04-01 ～ 2025-04-30
+  総レコード数: 6,073件
+  勤務レコード数: 5,764件
+  休暇レコード数: 306件
+  推定休業日数: 4日
+  スロット間隔: 30分
+
+【2. 職種別統計】
+  職種名             | ファイル生成 | Need計算 | データ行数
+  --------------------------------------------------
+  事務・介護           |      ✓       |    ✓     |      378
+  介護              |      ✓       |    ✓     |     1552
+  介護・相談員          |      ✓       |    ✓     |      360
+  介護（W/2）         |      ✓       |    ✓     |      144
+  介護（W/3）         |      ✓       |    ✓     |      180
+  機能訓練士           |      ✓       |    ✓     |      486
+  看護師             |      ✓       |    ✓     |      702
+  管理者・相談員         |      ✓       |    ✓     |      378
+  運転士             |      ✓       |    ✓     |     1584
+
+【3. 雇用形態別統計】
+  雇用形態           | ファイル生成 | Need計算 | データ行数
+  --------------------------------------------------
+  スポット            |      ✓       |    ✓     |      468
+  パート             |      ✓       |    ✓     |     3078
+  正社員             |      ✓       |    ✓     |     2218
+
+【4. Need計算パラメータ】
+  統計手法: 25パーセンタイル
+  参照期間: 2025-04-01 ～ 2025-04-30
+  外れ値除去: True
+  IQR乗数: 1.5
+  休業日含む: True
+  調整係数: 1.0
+
+【5. 生成ファイル一覧】
+  ✓ heat_ALL.parquet (22257 bytes)
+  ✓ heat_ALL.xlsx (9906 bytes)
+  ✓ heat_事務・介護.parquet (21848 bytes)
+  ✓ heat_事務・介護.xlsx (9570 bytes)
+  ✓ need_per_date_slot_role_事務・介護.parquet (19050 bytes)
+  ✓ heat_介護.parquet (22285 bytes)
+  ✓ heat_介護.xlsx (9790 bytes)
+  ✓ need_per_date_slot_role_介護.parquet (19455 bytes)
+  ✓ heat_介護・相談員.parquet (21858 bytes)
+  ✓ heat_介護・相談員.xlsx (9579 bytes)
+  ✓ need_per_date_slot_role_介護・相談員.parquet (19050 bytes)
+  ✓ heat_介護（W_2）.parquet (21690 bytes)
+  ✓ heat_介護（W_2）.xlsx (9550 bytes)
+  ✓ need_per_date_slot_role_介護（W_2）.parquet (18954 bytes)
+  ✓ heat_介護（W_3）.parquet (21714 bytes)
+  ✓ heat_介護（W_3）.xlsx (9553 bytes)
+  ✓ need_per_date_slot_role_介護（W_3）.parquet (18942 bytes)
+  ✓ heat_機能訓練士.parquet (21848 bytes)
+  ✓ heat_機能訓練士.xlsx (9623 bytes)
+  ✓ need_per_date_slot_role_機能訓練士.parquet (19110 bytes)
+  ✓ heat_看護師.parquet (21884 bytes)
+  ✓ heat_看護師.xlsx (9621 bytes)
+  ✓ need_per_date_slot_role_看護師.parquet (19158 bytes)
+  ✓ heat_管理者・相談員.parquet (21847 bytes)
+  ✓ heat_管理者・相談員.xlsx (9589 bytes)
+  ✓ need_per_date_slot_role_管理者・相談員.parquet (19110 bytes)
+  ✓ heat_運転士.parquet (21884 bytes)
+  ✓ heat_運転士.xlsx (9618 bytes)
+  ✓ need_per_date_slot_role_運転士.parquet (19158 bytes)
+  ✓ heat_emp_スポット.parquet (21884 bytes)
+  ✓ heat_emp_スポット.xlsx (9471 bytes)
+  ✓ need_per_date_slot_emp_スポット.parquet (19158 bytes)
+  ✓ heat_emp_パート.parquet (22098 bytes)
+  ✓ heat_emp_パート.xlsx (9928 bytes)
+  ✓ need_per_date_slot_emp_パート.parquet (19249 bytes)
+  ✓ heat_emp_正社員.parquet (22292 bytes)
+  ✓ heat_emp_正社員.xlsx (9839 bytes)
+  ✓ need_per_date_slot_emp_正社員.parquet (19459 bytes)
+  ✓ heatmap.meta.json (8535 bytes)
+  ✓ need_per_date_slot.parquet (19525 bytes)
+
+【6. 警告・エラー情報】
+  なし
+
+==================================================
+ヒートマップ生成レポート終了

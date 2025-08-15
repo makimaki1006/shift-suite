@@ -1,0 +1,259 @@
+{
+  "metadata": {
+    "verification_execution_id": "PHASE1_SLOT_HOURS_VERIFY_20250804_093442",
+    "verification_start_time": "2025-08-04T09:34:42.397424",
+    "verification_end_time": "2025-08-04T09:34:42.424987",
+    "verification_duration": "0:00:00.027566",
+    "calculation_baselines": {
+      "slot_hours_value": 0.5,
+      "minimum_multiplications": 1,
+      "expected_definition_count": 1,
+      "calculation_accuracy_target": 100.0
+    },
+    "verification_scope": "SLOT_HOURS計算正確性・保護機能・数値精度"
+  },
+  "module_verification_results": {
+    "shift_suite/tasks/fact_extractor_prototype.py": {
+      "verification_success": true,
+      "pattern_matches": {
+        "slot_hours_definition": {
+          "count": 1,
+          "matches": [
+            "SLOT_HOURS = 0.5"
+          ],
+          "found": true
+        },
+        "slot_hours_multiplication": {
+          "count": 4,
+          "matches": [
+            "* SLOT_HOURS",
+            "* SLOT_HOURS",
+            "* SLOT_HOURS",
+            "* SLOT_HOURS"
+          ],
+          "found": true
+        },
+        "slot_hours_usage": {
+          "count": 6,
+          "matches": [
+            "SLOT_HOURS",
+            "SLOT_HOURS",
+            "SLOT_HOURS",
+            "SLOT_HOURS",
+            "SLOT_HOURS",
+            "SLOT_HOURS"
+          ],
+          "found": true
+        },
+        "calculation_context": {
+          "count": 4,
+          "matches": [
+            [
+              "hours",
+              ""
+            ],
+            [
+              "時間",
+              ""
+            ],
+            [
+              "時間",
+              ""
+            ],
+            [
+              "時間",
+              ""
+            ]
+          ],
+          "found": true
+        },
+        "protected_calculation": {
+          "count": 4,
+          "matches": [
+            "parsed_slots_count",
+            "parsed_slots_count",
+            "parsed_slots_count",
+            "parsed_slots_count"
+          ],
+          "found": true
+        }
+      },
+      "basic_verification": {
+        "slot_hours_defined": true,
+        "slot_hours_definition_count": 1,
+        "slot_hours_multiplications": 4,
+        "slot_hours_usage_count": 6,
+        "protected_calculations_found": true,
+        "protected_calculations_count": 4
+      },
+      "calculation_context": {
+        "context_matches": [
+          [
+            "hours",
+            ""
+          ],
+          [
+            "時間",
+            ""
+          ],
+          [
+            "時間",
+            ""
+          ],
+          [
+            "時間",
+            ""
+          ]
+        ],
+        "context_appropriate": true,
+        "calculation_purpose": "time_conversion"
+      },
+      "code_quality": {
+        "module_size": 9880,
+        "lines_count": 307,
+        "comments_present": true,
+        "imports_present": true,
+        "functions_defined": true,
+        "classes_defined": true
+      },
+      "protection_level": "comprehensive",
+      "module_status": "verified",
+      "verification_timestamp": "2025-08-04T09:34:42.413763"
+    },
+    "shift_suite/tasks/lightweight_anomaly_detector.py": {
+      "verification_success": true,
+      "pattern_matches": {
+        "slot_hours_definition": {
+          "count": 1,
+          "matches": [
+            "SLOT_HOURS = 0.5"
+          ],
+          "found": true
+        },
+        "slot_hours_multiplication": {
+          "count": 1,
+          "matches": [
+            "* SLOT_HOURS"
+          ],
+          "found": true
+        },
+        "slot_hours_usage": {
+          "count": 3,
+          "matches": [
+            "SLOT_HOURS",
+            "SLOT_HOURS",
+            "SLOT_HOURS"
+          ],
+          "found": true
+        },
+        "calculation_context": {
+          "count": 1,
+          "matches": [
+            [
+              "hours",
+              ""
+            ]
+          ],
+          "found": true
+        },
+        "protected_calculation": {
+          "count": 1,
+          "matches": [
+            "parsed_slots_count"
+          ],
+          "found": true
+        }
+      },
+      "basic_verification": {
+        "slot_hours_defined": true,
+        "slot_hours_definition_count": 1,
+        "slot_hours_multiplications": 1,
+        "slot_hours_usage_count": 3,
+        "protected_calculations_found": true,
+        "protected_calculations_count": 1
+      },
+      "calculation_context": {
+        "context_matches": [
+          [
+            "hours",
+            ""
+          ]
+        ],
+        "context_appropriate": true,
+        "calculation_purpose": "time_conversion"
+      },
+      "code_quality": {
+        "module_size": 13161,
+        "lines_count": 358,
+        "comments_present": true,
+        "imports_present": true,
+        "functions_defined": true,
+        "classes_defined": true
+      },
+      "protection_level": "standard",
+      "module_status": "verified",
+      "verification_timestamp": "2025-08-04T09:34:42.424668"
+    }
+  },
+  "consistency_check": {
+    "success": true,
+    "consistency_checks": {
+      "total_definitions": 2,
+      "total_multiplications": 5,
+      "total_usage": 9,
+      "pattern_consistency": {
+        "all_modules_have_definitions": true,
+        "all_modules_have_multiplications": true,
+        "protection_levels_consistent": true,
+        "calculation_contexts_appropriate": true
+      },
+      "consistency_score": 1.0,
+      "consistency_maintained": true,
+      "consistency_level": "high"
+    },
+    "consistency_maintained": true,
+    "check_timestamp": "2025-08-04T09:34:42.424810"
+  },
+  "accuracy_evaluation": {
+    "success": true,
+    "accuracy_metrics": {
+      "module_accuracy_scores": {
+        "shift_suite/tasks/fact_extractor_prototype.py": 100,
+        "shift_suite/tasks/lightweight_anomaly_detector.py": 85
+      },
+      "overall_accuracy_score": 92.5,
+      "accuracy_acceptable": false,
+      "accuracy_level": "good",
+      "target_score": 100.0,
+      "accuracy_gap": 7.5
+    },
+    "accuracy_acceptable": false,
+    "evaluation_timestamp": "2025-08-04T09:34:42.424837"
+  },
+  "verification_analysis": {
+    "overall_verification_status": "requires_attention",
+    "verification_level": "needs_improvement",
+    "categories_success": {
+      "module_verification": true,
+      "consistency_check": true,
+      "accuracy_evaluation": false
+    },
+    "overall_success_rate": 0.6666666666666666,
+    "quality_baseline_maintained": false,
+    "identified_issues": [
+      "精度不足: 7.5%のギャップ"
+    ],
+    "recommended_actions": [
+      "計算精度向上・保護機能強化"
+    ],
+    "next_verification_schedule": {
+      "next_verification_date": "2025-08-05",
+      "verification_frequency": "日次",
+      "priority_level": "high"
+    },
+    "analysis_timestamp": "2025-08-04T09:34:42.424961",
+    "phase1_data_quality_status": "requires_attention"
+  },
+  "success": false,
+  "slot_hours_verification_status": "needs_improvement"
+}

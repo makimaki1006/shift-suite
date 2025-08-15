@@ -1,0 +1,281 @@
+{
+  "analysis_metadata": {
+    "analysis_date": "2025-08-11T15:25:11.260736",
+    "hourly_cost_assumption": "5000円/時間",
+    "analysis_period": "24ヶ月",
+    "discount_rate": "5%"
+  },
+  "investment_costs": {
+    "sunk_costs": {
+      "system_development": {
+        "hours": 40,
+        "description": "品質管理システム開発完了",
+        "cost": 200000,
+        "status": "完了"
+      },
+      "pilot_testing": {
+        "hours": 8,
+        "description": "パイロットテスト実施",
+        "cost": 40000,
+        "status": "完了"
+      }
+    },
+    "additional_investments": {
+      "scenario_minimal": {
+        "description": "最小限実装 (Phase 1のみ)",
+        "development_hours": 16,
+        "implementation_hours": 162,
+        "training_hours": 8,
+        "total_hours": 186,
+        "total_cost": 930000,
+        "success_probability": 0.85
+      },
+      "scenario_standard": {
+        "description": "標準実装 (Phase 1-2)",
+        "development_hours": 32,
+        "implementation_hours": 216,
+        "training_hours": 16,
+        "total_hours": 264,
+        "total_cost": 1320000,
+        "success_probability": 0.7
+      },
+      "scenario_comprehensive": {
+        "description": "包括実装 (Phase 1-3)",
+        "development_hours": 48,
+        "implementation_hours": 324,
+        "training_hours": 24,
+        "total_hours": 396,
+        "total_cost": 1980000,
+        "success_probability": 0.5
+      }
+    },
+    "ongoing_costs_annual": {
+      "system_maintenance": {
+        "hours": 24,
+        "cost": 120000,
+        "description": "システム保守・更新"
+      },
+      "quality_monitoring": {
+        "hours": 36,
+        "cost": 180000,
+        "description": "品質監視・改善活動"
+      },
+      "training_updates": {
+        "hours": 12,
+        "cost": 60000,
+        "description": "トレーニング・スキルアップ"
+      }
+    },
+    "total_sunk_cost": 240000,
+    "total_annual_ongoing": 360000
+  },
+  "expected_benefits": {
+    "current_inefficiency_costs": {
+      "document_review_time": {
+        "current_hours_per_document": 2.0,
+        "documents_per_month": 15,
+        "annual_hours": 360.0,
+        "annual_cost": 1800000.0,
+        "description": "文書レビュー時間"
+      },
+      "quality_issues_rework": {
+        "rework_hours_per_month": 20,
+        "annual_hours": 240,
+        "annual_cost": 1200000,
+        "description": "品質問題による手戻り"
+      },
+      "stakeholder_confusion": {
+        "confusion_resolution_hours_per_month": 8,
+        "annual_hours": 96,
+        "annual_cost": 480000,
+        "description": "文書理解不足による問い合わせ対応"
+      },
+      "reputation_risk": {
+        "estimated_annual_cost": 200000,
+        "description": "技術文書品質による信頼性リスク"
+      }
+    },
+    "quality_improvement_benefits": {
+      "scenario_minimal": {
+        "review_time_reduction": 0.25,
+        "rework_reduction": 0.3,
+        "confusion_reduction": 0.2,
+        "reputation_improvement": 0.1
+      },
+      "scenario_standard": {
+        "review_time_reduction": 0.4,
+        "rework_reduction": 0.5,
+        "confusion_reduction": 0.35,
+        "reputation_improvement": 0.25
+      },
+      "scenario_comprehensive": {
+        "review_time_reduction": 0.55,
+        "rework_reduction": 0.7,
+        "confusion_reduction": 0.5,
+        "reputation_improvement": 0.4
+      }
+    },
+    "annual_benefits": {
+      "scenario_minimal": {
+        "review_time_savings": 450000.0,
+        "rework_savings": 360000.0,
+        "confusion_savings": 96000.0,
+        "reputation_value": 20000.0,
+        "total_annual_benefit": 926000.0
+      },
+      "scenario_standard": {
+        "review_time_savings": 720000.0,
+        "rework_savings": 600000.0,
+        "confusion_savings": 168000.0,
+        "reputation_value": 50000.0,
+        "total_annual_benefit": 1538000.0
+      },
+      "scenario_comprehensive": {
+        "review_time_savings": 990000.0000000001,
+        "rework_savings": 840000.0,
+        "confusion_savings": 240000.0,
+        "reputation_value": 80000.0,
+        "total_annual_benefit": 2150000.0
+      }
+    },
+    "total_current_annual_cost": 3680000.0
+  },
+  "roi_scenarios": {
+    "scenario_minimal": {
+      "initial_investment": 930000,
+      "annual_benefit": 926000.0,
+      "expected_annual_benefit": 787100.0,
+      "annual_ongoing_cost": 360000,
+      "roi_2year_percent": -8.150537634408602,
+      "payback_months": 26.12971201123859,
+      "npv": -135845.8049886622,
+      "success_probability": 0.85,
+      "risk_adjusted_recommendation": "推奨しない"
+    },
+    "scenario_standard": {
+      "initial_investment": 1320000,
+      "annual_benefit": 1538000.0,
+      "expected_annual_benefit": 1076600.0,
+      "annual_ongoing_cost": 360000,
+      "roi_2year_percent": 8.575757575757576,
+      "payback_months": 22.104381802958414,
+      "npv": 12453.514739228995,
+      "success_probability": 0.7,
+      "risk_adjusted_recommendation": "条件付推奨"
+    },
+    "scenario_comprehensive": {
+      "initial_investment": 1980000,
+      "annual_benefit": 2150000.0,
+      "expected_annual_benefit": 1075000.0,
+      "annual_ongoing_cost": 360000,
+      "roi_2year_percent": -27.77777777777778,
+      "payback_months": 33.230769230769226,
+      "npv": -650521.5419501133,
+      "success_probability": 0.5,
+      "risk_adjusted_recommendation": "推奨しない"
+    }
+  },
+  "alternative_comparison": {
+    "alternatives": {
+      "status_quo": {
+        "investment": 0,
+        "annual_benefit": 0,
+        "annual_cost": 0,
+        "roi_2year": 0,
+        "description": "現状維持"
+      },
+      "external_audit": {
+        "investment": 80000,
+        "annual_benefit": 800000,
+        "annual_cost": 200000,
+        "roi_2year": 650,
+        "description": "外部品質監査"
+      },
+      "manual_checklist": {
+        "investment": 40000,
+        "annual_benefit": 400000,
+        "annual_cost": 100000,
+        "roi_2year": 1400,
+        "description": "手動品質管理強化"
+      },
+      "our_system_best": {
+        "investment": 1320000,
+        "annual_benefit": 1076600.0,
+        "annual_cost": 360000,
+        "roi_2year": 8.575757575757576,
+        "description": "自社システム(standard)"
+      }
+    },
+    "ranking": [
+      [
+        "manual_checklist",
+        {
+          "investment": 40000,
+          "annual_benefit": 400000,
+          "annual_cost": 100000,
+          "roi_2year": 1400,
+          "description": "手動品質管理強化"
+        }
+      ],
+      [
+        "external_audit",
+        {
+          "investment": 80000,
+          "annual_benefit": 800000,
+          "annual_cost": 200000,
+          "roi_2year": 650,
+          "description": "外部品質監査"
+        }
+      ],
+      [
+        "our_system_best",
+        {
+          "investment": 1320000,
+          "annual_benefit": 1076600.0,
+          "annual_cost": 360000,
+          "roi_2year": 8.575757575757576,
+          "description": "自社システム(standard)"
+        }
+      ],
+      [
+        "status_quo",
+        {
+          "investment": 0,
+          "annual_benefit": 0,
+          "annual_cost": 0,
+          "roi_2year": 0,
+          "description": "現状維持"
+        }
+      ]
+    ],
+    "recommendation": "手動品質管理強化が最適、自社システムは3位"
+  },
+  "executive_summary": {
+    "recommendation": {
+      "decision": "条件付き実行推奨",
+      "recommended_scenario": "standard",
+      "key_metrics": {
+        "initial_investment": "1,320,000円",
+        "roi_2year": "8.6%",
+        "payback_period": "22.104381802958414ヶ月",
+        "success_probability": "70%"
+      }
+    },
+    "critical_success_factors": [
+      "自動修正機能の16時間での開発完了",
+      "段階的品質基準による現実的目標設定",
+      "継続運用体制(年間72時間)の確保",
+      "効果測定による継続改善"
+    ],
+    "major_risks": [
+      "修正工数が想定の2倍に拡大するリスク",
+      "組織的受容性が想定を下回るリスク",
+      "技術的複雑性による運用負荷増大リスク"
+    ],
+    "decision_timeline": {
+      "immediate_action": "48時間以内に最終GO/NO-GO判定",
+      "pilot_expansion": "4週間で限定実装・効果測定",
+      "full_deployment": "12週間で本格運用移行"
+    }
+  }
+}

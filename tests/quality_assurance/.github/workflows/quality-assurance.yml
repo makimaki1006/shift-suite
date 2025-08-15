@@ -1,0 +1,55 @@
+# B1 品質保証 CI/CD設定
+# GitHub Actions用設定例
+
+name: Quality Assurance Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # 週次実行
+
+jobs:
+  quality-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run quality tests
+      run: |
+        python B1_QUALITY_ASSURANCE_FRAMEWORK.py
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v2
+      with:
+        name: test-results
+        path: logs/test_results/
+    
+    - name: Check test status
+      run: |
+        # クリティカルテストの失敗でビルドを失敗させる
+        python -c "
+import json
+with open('logs/test_results/latest.json') as f:
+    results = json.load(f)
+    critical_failed = any(
+        t['critical'] and t['status'] == 'fail' 
+        for t in results['test_results'].values()
+    )
+    if critical_failed:
+        print('Critical tests failed!')
+        exit(1)
+        "

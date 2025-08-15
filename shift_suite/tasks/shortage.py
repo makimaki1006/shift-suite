@@ -555,17 +555,59 @@ def shortage_and_brief(
 
     # --- ▼▼▼▼▼ ここからが重要な修正箇所 ▼▼▼▼▼ ---
 
-    # 日付ごとの詳細Needデータを読み込む
+    # 統計手法に対応した詳細Needデータを読み込む
     need_per_date_slot_df = pd.DataFrame()
-    need_per_date_slot_fp = out_dir_path / "need_per_date_slot.parquet"
-    if need_per_date_slot_fp.exists():
-        try:
-            need_per_date_slot_df = pd.read_parquet(need_per_date_slot_fp)
-            log.info(
-                "[shortage] ☆☆☆ need_per_date_slot.parquet を読み込み、これをマスターNeedとして使用します ☆☆☆"
-            )
-        except Exception as e:
-            log.warning(f"[shortage] need_per_date_slot.parquet の読み込みエラー: {e}")
+    
+    # 🔧 CRITICAL FIX: 統計手法別のNeedファイルを統合して正しく読み込む
+    need_role_files = list(out_dir_path.glob("need_per_date_slot_role_*.parquet"))
+    
+    if need_role_files:
+        log.info(f"[shortage] ★★★ 統計手法対応: {len(need_role_files)}個の職種別Needファイルを統合します ★★★")
+        
+        # 🔧 REALISTIC FIX: 職種重複排除の実装
+        primary_role_files = []
+        overlap_roles = ['介護・相談員', '事務・介護', '管理者・相談員']  # 重複職種
+        
+        for need_file in need_role_files:
+            role_name = need_file.name
+            is_overlap = any(overlap in role_name for overlap in overlap_roles)
+            
+            if not is_overlap:
+                primary_role_files.append(need_file)
+            else:
+                log.info(f"[REALISTIC] 重複職種を除外: {role_name}")
+        
+        log.info(f"[REALISTIC] 主職種ファイル: {len(primary_role_files)}個 (重複排除済み)")
+        
+        combined_need_df = pd.DataFrame()
+        
+        for need_file in primary_role_files:
+            try:
+                role_need_df = pd.read_parquet(need_file)
+                if combined_need_df.empty:
+                    combined_need_df = role_need_df.copy()
+                else:
+                    # 同じ時間帯・日付での需要を合計
+                    combined_need_df = combined_need_df.add(role_need_df, fill_value=0)
+                log.debug(f"[shortage] 統合: {need_file.name} (形状: {role_need_df.shape})")
+            except Exception as e:
+                log.warning(f"[shortage] {need_file.name} の読み込みエラー: {e}")
+        
+        need_per_date_slot_df = combined_need_df
+        log.info(f"[shortage] ★★★ 統計手法対応Need統合完了: 形状 {need_per_date_slot_df.shape} ★★★")
+    else:
+        # フォールバック: 従来の固定ファイル
+        need_per_date_slot_fp = out_dir_path / "need_per_date_slot.parquet"
+        if need_per_date_slot_fp.exists():
+            try:
+                need_per_date_slot_df = pd.read_parquet(need_per_date_slot_fp)
+                log.warning(
+                    "[shortage] ⚠️ 職種別Needファイルが見つからないため、固定ファイルを使用 ⚠️"
+                )
+            except Exception as e:
+                log.warning(f"[shortage] need_per_date_slot.parquet の読み込みエラー: {e}")
+        else:
+            log.warning("[shortage] ⚠️ 利用可能なNeedファイルが見つかりません ⚠️")
 
     # heat_ALL.parquetから日付列を特定
     date_columns_in_heat_all = [

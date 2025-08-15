@@ -1,0 +1,45 @@
+/* C2 Phase4: パフォーマンス最適化CSS */
+
+/* 遅延読み込み前の状態 */
+.dash-graph:not(.c2-loaded),
+.dash-table-container:not(.c2-loaded) {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* 読み込み完了後 */
+.dash-graph.c2-loaded,
+.dash-table-container.c2-loaded {
+  opacity: 1;
+}
+
+/* コンパクトヘッダー（スクロール時） */
+.c2-compact {
+  padding: 8px 16px !important;
+  transition: padding 0.3s ease;
+}
+
+/* GPU加速の活用 */
+.c2-mobile-nav-enhancement,
+.c2-mobile-slide-menu,
+.dash-graph {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* アニメーション最適化 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 低帯域幅対応 */
+@media (max-width: 768px) and (max-resolution: 1dppx) {
+  /* 低解像度デバイス向け軽量化 */
+  .plotly-graph-div {
+    image-rendering: optimizeSpeed;
+  }
+}

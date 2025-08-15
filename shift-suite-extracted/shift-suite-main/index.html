@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shift-Suite for Care | AIが介護現場のシフト管理を最適化します</title>
+    <meta name="description" content="介護施設の複雑な人員配置を、AIがデータに基づき最適化。職員の定着率向上と、質の高いケア提供を両立する「Shift-Suite for Care」公式サイト。">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 安心感のあるグリーン */
+            --secondary-color: #FFC107; /* 温かみのあるアンバー */
+            --text-color: #37474F;
+            --bg-color: #F5F5F5;
+            --white: #ffffff;
+            --header-height: 70px;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            margin: 0;
+            color: var(--text-color);
+            line-height: 1.8;
+            background-color: var(--bg-color);
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+        .header {
+            background: var(--white);
+            height: var(--header-height);
+            display: flex; align-items: center; justify-content: space-between;
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 0 20px;
+        }
+        .header .container { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+        .logo { font-size: 24px; font-weight: 900; color: var(--primary-color); }
+        .nav-links { display: flex; gap: 25px; }
+        .nav-links a { text-decoration: none; color: var(--text-color); font-weight: 700; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--primary-color); }
+        .btn {
+            display: inline-block; background: var(--secondary-color); color: var(--text-color);
+            padding: 12px 28px; border-radius: 50px; text-decoration: none; font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+            border: none; cursor: pointer;
+        }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(255, 193, 7, 0.5); }
+        .hero {
+            background: linear-gradient(120deg, #E8F5E9, #FFFDE7);
+            padding: calc(var(--header-height) + 80px) 20px 80px;
+            text-align: center;
+        }
+        .hero h1 { font-size: 42px; margin-bottom: 20px; line-height: 1.5; font-weight: 900; color: var(--primary-color); }
+        .hero p { font-size: 18px; max-width: 750px; margin: 0 auto 40px; }
+        
+        /* --- Image Slider --- */
+        .hero-slider {
+            position: relative;
+            max-width: 80%;
+            height: 500px; /* Set a fixed height */
+            margin: 40px auto 0;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        .slide.active {
+            opacity: 1;
+        }
+        .slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* This will cover the area, cropping if necessary */
+        }
+        .slider-nav {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+        .slider-nav button {
+            background-color: rgba(0, 0, 0, 0.4);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .slider-nav button:hover { background-color: rgba(0, 0, 0, 0.7); }
+        .prev { border-radius: 0 5px 5px 0; margin-left: -1px; }
+        .next { border-radius: 5px 0 0 5px; margin-right: -1px; }
+        /* --- End Image Slider --- */
+
+        .trust-badges { display: flex; justify-content: center; gap: 30px; margin-top: 40px; flex-wrap: wrap; }
+        .trust-badge { background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 50px; font-weight: 700; color: var(--primary-color); }
+        .section { padding: 80px 0; background-color: var(--white); }
+        .section.bg-light { background-color: var(--bg-color); }
+        .section-title { text-align: center; font-size: 36px; margin-bottom: 10px; font-weight: 900; }
+        .section-subtitle { text-align: center; font-size: 16px; color: #777; margin-bottom: 60px; }
+        .problem-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .problem-item { background: var(--white); padding: 30px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.07); text-align: center; }
+        .problem-item-icon { font-size: 48px; margin-bottom: 20px; }
+        .problem-item h3 { font-size: 22px; margin-bottom: 10px; font-weight: 700; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px; }
+        .feature-item { background: var(--white); padding: 30px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.07); text-align: left; }
+        .feature-item-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .feature-icon { font-size: 32px; color: var(--primary-color); margin-right: 20px; background: #E8F5E9; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .feature-item h3 { font-size: 22px; margin: 0; font-weight: 700; }
+        .case-study-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .case-study-item { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 5px 25px rgba(0,0,0,0.07); display: flex; flex-direction: column; }
+        .case-study-item img { width: 100%; height: 200px; object-fit: cover; }
+        .case-study-content { padding: 25px; flex-grow: 1; }
+        .case-study-content h3 { font-size: 18px; font-weight: 700; margin-top: 0; }
+        .case-study-content h3 small { font-size: 14px; font-weight: 400; color: #555; display: block; margin-top: 4px; }
+        .case-study-quote { font-style: italic; color: #555; border-left: 3px solid var(--secondary-color); padding-left: 15px; }
+        .faq-item { background: white; margin-bottom: 15px; border-radius: 10px; }
+        .faq-question { padding: 20px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .faq-answer { padding: 0 20px 20px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out, padding 0.3s ease-out; }
+        .faq-item.active .faq-answer { max-height: 200px; padding: 0 20px 20px; }
+        .faq-question::after { content: '+'; font-size: 24px; font-weight: 400; transition: transform 0.3s; }
+        .faq-item.active .faq-question::after { transform: rotate(45deg); }
+        .cta-section { background: linear-gradient(120deg, var(--primary-color), #2E7D32); color: var(--white); text-align: center; }
+        .cta-section h2 { font-size: 32px; margin-bottom: 20px; font-weight: 900; }
+        .form-container { max-width: 600px; margin: 40px auto 0; background: white; padding: 40px; border-radius: 15px; text-align: left; color: var(--text-color); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 700; }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-family: 'Noto Sans JP', sans-serif; }
+        .footer { background: #212121; color: #aaa; padding: 40px 0; text-align: center; font-size: 14px; }
+        .footer-links { margin-bottom: 20px; }
+        .footer-links a { color: #aaa; text-decoration: none; margin: 0 15px; transition: color 0.2s; }
+        .footer-links a:hover { color: white; }
+        #to-top-btn { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background-color: var(--secondary-color); color: white; border: none; border-radius: 50%; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); display: none; align-items: center; justify-content: center; z-index: 999; }
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero h1 { font-size: 32px; }
+            .hero p { font-size: 16px; }
+            .section-title { font-size: 28px; }
+            .hero-slider { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="container">
+            <a href="#" class="logo">Shift-Suite for Care</a>
+            <nav class="nav-links">
+                <a href="#problems">経営課題</a>
+                <a href="#features">機能</a>
+                <a href="#cases">導入事例</a>
+                <a href="#faq">FAQ</a>
+            </nav>
+            <a href="#cta" class="btn">資料請求・お問い合わせ</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>AIが、介護現場のシフト管理を科学する。</h1>
+                <p>データに基づいた最適な人員配置が、職員の定着とケアの質向上を両立。<br>持続可能な施設運営を、使い慣れたExcelから実現します。</p>
+                <a href="#cta" class="btn">サービス詳細・導入事例はこちら</a>
+                <div class="trust-badges">
+                    <span class="trust-badge">介護・福祉業界 導入実績No.1</span>
+                    <span class="trust-badge">全国 300以上の事業所で導入</span>
+                    <span class="trust-badge">継続率 98.5%</span>
+                </div>
+                <div class="hero-slider">
+                    <div class="slide active"><img src="https://images.unsplash.com/photo-1599045118108-bf2e15a79158?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="日本人高齢者の手を優しく握る介護士"></div>
+                    <div class="slide"><img src="https://images.unsplash.com/photo-1620122303142-936641f5d329?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="レクリエーションで折り紙を楽しむ日本人高齢者"></div>
+                    <div class="slide"><img src="https://images.unsplash.com/photo-1584432810601-6c7f27d2362b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="車椅子の日本人高齢者と笑顔で話す介護士"></div>
+                    <div class="slider-nav">
+                        <button class="prev">&lt;</button>
+                        <button class="next">&gt;</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="problems" class="section bg-light">
+            <div class="container">
+                <h2 class="section-title">そのシフト管理、経営リスクになっていませんか？</h2>
+                <p class="section-subtitle">属人化した人員配置は、見えないコストと職員の疲弊を生み、施設経営を圧迫します。</p>
+                <div class="problem-list">
+                    <div class="problem-item">
+                        <div class="problem-item-icon">📉</div>
+                        <h3>増大する管理コストと非効率</h3>
+                        <p>複雑な勤務条件を考慮したシフト作成に、管理者の貴重な時間が奪われ、本来注力すべき業務を圧迫していませんか？</p>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-item-icon">⚖️</div>
+                        <h3>業務負荷の偏りと、職員の不満</h3>
+                        <p>夜勤や負担の大きい業務が特定職員に集中。不公平感がエンゲージメントを低下させ、チームワークを阻害していませんか？</p>
+                    </div>
+                    <div class="problem-item">
+                        <div class="problem-item-icon">⚠️</div>
+                        <h3>慢性的な人手不足と離職リスク</h3>
+                        <p>採用しても定着しない。無理な勤務による疲弊が、優秀な人材の離職を招き、サービスの質の低下に繋がっていませんか？</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="section">
+            <div class="container">
+                <h2 class="section-title">Shift-Suiteが提供する、データドリブンな解決策</h2>
+                <p class="section-subtitle">AIによる客観的なデータ分析が、勘と経験に頼ったシフト管理を過去のものにします。</p>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-item-header"><div class="feature-icon">🤖</div><h3>最適人員の算出と配置</h3></div>
+                        <p>利用者様のケアプランや職員様のスキルを基に、時間帯ごとに必要な人員体制をAIが自動算出。人員配置基準を遵守しつつ、無駄のないシフトを構築します。</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-header"><div class="feature-icon">❤️</div><h3>業務負荷の可視化と平準化</h3></div>
+                        <p>夜勤回数や身体的負担の大きい業務をデータで可視化。特定の職員に負荷が偏らないよう、公平なシフト作成を支援し、職員の納得感を醸成します。</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-header"><div class="feature-icon">📊</div><h3>職員のスキル・相性の考慮</h3></div>
+                        <p>職員一人ひとりのスキルや経験年数、利用者様との相性を登録・考慮した配置が可能。新人職員のOJTや、サービスの質向上に繋がる配置を支援します。</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-header"><div class="feature-icon">📈</div><h3>離職リスクの早期検知</h3></div>
+                        <p>休暇取得パターンの変化など、蓄積された勤怠データからAIが離職リスクを分析。アラートにより、面談などの早期介入を促し、人材の定着を支援します。</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-header"><div class="feature-icon">💰</div><h3>人件費の最適化と法令遵守</h3></div>
+                        <p>客観的データに基づき、過剰人員や不要な残業を抑制。同時に、各種配置基準や労働関連法規を遵守した、コンプライアンス体制の強化にも貢献します。</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-item-header"><div class="feature-icon">📄</div><h3>各種帳票・報告書の自動作成</h3></div>
+                        <p>勤務形態一覧表や常勤換算表など、行政への提出や監査に必要な書類を自動で生成。管理者の事務作業の負担を大幅に軽減します。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="cases" class="section bg-light">
+            <div class="container">
+                <h2 class="section-title">導入事例</h2>
+                <p class="section-subtitle">「社会福祉法人 日本介護センター」様にご協力いただき、導入後の効果を伺いました。</p>
+                <div class="case-study-grid">
+                    <div class="case-study-item">
+                        <img src="https://images.unsplash.com/photo-1573496376038-82c218323438?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80" alt="日本介護センターの施設長">
+                        <div class="case-study-content">
+                            <h3>社会福祉法人 日本介護センター<small>施設長</small></h3>
+                            <p class="case-study-quote">"月40時間以上を費やしていたシフト作成工数を75%以上削減できました。人員配置の最適化で、年間数百万円規模の人件費抑制効果も。経営判断に必要なデータを即座に確認できる点が、何よりの価値です。"</p>
+                        </div>
+                    </div>
+                    <div class="case-study-item">
+                        <img src="https://images.unsplash.com/photo-1603812438269-621a8ea68945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="日本介護センターの介護リーダー">
+                        <div class="case-study-content">
+                            <h3>社会福祉法人 日本介護センター<small>介護リーダー</small></h3>
+                            <p class="case-study-quote">"業務負荷がデータで平準化され、職員間の不公平感が解消されました。チーム内の納得感が醸成され、連携がスムーズに。結果として新人職員の定着率も大幅に向上し、教育に時間を割けるようになりました。"</p>
+                        </div>
+                    </div>
+                    <div class="case-study-item">
+                        <img src="https://images.unsplash.com/photo-1618828534239-031a52a7365a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="日本介護センターの現場職員">
+                        <div class="case-study-content">
+                            <h3>社会福祉法人 日本介護センター<small>現場職員</small></h3>
+                            <p class="case-study-quote">"希望休が計画的に取得できるようになり、ワークライフバランスが改善されました。無理な連続勤務もなくなり、心身の余裕が生まれたことで、利用者様一人ひとりに、より丁寧なケアを提供できています。"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="section">
+            <div class="container" style="max-width: 800px;">
+                <h2 class="section-title">よくあるご質問（FAQ）</h2>
+                <div class="faq-list">
+                    <div class="faq-item"><div class="faq-question">PC操作に不慣れな職員でも利用可能ですか？</div><div class="faq-answer"><p>はい、問題なくご利用いただけます。本システムは、現在お使いのExcelファイルをアップロードするだけの簡単な操作で分析が開始できるよう設計されています。専門的なITの知識は不要です。</p></div></div>
+                    <div class="faq-item"><div class="faq-question">多様な勤務形態に対応していますか？</div><div class="faq-answer"><p>はい、常勤・非常勤、早番・日勤・遅番・夜勤、時短勤務といった多様な勤務形態に標準で対応しております。また、施設ごとの詳細なルール（例：夜勤回数の上限設定）も柔軟にカスタマイズ可能です。</p></div></div>
+                    <div class="faq-item"><div class="faq-question">資格者の配置基準など、法的要件は考慮されますか？</div><div class="faq-answer"><p>はい、職員様の資格情報を登録することで、「看護師を常時1名以上配置」といった介護保険法に基づく人員配置基準を遵守したシフト編成をシステムが支援します。</p></div></div>
+                    <div class="faq-item"><div class="faq-question">個人情報の取り扱い・セキュリティ対策は万全ですか？</div><div class="faq-answer"><p>はい、お客様からお預かりするデータは、通信・保管の全行程で暗号化され、国内の最高水準のセキュリティを誇るデータセンターで厳重に管理しております。プライバシーマークも取得しており、個人情報保護体制を整備しておりますので、ご安心ください。</p></div></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="cta" class="section cta-section">
+            <div class="container">
+                <h2>持続可能な施設運営の実現へ。<br>その第一歩を、データ活用から始めませんか？</h2>
+                <p>まずは無料の資料で、貴施設にもたらされる具体的な導入効果をご確認ください。<br>介護現場を深く理解した専門スタッフが、課題解決を丁寧にサポートいたします。</p>
+                <div class="form-container">
+                    <form>
+                        <div class="form-group"><label for="name">ご担当者様氏名</label><input type="text" id="name" required></div>
+                        <div class="form-group"><label for="company">施設・事業所名</label><input type="text" id="company" required></div>
+                        <div class="form-group"><label for="email">メールアドレス</label><input type="email" id="email" required></div>
+                        <div class="form-group"><label for="message">ご相談内容（任意）</label><textarea id="message" rows="4" placeholder="例：職員の離職率に悩んでいる、シフト作成の負担を減らしたい"></textarea></div>
+                        <button type="submit" class="btn" style="width: 100%; padding: 15px; font-size: 18px;">無料で資料請求・相談する</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-links">
+                <a href="#">運営会社</a>
+                <a href="#">プライバシーポリシー</a>
+                <a href="#">利用規約</a>
+            </div>
+            <p>&copy; 2025 Shift-Suite Inc. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <button id="to-top-btn">↑</button>
+
+    <script>
+        // FAQ Accordion
+        const faqItems = document.querySelectorAll('.faq-item');
+        faqItems.forEach(item => {
+            const question = item.querySelector('.faq-question');
+            question.addEventListener('click', () => {
+                const isActive = item.classList.contains('active');
+                faqItems.forEach(i => i.classList.remove('active'));
+                if (!isActive) item.classList.add('active');
+            });
+        });
+
+        // To Top Button
+        const toTopBtn = document.getElementById('to-top-btn');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                toTopBtn.style.display = 'flex';
+            } else {
+                toTopBtn.style.display = 'none';
+            }
+        });
+        toTopBtn.addEventListener('click', () => { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+        // Image Slider
+        const slides = document.querySelectorAll('.slide');
+        const next = document.querySelector('.next');
+        const prev = document.querySelector('.prev');
+        let currentSlide = 0;
+        let slideInterval = setInterval(nextSlide, 5000); // Auto-play
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                slide.classList.remove('active');
+                if (i === index) {
+                    slide.classList.add('active');
+                }
+            });
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        next.addEventListener('click', () => {
+            nextSlide();
+            clearInterval(slideInterval);
+            slideInterval = setInterval(nextSlide, 8000);
+        });
+
+        prev.addEventListener('click', () => {
+            prevSlide();
+            clearInterval(slideInterval);
+            slideInterval = setInterval(nextSlide, 8000);
+        });
+    </script>
+</body>
+</html>

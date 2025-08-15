@@ -1423,18 +1423,18 @@ CURRENT_SCENARIO_DIR: Path | None = None
 
 # デフォルトのシナリオディレクトリを自動検出
 def initialize_default_scenario_dir():
-    """デフォルトのシナリオディレクトリを自動検出して設定"""
+    """デフォルトのシナリオディレクトリを自動検出して設定（安全版）"""
     global CURRENT_SCENARIO_DIR
     
     if CURRENT_SCENARIO_DIR is not None:
         return  # 既に設定済み
     
     import os
-    import tempfile
     current_dir = Path(os.getcwd())
     
-    # 候補となるディレクトリを検索
+    # 永続的な候補ディレクトリのみを検索（一時ディレクトリを除外）
     candidate_dirs = [
+        current_dir / "extracted_results",  # 既存の永続化ディレクトリ
         current_dir / "analysis_results",
         current_dir / "analysis_results_20",
         current_dir / "temp_analysis_results",
@@ -1442,13 +1442,8 @@ def initialize_default_scenario_dir():
         current_dir / "temp_analysis_results_18",
     ]
     
-    # 一時ディレクトリも検索対象に追加
-    temp_dir = Path(tempfile.gettempdir())
-    for temp_subdir in temp_dir.glob("ShiftSuiteWizard_*"):
-        if temp_subdir.is_dir():
-            out_dir = temp_subdir / "out"
-            if out_dir.exists():
-                candidate_dirs.append(out_dir)
+    # 【FIX】一時ディレクトリ依存を排除 - 永続的なディレクトリのみ使用
+    log.info("[SAFETY] 一時ディレクトリ依存を排除し、永続的なディレクトリのみを検索")
     
     # 各候補ディレクトリをチェック
     for candidate_dir in candidate_dirs:
@@ -1471,15 +1466,12 @@ def initialize_default_scenario_dir():
                 
                 if any(f.exists() for f in key_files):
                     CURRENT_SCENARIO_DIR = first_scenario
-                    log.info(f"デフォルトシナリオディレクトリを設定: {CURRENT_SCENARIO_DIR}")
+                    log.info(f"[SAFETY] 永続化ディレクトリを設定: {CURRENT_SCENARIO_DIR}")
                     return
     
-    # ディレクトリからの読み取りに失敗した場合、zipファイルを自動抽出
-    # [TARGET] 修正: 自動ZIP抽出機能を削除（UIでの選択を優先）
-    log.info("デフォルトのシナリオディレクトリが見つかりません - UIでデータをアップロードしてください")
-    # 自動ZIP抽出は削除 - UIでのファイル選択を優先する
-    
-    log.warning("使用可能なデータが見つかりませんでした")
+    # 永続的なデータディレクトリが見つからない場合
+    log.info("[SAFETY] 永続化データディレクトリが見つかりません - UIでデータをアップロードしてください")
+    log.warning("[SAFETY] データロスト防止のため、一時ディレクトリは使用しません")
 
 # 初期化実行
 initialize_default_scenario_dir()

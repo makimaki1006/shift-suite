@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "error": "'str' object has no attribute 'get'",
+  "foundation_timestamp": "2025-08-04T15:46:50.634889"
+}

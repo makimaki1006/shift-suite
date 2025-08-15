@@ -1,0 +1,217 @@
+{
+  "current_usage": {
+    "analysis_types": 7,
+    "total_files": 2,
+    "analysis_files": {
+      "按分廃止分析": {
+        "files": [
+          "proportional_abolition_role_summary.parquet",
+          "proportional_abolition_organization_summary.parquet"
+        ],
+        "usage": "現在使用中",
+        "business_value": "高"
+      },
+      "不足分析": {
+        "files": [],
+        "usage": "dash_app.pyで使用",
+        "business_value": "高"
+      },
+      "ヒートマップ分析": {
+        "files": [],
+        "usage": "dash_app.pyで使用",
+        "business_value": "中"
+      },
+      "予測分析": {
+        "files": [],
+        "usage": "一部使用",
+        "business_value": "中"
+      },
+      "疲労分析": {
+        "files": [],
+        "usage": "実装済み",
+        "business_value": "高"
+      },
+      "中間データ": {
+        "files": [],
+        "usage": "基盤データ",
+        "business_value": "高"
+      },
+      "需要データ": {
+        "files": [],
+        "usage": "基盤データ",
+        "business_value": "高"
+      }
+    }
+  },
+  "system_evaluation": {
+    "features": {
+      "データ自動検出": {
+        "description": "990ファイルの自動スキャン・分類",
+        "benefit_for_single_analysis": "不要（按分のみなら）",
+        "benefit_for_comprehensive": "高（新しい分析データの自動発見）",
+        "implementation_complexity": "高"
+      },
+      "データタイプ分類": {
+        "description": "8種類のデータタイプ自動判定",
+        "benefit_for_single_analysis": "不要",
+        "benefit_for_comprehensive": "高（分析の体系化）",
+        "implementation_complexity": "中"
+      },
+      "キャッシュシステム": {
+        "description": "ThreadSafeLRUCache + メタデータ管理",
+        "benefit_for_single_analysis": "低（按分データは小サイズ）",
+        "benefit_for_comprehensive": "高（複数分析の高速化）",
+        "implementation_complexity": "高"
+      },
+      "セキュリティ機能": {
+        "description": "パス検証・ファイル検証",
+        "benefit_for_single_analysis": "低",
+        "benefit_for_comprehensive": "中（本格運用時）",
+        "implementation_complexity": "中"
+      },
+      "動的データ対応": {
+        "description": "新ファイル自動検出・更新対応",
+        "benefit_for_single_analysis": "不要",
+        "benefit_for_comprehensive": "高（継続的分析）",
+        "implementation_complexity": "高"
+      },
+      "依存関係管理": {
+        "description": "データ間依存関係の追跡",
+        "benefit_for_single_analysis": "不要",
+        "benefit_for_comprehensive": "高（複雑分析フロー）",
+        "implementation_complexity": "高"
+      }
+    },
+    "single_analysis_score": 0,
+    "comprehensive_analysis_score": 5,
+    "total_features": 6
+  },
+  "scalability_analysis": {
+    "current_analyses": [
+      "按分廃止分析",
+      "不足分析",
+      "ヒートマップ分析",
+      "疲労分析",
+      "予測分析",
+      "クラスター分析",
+      "フェアネス分析",
+      "コスト分析",
+      "異常検知"
+    ],
+    "potential_analyses": [
+      "リアルタイム分析",
+      "多施設比較分析",
+      "AI/ML統合分析",
+      "カスタムレポート生成",
+      "モバイル対応",
+      "API提供",
+      "データエクスポート",
+      "セキュリティ監査",
+      "パフォーマンス最適化"
+    ],
+    "scenarios": {
+      "シナリオ1: 按分分析のみ継続": {
+        "unified_system_value": "低",
+        "complexity_justification": "困難",
+        "recommendation": "簡素化・最小システム"
+      },
+      "シナリオ2: 3-5種類分析利用": {
+        "unified_system_value": "中",
+        "complexity_justification": "微妙",
+        "recommendation": "簡素化された統一システム"
+      },
+      "シナリオ3: 10+種類総合分析システム": {
+        "unified_system_value": "高",
+        "complexity_justification": "妥当",
+        "recommendation": "現在の統一システム活用"
+      },
+      "シナリオ4: AI/ML統合・多機能システム": {
+        "unified_system_value": "非常に高",
+        "complexity_justification": "必須",
+        "recommendation": "統一システム拡張・強化"
+      }
+    }
+  },
+  "recommendations": {
+    "現状維持（統一システム継続）": {
+      "condition": "総合分析システムとして発展させる意図がある",
+      "pros": [
+        "既に投資したコードを活用",
+        "将来の機能追加が容易",
+        "システム全体の一貫性確保",
+        "データ管理の体系化"
+      ],
+      "cons": [
+        "現在は按分分析のみでオーバーヘッド大",
+        "保守コスト継続",
+        "複雑性による理解困難"
+      ],
+      "recommendation_score": "6/10",
+      "suitable_for": "長期的なシステム発展を計画している場合"
+    },
+    "統一システム簡素化": {
+      "condition": "按分+数種類の分析を効率化したい",
+      "pros": [
+        "統一システムの利点を保持",
+        "複雑性を大幅削減",
+        "中程度のスケーラビリティ確保",
+        "パフォーマンス改善"
+      ],
+      "cons": [
+        "再設計コスト",
+        "一部機能の削減",
+        "テスト工数"
+      ],
+      "recommendation_score": "7/10",
+      "suitable_for": "中程度の機能拡張を想定している場合"
+    },
+    "按分特化システム": {
+      "condition": "按分廃止分析が主目的で他は副次的",
+      "pros": [
+        "最小コスト・最小リスク",
+        "理解・保守が容易",
+        "確実な按分機能実現",
+        "パフォーマンス最適"
+      ],
+      "cons": [
+        "将来拡張性限定",
+        "統一システム投資の放棄",
+        "個別最適化"
+      ],
+      "recommendation_score": "8/10（按分特化なら）",
+      "suitable_for": "按分廃止分析が主目的の場合"
+    }
+  },
+  "decision_framework": [
+    {
+      "question": "按分廃止分析以外に、今後6ヶ月以内に追加したい分析はありますか？",
+      "yes_action": "統一システムの価値が高まる",
+      "no_action": "按分特化アプローチが妥当"
+    },
+    {
+      "question": "リアルタイム分析や大量データ処理の需要はありますか？",
+      "yes_action": "統一システムのキャッシュ機能が価値",
+      "no_action": "シンプルなアクセスで十分"
+    },
+    {
+      "question": "複数の人が同時にシステムを使用しますか？",
+      "yes_action": "統一システムの管理機能が価値",
+      "no_action": "個別アクセスで十分"
+    },
+    {
+      "question": "システムの保守・拡張を長期的に続ける予定ですか？",
+      "yes_action": "統一システムの体系化が価値",
+      "no_action": "最小システムが合理的"
+    },
+    {
+      "question": "他のシステムとの連携や統合の予定はありますか？",
+      "yes_action": "統一システムのアーキテクチャが価値",
+      "no_action": "単機能システムで十分"
+    }
+  ],
+  "metadata": {
+    "timestamp": "20250808_234558",
+    "evaluation_perspective": "按分特化 vs 総合分析システム",
+    "key_finding": "統一システムの価値は利用する分析の種類と数に依存"
+  }
+}

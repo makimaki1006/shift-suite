@@ -1,0 +1,140 @@
+{
+  "dashboard_id": "MONITORING_DASHBOARD_001",
+  "title": "シフト分析システム監視ダッシュボード",
+  "refresh_interval": 60,
+  "layout": {
+    "rows": 3,
+    "columns": 4,
+    "widgets": [
+      {
+        "id": "system_health_gauge",
+        "type": "gauge",
+        "position": {
+          "row": 0,
+          "col": 0,
+          "width": 2,
+          "height": 1
+        },
+        "config": {
+          "title": "システム健全性",
+          "data_source": "health_metrics",
+          "thresholds": [
+            70,
+            85,
+            95
+          ],
+          "colors": [
+            "#e74c3c",
+            "#f39c12",
+            "#27ae60"
+          ]
+        }
+      },
+      {
+        "id": "response_time_chart",
+        "type": "line_chart",
+        "position": {
+          "row": 0,
+          "col": 2,
+          "width": 2,
+          "height": 1
+        },
+        "config": {
+          "title": "応答時間推移",
+          "data_source": "performance_metrics.response_time",
+          "time_range": "24h",
+          "y_axis": {
+            "label": "ミリ秒",
+            "max": 5000
+          }
+        }
+      },
+      {
+        "id": "error_rate_chart",
+        "type": "area_chart",
+        "position": {
+          "row": 1,
+          "col": 0,
+          "width": 3,
+          "height": 1
+        },
+        "config": {
+          "title": "エラー発生率",
+          "data_source": "error_metrics",
+          "time_range": "24h",
+          "fill_color": "rgba(231, 76, 60, 0.3)"
+        }
+      },
+      {
+        "id": "active_alerts",
+        "type": "alert_list",
+        "position": {
+          "row": 1,
+          "col": 3,
+          "width": 1,
+          "height": 2
+        },
+        "config": {
+          "title": "アクティブアラート",
+          "max_items": 10,
+          "sort_by": "severity"
+        }
+      },
+      {
+        "id": "resource_usage",
+        "type": "stacked_bar",
+        "position": {
+          "row": 2,
+          "col": 0,
+          "width": 2,
+          "height": 1
+        },
+        "config": {
+          "title": "リソース使用状況",
+          "metrics": [
+            "cpu",
+            "memory",
+            "disk"
+          ],
+          "colors": [
+            "#3498db",
+            "#9b59b6",
+            "#1abc9c"
+          ]
+        }
+      },
+      {
+        "id": "user_activity_heatmap",
+        "type": "heatmap",
+        "position": {
+          "row": 2,
+          "col": 2,
+          "width": 1,
+          "height": 1
+        },
+        "config": {
+          "title": "ユーザー活動",
+          "time_slots": 24,
+          "days": 7
+        }
+      }
+    ]
+  },
+  "data_sources": {
+    "health_metrics": {
+      "endpoint": "/api/v1/metrics/health",
+      "method": "GET",
+      "cache_ttl": 60
+    },
+    "performance_metrics": {
+      "endpoint": "/api/v1/metrics/performance",
+      "method": "GET",
+      "cache_ttl": 300
+    },
+    "error_metrics": {
+      "endpoint": "/api/v1/metrics/errors",
+      "method": "GET",
+      "cache_ttl": 60
+    }
+  }
+}

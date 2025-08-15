@@ -1,0 +1,10 @@
+{
+  "analysis_type": "按分廃止・職種別分析",
+  "analysis_description": "従来の按分方式を廃止し、各職種の真の過不足を分析",
+  "timestamp": "2025-08-08T09:33:30.622681",
+  "period_days": 30,
+  "scenario_directory": "extracted_results\\out_mean_based",
+  "total_roles_analyzed": 9,
+  "organization_status": "SURPLUS",
+  "proportional_abolition_effectiveness": "HIGH"
+}

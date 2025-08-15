@@ -1,0 +1,14 @@
+{
+  "environment": "production",
+  "debug": false,
+  "log_level": "INFO",
+  "security": {
+    "enable_auth": true
+  },
+  "performance": {
+    "cache_enabled": true
+  },
+  "monitoring": {
+    "enable_metrics": true
+  }
+}

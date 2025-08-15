@@ -1,0 +1,95 @@
+{
+  "test_session_id": "p2a1_test_20250804_160708",
+  "test_start": "2025-08-04T16:07:08.974709",
+  "tests_passed": 7,
+  "tests_failed": 0,
+  "test_details": [
+    {
+      "test_name": "モジュール可用性テスト",
+      "status": "PASSED",
+      "details": {
+        "enhanced_app": true,
+        "integration_components": true,
+        "ai_ml_modules_loaded": 3
+      },
+      "timestamp": "2025-08-04T16:07:08.984699"
+    },
+    {
+      "test_name": "AI/ML統合コンポーネントテスト",
+      "status": "PASSED",
+      "details": {
+        "ai_ml_tab_created": true,
+        "callbacks_defined": true,
+        "data_interface_available": true,
+        "components_initialized": true
+      },
+      "timestamp": "2025-08-04T16:07:09.017541"
+    },
+    {
+      "test_name": "強化版ダッシュボードアプリテスト",
+      "status": "PASSED",
+      "details": {
+        "app_initialized": true,
+        "app_name_set": true,
+        "version_set": true,
+        "ai_ml_status_available": true,
+        "layout_creation": true
+      },
+      "timestamp": "2025-08-04T16:07:09.017701"
+    },
+    {
+      "test_name": "統合パッチテスト",
+      "status": "PASSED",
+      "details": {
+        "dash_app_ai_ml_integration_patch_20250804_160144.json": true,
+        "dash_app_ai_ml_enhanced.py": true,
+        "dash_ai_ml_integration_components.py": true
+      },
+      "timestamp": "2025-08-04T16:07:09.021226"
+    },
+    {
+      "test_name": "エラーハンドリングテスト",
+      "status": "PASSED",
+      "details": {
+        "import_error_handling": true,
+        "module_not_found_handling": true,
+        "graceful_degradation": true,
+        "system_status_available": true
+      },
+      "timestamp": "2025-08-04T16:07:09.021279"
+    },
+    {
+      "test_name": "フォールバック機能テスト",
+      "status": "PASSED",
+      "details": {
+        "mock_components_available": true,
+        "fallback_ui_creation": true,
+        "dependency_constraint_handling": true,
+        "ai_ml_availability_check": true
+      },
+      "timestamp": "2025-08-04T16:07:09.021288"
+    },
+    {
+      "test_name": "AI/MLシステム状態テスト",
+      "status": "PASSED",
+      "details": {
+        "checks": {
+          "status_available": true,
+          "status_field_present": true,
+          "modules_field_present": true,
+          "last_update_present": true
+        },
+        "system_status": {
+          "status": "available",
+          "modules": 3,
+          "last_update": "2025-08-04T16:07:09.021294"
+        }
+      },
+      "timestamp": "2025-08-04T16:07:09.021299"
+    }
+  ],
+  "test_end": "2025-08-04T16:07:09.021303",
+  "total_tests": 7,
+  "success_rate": 100.0,
+  "overall_status": "PASSED"
+}

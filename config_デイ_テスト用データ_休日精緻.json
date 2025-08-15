@@ -1,0 +1,842 @@
+{
+  "shift_patterns": [
+    {
+      "code": "日",
+      "start_time": "09:00",
+      "end_time": "17:00",
+      "description": "日勤",
+      "is_overnight": false,
+      "priority": 1
+    },
+    {
+      "code": "遅",
+      "start_time": "13:00",
+      "end_time": "21:00",
+      "description": "遅番",
+      "is_overnight": false,
+      "priority": 2
+    },
+    {
+      "code": "夜",
+      "start_time": "16:45",
+      "end_time": "00:00",
+      "description": "夜勤前半",
+      "is_overnight": true,
+      "priority": 3
+    },
+    {
+      "code": "明",
+      "start_time": "00:00",
+      "end_time": "10:00",
+      "description": "明け番",
+      "is_overnight": true,
+      "priority": 4
+    },
+    {
+      "code": "早",
+      "start_time": "07:00",
+      "end_time": "15:00",
+      "description": "早番",
+      "is_overnight": false,
+      "priority": 1
+    },
+    {
+      "code": "◎",
+      "start_time": "09:00",
+      "end_time": "18:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "浴",
+      "start_time": "08:30",
+      "end_time": "17:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "マ",
+      "start_time": "08:30",
+      "end_time": "17:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "Ｆ",
+      "start_time": "08:30",
+      "end_time": "17:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "○",
+      "start_time": "08:30",
+      "end_time": "17:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "▲",
+      "start_time": "08:00",
+      "end_time": "17:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "●",
+      "start_time": "08:30",
+      "end_time": "17:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "浴●",
+      "start_time": "08:30",
+      "end_time": "17:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "●2H",
+      "start_time": "09:30",
+      "end_time": "11:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "●◎",
+      "start_time": "09:00",
+      "end_time": "18:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "◎×",
+      "start_time": "09:00",
+      "end_time": "12:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "半",
+      "start_time": "09:00",
+      "end_time": "12:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "浴2H",
+      "start_time": "09:30",
+      "end_time": "11:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "休",
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "description": "自動検出パターン (112回出現)",
+      "is_overnight": false,
+      "priority": 8
+    },
+    {
+      "code": "×",
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "description": "自動検出パターン (176回出現)",
+      "is_overnight": false,
+      "priority": 8
+    },
+    {
+      "code": "有",
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "description": "自動検出パターン (19回出現)",
+      "is_overnight": false,
+      "priority": 8
+    },
+    {
+      "code": "研修",
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "description": "自動検出パターン (12回出現)",
+      "is_overnight": false,
+      "priority": 8
+    }
+  ],
+  "continuous_shift_rules": [
+    {
+      "name": "夜勤→明け番",
+      "from_patterns": [
+        "夜"
+      ],
+      "to_patterns": [
+        "明"
+      ],
+      "max_gap_hours": 0.5,
+      "overlap_tolerance_minutes": 30,
+      "description": "典型的な夜勤→明け番パターン"
+    },
+    {
+      "name": "自動検出: 休→○",
+      "from_patterns": [
+        "休"
+      ],
+      "to_patterns": [
+        "○"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 50)"
+    },
+    {
+      "name": "自動検出: ○→×",
+      "from_patterns": [
+        "○"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 65)"
+    },
+    {
+      "name": "自動検出: ×→×",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 46)"
+    },
+    {
+      "name": "自動検出: ×→○",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "○"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 58)"
+    },
+    {
+      "name": "自動検出: ○→○",
+      "from_patterns": [
+        "○"
+      ],
+      "to_patterns": [
+        "○"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 114)"
+    },
+    {
+      "name": "自動検出: ○→休",
+      "from_patterns": [
+        "○"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 34)"
+    },
+    {
+      "name": "自動検出: 休→有",
+      "from_patterns": [
+        "休"
+      ],
+      "to_patterns": [
+        "有"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 7)"
+    },
+    {
+      "name": "自動検出: 有→○",
+      "from_patterns": [
+        "有"
+      ],
+      "to_patterns": [
+        "○"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: ×→休",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 27)"
+    },
+    {
+      "name": "自動検出: 休→×",
+      "from_patterns": [
+        "休"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 27)"
+    },
+    {
+      "name": "自動検出: ×→●",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "●"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: ●→○",
+      "from_patterns": [
+        "●"
+      ],
+      "to_patterns": [
+        "○"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: 休→浴",
+      "from_patterns": [
+        "休"
+      ],
+      "to_patterns": [
+        "浴"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 12)"
+    },
+    {
+      "name": "自動検出: 浴→浴",
+      "from_patterns": [
+        "浴"
+      ],
+      "to_patterns": [
+        "浴"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 17)"
+    },
+    {
+      "name": "自動検出: 浴→休",
+      "from_patterns": [
+        "浴"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 8)"
+    },
+    {
+      "name": "自動検出: 浴→×",
+      "from_patterns": [
+        "浴"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 15)"
+    },
+    {
+      "name": "自動検出: ×→浴",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "浴"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 18)"
+    },
+    {
+      "name": "自動検出: ×→◎",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "◎"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 8)"
+    },
+    {
+      "name": "自動検出: ◎→×",
+      "from_patterns": [
+        "◎"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 6)"
+    },
+    {
+      "name": "自動検出: ●→休",
+      "from_patterns": [
+        "●"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: ×→▲",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "▲"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: ▲→×",
+      "from_patterns": [
+        "▲"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 6)"
+    },
+    {
+      "name": "自動検出: ▲→休",
+      "from_patterns": [
+        "▲"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: 浴→▲",
+      "from_patterns": [
+        "浴"
+      ],
+      "to_patterns": [
+        "▲"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: ●→▲",
+      "from_patterns": [
+        "●"
+      ],
+      "to_patterns": [
+        "▲"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: 浴→●",
+      "from_patterns": [
+        "浴"
+      ],
+      "to_patterns": [
+        "●"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 7)"
+    },
+    {
+      "name": "自動検出: ●→×",
+      "from_patterns": [
+        "●"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: ×→有",
+      "from_patterns": [
+        "×"
+      ],
+      "to_patterns": [
+        "有"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: 有→休",
+      "from_patterns": [
+        "有"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 7)"
+    },
+    {
+      "name": "自動検出: 休→●",
+      "from_patterns": [
+        "休"
+      ],
+      "to_patterns": [
+        "●"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: ●→◎",
+      "from_patterns": [
+        "●"
+      ],
+      "to_patterns": [
+        "◎"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: ◎→●",
+      "from_patterns": [
+        "◎"
+      ],
+      "to_patterns": [
+        "●"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: ◎→浴",
+      "from_patterns": [
+        "◎"
+      ],
+      "to_patterns": [
+        "浴"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: ●→●",
+      "from_patterns": [
+        "●"
+      ],
+      "to_patterns": [
+        "●"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: ●→浴",
+      "from_patterns": [
+        "●"
+      ],
+      "to_patterns": [
+        "浴"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: ▲→浴",
+      "from_patterns": [
+        "▲"
+      ],
+      "to_patterns": [
+        "浴"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: ◎→休",
+      "from_patterns": [
+        "◎"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: ◎→▲",
+      "from_patterns": [
+        "◎"
+      ],
+      "to_patterns": [
+        "▲"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: ▲→◎",
+      "from_patterns": [
+        "▲"
+      ],
+      "to_patterns": [
+        "◎"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: 浴→研修",
+      "from_patterns": [
+        "浴"
+      ],
+      "to_patterns": [
+        "研修"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: 研修→休",
+      "from_patterns": [
+        "研修"
+      ],
+      "to_patterns": [
+        "休"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: 休→▲",
+      "from_patterns": [
+        "休"
+      ],
+      "to_patterns": [
+        "▲"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: ▲→▲",
+      "from_patterns": [
+        "▲"
+      ],
+      "to_patterns": [
+        "▲"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: ○→有",
+      "from_patterns": [
+        "○"
+      ],
+      "to_patterns": [
+        "有"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 6)"
+    },
+    {
+      "name": "自動検出: 有→×",
+      "from_patterns": [
+        "有"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: ◎→◎",
+      "from_patterns": [
+        "◎"
+      ],
+      "to_patterns": [
+        "◎"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 7)"
+    },
+    {
+      "name": "自動検出: 休→◎",
+      "from_patterns": [
+        "休"
+      ],
+      "to_patterns": [
+        "◎"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 6)"
+    },
+    {
+      "name": "自動検出: ▲→●",
+      "from_patterns": [
+        "▲"
+      ],
+      "to_patterns": [
+        "●"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: ◎→研修",
+      "from_patterns": [
+        "◎"
+      ],
+      "to_patterns": [
+        "研修"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: 研修→研修",
+      "from_patterns": [
+        "研修"
+      ],
+      "to_patterns": [
+        "研修"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: 研修→◎",
+      "from_patterns": [
+        "研修"
+      ],
+      "to_patterns": [
+        "◎"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: 研修→×",
+      "from_patterns": [
+        "研修"
+      ],
+      "to_patterns": [
+        "×"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: ▲→研修",
+      "from_patterns": [
+        "▲"
+      ],
+      "to_patterns": [
+        "研修"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: 研修→▲",
+      "from_patterns": [
+        "研修"
+      ],
+      "to_patterns": [
+        "▲"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    }
+  ]
+}

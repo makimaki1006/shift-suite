@@ -1,0 +1,117 @@
+{
+  "files_analysis": {
+    "dash_app.py": {
+      "size_bytes": 515360,
+      "lines": 10703,
+      "complexity": 1434
+    },
+    "unified_data_pipeline_architecture.py": {
+      "size_bytes": 20419,
+      "lines": 535,
+      "complexity": 141
+    },
+    "gradual_integration_patch.py": {
+      "size_bytes": 10813,
+      "lines": 265,
+      "complexity": 38
+    }
+  },
+  "dependencies": [
+    {
+      "pattern": "unified_data_pipeline_architecture",
+      "line": 95,
+      "context": "from unified_data_pipeline_architecture import ("
+    },
+    {
+      "pattern": "UNIFIED_SYSTEM_AVAILABLE",
+      "line": 98,
+      "context": "UNIFIED_SYSTEM_AVAILABLE = True"
+    },
+    {
+      "pattern": "UNIFIED_SYSTEM_AVAILABLE",
+      "line": 102,
+      "context": "UNIFIED_SYSTEM_AVAILABLE = False"
+    },
+    {
+      "pattern": "UNIFIED_SYSTEM_AVAILABLE",
+      "line": 1918,
+      "context": "if UNIFIED_SYSTEM_AVAILABLE and 'proportional_abolition' in key:"
+    },
+    {
+      "pattern": "UNIFIED_REGISTRY",
+      "line": 99,
+      "context": "UNIFIED_REGISTRY = get_unified_registry()"
+    },
+    {
+      "pattern": "UNIFIED_REGISTRY",
+      "line": 103,
+      "context": "UNIFIED_REGISTRY = None"
+    },
+    {
+      "pattern": "UNIFIED_REGISTRY",
+      "line": 1921,
+      "context": "unified_data = UNIFIED_REGISTRY.get_data(DataType.PROPORTIONAL_ABOLITION_ROLE)"
+    },
+    {
+      "pattern": "UNIFIED_REGISTRY",
+      "line": 1923,
+      "context": "unified_data = UNIFIED_REGISTRY.get_data(DataType.PROPORTIONAL_ABOLITION_ORG)"
+    },
+    {
+      "pattern": "enhanced_data_get",
+      "line": 96,
+      "context": "get_unified_registry, enhanced_data_get, DataType"
+    },
+    {
+      "pattern": "enhanced_data_get",
+      "line": 1925,
+      "context": "unified_data = enhanced_data_get(key, default)"
+    },
+    {
+      "pattern": "DataType.PROPORTIONAL_ABOLITION",
+      "line": 1921,
+      "context": "unified_data = UNIFIED_REGISTRY.get_data(DataType.PROPORTIONAL_ABOLITION_ROLE)"
+    },
+    {
+      "pattern": "DataType.PROPORTIONAL_ABOLITION",
+      "line": 1923,
+      "context": "unified_data = UNIFIED_REGISTRY.get_data(DataType.PROPORTIONAL_ABOLITION_ORG)"
+    }
+  ],
+  "risks": [
+    {
+      "category": "Complexity",
+      "severity": "HIGH",
+      "description": "統一システム複雑度危険レベル (141)",
+      "impact": "システム理解困難・バグリスク大"
+    },
+    {
+      "category": "Integration",
+      "severity": "MEDIUM",
+      "description": "dash_app.pyに12箇所の統一システム依存",
+      "impact": "メンテナンス困難・副作用リスク"
+    },
+    {
+      "category": "Business",
+      "severity": "CRITICAL",
+      "description": "按分廃止ファイル検索→334ファイルスキャンシステムに発展",
+      "impact": "投資対効果悪化・技術的負債増大"
+    }
+  ],
+  "solution": {
+    "approach": "按分廃止ファイル専用検索パス追加",
+    "implementation": [
+      "data_get関数に按分廃止専用条件分岐追加",
+      "現在ディレクトリを按分廃止ファイルのみ検索対象に",
+      "他機能への影響ゼロ"
+    ],
+    "benefits": [
+      "コード変更最小(10行以下)",
+      "リスクゼロ(既存機能無変更)",
+      "按分廃止機能確実動作",
+      "理解容易・保守簡単"
+    ]
+  },
+  "timestamp": "2025-08-08T23:30:21.617279",
+  "recommendation": "IMMEDIATE_ROLLBACK_REQUIRED"
+}

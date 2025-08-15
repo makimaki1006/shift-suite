@@ -1,0 +1,148 @@
+{
+  "overall_practicality_score": 0.4395833333333333,
+  "criterion_scores": {
+    "technical_feasibility": 0.5999999999999999,
+    "operational_readiness": 0.3166666666666667,
+    "user_accessibility": 0.4,
+    "business_value": 0.7,
+    "maintenance_sustainability": 0.44000000000000006,
+    "scalability": 0.4,
+    "error_tolerance": 0.4,
+    "real_world_applicability": 0.26
+  },
+  "evidence_analysis": {
+    "objective_evidence_ratio": 0.3,
+    "subjective_assumptions_ratio": 0.7,
+    "empirical_validation_level": "low",
+    "theoretical_foundation": "moderate",
+    "data_quality": "sample_based",
+    "measurement_reliability": "estimated"
+  },
+  "gap_identification": {
+    "technical_feasibility": {
+      "current_score": 0.5999999999999999,
+      "gap_to_practical": 0.10000000000000009,
+      "severity": "high",
+      "impact_on_usability": "実装不可リスク"
+    },
+    "operational_readiness": {
+      "current_score": 0.3166666666666667,
+      "gap_to_practical": 0.38333333333333325,
+      "severity": "critical",
+      "impact_on_usability": "運用失敗リスク"
+    },
+    "user_accessibility": {
+      "current_score": 0.4,
+      "gap_to_practical": 0.29999999999999993,
+      "severity": "high",
+      "impact_on_usability": "ユーザー離脱リスク"
+    },
+    "maintenance_sustainability": {
+      "current_score": 0.44000000000000006,
+      "gap_to_practical": 0.2599999999999999,
+      "severity": "high",
+      "impact_on_usability": "長期運用不可リスク"
+    },
+    "scalability": {
+      "current_score": 0.4,
+      "gap_to_practical": 0.29999999999999993,
+      "severity": "high",
+      "impact_on_usability": "成長対応不可リスク"
+    },
+    "error_tolerance": {
+      "current_score": 0.4,
+      "gap_to_practical": 0.29999999999999993,
+      "severity": "high",
+      "impact_on_usability": "システム停止リスク"
+    },
+    "real_world_applicability": {
+      "current_score": 0.26,
+      "gap_to_practical": 0.43999999999999995,
+      "severity": "critical",
+      "impact_on_usability": "実用化失敗リスク"
+    }
+  },
+  "usability_barriers": {
+    "missing_infrastructure": [
+      "CI/CDパイプライン未整備",
+      "本格的な監視システム不在",
+      "バックアップ・復旧システム未実装",
+      "セキュリティ対策不十分"
+    ],
+    "insufficient_testing": [
+      "実データでの検証未実施",
+      "負荷テスト未実施",
+      "ユーザビリティテスト未実施",
+      "セキュリティテスト未実施"
+    ],
+    "documentation_gaps": [
+      "運用マニュアル不在",
+      "トラブルシューティングガイド不在",
+      "API仕様書不完全",
+      "ユーザートレーニング資料不在"
+    ],
+    "compliance_unknowns": [
+      "労働法準拠未確認",
+      "業界規制適合未確認",
+      "データ保護法対応未確認",
+      "アクセシビリティ基準未準拠"
+    ]
+  },
+  "improvement_requirements": {
+    "minimum_requirements": {
+      "critical_priority": [
+        "実環境での試験運用実施",
+        "実データでの動作確認",
+        "セキュリティ対策の実装",
+        "バックアップ・復旧システム構築"
+      ],
+      "high_priority": [
+        "負荷テストの実施",
+        "運用マニュアルの作成",
+        "エラー処理の強化",
+        "パフォーマンス最適化"
+      ],
+      "medium_priority": [
+        "ユーザビリティテスト",
+        "コードレビューと改善",
+        "監視システムの強化",
+        "ドキュメント充実"
+      ]
+    },
+    "improvement_estimates": {
+      "time_to_minimum_viable": "2-3ヶ月",
+      "time_to_production_ready": "4-6ヶ月",
+      "estimated_effort": "高（専門チーム必要）",
+      "infrastructure_cost": "中程度",
+      "risk_level": "中～高（未検証要素多数）"
+    }
+  },
+  "practical_readiness_assessment": "Development Phase - 開発継続中",
+  "objective_evidence": {
+    "code_exists": true,
+    "basic_functionality_works": true,
+    "test_data_processes": true,
+    "json_output_generated": true,
+    "dash_interface_renders": true,
+    "quality_metrics_calculated": true
+  },
+  "subjective_assumptions": {
+    "performance_adequacy": "推定値",
+    "scalability_sufficiency": "未検証の仮定",
+    "user_satisfaction": "未測定の期待",
+    "business_value_realization": "理論的予測",
+    "maintenance_feasibility": "経験則による推定",
+    "real_world_compatibility": "理想的条件での仮定",
+    "deployment_simplicity": "開発環境での経験による推定",
+    "cost_effectiveness": "未実証の期待"
+  },
+  "verification_methodology": {
+    "verification_approach": "multi_criteria_assessment",
+    "evaluation_basis": "8つの実用性基準による包括評価",
+    "scoring_method": "各基準0-1.0の数値評価",
+    "evidence_classification": "objective_vs_subjective separation",
+    "limitation_acknowledgment": "多くの評価が推定値に基づく",
+    "validation_requirements": "実環境での検証が必要",
+    "methodology_confidence": "medium - 構造化されているが実証データ不足"
+  }
+}

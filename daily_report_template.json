@@ -1,0 +1,144 @@
+{
+  "report_id": "DAILY_REPORT_TEMPLATE_001",
+  "sections": [
+    {
+      "title": "エグゼクティブサマリー",
+      "content": [
+        {
+          "metric": "system_availability",
+          "format": "percentage"
+        },
+        {
+          "metric": "total_users",
+          "format": "number"
+        },
+        {
+          "metric": "key_incidents",
+          "format": "list"
+        },
+        {
+          "metric": "overall_health_score",
+          "format": "gauge"
+        }
+      ]
+    },
+    {
+      "title": "システムパフォーマンス",
+      "content": [
+        {
+          "metric": "average_response_time",
+          "format": "time_series"
+        },
+        {
+          "metric": "peak_load_times",
+          "format": "table"
+        },
+        {
+          "metric": "resource_utilization",
+          "format": "stacked_chart"
+        },
+        {
+          "metric": "throughput_metrics",
+          "format": "line_chart"
+        }
+      ]
+    },
+    {
+      "title": "エラー分析",
+      "content": [
+        {
+          "metric": "error_count_by_type",
+          "format": "bar_chart"
+        },
+        {
+          "metric": "error_trends",
+          "format": "time_series"
+        },
+        {
+          "metric": "top_errors",
+          "format": "table"
+        },
+        {
+          "metric": "resolution_status",
+          "format": "pie_chart"
+        }
+      ]
+    },
+    {
+      "title": "ユーザー活動",
+      "content": [
+        {
+          "metric": "active_users",
+          "format": "number"
+        },
+        {
+          "metric": "feature_usage",
+          "format": "heatmap"
+        },
+        {
+          "metric": "user_feedback_summary",
+          "format": "sentiment"
+        },
+        {
+          "metric": "session_duration",
+          "format": "histogram"
+        }
+      ]
+    },
+    {
+      "title": "データ品質",
+      "content": [
+        {
+          "metric": "data_completeness",
+          "format": "percentage"
+        },
+        {
+          "metric": "data_accuracy",
+          "format": "percentage"
+        },
+        {
+          "metric": "processing_success_rate",
+          "format": "percentage"
+        },
+        {
+          "metric": "data_anomalies",
+          "format": "list"
+        }
+      ]
+    },
+    {
+      "title": "推奨アクション",
+      "content": [
+        {
+          "type": "immediate_actions",
+          "format": "prioritized_list"
+        },
+        {
+          "type": "preventive_measures",
+          "format": "list"
+        },
+        {
+          "type": "optimization_opportunities",
+          "format": "list"
+        }
+      ]
+    }
+  ],
+  "distribution": {
+    "schedule": "daily_0800",
+    "recipients": {
+      "primary": [
+        "management@example.com"
+      ],
+      "cc": [
+        "team@example.com"
+      ],
+      "dashboard": true
+    },
+    "format": [
+      "pdf",
+      "html",
+      "json"
+    ]
+  }
+}

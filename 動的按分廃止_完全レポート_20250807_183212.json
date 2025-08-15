@@ -1,0 +1,703 @@
+{
+  "system_info": {
+    "system_name": "動的対応強化版 按分廃止・職種別分析システム",
+    "version": "2.0_DYNAMIC",
+    "timestamp": "2025-08-07T18:32:12.204338",
+    "dynamic_features": [
+      "app.py期間連携",
+      "Needファイル動的検出",
+      "職種動的マッピング",
+      "スロット数動的対応"
+    ]
+  },
+  "dynamic_config": {
+    "period_info": {
+      "start_date": "2025-07-08 18:32:11.808752",
+      "end_date": "2025-08-07 18:32:11.808762",
+      "period_days": 31,
+      "source": "APP_PY_DYNAMIC"
+    },
+    "data_structure": {
+      "detected_slot_count": 48,
+      "detected_period_days": 30,
+      "detected_date_range": {
+        "start": "2025-04-01",
+        "end": "2025-04-30"
+      },
+      "time_slots": [
+        "00:00:00",
+        "00:30:00",
+        "01:00:00",
+        "01:30:00",
+        "02:00:00",
+        "02:30:00",
+        "03:00:00",
+        "03:30:00",
+        "04:00:00",
+        "04:30:00",
+        "05:00:00",
+        "05:30:00",
+        "06:00:00",
+        "06:30:00",
+        "07:00:00",
+        "07:30:00",
+        "08:00:00",
+        "08:30:00",
+        "09:00:00",
+        "09:30:00",
+        "10:00:00",
+        "10:30:00",
+        "11:00:00",
+        "11:30:00",
+        "12:00:00",
+        "12:30:00",
+        "13:00:00",
+        "13:30:00",
+        "14:00:00",
+        "14:30:00",
+        "15:00:00",
+        "15:30:00",
+        "16:00:00",
+        "16:30:00",
+        "17:00:00",
+        "17:30:00",
+        "18:00:00",
+        "18:30:00",
+        "19:00:00",
+        "19:30:00",
+        "20:00:00",
+        "20:30:00",
+        "21:00:00",
+        "21:30:00",
+        "22:00:00",
+        "22:30:00",
+        "23:00:00",
+        "23:30:00"
+      ]
+    },
+    "calculation_settings": {
+      "slot_hours": 0.5,
+      "hours_per_day": 24,
+      "dynamic_slot_count": true,
+      "dynamic_period": true,
+      "dynamic_roles": true,
+      "dynamic_need_files": true
+    },
+    "detection_settings": {
+      "need_file_pattern": "*.parquet",
+      "role_detection_method": "AUTO",
+      "period_detection_method": "AUTO"
+    }
+  },
+  "dynamic_data_metadata": {
+    "intermediate_metadata": {
+      "file_path": "extracted_results\\out_p25_based\\intermediate_data.parquet",
+      "total_records": 6883,
+      "operating_records": 6073,
+      "unique_roles": 11,
+      "unique_employments": 3,
+      "unique_staff": 21,
+      "date_range": {
+        "start": "2025-04-01",
+        "end": "2025-04-30",
+        "days": 30
+      },
+      "time_structure": {
+        "unique_times": 48,
+        "time_range": {
+          "start": "00:00:00",
+          "end": "23:30:00"
+        }
+      }
+    },
+    "need_metadata": {
+      "detected_files_count": 13,
+      "successfully_loaded": 13,
+      "file_details": [
+        {
+          "file_name": "need_per_date_slot_role_事務・介護.parquet",
+          "extracted_role": "事務・介護",
+          "total_need": "306",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_介護.parquet",
+          "extracted_role": "介護",
+          "total_need": "1455",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_介護・相談員.parquet",
+          "extracted_role": "介護・相談員",
+          "total_need": "301",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_介護（W_2）.parquet",
+          "extracted_role": "介護（W 2）",
+          "total_need": "157",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_介護（W_3）.parquet",
+          "extracted_role": "介護（W 3）",
+          "total_need": "136",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_機能訓練士.parquet",
+          "extracted_role": "機能訓練士",
+          "total_need": "486",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_看護師.parquet",
+          "extracted_role": "看護師",
+          "total_need": "702",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_管理者・相談員.parquet",
+          "extracted_role": "管理者・相談員",
+          "total_need": "387",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_role_運転士.parquet",
+          "extracted_role": "運転士",
+          "total_need": "1548",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot.parquet",
+          "extracted_role": "per date slot",
+          "total_need": "5564",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_emp_スポット.parquet",
+          "extracted_role": "per date slot emp スポット",
+          "total_need": "468",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_emp_パート.parquet",
+          "extracted_role": "per date slot emp パート",
+          "total_need": "2885",
+          "structure": [
+            48,
+            30
+          ]
+        },
+        {
+          "file_name": "need_per_date_slot_emp_正社員.parquet",
+          "extracted_role": "per date slot emp 正社員",
+          "total_need": "2082",
+          "structure": [
+            48,
+            30
+          ]
+        }
+      ],
+      "detection_patterns_used": [
+        "need_per_date_slot_role_*.parquet",
+        "need_*_role_*.parquet",
+        "need_*.parquet",
+        "*need*.parquet"
+      ]
+    },
+    "role_mapping": {
+      "role_mappings": {
+        "事務・介護": "事務・介護",
+        "運転士": "運転士",
+        "機能訓練士": "機能訓練士",
+        "管理者・相談員": "管理者・相談員",
+        "介護・相談員": "介護・相談員",
+        "看護師": "看護師",
+        "介護": "介護",
+        "介護（W/3）": "介護（W 2）",
+        "介護（W/2）": "介護（W 3）"
+      },
+      "unmatched_actual_roles": [
+        "事務",
+        "施設長・相談員"
+      ],
+      "unmatched_need_roles": [
+        "per date slot emp パート",
+        "per date slot",
+        "per date slot emp スポット",
+        "per date slot emp 正社員"
+      ],
+      "mapping_statistics": {
+        "total_actual_roles": 11,
+        "total_need_roles": 13,
+        "successful_mappings": 9,
+        "mapping_success_rate": 0.8181818181818182
+      }
+    },
+    "system_metadata": {
+      "total_roles_detected": 9,
+      "total_need_files_detected": 13,
+      "data_consistency_check": {
+        "period_consistency": true,
+        "slot_consistency": true,
+        "issues": []
+      }
+    }
+  },
+  "analysis_results": {
+    "role_based_analysis": {
+      "role_shortages": {
+        "事務・介護": {
+          "role": "事務・介護",
+          "mapped_need_role": "事務・介護",
+          "need_hours_daily": 4.935483870967742,
+          "actual_hours_daily": 6.241935483870968,
+          "shortage_daily": -1.306451612903226,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 1.306451612903226,
+          "coverage_ratio": 1.2647058823529411
+        },
+        "運転士": {
+          "role": "運転士",
+          "mapped_need_role": "運転士",
+          "need_hours_daily": 24.967741935483872,
+          "actual_hours_daily": 26.548387096774192,
+          "shortage_daily": -1.5806451612903203,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 5,
+          "shortage_magnitude": 1.5806451612903203,
+          "coverage_ratio": 1.0633074935400515
+        },
+        "機能訓練士": {
+          "role": "機能訓練士",
+          "mapped_need_role": "機能訓練士",
+          "need_hours_daily": 7.838709677419355,
+          "actual_hours_daily": 8.370967741935484,
+          "shortage_daily": -0.532258064516129,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 2,
+          "shortage_magnitude": 0.532258064516129,
+          "coverage_ratio": 1.0679012345679013
+        },
+        "管理者・相談員": {
+          "role": "管理者・相談員",
+          "mapped_need_role": "管理者・相談員",
+          "need_hours_daily": 6.241935483870968,
+          "actual_hours_daily": 6.241935483870968,
+          "shortage_daily": 0.0,
+          "shortage_status": "BALANCED",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.0,
+          "coverage_ratio": 1.0
+        },
+        "介護・相談員": {
+          "role": "介護・相談員",
+          "mapped_need_role": "介護・相談員",
+          "need_hours_daily": 4.854838709677419,
+          "actual_hours_daily": 5.967741935483871,
+          "shortage_daily": -1.112903225806452,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 1.112903225806452,
+          "coverage_ratio": 1.2292358803986712
+        },
+        "看護師": {
+          "role": "看護師",
+          "mapped_need_role": "看護師",
+          "need_hours_daily": 11.32258064516129,
+          "actual_hours_daily": 12.14516129032258,
+          "shortage_daily": -0.82258064516129,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 3,
+          "shortage_magnitude": 0.82258064516129,
+          "coverage_ratio": 1.0726495726495726
+        },
+        "介護": {
+          "role": "介護",
+          "mapped_need_role": "介護",
+          "need_hours_daily": 23.467741935483872,
+          "actual_hours_daily": 25.56451612903226,
+          "shortage_daily": -2.096774193548388,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 4,
+          "shortage_magnitude": 2.096774193548388,
+          "coverage_ratio": 1.0893470790378008
+        },
+        "介護（W/3）": {
+          "role": "介護（W/3）",
+          "mapped_need_role": "介護（W 2）",
+          "need_hours_daily": 2.532258064516129,
+          "actual_hours_daily": 3.225806451612903,
+          "shortage_daily": -0.693548387096774,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.693548387096774,
+          "coverage_ratio": 1.2738853503184713
+        },
+        "介護（W/2）": {
+          "role": "介護（W/2）",
+          "mapped_need_role": "介護（W 3）",
+          "need_hours_daily": 2.193548387096774,
+          "actual_hours_daily": 2.6774193548387095,
+          "shortage_daily": -0.4838709677419355,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.4838709677419355,
+          "coverage_ratio": 1.2205882352941178
+        },
+        "事務": {
+          "role": "事務",
+          "mapped_need_role": null,
+          "need_hours_daily": 0,
+          "actual_hours_daily": 0.4838709677419355,
+          "shortage_daily": -0.4838709677419355,
+          "shortage_status": "SURPLUS_NO_NEED_DATA",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.4838709677419355,
+          "coverage_ratio": Infinity
+        },
+        "施設長・相談員": {
+          "role": "施設長・相談員",
+          "mapped_need_role": null,
+          "need_hours_daily": 0,
+          "actual_hours_daily": 0.4838709677419355,
+          "shortage_daily": -0.4838709677419355,
+          "shortage_status": "SURPLUS_NO_NEED_DATA",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.4838709677419355,
+          "coverage_ratio": Infinity
+        }
+      },
+      "shortage_ranking": [
+        {
+          "role": "管理者・相談員",
+          "mapped_need_role": "管理者・相談員",
+          "need_hours_daily": 6.241935483870968,
+          "actual_hours_daily": 6.241935483870968,
+          "shortage_daily": 0.0,
+          "shortage_status": "BALANCED",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.0,
+          "coverage_ratio": 1.0
+        },
+        {
+          "role": "介護（W/2）",
+          "mapped_need_role": "介護（W 3）",
+          "need_hours_daily": 2.193548387096774,
+          "actual_hours_daily": 2.6774193548387095,
+          "shortage_daily": -0.4838709677419355,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.4838709677419355,
+          "coverage_ratio": 1.2205882352941178
+        },
+        {
+          "role": "事務",
+          "mapped_need_role": null,
+          "need_hours_daily": 0,
+          "actual_hours_daily": 0.4838709677419355,
+          "shortage_daily": -0.4838709677419355,
+          "shortage_status": "SURPLUS_NO_NEED_DATA",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.4838709677419355,
+          "coverage_ratio": Infinity
+        },
+        {
+          "role": "施設長・相談員",
+          "mapped_need_role": null,
+          "need_hours_daily": 0,
+          "actual_hours_daily": 0.4838709677419355,
+          "shortage_daily": -0.4838709677419355,
+          "shortage_status": "SURPLUS_NO_NEED_DATA",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.4838709677419355,
+          "coverage_ratio": Infinity
+        },
+        {
+          "role": "機能訓練士",
+          "mapped_need_role": "機能訓練士",
+          "need_hours_daily": 7.838709677419355,
+          "actual_hours_daily": 8.370967741935484,
+          "shortage_daily": -0.532258064516129,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 2,
+          "shortage_magnitude": 0.532258064516129,
+          "coverage_ratio": 1.0679012345679013
+        },
+        {
+          "role": "介護（W/3）",
+          "mapped_need_role": "介護（W 2）",
+          "need_hours_daily": 2.532258064516129,
+          "actual_hours_daily": 3.225806451612903,
+          "shortage_daily": -0.693548387096774,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 0.693548387096774,
+          "coverage_ratio": 1.2738853503184713
+        },
+        {
+          "role": "看護師",
+          "mapped_need_role": "看護師",
+          "need_hours_daily": 11.32258064516129,
+          "actual_hours_daily": 12.14516129032258,
+          "shortage_daily": -0.82258064516129,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 3,
+          "shortage_magnitude": 0.82258064516129,
+          "coverage_ratio": 1.0726495726495726
+        },
+        {
+          "role": "介護・相談員",
+          "mapped_need_role": "介護・相談員",
+          "need_hours_daily": 4.854838709677419,
+          "actual_hours_daily": 5.967741935483871,
+          "shortage_daily": -1.112903225806452,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 1.112903225806452,
+          "coverage_ratio": 1.2292358803986712
+        },
+        {
+          "role": "事務・介護",
+          "mapped_need_role": "事務・介護",
+          "need_hours_daily": 4.935483870967742,
+          "actual_hours_daily": 6.241935483870968,
+          "shortage_daily": -1.306451612903226,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 1,
+          "shortage_magnitude": 1.306451612903226,
+          "coverage_ratio": 1.2647058823529411
+        },
+        {
+          "role": "運転士",
+          "mapped_need_role": "運転士",
+          "need_hours_daily": 24.967741935483872,
+          "actual_hours_daily": 26.548387096774192,
+          "shortage_daily": -1.5806451612903203,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 5,
+          "shortage_magnitude": 1.5806451612903203,
+          "coverage_ratio": 1.0633074935400515
+        },
+        {
+          "role": "介護",
+          "mapped_need_role": "介護",
+          "need_hours_daily": 23.467741935483872,
+          "actual_hours_daily": 25.56451612903226,
+          "shortage_daily": -2.096774193548388,
+          "shortage_status": "SURPLUS",
+          "staff_count_current": 4,
+          "shortage_magnitude": 2.096774193548388,
+          "coverage_ratio": 1.0893470790378008
+        }
+      ],
+      "total_roles": 11,
+      "mapped_roles": 9,
+      "unmapped_roles": 2,
+      "shortage_roles": 0,
+      "surplus_roles": 10
+    },
+    "employment_based_analysis": {
+      "employment_shortages": {
+        "正社員": {
+          "employment": "正社員",
+          "need_hours_daily": 568.4760665973016,
+          "actual_hours_daily": 38.12903225806452,
+          "shortage_daily": 530.3470343392371,
+          "shortage_status": "SHORTAGE",
+          "staff_count_current": 9,
+          "shortage_magnitude": 530.3470343392371,
+          "coverage_ratio": 0.06707236152665412
+        },
+        "パート": {
+          "employment": "パート",
+          "need_hours_daily": 831.575962539013,
+          "actual_hours_daily": 52.20967741935484,
+          "shortage_daily": 779.3662851196581,
+          "shortage_status": "SHORTAGE",
+          "staff_count_current": 11,
+          "shortage_magnitude": 779.3662851196581,
+          "coverage_ratio": 0.06278401465567308
+        },
+        "スポット": {
+          "employment": "スポット",
+          "need_hours_daily": 178.6576482830387,
+          "actual_hours_daily": 7.612903225806452,
+          "shortage_daily": 171.04474505723223,
+          "shortage_status": "SHORTAGE",
+          "staff_count_current": 1,
+          "shortage_magnitude": 171.04474505723223,
+          "coverage_ratio": 0.042611683848797204
+        }
+      },
+      "total_employments": 3,
+      "shortage_employments": 3,
+      "surplus_employments": 0
+    },
+    "organization_wide_analysis": {
+      "total_need_daily": 265.758064516129,
+      "total_actual_daily": 97.95161290322581,
+      "total_shortage_daily": 167.80645161290323,
+      "organization_status": "SHORTAGE",
+      "total_staff_count": 21,
+      "coverage_ratio": 0.3685743764034715,
+      "shortage_percentage": 63.14256235965286,
+      "period_days": 31,
+      "calculation_method": "DYNAMIC_PERIOD_AWARE"
+    },
+    "comprehensive_analysis": {
+      "analysis_timestamp": "2025-08-07T18:32:12.204280",
+      "analysis_type": "DYNAMIC_PROPORTIONAL_ABOLITION_ANALYSIS",
+      "dynamic_system_config": {
+        "period_info": {
+          "start_date": "2025-07-08 18:32:11.808752",
+          "end_date": "2025-08-07 18:32:11.808762",
+          "period_days": 31,
+          "source": "APP_PY_DYNAMIC"
+        },
+        "data_structure": {
+          "detected_slot_count": 48,
+          "detected_period_days": 30,
+          "detected_date_range": {
+            "start": "2025-04-01",
+            "end": "2025-04-30"
+          },
+          "time_slots": [
+            "00:00:00",
+            "00:30:00",
+            "01:00:00",
+            "01:30:00",
+            "02:00:00",
+            "02:30:00",
+            "03:00:00",
+            "03:30:00",
+            "04:00:00",
+            "04:30:00",
+            "05:00:00",
+            "05:30:00",
+            "06:00:00",
+            "06:30:00",
+            "07:00:00",
+            "07:30:00",
+            "08:00:00",
+            "08:30:00",
+            "09:00:00",
+            "09:30:00",
+            "10:00:00",
+            "10:30:00",
+            "11:00:00",
+            "11:30:00",
+            "12:00:00",
+            "12:30:00",
+            "13:00:00",
+            "13:30:00",
+            "14:00:00",
+            "14:30:00",
+            "15:00:00",
+            "15:30:00",
+            "16:00:00",
+            "16:30:00",
+            "17:00:00",
+            "17:30:00",
+            "18:00:00",
+            "18:30:00",
+            "19:00:00",
+            "19:30:00",
+            "20:00:00",
+            "20:30:00",
+            "21:00:00",
+            "21:30:00",
+            "22:00:00",
+            "22:30:00",
+            "23:00:00",
+            "23:30:00"
+          ]
+        },
+        "calculation_settings": {
+          "slot_hours": 0.5,
+          "hours_per_day": 24,
+          "dynamic_slot_count": true,
+          "dynamic_period": true,
+          "dynamic_roles": true,
+          "dynamic_need_files": true
+        },
+        "detection_settings": {
+          "need_file_pattern": "*.parquet",
+          "role_detection_method": "AUTO",
+          "period_detection_method": "AUTO"
+        }
+      },
+      "dynamic_effectiveness": {
+        "period_flexibility": true,
+        "role_flexibility": true,
+        "need_file_flexibility": true,
+        "mapping_success_rate": 0.8181818181818182
+      },
+      "proportional_abolition_effect": {
+        "organization_shortage_magnitude": 167.80645161290323,
+        "max_individual_role_shortage": 2.096774193548388,
+        "average_individual_role_shortage": 0.872434017595308,
+        "proportional_hiding_detected": "False",
+        "abolition_effectiveness": "MODERATE",
+        "detailed_findings": [
+          "最大職種不足: 2.1時間/日",
+          "組織全体不足: 167.8時間/日",
+          "按分隠蔽なし"
+        ]
+      },
+      "role_analysis_summary": {
+        "total_roles_analyzed": 11,
+        "mapped_roles": 9,
+        "unmapped_roles": 2,
+        "roles_in_shortage": 0,
+        "roles_in_surplus": 10
+      },
+      "organization_analysis_summary": {
+        "organization_status": "SHORTAGE",
+        "total_shortage_daily": 167.80645161290323,
+        "period_days_used": 31,
+        "calculation_method": "DYNAMIC_PERIOD_AWARE"
+      },
+      "system_recommendations": [
+        "期間動的対応: 正常動作中",
+        "未マップ職種対応: 2職種要対応",
+        "組織全体で人手不足: 採用強化推奨"
+      ]
+    }
+  }
+}

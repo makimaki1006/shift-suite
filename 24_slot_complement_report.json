@@ -1,0 +1,61 @@
+{
+  "complement_timestamp": "2025-08-07T15:20:12.508182",
+  "operation": "24スロット構造への統一",
+  "original_data_stats": {
+    "records": 6073,
+    "unique_slots": 21,
+    "date_range_days": 30
+  },
+  "complemented_data_stats": {
+    "records": 6883,
+    "unique_slots": 48,
+    "date_range_days": 30
+  },
+  "complement_operation": {
+    "missing_slots_identified": 27,
+    "missing_slots_details": [
+      "00:30:00",
+      "01:00:00",
+      "01:30:00",
+      "02:00:00",
+      "02:30:00",
+      "03:00:00",
+      "03:30:00",
+      "04:00:00",
+      "04:30:00",
+      "05:00:00",
+      "05:30:00",
+      "06:00:00",
+      "06:30:00",
+      "07:00:00",
+      "07:30:00",
+      "18:00:00",
+      "18:30:00",
+      "19:00:00",
+      "19:30:00",
+      "20:00:00",
+      "20:30:00",
+      "21:00:00",
+      "21:30:00",
+      "22:00:00",
+      "22:30:00",
+      "23:00:00",
+      "23:30:00"
+    ],
+    "complement_records_added": 810
+  },
+  "validation_result": {
+    "valid": true,
+    "checks": {
+      "complete_coverage": true,
+      "slot_count": true,
+      "date_continuity": true,
+      "night_slots_present": true
+    },
+    "issues": []
+  },
+  "next_steps": [
+    "Step 2: 正確なスロット時間計算の確立",
+    "Step 3: Needファイルとの整合性確認"
+  ]
+}

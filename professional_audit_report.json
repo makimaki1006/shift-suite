@@ -1,0 +1,172 @@
+{
+  "audit_timestamp": "2025-08-11T14:28:34.300093",
+  "claims_verification": {
+    "動的データ対応機能確認": {
+      "claimed": "機能確認完了",
+      "actual": "既存機能確認",
+      "accuracy": "正確（既存機能の動作確認を実施）"
+    },
+    "データフロー100%達成": {
+      "claimed": "100%一貫性",
+      "actual": "100.0%",
+      "accuracy": "概ね正確"
+    },
+    "shortage実行プロセス修復": {
+      "claimed": "機能修復完了",
+      "actual": "3 / 3 シナリオ修復",
+      "accuracy": "正確"
+    },
+    "90+モジュール利用可能": {
+      "claimed": "90+モジュール",
+      "actual": "4コアモジュール確認済み、他は未検証",
+      "accuracy": "確認不足"
+    }
+  },
+  "technical_findings": {
+    "core_modules": {
+      "claimed": 4,
+      "verified": 4,
+      "verification_rate": 1.0
+    },
+    "data_processing": {
+      "out_p25_based": {
+        "exists": true,
+        "files_audit": {
+          "shortage_time.parquet": {
+            "exists": true,
+            "size_bytes": 19130,
+            "rows": 48,
+            "columns": 30,
+            "data_quality": "valid"
+          },
+          "shortage_role_summary.parquet": {
+            "exists": true,
+            "size_bytes": 6506,
+            "rows": 12,
+            "columns": 9,
+            "data_quality": "valid"
+          },
+          "shortage_employment_summary.parquet": {
+            "exists": true,
+            "size_bytes": 6236,
+            "rows": 3,
+            "columns": 9,
+            "data_quality": "valid"
+          }
+        },
+        "data_quality": {},
+        "critical_files_completion": 1.0
+      },
+      "out_mean_based": {
+        "exists": true,
+        "files_audit": {
+          "shortage_time.parquet": {
+            "exists": true,
+            "size_bytes": 19130,
+            "rows": 48,
+            "columns": 30,
+            "data_quality": "valid"
+          },
+          "shortage_role_summary.parquet": {
+            "exists": true,
+            "size_bytes": 6492,
+            "rows": 12,
+            "columns": 9,
+            "data_quality": "valid"
+          },
+          "shortage_employment_summary.parquet": {
+            "exists": true,
+            "size_bytes": 6236,
+            "rows": 3,
+            "columns": 9,
+            "data_quality": "valid"
+          }
+        },
+        "data_quality": {},
+        "critical_files_completion": 1.0
+      },
+      "out_median_based": {
+        "exists": true,
+        "files_audit": {
+          "shortage_time.parquet": {
+            "exists": true,
+            "size_bytes": 19130,
+            "rows": 48,
+            "columns": 30,
+            "data_quality": "valid"
+          },
+          "shortage_role_summary.parquet": {
+            "exists": true,
+            "size_bytes": 6492,
+            "rows": 12,
+            "columns": 9,
+            "data_quality": "valid"
+          },
+          "shortage_employment_summary.parquet": {
+            "exists": true,
+            "size_bytes": 6236,
+            "rows": 3,
+            "columns": 9,
+            "data_quality": "valid"
+          }
+        },
+        "data_quality": {},
+        "critical_files_completion": 1.0
+      }
+    },
+    "dynamic_features": {
+      "slot_configuration": {
+        "DEFAULT_SLOT_MINUTES": 30,
+        "SLOT_HOURS": 0.5,
+        "consistency": true
+      },
+      "mapping_functions": {
+        "COL_ALIASES_count": 11,
+        "SHEET_COL_ALIAS_count": 13
+      },
+      "filtering_functions": {
+        "apply_rest_exclusion_filter": true
+      }
+    },
+    "data_flow": {
+      "データ入稿": {
+        "completion_rate": 1.0,
+        "completed_files": 2,
+        "expected_files": 2
+      },
+      "データ分解": {
+        "completion_rate": 1.0,
+        "completed_files": 3,
+        "expected_files": 3
+      },
+      "データ分析": {
+        "completion_rate": 1.0,
+        "completed_files": 3,
+        "expected_files": 3
+      },
+      "データ加工": {
+        "completion_rate": 1.0,
+        "completed_files": 3,
+        "expected_files": 3
+      },
+      "可視化": {
+        "completion_rate": 1.0,
+        "completed_files": 3,
+        "expected_files": 3
+      }
+    }
+  },
+  "risk_assessment": [
+    {
+      "type": "表現正確性リスク",
+      "severity": "低",
+      "description": "1件の主張で表現と実態の乖離"
+    }
+  ],
+  "recommendations": [
+    "表現の正確性向上: '実装'→'確認'等の事実に基づく適切な表現使用",
+    "検証範囲の明確化: 確認済み機能と未確認機能の明確な区別",
+    "継続監視体制: 定期的なシステム健全性チェックの実装",
+    "ドキュメント品質向上: 技術的成果と表現の整合性確保"
+  ]
+}

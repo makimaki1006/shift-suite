@@ -1,0 +1,216 @@
+{
+  "metadata": {
+    "ux_monitoring_execution_id": "PHASE1_UX_MONITOR_20250804_093934",
+    "monitoring_start_time": "2025-08-04T09:39:34.298911",
+    "monitoring_end_time": "2025-08-04T09:39:34.431091",
+    "monitoring_duration": "0:00:00.132182",
+    "ux_baselines": {
+      "user_satisfaction_score": 96.6,
+      "mobile_usability_score": 95.5,
+      "responsive_layout_score": 98.0,
+      "navigation_efficiency_score": 92.0
+    },
+    "monitoring_scope": "ユーザー体験・モバイル機能・アクセシビリティ"
+  },
+  "mobile_functionality_check": {
+    "success": true,
+    "functionality_results": {
+      "assets/c2-mobile-integrated.css": {
+        "available": true,
+        "features": {
+          "responsive_queries": true,
+          "mobile_breakpoints": true,
+          "touch_targets": true,
+          "flexible_layouts": true,
+          "viewport_units": true,
+          "content_substantial": true
+        },
+        "feature_completeness": 1.0,
+        "functionality_level": "comprehensive"
+      },
+      "assets/c2-mobile-integrated.js": {
+        "available": true,
+        "features": {
+          "touch_event_handling": true,
+          "responsive_behavior": true,
+          "mobile_detection": true,
+          "event_listeners": true,
+          "dom_manipulation": true,
+          "content_substantial": true
+        },
+        "feature_completeness": 1.0,
+        "functionality_level": "comprehensive"
+      },
+      "assets/c2-service-worker.js": {
+        "available": true,
+        "features": {
+          "offline_support": true,
+          "mobile_optimization": true,
+          "quality_monitoring": true,
+          "error_handling": true,
+          "progressive_enhancement": true,
+          "content_substantial": true
+        },
+        "feature_completeness": 1.0,
+        "functionality_level": "comprehensive"
+      }
+    },
+    "all_assets_functional": true,
+    "comprehensive_features_count": 3,
+    "overall_functionality_level": "excellent",
+    "check_timestamp": "2025-08-04T09:39:34.322342"
+  },
+  "responsive_design_check": {
+    "success": true,
+    "responsive_checks": {
+      "css_responsive": {
+        "elements": {
+          "media_queries_count": 11,
+          "mobile_breakpoints": [
+            "320px",
+            "480px",
+            "768px",
+            "1024px",
+            "1200px"
+          ],
+          "breakpoints_implemented": [
+            "768px",
+            "1024px"
+          ],
+          "flexible_units_used": [
+            "rem",
+            "em",
+            "%",
+            "vh",
+            "vw"
+          ],
+          "flexible_units_found": [
+            "em",
+            "%",
+            "vh"
+          ],
+          "layout_methods": [
+            "flexbox",
+            "grid",
+            "float"
+          ],
+          "layout_methods_used": [
+            "flexbox",
+            "grid"
+          ]
+        },
+        "media_query_usage": true,
+        "breakpoint_coverage": false,
+        "flexible_unit_usage": true,
+        "modern_layout_methods": true,
+        "responsive_quality": "comprehensive"
+      },
+      "dash_integration": {
+        "integration_elements": {
+          "mobile_assets_integrated": true,
+          "viewport_meta_configured": true,
+          "responsive_css_linked": true,
+          "mobile_js_integrated": true
+        },
+        "integration_complete": true,
+        "integration_quality": "complete"
+      }
+    },
+    "overall_responsive_quality": "excellent",
+    "responsive_score": 75,
+    "check_timestamp": "2025-08-04T09:39:34.351914"
+  },
+  "usability_evaluation": {
+    "success": true,
+    "usability_metrics": {
+      "touch_optimization": {
+        "elements": {
+          "touch_target_sizing": "タッチターゲットサイズ適切化",
+          "gesture_support": "スワイプ・ピンチ等ジェスチャー対応",
+          "input_field_optimization": "入力フィールドモバイル最適化",
+          "button_accessibility": "ボタン・リンクアクセシビリティ"
+        },
+        "optimization_score": 100,
+        "optimization_level": "excellent"
+      },
+      "navigation_efficiency": {
+        "elements": {
+          "menu_accessibility": "メニュー・ナビゲーションアクセス性",
+          "breadcrumb_support": "パンくずナビゲーション",
+          "search_functionality": "検索機能・フィルタリング",
+          "keyboard_navigation": "キーボードナビゲーション対応"
+        },
+        "efficiency_score": 80,
+        "efficiency_level": "excellent"
+      },
+      "performance_experience": {
+        "elements": {
+          "loading_optimization": "読み込み時間最適化",
+          "interactive_responsiveness": "インタラクティブ応答性",
+          "smooth_animations": "スムーズアニメーション",
+          "error_handling": "エラーハンドリング・フィードバック"
+        },
+        "performance_score": 100,
+        "performance_level": "excellent"
+      }
+    },
+    "overall_usability_score": 94.0,
+    "usability_level": "excellent",
+    "evaluation_timestamp": "2025-08-04T09:39:34.407073"
+  },
+  "accessibility_compliance": {
+    "success": true,
+    "accessibility_checks": {
+      "basic_compliance": {
+        "elements": {
+          "semantic_html": "セマンティックHTML使用",
+          "alt_text_support": "画像alt属性・代替テキスト",
+          "keyboard_navigation": "キーボードナビゲーション",
+          "screen_reader_support": "スクリーンリーダー対応",
+          "color_contrast": "色コントラスト・視認性"
+        },
+        "compliance_score": 80,
+        "compliance_level": "good"
+      },
+      "mobile_accessibility": {
+        "elements": {
+          "touch_target_size": "タッチターゲットサイズ（44px以上）",
+          "gesture_alternatives": "ジェスチャー代替手段",
+          "orientation_support": "画面回転・向き対応",
+          "zoom_compatibility": "ズーム・拡大対応"
+        },
+        "mobile_score": 60,
+        "mobile_level": "good"
+      }
+    },
+    "overall_accessibility_score": 72.0,
+    "accessibility_level": "good",
+    "check_timestamp": "2025-08-04T09:39:34.430892"
+  },
+  "ux_monitoring_analysis": {
+    "overall_ux_status": "excellent",
+    "ux_quality_level": "exceptional_experience",
+    "categories_success": {
+      "mobile_functionality": true,
+      "responsive_design": true,
+      "usability_evaluation": true,
+      "accessibility_compliance": true
+    },
+    "overall_success_rate": 1.0,
+    "ux_baseline_maintained": true,
+    "ux_quality_score": 220.20000000000002,
+    "improvement_recommendations": [],
+    "continuous_monitoring_plan": {
+      "monitoring_frequency": "週次",
+      "focus_areas": [
+        "品質維持",
+        "パフォーマンス最適化"
+      ],
+      "next_evaluation_date": "2025-08-11"
+    },
+    "analysis_timestamp": "2025-08-04T09:39:34.431073",
+    "phase1_ux_status": "maintained"
+  },
+  "success": true,
+  "user_experience_status": "exceptional_experience"
+}

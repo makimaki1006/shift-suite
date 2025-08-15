@@ -1,0 +1,57 @@
+{
+  "facility_name": "デイサービステンプレート",
+  "facility_type": "daycare",
+  "description": "通所介護（デイサービス）施設向け設定",
+  
+  "time": {
+    "slot_minutes": 60,
+    "night_start_hour": 19,
+    "night_end_hour": 8,
+    "early_morning_hour": 8
+  },
+  
+  "wage": {
+    "regular_staff": 1300,
+    "temporary_staff": 1800,
+    "average_hourly_wage": 1100,
+    "night_differential": 1.0,
+    "overtime_multiplier": 1.25,
+    "weekend_differential": 1.1
+  },
+  
+  "cost": {
+    "recruit_cost_per_hire": 100000,
+    "hiring_cost_once": 80000,
+    "penalty_per_shortage_hour": 1500,
+    "monthly_hours_fte": 140
+  },
+  
+  "statistical": {
+    "confidence_level": 0.80,
+    "significance_alpha": 0.20,
+    "correlation_threshold": 0.60,
+    "high_confidence_threshold": 0.65,
+    "min_sample_size": 8
+  },
+  
+  "fatigue": {
+    "min_rest_hours": 11,
+    "night_shift_threshold": 0.05,
+    "early_morning_threshold": 0.30,
+    "fatigue_alert_threshold": 0.70,
+    "consecutive_3_days_weight": 0.9,
+    "consecutive_4_days_weight": 0.1,
+    "consecutive_5_days_weight": 0.0
+  },
+  
+  "custom": {
+    "service_hours": {
+      "start": "08:30",
+      "end": "17:30"
+    },
+    "pickup_drop_required_staff": 2,
+    "activity_time_minimum_ratio": 1.2,
+    "meal_assistance_ratio": 0.3,
+    "bathing_service_staff_ratio": 0.4
+  }
+}

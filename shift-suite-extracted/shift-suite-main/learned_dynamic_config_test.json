@@ -1,0 +1,896 @@
+{
+  "shift_patterns": [
+    {
+      "code": "日",
+      "start_time": "09:00",
+      "end_time": "17:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "早",
+      "start_time": "07:00",
+      "end_time": "15:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "遅",
+      "start_time": "13:00",
+      "end_time": "21:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "夜",
+      "start_time": "16:45",
+      "end_time": "00:00",
+      "description": "",
+      "is_overnight": true,
+      "priority": 10
+    },
+    {
+      "code": "明",
+      "start_time": "00:00",
+      "end_time": "10:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 8
+    },
+    {
+      "code": "深夜",
+      "start_time": "22:00",
+      "end_time": "07:00",
+      "description": "深夜勤務",
+      "is_overnight": true,
+      "priority": 9
+    },
+    {
+      "code": "準夜",
+      "start_time": "16:00",
+      "end_time": "00:30",
+      "description": "準夜勤",
+      "is_overnight": true,
+      "priority": 8
+    },
+    {
+      "code": "休",
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "description": "休日",
+      "is_overnight": false,
+      "priority": 0
+    },
+    {
+      "code": "A",
+      "start_time": "07:00",
+      "end_time": "16:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B",
+      "start_time": "09:00",
+      "end_time": "18:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "D",
+      "start_time": "11:00",
+      "end_time": "20:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "AB",
+      "start_time": "07:00",
+      "end_time": "18:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "BD",
+      "start_time": "09:00",
+      "end_time": "20:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "A７～16",
+      "start_time": "07:00",
+      "end_time": "16:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "A7～11",
+      "start_time": "07:00",
+      "end_time": "11:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "A7～9",
+      "start_time": "07:00",
+      "end_time": "09:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B12～16",
+      "start_time": "12:00",
+      "end_time": "16:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B8:30～",
+      "start_time": "08:30",
+      "end_time": "17:30",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B～１３",
+      "start_time": "09:00",
+      "end_time": "13:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B～１６",
+      "start_time": "09:00",
+      "end_time": "16:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B8～12",
+      "start_time": "08:00",
+      "end_time": "12:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B8～17",
+      "start_time": "08:00",
+      "end_time": "17:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "B8～11",
+      "start_time": "08:00",
+      "end_time": "11:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "AM",
+      "start_time": "09:00",
+      "end_time": "12:00",
+      "description": "",
+      "is_overnight": false,
+      "priority": 3
+    },
+    {
+      "code": "準",
+      "start_time": "16:00",
+      "end_time": "00:30",
+      "description": "",
+      "is_overnight": true,
+      "priority": 10
+    },
+    {
+      "code": "希",
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "description": "自動検出パターン (452回出現)",
+      "is_overnight": false,
+      "priority": 8
+    },
+    {
+      "code": "有",
+      "start_time": "00:00",
+      "end_time": "00:00",
+      "description": "自動検出パターン (6回出現)",
+      "is_overnight": false,
+      "priority": 8
+    }
+  ],
+  "continuous_shift_rules": [
+    {
+      "name": "夜勤→明け番（標準パターン）",
+      "from_patterns": [
+        "夜"
+      ],
+      "to_patterns": [
+        "明"
+      ],
+      "max_gap_hours": 0.5,
+      "overlap_tolerance_minutes": 30,
+      "description": "最も一般的な夜勤から明け番への連続勤務"
+    },
+    {
+      "name": "準夜→明け番",
+      "from_patterns": [
+        "準夜"
+      ],
+      "to_patterns": [
+        "明"
+      ],
+      "max_gap_hours": 1.0,
+      "overlap_tolerance_minutes": 45,
+      "description": "準夜勤から明け番への移行"
+    },
+    {
+      "name": "深夜→早番",
+      "from_patterns": [
+        "深夜"
+      ],
+      "to_patterns": [
+        "早"
+      ],
+      "max_gap_hours": 1.5,
+      "overlap_tolerance_minutes": 60,
+      "description": "深夜勤務から早番への短時間休憩パターン"
+    },
+    {
+      "name": "遅番→早番（短時間休憩）",
+      "from_patterns": [
+        "遅"
+      ],
+      "to_patterns": [
+        "早"
+      ],
+      "max_gap_hours": 12.0,
+      "overlap_tolerance_minutes": 0,
+      "description": "遅番後の短時間休憩での早番出勤"
+    },
+    {
+      "name": "複数夜勤パターン→明け番",
+      "from_patterns": [
+        "夜",
+        "準夜",
+        "深夜"
+      ],
+      "to_patterns": [
+        "明"
+      ],
+      "max_gap_hours": 1.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "各種夜勤パターンから明け番への汎用ルール"
+    },
+    {
+      "name": "自動検出: 希→B",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "B"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 94)"
+    },
+    {
+      "name": "自動検出: B→希",
+      "from_patterns": [
+        "B"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 84)"
+    },
+    {
+      "name": "自動検出: B→B",
+      "from_patterns": [
+        "B"
+      ],
+      "to_patterns": [
+        "B"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 68)"
+    },
+    {
+      "name": "自動検出: 希→希",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 169)"
+    },
+    {
+      "name": "自動検出: B→D",
+      "from_patterns": [
+        "B"
+      ],
+      "to_patterns": [
+        "D"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 6)"
+    },
+    {
+      "name": "自動検出: D→希",
+      "from_patterns": [
+        "D"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 23)"
+    },
+    {
+      "name": "自動検出: 希→D",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "D"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 19)"
+    },
+    {
+      "name": "自動検出: 希→AB",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "AB"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 51)"
+    },
+    {
+      "name": "自動検出: AB→AB",
+      "from_patterns": [
+        "AB"
+      ],
+      "to_patterns": [
+        "AB"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 12)"
+    },
+    {
+      "name": "自動検出: AB→夜",
+      "from_patterns": [
+        "AB"
+      ],
+      "to_patterns": [
+        "夜"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 15)"
+    },
+    {
+      "name": "自動検出: 夜→夜",
+      "from_patterns": [
+        "夜"
+      ],
+      "to_patterns": [
+        "夜"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 131)"
+    },
+    {
+      "name": "自動検出: 夜→希",
+      "from_patterns": [
+        "夜"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 123)"
+    },
+    {
+      "name": "自動検出: 希→BD",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "BD"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 17)"
+    },
+    {
+      "name": "自動検出: BD→B",
+      "from_patterns": [
+        "BD"
+      ],
+      "to_patterns": [
+        "B"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: B→夜",
+      "from_patterns": [
+        "B"
+      ],
+      "to_patterns": [
+        "夜"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 9)"
+    },
+    {
+      "name": "自動検出: BD→希",
+      "from_patterns": [
+        "BD"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 18)"
+    },
+    {
+      "name": "自動検出: 希→夜",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "夜"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 51)"
+    },
+    {
+      "name": "自動検出: 希→A",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "A"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 12)"
+    },
+    {
+      "name": "自動検出: A→夜",
+      "from_patterns": [
+        "A"
+      ],
+      "to_patterns": [
+        "夜"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: 希→B8:30～",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "B8:30～"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: B8:30～→B",
+      "from_patterns": [
+        "B8:30～"
+      ],
+      "to_patterns": [
+        "B"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: B8:30～→希",
+      "from_patterns": [
+        "B8:30～"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: B→B～１６",
+      "from_patterns": [
+        "B"
+      ],
+      "to_patterns": [
+        "B～１６"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: B～１６→B～１３",
+      "from_patterns": [
+        "B～１６"
+      ],
+      "to_patterns": [
+        "B～１３"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: B～１３→B",
+      "from_patterns": [
+        "B～１３"
+      ],
+      "to_patterns": [
+        "B"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: D→夜",
+      "from_patterns": [
+        "D"
+      ],
+      "to_patterns": [
+        "夜"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 19)"
+    },
+    {
+      "name": "自動検出: AB→希",
+      "from_patterns": [
+        "AB"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 11)"
+    },
+    {
+      "name": "自動検出: D→D",
+      "from_patterns": [
+        "D"
+      ],
+      "to_patterns": [
+        "D"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 8)"
+    },
+    {
+      "name": "自動検出: BD→夜",
+      "from_patterns": [
+        "BD"
+      ],
+      "to_patterns": [
+        "夜"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 7)"
+    },
+    {
+      "name": "自動検出: AB→D",
+      "from_patterns": [
+        "AB"
+      ],
+      "to_patterns": [
+        "D"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 18)"
+    },
+    {
+      "name": "自動検出: A→B",
+      "from_patterns": [
+        "A"
+      ],
+      "to_patterns": [
+        "B"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 6)"
+    },
+    {
+      "name": "自動検出: A→希",
+      "from_patterns": [
+        "A"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: AB→BD",
+      "from_patterns": [
+        "AB"
+      ],
+      "to_patterns": [
+        "BD"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 7)"
+    },
+    {
+      "name": "自動検出: 希→B12～16",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "B12～16"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 8)"
+    },
+    {
+      "name": "自動検出: B12～16→希",
+      "from_patterns": [
+        "B12～16"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 8)"
+    },
+    {
+      "name": "自動検出: B→A",
+      "from_patterns": [
+        "B"
+      ],
+      "to_patterns": [
+        "A"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: A→BD",
+      "from_patterns": [
+        "A"
+      ],
+      "to_patterns": [
+        "BD"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: B→AB",
+      "from_patterns": [
+        "B"
+      ],
+      "to_patterns": [
+        "AB"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: 夜→有",
+      "from_patterns": [
+        "夜"
+      ],
+      "to_patterns": [
+        "有"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: AB→B",
+      "from_patterns": [
+        "AB"
+      ],
+      "to_patterns": [
+        "B"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: A7～11→希",
+      "from_patterns": [
+        "A7～11"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: 希→A７～16",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "A７～16"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: A７～16→希",
+      "from_patterns": [
+        "A７～16"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: 希→A7～9",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "A7～9"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: A7～9→希",
+      "from_patterns": [
+        "A7～9"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: 希→B～１３",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "B～１３"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: AM→希",
+      "from_patterns": [
+        "AM"
+      ],
+      "to_patterns": [
+        "希"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 5)"
+    },
+    {
+      "name": "自動検出: 希→AM",
+      "from_patterns": [
+        "希"
+      ],
+      "to_patterns": [
+        "AM"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 3)"
+    },
+    {
+      "name": "自動検出: AM→AM",
+      "from_patterns": [
+        "AM"
+      ],
+      "to_patterns": [
+        "AM"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    },
+    {
+      "name": "自動検出: BD→BD",
+      "from_patterns": [
+        "BD"
+      ],
+      "to_patterns": [
+        "BD"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 4)"
+    },
+    {
+      "name": "自動検出: D→BD",
+      "from_patterns": [
+        "D"
+      ],
+      "to_patterns": [
+        "BD"
+      ],
+      "max_gap_hours": 2.0,
+      "overlap_tolerance_minutes": 30,
+      "description": "データから検出 (出現回数: 2)"
+    }
+  ]
+}

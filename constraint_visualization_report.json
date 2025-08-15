@@ -1,0 +1,694 @@
+{
+  "analysis_metadata": {
+    "timestamp": "2025-07-28T22:00:57.642453",
+    "total_constraints_analyzed": 46,
+    "visualizer": "制約可視化システム"
+  },
+  "constraint_breakdown": {
+    "データ可用性": 10,
+    "データスケール": 3,
+    "データ品質制約": 10,
+    "実用性総合評価": 10,
+    "シフトパターン制約": 13
+  },
+  "categorized_analysis": {
+    "データ可用性": {
+      "count": 10,
+      "avg_confidence": 1.0,
+      "priority_distribution": {
+        "高": 10,
+        "中": 0,
+        "低": 0
+      },
+      "unique_types": [
+        "ファイル存在確認"
+      ],
+      "examples": [
+        {
+          "file": "temp_corrected_test.xlsx",
+          "id": "basic_availability_8123",
+          "category": "データ可用性",
+          "type": "ファイル存在確認",
+          "constraint_text": "temp_corrected_test.xlsxは分析可能な状態です",
+          "confidence": 1.0,
+          "priority": "高",
+          "actionable": true,
+          "recommendations": [
+            "temp_corrected_test.xlsxを使用してシフト制約分析を実行"
+          ],
+          "details": {
+            "file_size": 11343,
+            "readable": true,
+            "format": ".xlsx"
+          }
+        },
+        {
+          "file": "temp_test_file.xlsx",
+          "id": "basic_availability_8664",
+          "category": "データ可用性",
+          "type": "ファイル存在確認",
+          "constraint_text": "temp_test_file.xlsxは分析可能な状態です",
+          "confidence": 1.0,
+          "priority": "高",
+          "actionable": true,
+          "recommendations": [
+            "temp_test_file.xlsxを使用してシフト制約分析を実行"
+          ],
+          "details": {
+            "file_size": 11343,
+            "readable": true,
+            "format": ".xlsx"
+          }
+        },
+        {
+          "file": "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "id": "basic_availability_7036",
+          "category": "データ可用性",
+          "type": "ファイル存在確認",
+          "constraint_text": "temp_デイ_テスト用データ_休日精緻.xlsxは分析可能な状態です",
+          "confidence": 1.0,
+          "priority": "高",
+          "actionable": true,
+          "recommendations": [
+            "temp_デイ_テスト用データ_休日精緻.xlsxを使用してシフト制約分析を実行"
+          ],
+          "details": {
+            "file_size": 28138,
+            "readable": true,
+            "format": ".xlsx"
+          }
+        }
+      ]
+    },
+    "データスケール": {
+      "count": 3,
+      "avg_confidence": 0.85,
+      "priority_distribution": {
+        "高": 0,
+        "中": 0,
+        "低": 3
+      },
+      "unique_types": [
+        "小容量データ検出"
+      ],
+      "examples": [
+        {
+          "file": "temp_corrected_test.xlsx",
+          "id": "small_dataset_8123",
+          "category": "データスケール",
+          "type": "小容量データ検出",
+          "constraint_text": "temp_corrected_test.xlsxはコンパクトなデータセットです",
+          "confidence": 0.85,
+          "priority": "低",
+          "actionable": true,
+          "recommendations": [
+            "高速分析が可能",
+            "リアルタイム処理適用可能",
+            "プロトタイプ分析に最適"
+          ],
+          "details": {
+            "size_bytes": 11343,
+            "estimated_records": 113,
+            "processing_complexity": "低"
+          }
+        },
+        {
+          "file": "temp_test_file.xlsx",
+          "id": "small_dataset_8664",
+          "category": "データスケール",
+          "type": "小容量データ検出",
+          "constraint_text": "temp_test_file.xlsxはコンパクトなデータセットです",
+          "confidence": 0.85,
+          "priority": "低",
+          "actionable": true,
+          "recommendations": [
+            "高速分析が可能",
+            "リアルタイム処理適用可能",
+            "プロトタイプ分析に最適"
+          ],
+          "details": {
+            "size_bytes": 11343,
+            "estimated_records": 113,
+            "processing_complexity": "低"
+          }
+        },
+        {
+          "file": "テストデータ_勤務表　勤務時間_トライアル.xlsx",
+          "id": "small_dataset_7626",
+          "category": "データスケール",
+          "type": "小容量データ検出",
+          "constraint_text": "テストデータ_勤務表　勤務時間_トライアル.xlsxはコンパクトなデータセットです",
+          "confidence": 0.85,
+          "priority": "低",
+          "actionable": true,
+          "recommendations": [
+            "高速分析が可能",
+            "リアルタイム処理適用可能",
+            "プロトタイプ分析に最適"
+          ],
+          "details": {
+            "size_bytes": 13710,
+            "estimated_records": 137,
+            "processing_complexity": "低"
+          }
+        }
+      ]
+    },
+    "データ品質制約": {
+      "count": 10,
+      "avg_confidence": 0.8,
+      "priority_distribution": {
+        "高": 0,
+        "中": 10,
+        "低": 0
+      },
+      "unique_types": [
+        "データ品質評価"
+      ],
+      "examples": [
+        {
+          "file": "temp_corrected_test.xlsx",
+          "id": "quality_8123",
+          "category": "データ品質制約",
+          "type": "データ品質評価",
+          "constraint_text": "temp_corrected_test.xlsxは最新性・本格性を持つデータです",
+          "confidence": 0.8,
+          "priority": "中",
+          "actionable": true,
+          "recommendations": [
+            "最新性・本格性を活かした分析設計",
+            "品質特性に適した制約発見手法の選択"
+          ],
+          "details": {
+            "quality_indicators": [
+              "最新性",
+              "本格性"
+            ],
+            "reliability_level": "高",
+            "update_status": "最新"
+          }
+        },
+        {
+          "file": "temp_test_file.xlsx",
+          "id": "quality_8664",
+          "category": "データ品質制約",
+          "type": "データ品質評価",
+          "constraint_text": "temp_test_file.xlsxは最新性・本格性を持つデータです",
+          "confidence": 0.8,
+          "priority": "中",
+          "actionable": true,
+          "recommendations": [
+            "最新性・本格性を活かした分析設計",
+            "品質特性に適した制約発見手法の選択"
+          ],
+          "details": {
+            "quality_indicators": [
+              "最新性",
+              "本格性"
+            ],
+            "reliability_level": "高",
+            "update_status": "最新"
+          }
+        },
+        {
+          "file": "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "id": "quality_7036",
+          "category": "データ品質制約",
+          "type": "データ品質評価",
+          "constraint_text": "temp_デイ_テスト用データ_休日精緻.xlsxは最新性・充実性・実験性を持つデータです",
+          "confidence": 0.8,
+          "priority": "中",
+          "actionable": true,
+          "recommendations": [
+            "最新性・充実性・実験性を活かした分析設計",
+            "品質特性に適した制約発見手法の選択"
+          ],
+          "details": {
+            "quality_indicators": [
+              "最新性",
+              "充実性",
+              "実験性"
+            ],
+            "reliability_level": "中",
+            "update_status": "最新"
+          }
+        }
+      ]
+    },
+    "実用性総合評価": {
+      "count": 10,
+      "avg_confidence": 0.95,
+      "priority_distribution": {
+        "高": 10,
+        "中": 0,
+        "低": 0
+      },
+      "unique_types": [
+        "ファイル実用性スコア"
+      ],
+      "examples": [
+        {
+          "file": "temp_corrected_test.xlsx",
+          "id": "utility_8123",
+          "category": "実用性総合評価",
+          "type": "ファイル実用性スコア",
+          "constraint_text": "temp_corrected_test.xlsxの実用性スコアは80.0%です",
+          "confidence": 0.95,
+          "priority": "高",
+          "actionable": true,
+          "recommendations": [
+            "temp_corrected_test.xlsxを主要分析対象として選択",
+            "詳細制約分析の実行",
+            "制約発見結果の実用化検討"
+          ],
+          "details": {
+            "utility_score": 80.0,
+            "utility_level": "高",
+            "recommended_usage": "メイン分析データとして優先使用推奨"
+          }
+        },
+        {
+          "file": "temp_test_file.xlsx",
+          "id": "utility_8664",
+          "category": "実用性総合評価",
+          "type": "ファイル実用性スコア",
+          "constraint_text": "temp_test_file.xlsxの実用性スコアは80.0%です",
+          "confidence": 0.95,
+          "priority": "高",
+          "actionable": true,
+          "recommendations": [
+            "temp_test_file.xlsxを主要分析対象として選択",
+            "詳細制約分析の実行",
+            "制約発見結果の実用化検討"
+          ],
+          "details": {
+            "utility_score": 80.0,
+            "utility_level": "高",
+            "recommended_usage": "メイン分析データとして優先使用推奨"
+          }
+        },
+        {
+          "file": "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "id": "utility_7036",
+          "category": "実用性総合評価",
+          "type": "ファイル実用性スコア",
+          "constraint_text": "temp_デイ_テスト用データ_休日精緻.xlsxの実用性スコアは96.0%です",
+          "confidence": 0.95,
+          "priority": "高",
+          "actionable": true,
+          "recommendations": [
+            "temp_デイ_テスト用データ_休日精緻.xlsxを主要分析対象として選択",
+            "詳細制約分析の実行",
+            "制約発見結果の実用化検討"
+          ],
+          "details": {
+            "utility_score": 96.0,
+            "utility_level": "高",
+            "recommended_usage": "メイン分析データとして優先使用推奨"
+          }
+        }
+      ]
+    },
+    "シフトパターン制約": {
+      "count": 13,
+      "avg_confidence": 0.9000000000000001,
+      "priority_distribution": {
+        "高": 3,
+        "中": 10,
+        "低": 0
+      },
+      "unique_types": [
+        "短時間シフト特化",
+        "日勤シフト特化",
+        "テストシフト特化",
+        "試行シフト特化"
+      ],
+      "examples": [
+        {
+          "file": "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "id": "pattern_デイ_7036",
+          "category": "シフトパターン制約",
+          "type": "日勤シフト特化",
+          "constraint_text": "temp_デイ_テスト用データ_休日精緻.xlsxは日勤シフトに特化したデータです",
+          "confidence": 0.9,
+          "priority": "高",
+          "actionable": true,
+          "recommendations": [
+            "日勤シフトの詳細分析を優先",
+            "日中時間帯の制約パターンに注目",
+            "特化分析による高精度制約発見期待"
+          ],
+          "details": {
+            "detected_pattern": "デイ",
+            "shift_type": "日勤",
+            "time_focus": "日中時間帯",
+            "specialization_level": "高"
+          }
+        },
+        {
+          "file": "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "id": "pattern_テスト_7036",
+          "category": "シフトパターン制約",
+          "type": "テストシフト特化",
+          "constraint_text": "temp_デイ_テスト用データ_休日精緻.xlsxはテストシフトに特化したデータです",
+          "confidence": 0.9,
+          "priority": "中",
+          "actionable": true,
+          "recommendations": [
+            "テストシフトの詳細分析を優先",
+            "検証用の制約パターンに注目",
+            "特化分析による高精度制約発見期待"
+          ],
+          "details": {
+            "detected_pattern": "テスト",
+            "shift_type": "テスト",
+            "time_focus": "検証用",
+            "specialization_level": "高"
+          }
+        },
+        {
+          "file": "ショート_テスト用データ.xlsx",
+          "id": "pattern_ショート_1632",
+          "category": "シフトパターン制約",
+          "type": "短時間シフト特化",
+          "constraint_text": "ショート_テスト用データ.xlsxは短時間シフトに特化したデータです",
+          "confidence": 0.9,
+          "priority": "中",
+          "actionable": true,
+          "recommendations": [
+            "短時間シフトの詳細分析を優先",
+            "柔軟時間の制約パターンに注目",
+            "特化分析による高精度制約発見期待"
+          ],
+          "details": {
+            "detected_pattern": "ショート",
+            "shift_type": "短時間",
+            "time_focus": "柔軟時間",
+            "specialization_level": "高"
+          }
+        }
+      ]
+    }
+  },
+  "pattern_analysis": {
+    "repetitive_patterns": {
+      "[ファイル名].xlsxは分析可能な状態です": {
+        "count": 9,
+        "files": [
+          "temp_corrected_test.xlsx",
+          "デイ_テスト用データ_休日精緻.xlsx",
+          "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "ショートステイ_テスト用データ.xlsx",
+          "ショート_テスト用データ.xlsx",
+          "temp_test_file.xlsx",
+          "勤務表　勤務時間_トライアル.xlsx",
+          "テストデータ_勤務表　勤務時間_トライアル.xlsx",
+          "test_shift_data.xlsx"
+        ],
+        "category": "データ可用性"
+      },
+      "[ファイル名].xlsxはコンパクトなデータセットです": {
+        "count": 3,
+        "files": [
+          "temp_corrected_test.xlsx",
+          "temp_test_file.xlsx",
+          "テストデータ_勤務表　勤務時間_トライアル.xlsx"
+        ],
+        "category": "データスケール"
+      },
+      "[ファイル名].xlsxは最新性・本格性を持つデータです": {
+        "count": 2,
+        "files": [
+          "temp_corrected_test.xlsx",
+          "temp_test_file.xlsx"
+        ],
+        "category": "データ品質制約"
+      },
+      "[ファイル名].xlsxの実用性スコアは80.0%です": {
+        "count": 2,
+        "files": [
+          "temp_corrected_test.xlsx",
+          "temp_test_file.xlsx"
+        ],
+        "category": "実用性総合評価"
+      },
+      "[ファイル名].xlsxは日勤シフトに特化したデータです": {
+        "count": 2,
+        "files": [
+          "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "デイ_テスト用データ_休日精緻.xlsx"
+        ],
+        "category": "シフトパターン制約"
+      },
+      "[ファイル名].xlsxはテストシフトに特化したデータです": {
+        "count": 5,
+        "files": [
+          "デイ_テスト用データ_休日精緻.xlsx",
+          "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "ショートステイ_テスト用データ.xlsx",
+          "ショート_テスト用データ.xlsx",
+          "テストデータ_勤務表　勤務時間_トライアル.xlsx"
+        ],
+        "category": "シフトパターン制約"
+      },
+      "[ファイル名].xlsxは最新性・充実性・実験性を持つデータです": {
+        "count": 5,
+        "files": [
+          "デイ_テスト用データ_休日精緻.xlsx",
+          "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "ショートステイ_テスト用データ.xlsx",
+          "ショート_テスト用データ.xlsx",
+          "勤務表　勤務時間_トライアル.xlsx"
+        ],
+        "category": "データ品質制約"
+      },
+      "[ファイル名].xlsxの実用性スコアは96.0%です": {
+        "count": 4,
+        "files": [
+          "ショートステイ_テスト用データ.xlsx",
+          "temp_デイ_テスト用データ_休日精緻.xlsx",
+          "ショート_テスト用データ.xlsx",
+          "デイ_テスト用データ_休日精緻.xlsx"
+        ],
+        "category": "実用性総合評価"
+      },
+      "[ファイル名].xlsxは短時間シフトに特化したデータです": {
+        "count": 2,
+        "files": [
+          "ショートステイ_テスト用データ.xlsx",
+          "ショート_テスト用データ.xlsx"
+        ],
+        "category": "シフトパターン制約"
+      },
+      "[ファイル名].xlsxは試行シフトに特化したデータです": {
+        "count": 2,
+        "files": [
+          "勤務表　勤務時間_トライアル.xlsx",
+          "テストデータ_勤務表　勤務時間_トライアル.xlsx"
+        ],
+        "category": "シフトパターン制約"
+      }
+    },
+    "file_specific_patterns": {},
+    "universal_patterns": [],
+    "confidence_patterns": {
+      "high": 33,
+      "medium": 13,
+      "low": 0
+    }
+  },
+  "reality_check": {
+    "truly_useful_constraints": [],
+    "obvious_constraints": [
+      {
+        "constraint": "temp_corrected_test.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "temp_test_file.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "temp_デイ_テスト用データ_休日精緻.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "test_shift_data.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "ショート_テスト用データ.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "ショートステイ_テスト用データ.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "テストデータ_勤務表　勤務時間_トライアル.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻_backup.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      },
+      {
+        "constraint": "勤務表　勤務時間_トライアル.xlsxは分析可能な状態です",
+        "reason": "ファイル存在は当然の前提条件"
+      }
+    ],
+    "questionable_constraints": [
+      {
+        "constraint": "temp_corrected_test.xlsxの実用性スコアは80.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "temp_test_file.xlsxの実用性スコアは80.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "temp_デイ_テスト用データ_休日精緻.xlsxの実用性スコアは96.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "test_shift_data.xlsxの実用性スコアは85.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "ショート_テスト用データ.xlsxの実用性スコアは96.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "ショートステイ_テスト用データ.xlsxの実用性スコアは96.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "テストデータ_勤務表　勤務時間_トライアル.xlsxの実用性スコアは91.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻.xlsxの実用性スコアは96.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻_backup.xlsxの実用性スコアは81.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      },
+      {
+        "constraint": "勤務表　勤務時間_トライアル.xlsxの実用性スコアは88.0%です",
+        "reason": "スコア自体が計算結果で、制約ではない"
+      }
+    ],
+    "file_management_constraints": [
+      {
+        "constraint": "temp_corrected_test.xlsxはコンパクトなデータセットです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "temp_corrected_test.xlsxは最新性・本格性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "temp_test_file.xlsxはコンパクトなデータセットです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "temp_test_file.xlsxは最新性・本格性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "temp_デイ_テスト用データ_休日精緻.xlsxは日勤シフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "temp_デイ_テスト用データ_休日精緻.xlsxはテストシフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "temp_デイ_テスト用データ_休日精緻.xlsxは最新性・充実性・実験性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "test_shift_data.xlsxは最新性・充実性・本格性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "ショート_テスト用データ.xlsxは短時間シフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "ショート_テスト用データ.xlsxはテストシフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "ショート_テスト用データ.xlsxは最新性・充実性・実験性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "ショートステイ_テスト用データ.xlsxは短時間シフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "ショートステイ_テスト用データ.xlsxはテストシフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "ショートステイ_テスト用データ.xlsxは最新性・充実性・実験性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "テストデータ_勤務表　勤務時間_トライアル.xlsxはコンパクトなデータセットです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "テストデータ_勤務表　勤務時間_トライアル.xlsxは試行シフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "テストデータ_勤務表　勤務時間_トライアル.xlsxはテストシフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "テストデータ_勤務表　勤務時間_トライアル.xlsxは最新性・実験性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻.xlsxは日勤シフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻.xlsxはテストシフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻.xlsxは最新性・充実性・実験性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻_backup.xlsxは日勤シフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻_backup.xlsxはテストシフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "デイ_テスト用データ_休日精緻_backup.xlsxは充実性・実験性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "勤務表　勤務時間_トライアル.xlsxは試行シフトに特化したデータです",
+        "benefit": "ファイル選択・管理の改善"
+      },
+      {
+        "constraint": "勤務表　勤務時間_トライアル.xlsxは最新性・充実性・実験性を持つデータです",
+        "benefit": "ファイル選択・管理の改善"
+      }
+    ],
+    "shift_analysis_constraints": []
+  }
+}

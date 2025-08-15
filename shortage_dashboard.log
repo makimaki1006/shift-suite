@@ -1,0 +1,452 @@
+2025-08-05 12:50:15 [DASHBOARD] INFO: ============================================================
+2025-08-05 12:50:15 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-05 12:50:15 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-05 12:50:15 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:22:25 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:22:25 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:22:25 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:22:25 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:23:02 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:23:02 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:23:02 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:23:02 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:23:07 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:23:07 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:23:07 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:23:07 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:24:50 [DASHBOARD] INFO: ===== 不足分析タブ作成開始 =====
+2025-08-08 14:24:50 [DASHBOARD] INFO: scenario: out_mean_based
+2025-08-08 14:24:50 [DASHBOARD] INFO: 変数初期化完了
+2025-08-08 14:24:51 [DASHBOARD] INFO: df_shortage_role_filtered初期化: <class 'dict'>
+2025-08-08 14:24:51 [DASHBOARD] INFO: データ読み込み開始
+2025-08-08 14:24:51 [DASHBOARD] ERROR: ===== 致命的エラー発生 =====
+2025-08-08 14:24:51 [DASHBOARD] ERROR: エラータイプ: TypeError
+2025-08-08 14:24:51 [DASHBOARD] ERROR: エラーメッセージ: unhashable type: 'DataFrame'
+2025-08-08 14:24:51 [DASHBOARD] ERROR: 詳細トレースバック:
+2025-08-08 14:24:51 [DASHBOARD] ERROR: Traceback (most recent call last):
+  File "C:\ShiftAnalysis\dash_app.py", line 3051, in create_shortage_tab
+    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame())
+TypeError: unhashable type: 'DataFrame'
+
+2025-08-08 14:25:45 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:25:45 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:25:45 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:25:45 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:25:51 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:25:51 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:25:51 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:25:51 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:26:59 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:26:59 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:26:59 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:26:59 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:32:24 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:32:24 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:32:24 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:32:24 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:32:53 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:32:53 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:32:53 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:32:53 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:35:36 [DASHBOARD] INFO: ===== 不足分析タブ作成開始 =====
+2025-08-08 14:35:36 [DASHBOARD] INFO: scenario: out_mean_based
+2025-08-08 14:35:36 [DASHBOARD] INFO: 変数初期化完了
+2025-08-08 14:35:36 [DASHBOARD] INFO: df_shortage_role_filtered初期化: <class 'dict'>
+2025-08-08 14:35:36 [DASHBOARD] INFO: データ読み込み開始
+2025-08-08 14:35:36 [DASHBOARD] ERROR: ===== 致命的エラー発生 =====
+2025-08-08 14:35:36 [DASHBOARD] ERROR: エラータイプ: TypeError
+2025-08-08 14:35:36 [DASHBOARD] ERROR: エラーメッセージ: unhashable type: 'DataFrame'
+2025-08-08 14:35:36 [DASHBOARD] ERROR: 詳細トレースバック:
+2025-08-08 14:35:36 [DASHBOARD] ERROR: Traceback (most recent call last):
+  File "C:\ShiftAnalysis\dash_app.py", line 3051, in create_shortage_tab
+    df_shortage_role = data_get('shortage_role_summary', pd.DataFrame())
+TypeError: unhashable type: 'DataFrame'
+
+2025-08-08 14:44:23 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:44:23 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:44:23 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:44:23 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:44:38 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:44:38 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:44:38 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:44:38 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:44:45 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:44:45 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:44:45 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:44:45 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:44:56 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:44:56 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:44:56 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:44:56 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:45:58 [DASHBOARD] INFO: ============================================================
+2025-08-08 14:45:58 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 14:45:58 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 14:45:58 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:00:33 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:00:33 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 15:00:33 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 15:00:33 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:03:58 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:03:58 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 15:03:58 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 15:03:58 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:04:39 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:04:39 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 15:04:39 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 15:04:39 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:05:47 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:05:47 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 15:05:47 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 15:05:47 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:05:51 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:05:51 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 15:05:51 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 15:05:51 [DASHBOARD] INFO: ============================================================
+2025-08-08 15:07:12 [DASHBOARD] INFO: ===== 不足分析タブ作成開始 =====
+2025-08-08 15:07:12 [DASHBOARD] INFO: scenario: out_mean_based
+2025-08-08 15:07:12 [DASHBOARD] INFO: 変数初期化完了
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filtered初期化: <class 'dict'>
+2025-08-08 15:07:12 [DASHBOARD] INFO: データ読み込み開始
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role読み込み完了: 12行
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_emp読み込み完了: 3行
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role columns: ['role', 'need_h', 'staff_h', 'lack_h', 'excess_h', 'working_days_considered', 'estimated_excess_cost', 'estimated_lack_cost_if_temporary_staff', 'estimated_lack_penalty_cost']
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role職種: ['emp_パート', 'emp_正社員', '介護', 'emp_スポット', '介護・相談員', '管理者・相談員', '運転士', '事務・介護', '介護（W_3）', '機能訓練士', '介護（W_2）', '看護師']
+2025-08-08 15:07:12 [DASHBOARD] INFO: === 職種別データ処理開始 ===
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role size: 12
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filtered状態: <class 'dict'>, 内容: {}
+2025-08-08 15:07:12 [DASHBOARD] INFO: 辞書リセット完了
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種別データ処理開始
+2025-08-08 15:07:12 [DASHBOARD] INFO: role_only_df: 9行
+2025-08-08 15:07:12 [DASHBOARD] INFO: 処理する職種: ['介護', '介護・相談員', '管理者・相談員', '運転士', '事務・介護', '介護（W_3）', '機能訓練士', '介護（W_2）', '看護師']
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種1: 介護, lack_h=57, excess_h=123
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護=57
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護=123
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種2: 介護・相談員, lack_h=36, excess_h=12
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護・相談員=36
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護・相談員=12
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種3: 管理者・相談員, lack_h=27, excess_h=1
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 管理者・相談員=27
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 管理者・相談員=1
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種4: 運転士, lack_h=27, excess_h=90
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 運転士=27
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 運転士=90
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種5: 事務・介護, lack_h=26, excess_h=1
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 事務・介護=26
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 事務・介護=1
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種6: 介護（W_3）, lack_h=25, excess_h=90
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護（W_3）=25
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護（W_3）=90
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種7: 機能訓練士, lack_h=18, excess_h=36
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 機能訓練士=18
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 機能訓練士=36
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種8: 介護（W_2）, lack_h=10, excess_h=72
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護（W_2）=10
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護（W_2）=72
+2025-08-08 15:07:12 [DASHBOARD] INFO: 職種9: 看護師, lack_h=0, excess_h=117
+2025-08-08 15:07:12 [DASHBOARD] INFO: df_shortage_role_excessに追加: 看護師=117
+2025-08-08 15:07:12 [DASHBOARD] INFO: 処理完了 - df_shortage_role_filtered: {'介護': 57, '介護・相談員': 36, '管理者・相談員': 27, '運転士': 27, '事務・介護': 26, '介護（W_3）': 25, '機能訓練士': 18, '介護（W_2）': 10}
+2025-08-08 15:07:12 [DASHBOARD] INFO: 処理完了 - df_shortage_role_excess: {'介護': 123, '介護・相談員': 12, '管理者・相談員': 1, '運転士': 90, '事務・介護': 1, '介護（W_3）': 90, '機能訓練士': 36, '介護（W_2）': 72, '看護師': 117}
+2025-08-08 15:07:26 [DASHBOARD] INFO: ===== 不足分析タブ作成開始 =====
+2025-08-08 15:07:26 [DASHBOARD] INFO: scenario: out_mean_based
+2025-08-08 15:07:26 [DASHBOARD] INFO: 変数初期化完了
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filtered初期化: <class 'dict'>
+2025-08-08 15:07:26 [DASHBOARD] INFO: データ読み込み開始
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role読み込み完了: 12行
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_emp読み込み完了: 3行
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role columns: ['role', 'need_h', 'staff_h', 'lack_h', 'excess_h', 'working_days_considered', 'estimated_excess_cost', 'estimated_lack_cost_if_temporary_staff', 'estimated_lack_penalty_cost']
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role職種: ['emp_パート', 'emp_正社員', '介護', 'emp_スポット', '介護・相談員', '管理者・相談員', '運転士', '事務・介護', '介護（W_3）', '機能訓練士', '介護（W_2）', '看護師']
+2025-08-08 15:07:26 [DASHBOARD] INFO: === 職種別データ処理開始 ===
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role size: 12
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filtered状態: <class 'dict'>, 内容: {}
+2025-08-08 15:07:26 [DASHBOARD] INFO: 辞書リセット完了
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種別データ処理開始
+2025-08-08 15:07:26 [DASHBOARD] INFO: role_only_df: 9行
+2025-08-08 15:07:26 [DASHBOARD] INFO: 処理する職種: ['介護', '介護・相談員', '管理者・相談員', '運転士', '事務・介護', '介護（W_3）', '機能訓練士', '介護（W_2）', '看護師']
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種1: 介護, lack_h=57, excess_h=123
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護=57
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護=123
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種2: 介護・相談員, lack_h=36, excess_h=12
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護・相談員=36
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護・相談員=12
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種3: 管理者・相談員, lack_h=27, excess_h=1
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 管理者・相談員=27
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 管理者・相談員=1
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種4: 運転士, lack_h=27, excess_h=90
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 運転士=27
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 運転士=90
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種5: 事務・介護, lack_h=26, excess_h=1
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 事務・介護=26
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 事務・介護=1
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種6: 介護（W_3）, lack_h=25, excess_h=90
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護（W_3）=25
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護（W_3）=90
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種7: 機能訓練士, lack_h=18, excess_h=36
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 機能訓練士=18
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 機能訓練士=36
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種8: 介護（W_2）, lack_h=10, excess_h=72
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護（W_2）=10
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護（W_2）=72
+2025-08-08 15:07:26 [DASHBOARD] INFO: 職種9: 看護師, lack_h=0, excess_h=117
+2025-08-08 15:07:26 [DASHBOARD] INFO: df_shortage_role_excessに追加: 看護師=117
+2025-08-08 15:07:26 [DASHBOARD] INFO: 処理完了 - df_shortage_role_filtered: {'介護': 57, '介護・相談員': 36, '管理者・相談員': 27, '運転士': 27, '事務・介護': 26, '介護（W_3）': 25, '機能訓練士': 18, '介護（W_2）': 10}
+2025-08-08 15:07:26 [DASHBOARD] INFO: 処理完了 - df_shortage_role_excess: {'介護': 123, '介護・相談員': 12, '管理者・相談員': 1, '運転士': 90, '事務・介護': 1, '介護（W_3）': 90, '機能訓練士': 36, '介護（W_2）': 72, '看護師': 117}
+2025-08-08 15:07:42 [DASHBOARD] INFO: ===== 不足分析タブ作成開始 =====
+2025-08-08 15:07:42 [DASHBOARD] INFO: scenario: out_mean_based
+2025-08-08 15:07:42 [DASHBOARD] INFO: 変数初期化完了
+2025-08-08 15:07:42 [DASHBOARD] INFO: df_shortage_role_filtered初期化: <class 'dict'>
+2025-08-08 15:07:42 [DASHBOARD] INFO: データ読み込み開始
+2025-08-08 15:07:42 [DASHBOARD] INFO: df_shortage_role読み込み完了: 12行
+2025-08-08 15:07:42 [DASHBOARD] INFO: df_shortage_emp読み込み完了: 3行
+2025-08-08 15:07:42 [DASHBOARD] INFO: df_shortage_role columns: ['role', 'need_h', 'staff_h', 'lack_h', 'excess_h', 'working_days_considered', 'estimated_excess_cost', 'estimated_lack_cost_if_temporary_staff', 'estimated_lack_penalty_cost']
+2025-08-08 15:07:42 [DASHBOARD] INFO: df_shortage_role職種: ['emp_パート', 'emp_正社員', '介護', 'emp_スポット', '介護・相談員', '管理者・相談員', '運転士', '事務・介護', '介護（W_3）', '機能訓練士', '介護（W_2）', '看護師']
+2025-08-08 15:07:43 [DASHBOARD] INFO: === 職種別データ処理開始 ===
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role size: 12
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filtered状態: <class 'dict'>, 内容: {}
+2025-08-08 15:07:43 [DASHBOARD] INFO: 辞書リセット完了
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種別データ処理開始
+2025-08-08 15:07:43 [DASHBOARD] INFO: role_only_df: 9行
+2025-08-08 15:07:43 [DASHBOARD] INFO: 処理する職種: ['介護', '介護・相談員', '管理者・相談員', '運転士', '事務・介護', '介護（W_3）', '機能訓練士', '介護（W_2）', '看護師']
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種1: 介護, lack_h=57, excess_h=123
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護=57
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護=123
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種2: 介護・相談員, lack_h=36, excess_h=12
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護・相談員=36
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護・相談員=12
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種3: 管理者・相談員, lack_h=27, excess_h=1
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 管理者・相談員=27
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 管理者・相談員=1
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種4: 運転士, lack_h=27, excess_h=90
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 運転士=27
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 運転士=90
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種5: 事務・介護, lack_h=26, excess_h=1
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 事務・介護=26
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 事務・介護=1
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種6: 介護（W_3）, lack_h=25, excess_h=90
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護（W_3）=25
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護（W_3）=90
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種7: 機能訓練士, lack_h=18, excess_h=36
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 機能訓練士=18
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 機能訓練士=36
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種8: 介護（W_2）, lack_h=10, excess_h=72
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_filteredに追加: 介護（W_2）=10
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 介護（W_2）=72
+2025-08-08 15:07:43 [DASHBOARD] INFO: 職種9: 看護師, lack_h=0, excess_h=117
+2025-08-08 15:07:43 [DASHBOARD] INFO: df_shortage_role_excessに追加: 看護師=117
+2025-08-08 15:07:43 [DASHBOARD] INFO: 処理完了 - df_shortage_role_filtered: {'介護': 57, '介護・相談員': 36, '管理者・相談員': 27, '運転士': 27, '事務・介護': 26, '介護（W_3）': 25, '機能訓練士': 18, '介護（W_2）': 10}
+2025-08-08 15:07:43 [DASHBOARD] INFO: 処理完了 - df_shortage_role_excess: {'介護': 123, '介護・相談員': 12, '管理者・相談員': 1, '運転士': 90, '事務・介護': 1, '介護（W_3）': 90, '機能訓練士': 36, '介護（W_2）': 72, '看護師': 117}
+2025-08-08 19:09:37 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:09:37 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:09:37 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:09:37 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:10:23 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:10:23 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:10:23 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:10:23 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:10:47 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:10:47 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:10:47 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:10:47 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:12:49 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:12:49 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:12:49 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:12:49 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:13:21 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:13:21 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:13:21 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:13:21 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:13:28 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:13:28 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:13:28 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:13:28 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:13:42 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:13:42 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:13:42 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:13:42 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:06 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:06 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:14:06 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:14:06 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:11 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:11 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:14:11 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:14:11 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:42 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:42 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:14:42 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:14:42 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:46 [DASHBOARD] INFO: ============================================================
+2025-08-08 19:14:46 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 19:14:46 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 19:14:46 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:02:46 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:02:46 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 23:02:46 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 23:02:46 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:03:56 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:03:56 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 23:03:56 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 23:03:56 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:05:35 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:05:35 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 23:05:35 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 23:05:35 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:08:00 [DASHBOARD] INFO: ============================================================
+2025-08-08 23:08:00 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-08 23:08:00 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-08 23:08:00 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:06:06 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:06:06 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 14:06:06 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 14:06:06 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:06:41 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:06:41 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 14:06:41 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 14:06:41 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:07:43 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:07:43 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 14:07:43 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 14:07:43 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:08:59 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:08:59 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 14:08:59 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 14:08:59 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:21:53 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:21:53 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 14:21:53 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 14:21:53 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:22:19 [DASHBOARD] INFO: ============================================================
+2025-08-09 14:22:19 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 14:22:19 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 14:22:19 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:22:08 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:22:08 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 18:22:08 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 18:22:08 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:38:51 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:38:51 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 18:38:51 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 18:38:51 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:39:50 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:39:50 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 18:39:50 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 18:39:50 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:40:35 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:40:35 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 18:40:35 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 18:40:35 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:42:27 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:42:27 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 18:42:27 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 18:42:27 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:43:59 [DASHBOARD] INFO: ============================================================
+2025-08-09 18:43:59 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 18:43:59 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 18:43:59 [DASHBOARD] INFO: ============================================================
+2025-08-09 19:00:47 [DASHBOARD] INFO: ============================================================
+2025-08-09 19:00:47 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 19:00:47 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 19:00:47 [DASHBOARD] INFO: ============================================================
+2025-08-09 21:44:57 [DASHBOARD] INFO: ============================================================
+2025-08-09 21:44:57 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-09 21:44:57 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-09 21:44:57 [DASHBOARD] INFO: ============================================================
+2025-08-12 09:45:25 [DASHBOARD] INFO: ============================================================
+2025-08-12 09:45:25 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-12 09:45:25 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-12 09:45:25 [DASHBOARD] INFO: ============================================================
+2025-08-12 09:46:14 [DASHBOARD] INFO: ============================================================
+2025-08-12 09:46:14 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-12 09:46:14 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-12 09:46:14 [DASHBOARD] INFO: ============================================================
+2025-08-12 23:07:23 [DASHBOARD] INFO: ============================================================
+2025-08-12 23:07:23 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-12 23:07:23 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-12 23:07:23 [DASHBOARD] INFO: ============================================================
+2025-08-12 23:21:30 [DASHBOARD] INFO: ============================================================
+2025-08-12 23:21:30 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-12 23:21:30 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-12 23:21:30 [DASHBOARD] INFO: ============================================================
+2025-08-12 23:42:50 [DASHBOARD] INFO: ============================================================
+2025-08-12 23:42:50 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-12 23:42:50 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-12 23:42:50 [DASHBOARD] INFO: ============================================================
+2025-08-14 17:49:38 [DASHBOARD] INFO: ============================================================
+2025-08-14 17:49:38 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-14 17:49:38 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-14 17:49:38 [DASHBOARD] INFO: ============================================================
+2025-08-14 18:01:12 [DASHBOARD] INFO: ============================================================
+2025-08-14 18:01:12 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-14 18:01:12 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-14 18:01:12 [DASHBOARD] INFO: ============================================================
+2025-08-14 18:09:34 [DASHBOARD] INFO: ============================================================
+2025-08-14 18:09:34 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-14 18:09:34 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-14 18:09:34 [DASHBOARD] INFO: ============================================================
+2025-08-14 18:11:34 [DASHBOARD] INFO: ============================================================
+2025-08-14 18:11:34 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-14 18:11:34 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-14 18:11:34 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:05:42 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:05:42 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:05:42 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:05:42 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:06:32 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:06:32 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:06:32 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:06:32 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:07:20 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:07:20 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:07:20 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:07:20 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:08:50 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:08:50 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:08:50 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:08:50 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:10:10 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:10:10 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:10:10 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:10:10 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:12:50 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:12:50 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:12:50 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:12:50 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:35:02 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:35:02 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:35:02 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:35:02 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:36:25 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:36:25 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:36:25 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:36:25 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:37:53 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:37:53 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:37:53 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:37:53 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:39:25 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:39:25 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:39:25 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:39:25 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:48:07 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:48:07 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:48:07 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:48:07 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:57:20 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:57:20 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:57:20 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:57:20 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:59:06 [DASHBOARD] INFO: ============================================================
+2025-08-15 01:59:06 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 01:59:06 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 01:59:06 [DASHBOARD] INFO: ============================================================
+2025-08-15 02:01:02 [DASHBOARD] INFO: ============================================================
+2025-08-15 02:01:02 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 02:01:02 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 02:01:02 [DASHBOARD] INFO: ============================================================
+2025-08-15 02:10:31 [DASHBOARD] INFO: ============================================================
+2025-08-15 02:10:31 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 02:10:31 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 02:10:31 [DASHBOARD] INFO: ============================================================
+2025-08-15 02:11:13 [DASHBOARD] INFO: ============================================================
+2025-08-15 02:11:13 [DASHBOARD] INFO: 不足分析ログ（可視化段階）開始
+2025-08-15 02:11:13 [DASHBOARD] INFO: ログファイル: C:\ShiftAnalysis\shortage_dashboard.log
+2025-08-15 02:11:13 [DASHBOARD] INFO: ============================================================

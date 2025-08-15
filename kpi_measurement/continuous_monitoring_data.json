@@ -1,0 +1,1082 @@
+[
+  {
+    "day": 1,
+    "date": "2025-07-16T17:11:24.078386",
+    "technical": {
+      "uptime_rate": 99.88164535340424,
+      "response_time": 1.764825849796893,
+      "error_rate": 0.05933465149730674,
+      "throughput": 809.4928617967264,
+      "memory_usage": 87.15414498970395,
+      "cpu_usage": 27.152427952068166
+    },
+    "business": {
+      "efficiency_improvement": 21.88519986571114,
+      "time_reduction": 28.311213083160812,
+      "cost_reduction": 181935.30003394192,
+      "roi": 248.69983632864572,
+      "process_automation": 76.945728756093,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 86.14830034033417,
+      "ease_of_use": 87.11949348226631,
+      "learning_curve": 12.602752757597932,
+      "feature_adoption": 77.5213289007535,
+      "support_requests": 2.538807803329251,
+      "user_retention": 95.58927771269958
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 14.283826161904926,
+      "maintenance_overhead": 9.300227967610518,
+      "security_score": 96.13486067943812,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 2,
+    "date": "2025-07-17T17:11:24.078471",
+    "technical": {
+      "uptime_rate": 99.75223256997317,
+      "response_time": 2.021614164220791,
+      "error_rate": 0.19245526942991442,
+      "throughput": 872.7296656317915,
+      "memory_usage": 89.91698024185136,
+      "cpu_usage": 22.212288045667584
+    },
+    "business": {
+      "efficiency_improvement": 23.932272193683346,
+      "time_reduction": 25.862473928557726,
+      "cost_reduction": 198985.33983235547,
+      "roi": 252.03311203199985,
+      "process_automation": 78.40689532042818,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 86.90222743236065,
+      "ease_of_use": 90.16940390787506,
+      "learning_curve": 12.027222688518506,
+      "feature_adoption": 81.52847215814731,
+      "support_requests": 2.3073150917559344,
+      "user_retention": 97.03411067030285
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 15.655649745609804,
+      "maintenance_overhead": 7.96667703983362,
+      "security_score": 95.98900995523866,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 3,
+    "date": "2025-07-18T17:11:24.078502",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.6127099526217805,
+      "error_rate": 0.12042717581267846,
+      "throughput": 876.5016564510195,
+      "memory_usage": 85.5115204446833,
+      "cpu_usage": 20.75236282730505
+    },
+    "business": {
+      "efficiency_improvement": 23.179253500369402,
+      "time_reduction": 25.364458318738265,
+      "cost_reduction": 185359.91872686832,
+      "roi": 265.03375877831786,
+      "process_automation": 81.04682695336143,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 86.723167915879,
+      "ease_of_use": 89.9918751352615,
+      "learning_curve": 13.589132399641336,
+      "feature_adoption": 80.96976295721133,
+      "support_requests": 2.6926343004839146,
+      "user_retention": 96.91331216432313
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 14.530043862208192,
+      "maintenance_overhead": 8.574215715470407,
+      "security_score": 97.47081697110377,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 4,
+    "date": "2025-07-19T17:11:24.078520",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.7942989347587146,
+      "error_rate": 0.07869861502647889,
+      "throughput": 937.8182751468594,
+      "memory_usage": 82.37424628197383,
+      "cpu_usage": 23.876866914262404
+    },
+    "business": {
+      "efficiency_improvement": 24.753213300652277,
+      "time_reduction": 26.34311772496289,
+      "cost_reduction": 181002.52007096302,
+      "roi": 267.1723360211132,
+      "process_automation": 79.47245428521052,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 85.731574154262,
+      "ease_of_use": 88.36357593315962,
+      "learning_curve": 13.771839014790846,
+      "feature_adoption": 77.35316426250625,
+      "support_requests": 2.329417965766522,
+      "user_retention": 96.23686265986518
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 17.917555293201445,
+      "maintenance_overhead": 7.489450322014042,
+      "security_score": 97.1496264654186,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 5,
+    "date": "2025-07-20T17:11:24.078536",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.6190072949806869,
+      "error_rate": 0.07532399378826289,
+      "throughput": 917.0746378350361,
+      "memory_usage": 86.86220774340886,
+      "cpu_usage": 31.635226654840167
+    },
+    "business": {
+      "efficiency_improvement": 24.565422437121484,
+      "time_reduction": 27.936954816207717,
+      "cost_reduction": 206066.64291436085,
+      "roi": 260.0717922085364,
+      "process_automation": 83.03838598938226,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 85.75475397319121,
+      "ease_of_use": 90.47120731342997,
+      "learning_curve": 13.754954491318731,
+      "feature_adoption": 77.98679845176652,
+      "support_requests": 2.2697381932994887,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 13.224998847034891,
+      "maintenance_overhead": 10.039220993204014,
+      "security_score": 97.57320373715592,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 6,
+    "date": "2025-07-21T17:11:24.078553",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.6966539758965793,
+      "error_rate": 0.0897384065406654,
+      "throughput": 970.6511269009686,
+      "memory_usage": 84.35569127059183,
+      "cpu_usage": 33.844016355714054
+    },
+    "business": {
+      "efficiency_improvement": 22.75786368641377,
+      "time_reduction": 26.016140990152902,
+      "cost_reduction": 183799.43992617668,
+      "roi": 246.2840035787203,
+      "process_automation": 81.69839401779079,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 87.16397435765529,
+      "ease_of_use": 91.0897948157571,
+      "learning_curve": 13.66263766603828,
+      "feature_adoption": 79.50861278158278,
+      "support_requests": 2.2966920285657255,
+      "user_retention": 96.91029591401079
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 18.713754451030574,
+      "maintenance_overhead": 9.786593940604158,
+      "security_score": 99.19071947407566,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 7,
+    "date": "2025-07-22T17:11:24.078570",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.6375121371153376,
+      "error_rate": 0.07389255584534368,
+      "throughput": 847.4842218326019,
+      "memory_usage": 83.02415166535766,
+      "cpu_usage": 36.8479174577143
+    },
+    "business": {
+      "efficiency_improvement": 22.637424093509022,
+      "time_reduction": 28.16560530531048,
+      "cost_reduction": 188240.81396269635,
+      "roi": 268.69512979859354,
+      "process_automation": 79.87441576004392,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 86.80213809864559,
+      "ease_of_use": 92.51774883239169,
+      "learning_curve": 13.231984154335514,
+      "feature_adoption": 78.8693644828976,
+      "support_requests": 2.2525395207649526,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 13.060610035065567,
+      "maintenance_overhead": 9.728076323499927,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 8,
+    "date": "2025-07-23T17:11:24.081990",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.7023395411314588,
+      "error_rate": 0.18961141756617927,
+      "throughput": 831.3113765336649,
+      "memory_usage": 81.59857430237294,
+      "cpu_usage": 26.22440001032249
+    },
+    "business": {
+      "efficiency_improvement": 23.14627649012605,
+      "time_reduction": 29.280855299712602,
+      "cost_reduction": 197311.82190386573,
+      "roi": 247.29453845557606,
+      "process_automation": 79.85301967149353,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 85.51195448902392,
+      "ease_of_use": 92.26850014643651,
+      "learning_curve": 13.180674195769924,
+      "feature_adoption": 80.84586618985566,
+      "support_requests": 2.67090137272158,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 19.337645063873424,
+      "maintenance_overhead": 7.362348294972526,
+      "security_score": 98.86018952564959,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 9,
+    "date": "2025-07-24T17:11:24.082037",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.704716811274368,
+      "error_rate": 0.1438328330018786,
+      "throughput": 927.9341893280784,
+      "memory_usage": 89.05186671753263,
+      "cpu_usage": 19.142266887809075
+    },
+    "business": {
+      "efficiency_improvement": 24.884603528275864,
+      "time_reduction": 28.627954234765575,
+      "cost_reduction": 203131.13294254677,
+      "roi": 270.0021378654196,
+      "process_automation": 82.65251336033697,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 85.0088336185044,
+      "ease_of_use": 91.49122140789652,
+      "learning_curve": 11.987561464706864,
+      "feature_adoption": 84.21921896201948,
+      "support_requests": 2.678957348066631,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 15.824292393250964,
+      "maintenance_overhead": 7.730039881370993,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 10,
+    "date": "2025-07-25T17:11:24.082063",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.6826269336480517,
+      "error_rate": 0.10060019347616762,
+      "throughput": 961.1800900400203,
+      "memory_usage": 93.44945121492,
+      "cpu_usage": 33.05639235034015
+    },
+    "business": {
+      "efficiency_improvement": 23.921080930487733,
+      "time_reduction": 26.823681131788952,
+      "cost_reduction": 211016.4911445911,
+      "roi": 254.208512923488,
+      "process_automation": 83.38839231007466,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 87.81881514842912,
+      "ease_of_use": 91.84549010866866,
+      "learning_curve": 11.517549682088529,
+      "feature_adoption": 79.10221870214394,
+      "support_requests": 2.603399541817437,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 19.309369311488453,
+      "maintenance_overhead": 7.138265064819242,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 11,
+    "date": "2025-07-26T17:11:24.082085",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.7736041837020373,
+      "error_rate": 0.19284512174775376,
+      "throughput": 860.9102730744145,
+      "memory_usage": 84.41442463272182,
+      "cpu_usage": 26.77167309760192
+    },
+    "business": {
+      "efficiency_improvement": 22.930334026700784,
+      "time_reduction": 29.283070115991436,
+      "cost_reduction": 186636.41813114175,
+      "roi": 273.6156595577826,
+      "process_automation": 81.44595844150989,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 87.9755987690624,
+      "ease_of_use": 91.62951358871754,
+      "learning_curve": 12.149862877454982,
+      "feature_adoption": 83.05882441847018,
+      "support_requests": 2.318830494417292,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 18.65643741824775,
+      "maintenance_overhead": 7.409370363331126,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 12,
+    "date": "2025-07-27T17:11:24.082104",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.590362773734551,
+      "error_rate": 0.12323041352402214,
+      "throughput": 979.6927654473902,
+      "memory_usage": 89.96616661181199,
+      "cpu_usage": 35.74323041480142
+    },
+    "business": {
+      "efficiency_improvement": 25.773290133571916,
+      "time_reduction": 30.008488993893554,
+      "cost_reduction": 191486.9165785657,
+      "roi": 258.75901314138775,
+      "process_automation": 81.80406729426863,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 91.17417912594941,
+      "ease_of_use": 94.10485574908145,
+      "learning_curve": 11.058227823608968,
+      "feature_adoption": 80.44839249863976,
+      "support_requests": 2.3687923230807084,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 15.580291864317442,
+      "maintenance_overhead": 7.3463608886624225,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 13,
+    "date": "2025-07-28T17:11:24.082121",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.8137736518800653,
+      "error_rate": 0.09995944208921795,
+      "throughput": 863.7796390113505,
+      "memory_usage": 82.34988647923201,
+      "cpu_usage": 35.546310045444415
+    },
+    "business": {
+      "efficiency_improvement": 24.03777695169999,
+      "time_reduction": 26.916445535511464,
+      "cost_reduction": 195522.298212058,
+      "roi": 265.7808275705024,
+      "process_automation": 83.72267088071753,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 88.64066905306991,
+      "ease_of_use": 93.60579606772329,
+      "learning_curve": 11.496284654981359,
+      "feature_adoption": 82.91496361764658,
+      "support_requests": 2.0248004048683956,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 16.716306043646654,
+      "maintenance_overhead": 8.455213314243318,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 14,
+    "date": "2025-07-29T17:11:24.082141",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.9837265559259412,
+      "error_rate": 0.10464747383686653,
+      "throughput": 898.6607686397315,
+      "memory_usage": 86.33857006744418,
+      "cpu_usage": 22.933646090473612
+    },
+    "business": {
+      "efficiency_improvement": 25.85332145472072,
+      "time_reduction": 28.59583594595775,
+      "cost_reduction": 209248.7996373991,
+      "roi": 276.578565966828,
+      "process_automation": 84.71369941489839,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 90.1167338610341,
+      "ease_of_use": 94.15644974252234,
+      "learning_curve": 13.5403320069852,
+      "feature_adoption": 85.48150634228239,
+      "support_requests": 2.3118675472455967,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 12.71445261251203,
+      "maintenance_overhead": 7.714391608054183,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 15,
+    "date": "2025-07-30T17:11:24.084337",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 2.0477431807123474,
+      "error_rate": 0.08504229856523016,
+      "throughput": 923.2523564927141,
+      "memory_usage": 94.41836550993479,
+      "cpu_usage": 30.098577426571087
+    },
+    "business": {
+      "efficiency_improvement": 24.072457096712597,
+      "time_reduction": 27.914784383101566,
+      "cost_reduction": 212512.82358937315,
+      "roi": 277.30982857113395,
+      "process_automation": 85.9672645257659,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 88.79157503901877,
+      "ease_of_use": 93.20076064947065,
+      "learning_curve": 10.941269609580875,
+      "feature_adoption": 80.89221263598427,
+      "support_requests": 2.611369094280062,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 12.366850375510829,
+      "maintenance_overhead": 8.936646021539879,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 16,
+    "date": "2025-07-31T17:11:24.084383",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.6696590741727657,
+      "error_rate": 0.06014230378656604,
+      "throughput": 981.2426849384751,
+      "memory_usage": 93.50389696418777,
+      "cpu_usage": 38.18373134826524
+    },
+    "business": {
+      "efficiency_improvement": 25.153898414544155,
+      "time_reduction": 27.067366356949833,
+      "cost_reduction": 207354.43666532743,
+      "roi": 273.49775763810067,
+      "process_automation": 83.5542740166913,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 90.95599108080324,
+      "ease_of_use": 95.0,
+      "learning_curve": 11.7476455388336,
+      "feature_adoption": 86.69081961510027,
+      "support_requests": 2.369696038474408,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 14.415212029840237,
+      "maintenance_overhead": 7.339221655552544,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 17,
+    "date": "2025-08-01T17:11:24.084409",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.9272088414183957,
+      "error_rate": 0.10166829673638308,
+      "throughput": 946.8933869047194,
+      "memory_usage": 93.16280601185125,
+      "cpu_usage": 21.464930877410367
+    },
+    "business": {
+      "efficiency_improvement": 25.463113883877515,
+      "time_reduction": 27.028588106391545,
+      "cost_reduction": 214610.3785776278,
+      "roi": 266.2431909855621,
+      "process_automation": 86.93552574676178,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 89.2873068022033,
+      "ease_of_use": 95.0,
+      "learning_curve": 11.014872846451384,
+      "feature_adoption": 87.02243615492785,
+      "support_requests": 2.1164784575775775,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 14.287344458392226,
+      "maintenance_overhead": 6.9438070733118185,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 18,
+    "date": "2025-08-02T17:11:24.084430",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.8732755098674359,
+      "error_rate": 0.134061105372922,
+      "throughput": 970.865938076623,
+      "memory_usage": 85.87013980093847,
+      "cpu_usage": 19.951204837242578
+    },
+    "business": {
+      "efficiency_improvement": 24.5638739770628,
+      "time_reduction": 27.46020927733209,
+      "cost_reduction": 206003.91238178444,
+      "roi": 272.37239126747704,
+      "process_automation": 85.78884561948031,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 89.20584128482353,
+      "ease_of_use": 95.0,
+      "learning_curve": 13.287077983882485,
+      "feature_adoption": 87.1236794928291,
+      "support_requests": 2.542545136041403,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 14.436149344182915,
+      "maintenance_overhead": 9.603118026653718,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 19,
+    "date": "2025-08-03T17:11:24.084443",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.9194645375804122,
+      "error_rate": 0.1366436953721538,
+      "throughput": 1009.9336971949505,
+      "memory_usage": 94.17102740661882,
+      "cpu_usage": 24.168704904610756
+    },
+    "business": {
+      "efficiency_improvement": 25.52602956108246,
+      "time_reduction": 28.457120850907092,
+      "cost_reduction": 198061.53457675083,
+      "roi": 282.5397814034565,
+      "process_automation": 85.96966088520983,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 89.69130059136477,
+      "ease_of_use": 95.0,
+      "learning_curve": 13.019008654905798,
+      "feature_adoption": 87.47055452102909,
+      "support_requests": 2.0152167273739527,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 13.702204223315915,
+      "maintenance_overhead": 8.078326166723752,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 20,
+    "date": "2025-08-04T17:11:24.084457",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.5684567461171144,
+      "error_rate": 0.1428658621226933,
+      "throughput": 998.2101184354748,
+      "memory_usage": 88.60375813560232,
+      "cpu_usage": 32.24254706819086
+    },
+    "business": {
+      "efficiency_improvement": 25.677508344520433,
+      "time_reduction": 31.002647485747648,
+      "cost_reduction": 195187.42740820113,
+      "roi": 266.6747501177938,
+      "process_automation": 86.21691765843842,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 91.97846386874575,
+      "ease_of_use": 95.0,
+      "learning_curve": 10.439258218877567,
+      "feature_adoption": 84.81493781141353,
+      "support_requests": 2.4812078788760155,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 16.989697851325225,
+      "maintenance_overhead": 9.43051142623601,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 21,
+    "date": "2025-08-05T17:11:24.084471",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.9367795991954573,
+      "error_rate": 0.16309810870374805,
+      "throughput": 965.9905675469029,
+      "memory_usage": 91.14870349509403,
+      "cpu_usage": 27.183016584123067
+    },
+    "business": {
+      "efficiency_improvement": 26.392898945309074,
+      "time_reduction": 30.478422202319873,
+      "cost_reduction": 197109.30754121533,
+      "roi": 265.56443460753894,
+      "process_automation": 86.4363856722655,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 90.35737800166523,
+      "ease_of_use": 95.0,
+      "learning_curve": 11.811459536262833,
+      "feature_adoption": 85.51614168639213,
+      "support_requests": 2.528277234182949,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 13.863646111769697,
+      "maintenance_overhead": 9.530733196575284,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 22,
+    "date": "2025-08-06T17:11:24.086644",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.8810681121972912,
+      "error_rate": 0.09535036515707207,
+      "throughput": 1000.3925092057094,
+      "memory_usage": 82.5800973895098,
+      "cpu_usage": 25.187443877436714
+    },
+    "business": {
+      "efficiency_improvement": 25.748186615918172,
+      "time_reduction": 29.67225700163154,
+      "cost_reduction": 199612.78084183126,
+      "roi": 270.9476170661699,
+      "process_automation": 90.1305487888548,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 95.0,
+      "ease_of_use": 95.0,
+      "learning_curve": 12.109808089985785,
+      "feature_adoption": 85.86215534373764,
+      "support_requests": 2.3147408193415244,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 11.88344639276288,
+      "maintenance_overhead": 7.587342347323121,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 23,
+    "date": "2025-08-07T17:11:24.086674",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.9978486586782283,
+      "error_rate": 0.1507515519296218,
+      "throughput": 1037.9754227719282,
+      "memory_usage": 87.6965435938497,
+      "cpu_usage": 37.59286937633124
+    },
+    "business": {
+      "efficiency_improvement": 25.21502010387646,
+      "time_reduction": 29.046518492383843,
+      "cost_reduction": 208721.3792869657,
+      "roi": 284.2923413321389,
+      "process_automation": 87.84857034875886,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 93.9094955648736,
+      "ease_of_use": 95.0,
+      "learning_curve": 10.839034367477339,
+      "feature_adoption": 84.01882883590554,
+      "support_requests": 2.171552990736183,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 13.94416674238531,
+      "maintenance_overhead": 8.767130606815627,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 24,
+    "date": "2025-08-08T17:11:24.086690",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.5710441557850325,
+      "error_rate": 0.10591262192942716,
+      "throughput": 955.381793327526,
+      "memory_usage": 93.04971110730493,
+      "cpu_usage": 37.153554156789326
+    },
+    "business": {
+      "efficiency_improvement": 24.56837816795355,
+      "time_reduction": 28.91882268170874,
+      "cost_reduction": 210335.54441452702,
+      "roi": 271.48191022175035,
+      "process_automation": 89.02521537622722,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 94.2491064779712,
+      "ease_of_use": 95.0,
+      "learning_curve": 12.62073815784966,
+      "feature_adoption": 89.31939471721894,
+      "support_requests": 2.2539340834787667,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 14.340261518419743,
+      "maintenance_overhead": 8.819452103071328,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 25,
+    "date": "2025-08-09T17:11:24.086705",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.8226129502823567,
+      "error_rate": 0.08405358563909657,
+      "throughput": 1027.1250345734366,
+      "memory_usage": 83.97363511185554,
+      "cpu_usage": 26.136750250335105
+    },
+    "business": {
+      "efficiency_improvement": 26.64674180930595,
+      "time_reduction": 31.01317433648759,
+      "cost_reduction": 208618.61054011327,
+      "roi": 283.5396198451463,
+      "process_automation": 86.83218964098366,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 92.72861284634526,
+      "ease_of_use": 95.0,
+      "learning_curve": 11.352341465778714,
+      "feature_adoption": 86.4729456112134,
+      "support_requests": 1.8479829368264884,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 1,
+      "recovery_time": 15.927590414401694,
+      "maintenance_overhead": 9.23015647876479,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 26,
+    "date": "2025-08-10T17:11:24.086719",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.616375220729918,
+      "error_rate": 0.18042417651962245,
+      "throughput": 930.9873373465415,
+      "memory_usage": 82.8503378472418,
+      "cpu_usage": 21.98097823470028
+    },
+    "business": {
+      "efficiency_improvement": 26.103025782444004,
+      "time_reduction": 29.200915253623787,
+      "cost_reduction": 221238.0047897001,
+      "roi": 276.9012320512756,
+      "process_automation": 88.74064446178198,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 95.0,
+      "ease_of_use": 95.0,
+      "learning_curve": 12.858829843882917,
+      "feature_adoption": 89.90861087677183,
+      "support_requests": 2.011027181328178,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 17.530130516642714,
+      "maintenance_overhead": 9.427139395613493,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 27,
+    "date": "2025-08-11T17:11:24.086732",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.9043457839799367,
+      "error_rate": 0.11558704016846745,
+      "throughput": 934.3981900306057,
+      "memory_usage": 89.08791287685227,
+      "cpu_usage": 33.878479417761255
+    },
+    "business": {
+      "efficiency_improvement": 26.632405632633713,
+      "time_reduction": 30.68274243762566,
+      "cost_reduction": 216005.78656791215,
+      "roi": 288.1031492678205,
+      "process_automation": 89.17181843605843,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 92.46636153911464,
+      "ease_of_use": 95.0,
+      "learning_curve": 12.759088540341853,
+      "feature_adoption": 86.38824202415701,
+      "support_requests": 2.4809046120854625,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 11.77167318098939,
+      "maintenance_overhead": 9.180504059246411,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 28,
+    "date": "2025-08-12T17:11:24.086744",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 2.0066568137462975,
+      "error_rate": 0.1007779651564983,
+      "throughput": 987.1582694548817,
+      "memory_usage": 84.78960391717524,
+      "cpu_usage": 19.13302952005855
+    },
+    "business": {
+      "efficiency_improvement": 26.081532116459538,
+      "time_reduction": 31.976832295923103,
+      "cost_reduction": 202640.03713617695,
+      "roi": 295.88690776619296,
+      "process_automation": 91.82989898178552,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 95.0,
+      "ease_of_use": 95.0,
+      "learning_curve": 10.537487320343168,
+      "feature_adoption": 87.83759156873462,
+      "support_requests": 2.3245066457183827,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 12.571413127016484,
+      "maintenance_overhead": 7.583839740552646,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 29,
+    "date": "2025-08-13T17:11:24.088836",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.5696240829103174,
+      "error_rate": 0.09131949062295663,
+      "throughput": 921.4619957423024,
+      "memory_usage": 88.58722855392205,
+      "cpu_usage": 21.751589458988803
+    },
+    "business": {
+      "efficiency_improvement": 26.437650848432394,
+      "time_reduction": 28.903822146343966,
+      "cost_reduction": 225658.0011320548,
+      "roi": 285.4665214652531,
+      "process_automation": 92.29726721863642,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 95.0,
+      "ease_of_use": 95.0,
+      "learning_curve": 11.954955688982315,
+      "feature_adoption": 89.83041171978805,
+      "support_requests": 2.2491691035682058,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 15.460144589346971,
+      "maintenance_overhead": 6.48555174512543,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  },
+  {
+    "day": 30,
+    "date": "2025-08-14T17:11:24.088875",
+    "technical": {
+      "uptime_rate": 99.9,
+      "response_time": 1.8766332168199882,
+      "error_rate": 0.09838633979398599,
+      "throughput": 1031.406668144851,
+      "memory_usage": 80.460392266983,
+      "cpu_usage": 28.754036771182392
+    },
+    "business": {
+      "efficiency_improvement": 27.68862357771746,
+      "time_reduction": 30.76653962548976,
+      "cost_reduction": 207252.1587162869,
+      "roi": 282.4084030225896,
+      "process_automation": 88.69862506439252,
+      "data_accuracy": 100.0
+    },
+    "user_experience": {
+      "satisfaction_score": 95.0,
+      "ease_of_use": 95.0,
+      "learning_curve": 11.726582991894931,
+      "feature_adoption": 90.0,
+      "support_requests": 2.3530244623565495,
+      "user_retention": 98.0
+    },
+    "operational": {
+      "incident_count": 0,
+      "recovery_time": 14.512764302725886,
+      "maintenance_overhead": 8.278388262331926,
+      "security_score": 100.0,
+      "compliance_rate": 100.0,
+      "backup_success": 100.0
+    }
+  }
+]
