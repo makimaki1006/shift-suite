@@ -553,6 +553,60 @@ span[style*="color: #ffffff"] {
     font-weight: 700 !important;
 }
 
+/* 最強力な包括的修正 - すべての要素に適用 */
+* {
+    color: #212529 !important;
+}
+
+/* ただし、背景が暗い場合は白文字を許可 */
+[style*="background-color: #"] *,
+[style*="background: #"] *,
+.bg-dark *,
+.bg-primary *,
+.bg-secondary *,
+.bg-success *,
+.bg-danger *,
+.bg-warning *,
+.bg-info * {
+    color: #ffffff !important;
+}
+
+/* Dashの特定要素への強制適用 */
+div[data-dash-is-loading] *,
+.dash-dropdown *,
+._dash-dropdown *,
+.dash-input *,
+.tab-container *,
+.Select-control *,
+.Select-value *,
+.Select-option * {
+    color: #212529 !important;
+}
+
+/* ReactベースのDashコンポーネント */
+[data-testid] *,
+[class*="dash"] *,
+[id*="dash"] *,
+[class*="Select"] *,
+[class*="tab"] * {
+    color: #212529 !important;
+}
+
+/* ボタンやリンクの可読性 */
+button, 
+button *, 
+a, 
+a *,
+.btn,
+.btn * {
+    color: #212529 !important;
+}
+
+/* 最後の手段：body内のすべての要素 */
+body * {
+    color: #212529 !important;
+}
+
 /* Table styles for better readability */
 .dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table {
     color: #212529 !important;
