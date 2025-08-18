@@ -10,9 +10,9 @@ openpyxl==3.1.2         # Excel I/O
 XlsxWriter>=3.2.0       # Excel出力
 
 # ===== WEB FRAMEWORKS =====
-Flask==3.0.0            # app.py用Webフレームワーク
+Flask==3.0.3            # app.py用Webフレームワーク (安定版更新)
 dash==2.17.1            # ダッシュボード (安定版固定)
-dash-bootstrap-components==1.7.0  # Bootstrap UI
+dash-bootstrap-components==1.6.0  # Bootstrap UI (安定版：1.7.0はbroken build)
 
 # ===== VISUALIZATION =====
 plotly==5.17.0          # 可視化 (narwhals問題回避のため固定)

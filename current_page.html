@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="Shift-Suite 高速分析ビューア - レスポンシブ対応">
+      <meta charset="utf-8">
+        <title>Shift-Suite 高速分析ビューア</title>
+        <link rel="icon" type="image/x-icon" href="/_favicon.ico?v=3.2.0">
+        <link rel="stylesheet" href="/assets/c2-mobile-integrated.css?m=1754231768.0">
+<link rel="stylesheet" href="/assets/c2-mobile.css?m=1754438602.1735382">
+<link rel="stylesheet" href="/assets/style.css?m=1755355594.716325">
+<link rel="stylesheet" href="/assets/test_style.css?m=1755305620.8548892">
+        <style>
+        /* レスポンシブベーススタイル */
+        @media (max-width: 768px) {
+            .mobile-hide { display: none !important; }
+            .container { padding: 10px !important; }
+            .card { margin: 5px 0 !important; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .tablet-hide { display: none !important; }
+            .container { padding: 15px !important; }
+        }
+        @media (min-width: 1025px) {
+            .desktop-only { display: block !important; }
+        }
+        
+        /* 共通レスポンシブスタイル */
+        .responsive-container {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .responsive-grid {
+            display: grid;
+            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+        .responsive-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .responsive-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        </style>
+    </head>
+    <body>
+        
+<div id="react-entry-point">
+    <div class="_dash-loading">
+        Loading...
+    </div>
+</div>
+
+        <footer>
+            <script id="_dash-config" type="application/json">{"url_base_pathname":null,"requests_pathname_prefix":"\u002f","ui":true,"props_check":true,"disable_version_check":false,"show_undo_redo":false,"suppress_callback_exceptions":true,"update_title":"Updating...","children_props":{"dash_core_components":{"Checklist":["options[].label"],"Clipboard":[],"ConfirmDialog":[],"ConfirmDialogProvider":[],"DatePickerRange":[],"DatePickerSingle":[],"Download":[],"Dropdown":["options[].label"],"Geolocation":[],"Graph":[],"Input":[],"Interval":[],"Link":[],"Loading":["custom_spinner"],"Location":[],"Markdown":[],"RadioItems":["options[].label"],"RangeSlider":[],"Slider":[],"Store":[],"Tab":[],"Tabs":[],"Textarea":[],"Tooltip":[],"Upload":[]},"dash_html_components":{"A":[],"Abbr":[],"Acronym":[],"Address":[],"Area":[],"Article":[],"Aside":[],"Audio":[],"B":[],"Base":[],"Basefont":[],"Bdi":[],"Bdo":[],"Big":[],"Blink":[],"Blockquote":[],"Br":[],"Button":[],"Canvas":[],"Caption":[],"Center":[],"Cite":[],"Code":[],"Col":[],"Colgroup":[],"Content":[],"Data":[],"Datalist":[],"Dd":[],"Del":[],"Details":[],"Dfn":[],"Dialog":[],"Div":[],"Dl":[],"Dt":[],"Em":[],"Embed":[],"Fieldset":[],"Figcaption":[],"Figure":[],"Font":[],"Footer":[],"Form":[],"Frame":[],"Frameset":[],"H1":[],"H2":[],"H3":[],"H4":[],"H5":[],"H6":[],"Header":[],"Hgroup":[],"Hr":[],"I":[],"Iframe":[],"Img":[],"Ins":[],"Kbd":[],"Keygen":[],"Label":[],"Legend":[],"Li":[],"Link":[],"Main":[],"MapEl":[],"Mark":[],"Marquee":[],"Meta":[],"Meter":[],"Nav":[],"Nobr":[],"Noscript":[],"ObjectEl":[],"Ol":[],"Optgroup":[],"Option":[],"Output":[],"P":[],"Param":[],"Picture":[],"Plaintext":[],"Pre":[],"Progress":[],"Q":[],"Rb":[],"Rp":[],"Rt":[],"Rtc":[],"Ruby":[],"S":[],"Samp":[],"Script":[],"Section":[],"Select":[],"Shadow":[],"Slot":[],"Small":[],"Source":[],"Spacer":[],"Span":[],"Strike":[],"Strong":[],"Sub":[],"Summary":[],"Sup":[],"Table":[],"Tbody":[],"Td":[],"Template":[],"Textarea":[],"Tfoot":[],"Th":[],"Thead":[],"Time":[],"Title":[],"Tr":[],"Track":[],"U":[],"Ul":[],"Var":[],"Video":[],"Wbr":[],"Xmp":[]},"dash_table":{"DataTable":[]},"dash_cytoscape":{"Cytoscape":[],"CyLeaflet":null}},"serve_locally":true,"dash_version":"3.2.0","python_version":"3.13.5 (tags\u002fv3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]","dash_version_url":"https:\u002f\u002fdash-version.plotly.com:8080\u002fcurrent_version","ddk_version":null,"plotly_version":"6.0.1","hot_reload":{"interval":3000,"max_retry":8},"dev_tools":[]}</script>
+            <script src="/_dash-component-suites/dash/deps/polyfill@7.v3_2_0m1754314470.12.1.min.js"></script>
+<script src="/_dash-component-suites/dash/deps/react@18.v3_2_0m1754314470.3.1.js"></script>
+<script src="/_dash-component-suites/dash/deps/react-dom@18.v3_2_0m1754314470.3.1.js"></script>
+<script src="/_dash-component-suites/dash/deps/prop-types@15.v3_2_0m1754314470.8.1.js"></script>
+<script src="/_dash-component-suites/dash_cytoscape/dash_cytoscape.v1_0_2m1755190686.dev.js"></script>
+<script src="/assets/c2-mobile-integrated.js?m=1754231083.0"></script>
+<script src="/assets/c2-service-worker.js?m=1754265330.3645346"></script>
+<script src="/_dash-component-suites/dash/dash-renderer/build/dash_renderer.v3_2_0m1754314470.dev.js"></script>
+<script src="/_dash-component-suites/dash/dcc/dash_core_components.v3_2_0m1754314470.js"></script>
+<script src="/_dash-component-suites/dash/dcc/dash_core_components-shared.v3_2_0m1754314470.js"></script>
+<script src="/_dash-component-suites/dash/html/dash_html_components.v3_0_4m1754314471.min.js"></script>
+<script src="/_dash-component-suites/dash/dash_table/bundle.v6_0_4m1754314470.js"></script>
+            <script id="_dash-renderer" type="application/javascript">var renderer = new DashRenderer();</script>
+        </footer>
+    </body>
+</html>

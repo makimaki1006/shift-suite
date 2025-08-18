@@ -1,0 +1,75 @@
+/* 強制的なテキスト可読性CSS */
+
+/* 全要素に対する最強スタイル */
+*, *::before, *::after {
+    color: #000000 !important;
+    text-shadow: none !important;
+}
+
+html, body {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    font-family: Arial, sans-serif !important;
+}
+
+/* 見出し */
+h1, h2, h3, h4, h5, h6 {
+    color: #000000 !important;
+    font-weight: bold !important;
+}
+
+/* 段落とテキスト */
+p, span, div, label {
+    color: #000000 !important;
+    font-weight: 600 !important;
+}
+
+/* Dashコンポーネント */
+.dash-dropdown,
+.dash-dropdown *,
+._dash-dropdown,
+._dash-dropdown * {
+    color: #000000 !important;
+}
+
+.Select-control {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    border: 2px solid #000000 !important;
+}
+
+.Select-value-label {
+    color: #000000 !important;
+    font-weight: bold !important;
+}
+
+.Select-placeholder {
+    color: #333333 !important;
+    font-weight: bold !important;
+}
+
+.Select-option {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    font-weight: bold !important;
+}
+
+.Select-option:hover {
+    color: #ffffff !important;
+    background-color: #000000 !important;
+    font-weight: bold !important;
+}
+
+/* 最終手段：全ての子要素に強制適用 */
+body * {
+    color: #000000 !important;
+}
+
+[data-dash-is-loading="false"] * {
+    color: #000000 !important;
+}
+
+/* React要素にも適用 */
+div[data-reactroot] * {
+    color: #000000 !important;
+}

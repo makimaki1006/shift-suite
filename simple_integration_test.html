@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dash Integration Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .header { background: #1e3a8a; color: white; padding: 20px; margin-bottom: 20px; }
+        iframe { width: 100%; height: 400px; border: 1px solid #ddd; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Dash Application Integration Test</h1>
+    </div>
+    
+    <div class="section">
+        <h2>Server Status</h2>
+        <div id="status">Checking...</div>
+    </div>
+    
+    <div class="section">
+        <h2>Dash App Embedded Test</h2>
+        <iframe src="http://127.0.0.1:8053/"></iframe>
+    </div>
+    
+    <script>
+        fetch("http://127.0.0.1:8053/_dash-layout")
+            .then(r => r.ok ? "Server OK" : "Server Error")
+            .then(msg => document.getElementById("status").innerHTML = msg)
+            .catch(e => document.getElementById("status").innerHTML = "Network Error");
+    </script>
+</body>
+</html>
