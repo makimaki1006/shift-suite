@@ -3991,7 +3991,7 @@ def display_shortage_tab(tab_container, data_dir):
             ):
                 with tab:
                     st.dataframe(
-                        scenario_df[["time_group", "職種", "雇用形態", "actual_count", col]],
+                        scenario_df[["time_group", "職種", "雇用形態", "actual_count", col]].drop_duplicates(),
                         use_container_width=True,
                     )
         df_s_role = display_data.get("shortage_role")
