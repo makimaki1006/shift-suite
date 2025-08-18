@@ -3981,6 +3981,19 @@ def display_shortage_tab(tab_container, data_dir):
         roles = st.session_state.get("available_roles", [])
         employments = st.session_state.get("available_employments", [])
         display_data = st.session_state.get("display_data", {})
+        scenario_df = st.session_state.get("shortage_scenarios")
+        if isinstance(scenario_df, pd.DataFrame) and {"shortage_mean", "shortage_median", "shortage_p25"}.issubset(scenario_df.columns):
+            st.write("シナリオ比較")
+            tab_mean, tab_median, tab_p25 = st.tabs(["平均値基準", "中央値基準", "25パーセンタイル基準"])
+            for tab, col in zip(
+                [tab_mean, tab_median, tab_p25],
+                ["shortage_mean", "shortage_median", "shortage_p25"],
+            ):
+                with tab:
+                    st.dataframe(
+                        scenario_df[["time_group", "職種", "雇用形態", "actual_count", col]],
+                        use_container_width=True,
+                    )
         df_s_role = display_data.get("shortage_role")
         if isinstance(df_s_role, pd.DataFrame):
             if not _valid_df(df_s_role):

@@ -2039,3 +2039,33 @@ def monthperiod_timeslot_summary(
 
     df = pd.read_parquet(Path(out_dir) / excel)
     return _summary_by_period(df, period="month_period")
+
+
+def assign_shortage_to_individuals(
+    actual_df: pd.DataFrame,
+    shortage_df: pd.DataFrame,
+    time_unit_minutes: int
+) -> pd.DataFrame:
+    """実績データに3シナリオ分の不足値を割り当てる。
+
+    Args:
+        actual_df (pd.DataFrame): 個々の勤務記録を含む実績データ。
+        shortage_df (pd.DataFrame): ``calculate_time_axis_shortage`` の結果。
+        time_unit_minutes (int): 時間グループ化に用いる単位（分）。
+
+    Returns:
+        pd.DataFrame: 不足値を列として追加した実績データ。
+    """
+    freq = f"{time_unit_minutes}min"
+    df = actual_df.copy()
+    df['time_group'] = df['timestamp'].dt.floor(freq)
+
+    merge_cols = ['time_group', '職種', '雇用形態']
+    shortage_cols = ['shortage_mean', 'shortage_median', 'shortage_p25']
+    merged = df.merge(
+        shortage_df[merge_cols + shortage_cols],
+        on=merge_cols,
+        how='left'
+    ).fillna({col: 0 for col in shortage_cols})
+
+    return merged
