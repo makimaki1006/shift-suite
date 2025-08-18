@@ -14,6 +14,14 @@ import multiprocessing as mp
 from dataclasses import dataclass
 import time
 
+from shift_suite.tasks.statistical_need_calculator import (
+    calculate_all_statistical_needs,
+)
+from shift_suite.tasks.time_axis_shortage_calculator import (
+    calculate_time_axis_shortage,
+)
+from shift_suite.tasks.shortage import assign_shortage_to_individuals
+
 # ログ設定
 log = logging.getLogger(__name__)
 
@@ -275,3 +283,10 @@ class PerformanceMonitor:
 # グローバルインスタンス
 analysis_engine = OptimizedAnalysisEngine()
 performance_monitor = PerformanceMonitor()
+
+
+def run(actual_df: pd.DataFrame, time_unit_minutes: int) -> pd.DataFrame:
+    """統計的Need値算出から不足割当までを一括で実行する。"""
+    needs_df = calculate_all_statistical_needs(actual_df, time_unit_minutes)
+    shortage_df = calculate_time_axis_shortage(actual_df, needs_df, time_unit_minutes)
+    return assign_shortage_to_individuals(actual_df, shortage_df, time_unit_minutes)
