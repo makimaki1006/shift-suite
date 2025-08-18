@@ -2062,10 +2062,12 @@ def assign_shortage_to_individuals(
 
     merge_cols = ['time_group', '職種', '雇用形態']
     shortage_cols = ['shortage_mean', 'shortage_median', 'shortage_p25']
+    cols_to_add = ['actual_count'] + shortage_cols
+
     merged = df.merge(
-        shortage_df[merge_cols + shortage_cols],
+        shortage_df[merge_cols + cols_to_add],
         on=merge_cols,
         how='left'
-    ).fillna({col: 0 for col in shortage_cols})
+    ).fillna({col: 0 for col in cols_to_add})
 
     return merged
