@@ -69,7 +69,8 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict, Counter
 import os
-from .constants import SLOT_HOURS
+from .constants import DEFAULT_SLOT_MINUTES
+from .utils import validate_and_convert_slot_minutes, safe_slot_calculation
 import platform
 import psutil
 import time
@@ -126,12 +127,74 @@ except ImportError as e:
 
 log = logging.getLogger(__name__)
 
+def _convert_to_json_serializable(obj):
+    """numpy/pandas型をJSONシリアライズ可能な型に変換"""
+    import numpy as np
+    import pandas as pd
+    
+    # DataFrameとSeriesを先にチェック（pd.isnaがDataFrame/Seriesを返すため）
+    if isinstance(obj, pd.DataFrame):
+        # to_dict('records')の結果を再帰的に変換
+        return [_convert_to_json_serializable(record) for record in obj.to_dict('records')]
+    elif isinstance(obj, pd.Series):
+        return obj.tolist()
+    
+    # numpy配列を先にチェック（pd.isnaが配列を返すため）
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    
+    # NaN処理（スカラー値のみ）
+    try:
+        if pd.isna(obj):
+            return None
+    except (TypeError, ValueError):
+        # pd.isnaが失敗する場合は通常のオブジェクト
+        pass
+    
+    # numpy整数型
+    if isinstance(obj, (np.int64, np.int32, np.int16, np.int8)):
+        return int(obj)
+    # numpy浮動小数点型（float16も追加）
+    elif isinstance(obj, (np.float64, np.float32, np.float16)):
+        # 浮動小数点型の場合のみInfチェック
+        if np.isinf(obj):
+            return str(obj)
+        return float(obj)
+    # numpy bool型
+    elif isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
+    # pandas Timestamp
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    # pandas Timedelta
+    elif isinstance(obj, pd.Timedelta):
+        return str(obj)
+    # datetime objects
+    elif hasattr(obj, 'isoformat'):
+        return obj.isoformat()
+    # 辞書の再帰処理
+    elif isinstance(obj, dict):
+        return {k: _convert_to_json_serializable(v) for k, v in obj.items()}
+    # リストの再帰処理
+    elif isinstance(obj, (list, tuple)):
+        return [_convert_to_json_serializable(item) for item in obj]
+    # Python標準のfloat型でもInfチェック
+    elif isinstance(obj, float):
+        if np.isinf(obj):
+            return str(obj)
+        return obj
+    return obj
+
 class AIComprehensiveReportGenerator:
     """AI向け包括的分析結果レポート生成システム"""
     
-    def __init__(self):
+    def __init__(self, slot_minutes: int = DEFAULT_SLOT_MINUTES):
         self.report_id = self._generate_report_id()
         self.generation_timestamp = datetime.now().isoformat() + "Z"
+        self.slot_minutes = slot_minutes
+        self.slot_hours = validate_and_convert_slot_minutes(
+            slot_minutes, "AIComprehensiveReportGenerator.__init__"
+        )
         self.start_time = time.time()
         self.processing_steps = []
         self.memory_usage_samples = []
@@ -281,7 +344,7 @@ class AIComprehensiveReportGenerator:
             # JSON出力
             output_path = Path(output_dir) / f"ai_comprehensive_report_{self.report_id}.json"
             with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(comprehensive_report, f, ensure_ascii=False, indent=2)
+                json.dump(_convert_to_json_serializable(comprehensive_report), f, ensure_ascii=False, indent=2)
             
             log.info(f"AI向け包括的レポート生成完了: {output_path}")
             return comprehensive_report
@@ -1147,18 +1210,53 @@ class AIComprehensiveReportGenerator:
             for f in all_parquet_files:
                 log.info(f"  - {f.name}")
             
-            # 不足分析データの抽出
-            shortage_files = list(output_path.glob("**/*shortage*.parquet"))
-            if not shortage_files:
-                # より広い検索パターンで不足データを探す
-                shortage_files = list(output_path.glob("**/*time*.parquet")) + list(output_path.glob("**/*need*.parquet"))
+            # 不足分析データの抽出（優先順位付きで探索）
+            shortage_data = None
             
-            if shortage_files:
-                log.info(f"不足分析ファイル候補: {[f.name for f in shortage_files]}")
-                shortage_data = self._extract_shortage_data_from_parquet(shortage_files[0])
-                if shortage_data:
-                    enriched_results["shortage_analysis"] = shortage_data
-                    log.info(f"不足分析データを抽出: 総不足時間 {shortage_data.get('total_shortage_hours', 0):.1f}時間")
+            # 優先順位1: out_p25_basedディレクトリのshortage_time.parquet
+            p25_dir = output_path / "out_p25_based"
+            if p25_dir.exists():
+                shortage_time_file = p25_dir / "shortage_time.parquet"
+                if shortage_time_file.exists():
+                    log.info(f"優先ファイル発見: {shortage_time_file.relative_to(output_path)}")
+                    shortage_data = self._extract_shortage_data_from_parquet(shortage_time_file)
+                else:
+                    # shortage_role_summary.parquetを試す
+                    shortage_role_file = p25_dir / "shortage_role_summary.parquet"
+                    if shortage_role_file.exists():
+                        log.info(f"代替ファイル発見: {shortage_role_file.relative_to(output_path)}")
+                        shortage_data = self._extract_shortage_data_from_parquet(shortage_role_file)
+            
+            # 優先順位2: 他のサブディレクトリから探す
+            if not shortage_data:
+                for subdir in ["out_median_based", "out_mean_based"]:
+                    sub_path = output_path / subdir
+                    if sub_path.exists():
+                        shortage_time_file = sub_path / "shortage_time.parquet"
+                        if shortage_time_file.exists():
+                            log.info(f"サブディレクトリファイル発見: {shortage_time_file.relative_to(output_path)}")
+                            shortage_data = self._extract_shortage_data_from_parquet(shortage_time_file)
+                            break
+            
+            # 優先順位3: 全体検索（フォールバック）
+            if not shortage_data:
+                shortage_files = list(output_path.glob("**/*shortage*.parquet"))
+                if shortage_files:
+                    log.info(f"フォールバック検索: {len(shortage_files)}個のファイル発見")
+                    # shortage_time.parquetを優先
+                    time_files = [f for f in shortage_files if "shortage_time" in f.name]
+                    if time_files:
+                        log.info(f"shortage_timeファイル使用: {time_files[0].relative_to(output_path)}")
+                        shortage_data = self._extract_shortage_data_from_parquet(time_files[0])
+                    elif shortage_files:
+                        log.info(f"最初のshortageファイル使用: {shortage_files[0].relative_to(output_path)}")
+                        shortage_data = self._extract_shortage_data_from_parquet(shortage_files[0])
+            
+            if shortage_data:
+                enriched_results["shortage_analysis"] = shortage_data
+                log.info(f"不足分析データを抽出: 総不足時間 {shortage_data.get('total_shortage_hours', 0):.1f}時間")
+            else:
+                log.warning("不足分析データが見つかりませんでした")
             
             # 疲労分析データの抽出
             fatigue_files = list(output_path.glob("**/*fatigue*.parquet"))
@@ -1212,80 +1310,131 @@ class AIComprehensiveReportGenerator:
             df = pd.read_parquet(parquet_file)
             log.info(f"Parquetファイル読み込み: {parquet_file.name}, 行数: {len(df)}, 列: {list(df.columns)[:5]}...")
             
-            # shortage_time.parquetの実際の構造に対応
-            # 構造: index=時間枠, columns=日付, values=不足数
+            # データ形式の判定を改善
+            # Wide format: 列名が日付形式（2025-04-01など）
+            # Long format: 列名が属性名（lack_h, roleなど）
             
-            total_shortage_events = 0
-            total_shortage_hours = 0.0
+            total_shortage_hours = 0.0  # 不足時間の合計（時間単位）
+            total_shortage_events = 0   # 不足が発生した回数（統計用）
             shortage_details = []
             time_slot_summary = {}
             date_summary = {}
             
-            # Wide formatデータの処理
-            if hasattr(df, 'index') and len(df.columns) > 10:  # 日付列が多い場合
-                log.info("Wide format（時間×日付）データとして処理")
+            # 列名から日付形式を判定
+            date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+            import re
+            date_columns = [col for col in df.columns if isinstance(col, str) and re.match(date_pattern, str(col))]
+            
+            # Wide formatデータの処理（shortage_time.parquetなど）
+            # 条件: 日付形式の列が複数あり、indexが存在する
+            if len(date_columns) >= 2 and hasattr(df, 'index') and len(df.index) > 0:
+                log.info(f"Wide format（時間×日付）データとして処理: {len(date_columns)}日分のデータ")
+                log.info(f"データ形状: {df.shape}, データ型: 時間単位の不足データ")
                 
                 for time_slot in df.index:
-                    time_shortage_count = 0
-                    for date_col in df.columns:
-                        if pd.api.types.is_numeric_dtype(df[date_col]):
+                    time_shortage_hours = 0.0  # この時間帯の不足時間合計
+                    time_shortage_count = 0    # この時間帯の不足発生回数
+                    
+                    for date_col in date_columns:  # 日付列のみ処理
+                        try:
                             shortage_value = df.loc[time_slot, date_col]
                             if pd.notna(shortage_value) and shortage_value > 0:
-                                total_shortage_events += int(shortage_value)
-                                time_shortage_count += int(shortage_value)
+                                # shortage_valueは既に時間単位なのでそのまま加算
+                                total_shortage_hours += float(shortage_value)
+                                time_shortage_hours += float(shortage_value)
+                                total_shortage_events += 1  # イベント数をカウント
+                                time_shortage_count += 1
                                 
-                                shortage_details.append({
-                                    "time_slot": str(time_slot),
-                                    "date": str(date_col),
-                                    "shortage_count": int(shortage_value),
-                                    "shortage_hours": float(shortage_value * SLOT_HOURS)  # 30分枠として計算
-                                })
+                                # 詳細記録（最大50件）
+                                if len(shortage_details) < 50:
+                                    shortage_details.append({
+                                        "time_slot": str(time_slot),
+                                        "date": str(date_col),
+                                        "shortage_hours": float(shortage_value),  # 既に時間単位
+                                        "shortage_count": 1
+                                    })
+                        except (KeyError, TypeError):
+                            continue
                     
-                    if time_shortage_count > 0:
-                        time_slot_summary[str(time_slot)] = time_shortage_count
-                
-                # 総不足時間の計算（30分枠×イベント数）
-                total_shortage_hours = total_shortage_events * SLOT_HOURS
+                    if time_shortage_hours > 0:
+                        time_slot_summary[str(time_slot)] = time_shortage_hours
                 
                 log.info(f"Wide format処理結果: 不足イベント数 {total_shortage_events}, 総不足時間 {total_shortage_hours:.1f}時間")
                 
             else:
-                # Long formatの場合の処理
-                log.info("Long formatデータとして処理")
-                value_columns = ['shortage_hours', 'shortage_time', 'value', 'hours', 'shortage']
+                # Long format または role/employment summaryデータの処理
+                log.info(f"Long format または summaryデータとして処理（日付列: {len(date_columns)}個）")
+                
+                # 不足時間を示すカラムを探す（優先順位付き）
+                value_columns = ['lack_h', 'shortage_h', 'shortage_hours', 'shortage_time', 'value', 'hours', 'shortage']
                 value_col = None
                 
                 for col in value_columns:
                     if col in df.columns:
                         value_col = col
+                        log.info(f"不足時間カラムとして '{col}' を使用")
                         break
                 
                 if value_col:
                     shortage_values = df[value_col].fillna(0)
+                    # 値は既に時間単位なのでそのまま合計
                     total_shortage_hours = float(shortage_values[shortage_values > 0].sum())
                     total_shortage_events = int((shortage_values > 0).sum())
-                
-                # 詳細データの抽出
-                for idx, row in df.iterrows():
-                    shortage_value = row.get(value_col, 0) if value_col else 0
-                    if pd.isna(shortage_value) or shortage_value == 0:
-                        continue
-                        
-                    shortage_details.append({
-                        "time_slot": str(row.get('time_slot', idx)),
-                        "date": str(row.get('date', '2025-01-01')),
-                        "shortage_hours": float(shortage_value),
-                        "shortage_count": 1
-                    })
+                    
+                    log.info(f"カラム '{value_col}' から合計 {total_shortage_hours:.1f}時間の不足を検出")
+                    
+                    # 詳細データの抽出（role情報がある場合は含める）
+                    for idx, row in df.iterrows():
+                        shortage_value = row.get(value_col, 0) if value_col else 0
+                        if pd.isna(shortage_value) or shortage_value <= 0:
+                            continue
+                            
+                        if len(shortage_details) < 50:  # 最初の50件のみ記録
+                            detail = {
+                                "shortage_hours": float(shortage_value),
+                                "shortage_count": 1
+                            }
+                            
+                            # roleやemployment情報があれば追加
+                            if 'role' in row:
+                                detail["role"] = str(row['role'])
+                            if 'employment' in row:
+                                detail["employment"] = str(row['employment'])
+                            if 'date' in row:
+                                detail["date"] = str(row['date'])
+                            else:
+                                detail["date"] = "2025-01-01"  # デフォルト
+                            
+                            shortage_details.append(detail)
+                else:
+                    log.warning(f"不足時間カラムが見つかりません。利用可能な列: {list(df.columns)}")
+            
+            # バリデーション: 現実的な範囲かチェック
+            max_monthly_hours = 24 * 31  # 1ヶ月の最大時間数
+            if total_shortage_hours > max_monthly_hours * 10:  # 10ヶ月分を超える場合は明らかにおかしい
+                log.error(f"エラー: 不足時間 {total_shortage_hours:.1f}時間は非現実的です（10ヶ月分超）")
+                log.error("データ解釈に問題がある可能性があります")
+                # 異常値の場合でも処理は続行（ログで警告）
+            elif total_shortage_hours > max_monthly_hours:
+                log.warning(f"警告: 不足時間 {total_shortage_hours:.1f}時間が月間最大時間を超えています")
+            
+            # 0-1000時間の妥当性チェック
+            if total_shortage_hours > 1000:
+                log.warning(f"注意: 不足時間 {total_shortage_hours:.1f}時間は通常より多めです")
+                validation_status = "suspicious"
+            else:
+                validation_status = "valid"
             
             # 分析結果の重要度判定
             severity = "low"
-            if total_shortage_hours > 50:
+            if total_shortage_hours > 100:
                 severity = "critical"
-            elif total_shortage_hours > 20:
+            elif total_shortage_hours > 50:
                 severity = "high"
-            elif total_shortage_hours > 5:
+            elif total_shortage_hours > 20:
                 severity = "medium"
+            
+            log.info(f"最終結果: 総不足時間 {total_shortage_hours:.1f}時間, 重要度 {severity}, ファイル {parquet_file.name}")
             
             return {
                 "total_shortage_hours": total_shortage_hours,
@@ -1293,9 +1442,12 @@ class AIComprehensiveReportGenerator:
                 "severity": severity,
                 "shortage_by_time_slot": time_slot_summary,
                 "avg_shortage_per_day": total_shortage_hours / 30 if total_shortage_hours > 0 else 0,
-                "details": shortage_details[:50],  # 最初の50件に制限
+                "details": shortage_details,
                 "total_records": len(df),
-                "data_format": "wide" if len(df.columns) > 10 else "long",
+                "data_format": "wide" if len(date_columns) >= 2 else "long",
+                "data_unit": "hours",  # 明示的に単位を記録
+                "validation_status": validation_status,
+                "source_file": parquet_file.name,
                 "analysis_summary": f"月間{total_shortage_events}回の不足イベント（計{total_shortage_hours:.1f}時間）"
             }
             

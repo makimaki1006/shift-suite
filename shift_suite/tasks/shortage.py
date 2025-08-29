@@ -20,8 +20,6 @@ import pandas as pd
 from .. import config
 from .constants import SUMMARY5  # 🔧 修正: 動的値使用
 from .utils import _parse_as_date, gen_labels, log, save_df_parquet, write_meta
-from .time_axis_shortage_calculator import calculate_time_axis_shortage
-from .occupation_specific_calculator import calculate_occupation_specific_shortage
 
 # 不足分析専用ログ
 try:
@@ -602,24 +600,10 @@ def shortage_and_brief(
     if need_role_files:
         log.info(f"[shortage] ★★★ 統計手法対応: {len(need_role_files)}個の職種別Needファイルを統合します ★★★")
         
-        # 🔧 REALISTIC FIX: 職種重複排除の実装
-        primary_role_files = []
-        overlap_roles = ['介護・相談員', '事務・介護', '管理者・相談員']  # 重複職種
-        
-        for need_file in need_role_files:
-            role_name = need_file.name
-            is_overlap = any(overlap in role_name for overlap in overlap_roles)
-            
-            if not is_overlap:
-                primary_role_files.append(need_file)
-            else:
-                log.info(f"[REALISTIC] 重複職種を除外: {role_name}")
-        
-        log.info(f"[REALISTIC] 主職種ファイル: {len(primary_role_files)}個 (重複排除済み)")
-        
+        # 全ての職種を公平に集計（複合職種も独立した職種として扱う）
         combined_need_df = pd.DataFrame()
         
-        for need_file in primary_role_files:
+        for need_file in need_role_files:
             try:
                 role_need_df = pd.read_parquet(need_file)
                 if combined_need_df.empty:
@@ -992,75 +976,9 @@ def shortage_and_brief(
         "--- shortage_time.xlsx / shortage_ratio.xlsx / shortage_freq.xlsx 計算デバッグ (全体) 終了 ---"
     )
 
-    # 按分計算のための勤務データを読み込み
+    # 按分計算関連の変数を初期化（按分計算は使用しない）
     working_data_for_proportional = pd.DataFrame()
     total_shortage_hours_for_proportional = 0.0
-    try:
-        # long_dfまたは勤務データを読み込み
-        long_df_path = out_dir_path / "intermediate_data.parquet"
-        if long_df_path.exists():
-            working_data_df = pd.read_parquet(long_df_path)
-            # 通常勤務のみ抽出
-            working_data_for_proportional = working_data_df[
-                working_data_df.get('holiday_type', '通常勤務') == '通常勤務'
-            ].copy()
-            log.info(f"[shortage] 按分計算用の勤務データを読み込みました: {len(working_data_for_proportional)}レコード")
-        
-        # shortage_timeから総不足時間を計算
-        # 修正: 人数不足 × スロット時間 = 時間不足の正しい計算
-        # 各スロットの不足人数に対してスロット時間を掛ける
-        total_shortage_hours_for_proportional = (lack_count_overall_df * slot_hours).sum().sum()
-        
-        # 🔍 不足時間の妥当性チェック
-        period_days = len(lack_count_overall_df.columns)
-        avg_shortage_per_day = total_shortage_hours_for_proportional / max(period_days, 1)
-        
-        log.info(f"[shortage] 按分計算用の総不足時間: {total_shortage_hours_for_proportional:.2f}時間")
-        log.info(f"[shortage] 分析期間: {period_days}日")
-        log.info(f"[shortage] 1日平均不足: {avg_shortage_per_day:.2f}時間/日")
-        
-        # 🎯 詳細分析情報を記録（デバッグ用）
-        calculation_details = {
-            'slot_hours': slot_hours,
-            'period_days': period_days,
-            'avg_shortage_per_day': avg_shortage_per_day,
-            'total_shortage_slots': lack_count_overall_df.sum().sum(),
-            'normalization_applied': False,
-            'normalization_factor': 1.0
-        }
-        
-        # 妥当性判定
-        if avg_shortage_per_day > 1000:  # 1日1000時間以上は明らかに異常
-            log.warning(f"⚠️ [VALIDITY_CHECK] 異常な不足時間検出: {avg_shortage_per_day:.0f}時間/日")
-            log.warning("⚠️ [VALIDITY_CHECK] 期間依存性問題の可能性があります")
-            
-            # 🎯 緊急修正: 期間正規化を適用
-            if period_days > 60:  # 2ヶ月以上の場合
-                normalization_factor = 30 / period_days  # 30日基準で正規化
-                normalized_shortage = total_shortage_hours_for_proportional * normalization_factor
-                log.warning(f"🔧 [EMERGENCY_FIX] 期間正規化適用: {total_shortage_hours_for_proportional:.0f}h → {normalized_shortage:.0f}h")
-                total_shortage_hours_for_proportional = normalized_shortage
-                avg_shortage_per_day = normalized_shortage / max(period_days, 1)
-                log.info(f"🔧 [EMERGENCY_FIX] 正規化後の1日平均: {avg_shortage_per_day:.2f}時間/日")
-                
-                # 正規化情報を記録
-                calculation_details.update({
-                    'normalization_applied': True,
-                    'normalization_factor': normalization_factor,
-                    'original_shortage_hours': (lack_count_overall_df * slot_hours).sum().sum(),
-                    'normalized_shortage_hours': total_shortage_hours_for_proportional
-                })
-        elif avg_shortage_per_day > 200:  # 1日200時間以上も要注意
-            log.warning(f"⚠️ [VALIDITY_CHECK] 高い不足時間: {avg_shortage_per_day:.0f}時間/日（要確認）")
-        elif avg_shortage_per_day < 5:  # 1日5時間未満は少なすぎる可能性
-            log.info(f"ℹ️ [VALIDITY_CHECK] 低い不足時間: {avg_shortage_per_day:.0f}時間/日")
-        else:
-            log.info(f"✅ [VALIDITY_CHECK] 妥当な不足時間: {avg_shortage_per_day:.0f}時間/日")
-        
-        log.info(f"[shortage] 修正適用: 人数不足データにスロット時間({slot_hours}h)を適用して時間不足を算出")
-        
-    except Exception as e:
-        log.warning(f"[shortage] 按分計算用データの読み込みエラー: {e}")
 
     role_kpi_rows: List[Dict[str, Any]] = []
     monthly_role_rows: List[Dict[str, Any]] = []
@@ -1068,6 +986,11 @@ def shortage_and_brief(
 
     for fp_role_heatmap_item in out_dir_path.glob("heat_*.xlsx"):
         if fp_role_heatmap_item.name == "heat_ALL.xlsx":
+            continue
+        
+        # 雇用形態別ファイル(heat_emp_*)は職種別処理から除外
+        if fp_role_heatmap_item.name.startswith("heat_emp_"):
+            shortage_log.debug(f"スキップ: {fp_role_heatmap_item.name} (雇用形態別データ)")
             continue
 
         role_name_current = fp_role_heatmap_item.stem.replace("heat_", "")
@@ -1371,66 +1294,8 @@ def shortage_and_brief(
             f"--- shortage_role.xlsx 計算デバッグ (職種: {role_name_current}) 終了 ---"
         )
 
-    # 🚀 PHASE 1: 職種別詳細分析（按分廃止） vs 時間軸ベース分析（従来）
-    shortage_log.info("=== PHASE 1: 職種別詳細分析 vs 時間軸ベース分析開始 ===")
-    shortage_log.info(f"working_data_for_proportional: {len(working_data_for_proportional)}行")
-    shortage_log.info(f"total_shortage_baseline: {total_shortage_hours_for_proportional:.2f}時間")
-    
-    role_shortages = {}  # 最終結果格納用
-    
-    if not working_data_for_proportional.empty:
-        # 🎯 新機能: 職種別詳細分析（按分廃止）
-        try:
-            shortage_log.info("=== 職種別詳細分析（按分廃止）実行 ===")
-            
-            # need_data, staff_dataの取得（簡易版）
-            need_data = pd.DataFrame()  # TODO: 実際のneed_per_date_slot.parquetから読み込み
-            staff_data = pd.DataFrame()  # TODO: 実際のstaff_per_date_slot.parquetから読み込み
-            
-            occupation_result, comparison_result = calculate_occupation_specific_shortage(
-                need_data, staff_data, working_data_for_proportional
-            )
-            
-            shortage_log.info(f"[職種別詳細分析結果] {occupation_result}")
-            shortage_log.info(f"[比較分析結果] {comparison_result}")
-            
-            # Phase 1では介護職種のみを新ロジックで上書き
-            if "介護" in occupation_result:
-                care_shortage = occupation_result["介護"]
-                shortage_log.info(f"🎯 介護職種を按分廃止ロジックで更新: {care_shortage:.1f}時間")
-                
-        except Exception as e:
-            shortage_log.warning(f"[職種別詳細分析] エラー (フォールバック): {e}")
-        
-        # 🔄 従来手法: 時間軸ベース分析（比較・検証用）
-        try:
-            shortage_log.info("=== 時間軸ベース分析（従来手法）実行 ===")
-            role_shortages, _ = calculate_time_axis_shortage(
-                working_data_for_proportional,
-                total_shortage_baseline=total_shortage_hours_for_proportional
-            )
-            shortage_log.info("calculate_time_axis_shortage完了")
-            shortage_log.info(f"時間軸ベース分析による職種別不足時間（ベースライン{total_shortage_hours_for_proportional:.1f}h）: {role_shortages}")
-            
-            # Phase 1: 介護職種のみ新ロジック結果で上書き（概念実証）
-            if "occupation_result" in locals() and "介護" in occupation_result:
-                original_care = role_shortages.get("介護", 0)
-                new_care = occupation_result["介護"]
-                role_shortages["介護"] = new_care
-                shortage_log.info(f"[PHASE1] 介護職種を按分廃止結果で上書き: {original_care:.1f}h → {new_care:.1f}h")
-            
-            # role_kpi_rowsの不足時間を修正
-            for role_row in role_kpi_rows:
-                role_name = role_row.get('role')
-                if role_name in role_shortages:
-                    corrected_lack_h = int(round(role_shortages[role_name]))
-                    original_lack_h = role_row.get('lack_h', 0)
-                    role_row['lack_h'] = corrected_lack_h
-                    method_note = "職種別詳細" if role_name == "介護" else "時間軸ベース"
-                    log.info(f"[shortage] {role_name}: 不足時間を {original_lack_h}h → {corrected_lack_h}h に修正 ({method_note})")
-                    
-        except Exception as e:
-            log.warning(f"[shortage] 時間軸ベース分析による職種別不足時間の修正エラー: {e}")
+    # 按分計算は使用しないため、role_shortagesは使わない
+    role_shortages = {}
 
     role_summary_df = pd.DataFrame(role_kpi_rows)
     if not role_summary_df.empty:
@@ -1713,26 +1578,6 @@ def shortage_and_brief(
             f"--- shortage_employment.xlsx 計算デバッグ (雇用形態: {emp_name_current}) 終了 ---"
         )
 
-    # 時間軸ベース分析で真の雇用形態別不足時間を計算
-    if not working_data_for_proportional.empty:
-        try:
-            # 🎯 修正: 按分計算の総不足時間をベースラインとして渡す
-            _, employment_shortages = calculate_time_axis_shortage(
-                working_data_for_proportional,
-                total_shortage_baseline=total_shortage_hours_for_proportional
-            )
-            log.info(f"[shortage] 時間軸ベース分析による雇用形態別不足時間（ベースライン{total_shortage_hours_for_proportional:.1f}h）: {employment_shortages}")
-            
-            # emp_kpi_rowsの不足時間を修正
-            for emp_row in emp_kpi_rows:
-                emp_name = emp_row.get('employment')
-                if emp_name in employment_shortages:
-                    corrected_lack_h = int(round(employment_shortages[emp_name]))
-                    original_lack_h = emp_row.get('lack_h', 0)
-                    emp_row['lack_h'] = corrected_lack_h
-                    log.info(f"[shortage] {emp_name}: 不足時間を {original_lack_h}h → {corrected_lack_h}h に修正 (時間軸ベース)")
-        except Exception as e:
-            log.warning(f"[shortage] 時間軸ベース分析による雇用形態別不足時間の修正エラー: {e}")
 
     emp_summary_df = pd.DataFrame(emp_kpi_rows)
     if not emp_summary_df.empty:
