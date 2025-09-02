@@ -4743,6 +4743,15 @@ def process_upload(contents, filename):
         first_scenario = scenarios[0]
         scenario_paths = {d.name: str(d) for d in temp_dir_path.iterdir() if d.is_dir()}
         
+        # グローバル変数を更新
+        global CURRENT_SCENARIO_DIR
+        CURRENT_SCENARIO_DIR = temp_dir_path / first_scenario
+        log.info(f"[データ入稿] CURRENT_SCENARIO_DIR set to: {CURRENT_SCENARIO_DIR}")
+        
+        # データキャッシュをクリア
+        clear_data_cache()
+        log.info("[データ入稿] データキャッシュをクリア")
+        
         log.info(f"[データ入稿] 処理完了 - シナリオ数: {len(scenarios)}")
         
         # 処理完了を記録
@@ -4799,27 +4808,40 @@ def process_upload(contents, filename):
 @safe_callback
 def handle_file_upload(contents, filename):
     """ZIPファイルアップロード処理のコールバック"""
+    log.info(f"[handle_file_upload] Called with filename: {filename}, contents: {contents is not None}")
+    
     if contents is None:
         # デフォルトシナリオがある場合はそれを使用
         if CURRENT_SCENARIO_DIR:
             scenarios = [CURRENT_SCENARIO_DIR.name]
+            log.info(f"[handle_file_upload] Using default scenario: {scenarios}")
             return (
                 None,
                 [{'label': s, 'value': s} for s in scenarios],
                 scenarios[0] if scenarios else None,
                 {'display': 'block'}
             )
+        log.info("[handle_file_upload] No contents and no default scenario")
         return None, [], None, {'display': 'none'}
     
-    # process_upload関数を呼び出し
-    result = process_upload(contents, filename)
-    
-    if isinstance(result, tuple) and len(result) == 4:
-        data, options, value, style = result
-        return data, options, value, style
-    else:
-        # エラーの場合
-        return result, [], None, {'display': 'none'}
+    try:
+        log.info(f"[handle_file_upload] Processing upload for: {filename}")
+        # process_upload関数を呼び出し
+        result = process_upload(contents, filename)
+        
+        log.info(f"[handle_file_upload] process_upload returned type: {type(result)}")
+        
+        if isinstance(result, tuple) and len(result) == 4:
+            data, options, value, style = result
+            log.info(f"[handle_file_upload] Success - scenarios: {[opt['value'] for opt in options] if options else 'none'}")
+            return data, options, value, style
+        else:
+            # エラーの場合
+            log.error(f"[handle_file_upload] Unexpected result format: {result}")
+            return None, [], None, {'display': 'none'}
+    except Exception as e:
+        log.error(f"[handle_file_upload] Error processing upload: {e}", exc_info=True)
+        return None, [], None, {'display': 'none'}
 
 
 @app.callback(
