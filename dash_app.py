@@ -4801,7 +4801,7 @@ def process_upload(contents, filename):
     [Output('data-ingestion-output', 'data'),
      Output('scenario-dropdown', 'options'),
      Output('scenario-dropdown', 'value'),
-     Output('scenario-selector-container', 'style')],
+     Output('scenario-selector-div', 'style')],
     [Input('upload-data', 'contents')],
     [State('upload-data', 'filename')]
 )
