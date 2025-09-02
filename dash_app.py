@@ -4805,10 +4805,12 @@ def process_upload(contents, filename):
     [Input('upload-data', 'contents')],
     [State('upload-data', 'filename')]
 )
-@safe_callback
 def handle_file_upload(contents, filename):
     """ZIPファイルアップロード処理のコールバック"""
-    log.info(f"[handle_file_upload] Called with filename: {filename}, contents: {contents is not None}")
+    log.info(f"[handle_file_upload] ========== UPLOAD STARTED ==========")
+    log.info(f"[handle_file_upload] Called with filename: {filename}")
+    log.info(f"[handle_file_upload] Contents is None: {contents is None}")
+    log.info(f"[handle_file_upload] Contents type: {type(contents) if contents else 'None'}")
     
     if contents is None:
         # デフォルトシナリオがある場合はそれを使用
@@ -4825,23 +4827,38 @@ def handle_file_upload(contents, filename):
         return None, [], None, {'display': 'none'}
     
     try:
-        log.info(f"[handle_file_upload] Processing upload for: {filename}")
+        log.info(f"[handle_file_upload] Starting to process upload for: {filename}")
+        
+        # ファイルタイプをチェック
+        if not filename.lower().endswith('.zip'):
+            log.warning(f"[handle_file_upload] Not a ZIP file: {filename}")
+            return None, [], None, {'display': 'none'}
+        
         # process_upload関数を呼び出し
+        log.info(f"[handle_file_upload] Calling process_upload...")
         result = process_upload(contents, filename)
         
         log.info(f"[handle_file_upload] process_upload returned type: {type(result)}")
+        log.info(f"[handle_file_upload] process_upload returned value: {result}")
         
         if isinstance(result, tuple) and len(result) == 4:
             data, options, value, style = result
-            log.info(f"[handle_file_upload] Success - scenarios: {[opt['value'] for opt in options] if options else 'none'}")
+            log.info(f"[handle_file_upload] SUCCESS - scenarios found: {[opt['value'] for opt in options] if options else 'none'}")
+            log.info(f"[handle_file_upload] Selected scenario: {value}")
+            log.info(f"[handle_file_upload] Style: {style}")
             return data, options, value, style
         else:
             # エラーの場合
-            log.error(f"[handle_file_upload] Unexpected result format: {result}")
+            log.error(f"[handle_file_upload] UNEXPECTED result format: {result}")
+            log.error(f"[handle_file_upload] Expected tuple of 4 elements, got: {type(result)}")
             return None, [], None, {'display': 'none'}
     except Exception as e:
-        log.error(f"[handle_file_upload] Error processing upload: {e}", exc_info=True)
+        log.error(f"[handle_file_upload] EXCEPTION occurred: {e}", exc_info=True)
+        import traceback
+        log.error(f"[handle_file_upload] Traceback:\n{traceback.format_exc()}")
         return None, [], None, {'display': 'none'}
+    finally:
+        log.info(f"[handle_file_upload] ========== UPLOAD ENDED ==========")
 
 
 @app.callback(
