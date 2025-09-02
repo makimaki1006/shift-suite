@@ -1,6 +1,6 @@
 # 18セクション完全統合システム対応 requirements.txt
 # Phase 1A/1B/2/3 + MECE統合 + 予測最適化統合 + 基本12セクション
-# 最終更新: 2025-08-05 (18セクション究極統合対応)
+# 最終更新: 2025-09-02 (app.py/dash_app.py両対応版)
 
 # ===== CORE DATA PROCESSING =====
 pandas==2.2.2           # データ処理 (安定版固定)
@@ -8,11 +8,14 @@ numpy==1.26.4           # 数値計算 (安定版固定)
 scipy==1.11.4           # 科学計算・統計・最適化 (新エンジン必須)
 openpyxl==3.1.2         # Excel I/O
 XlsxWriter>=3.2.0       # Excel出力
+pyarrow==15.0.2         # Parquetファイル読み書き (dash_app.py用)
 
 # ===== WEB FRAMEWORKS =====
+streamlit==1.32.2       # app.py用メインフレームワーク (最新安定版)
 Flask==3.0.3            # app.py用Webフレームワーク (安定版更新)
 dash==2.17.1            # ダッシュボード (安定版固定)
 dash-bootstrap-components==1.6.0  # Bootstrap UI (安定版：1.7.0はbroken build)
+dash-cytoscape==1.0.2   # ネットワークグラフ可視化 (dash_app.py用)
 
 # ===== VISUALIZATION =====
 plotly==5.17.0          # 可視化 (narwhals問題回避のため固定)
