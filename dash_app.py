@@ -33,6 +33,12 @@ from dash.exceptions import PreventUpdate
 from flask import jsonify
 import traceback
 import gc
+
+# エラー境界インポート
+from error_boundary import error_boundary, safe_callback, safe_component, apply_error_boundaries
+# メモリガードインポート
+from memory_guard import memory_guard, check_memory_usage, ManagedCache
+
 from shift_suite.tasks.utils import safe_read_excel, gen_labels, _valid_df
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
 from shift_suite.tasks import over_shortage_log
@@ -46,20 +52,52 @@ from shift_suite.tasks.advanced_blueprint_engine_v2 import AdvancedBlueprintEngi
 # ログ初期化（早期実行）
 log = logging.getLogger(__name__)
 
-# 新しいデータフロー専用モジュール
-try:
-    from dash_components.data_ingestion import data_ingestion
-    log.info("データ入稿モジュールを正常に読み込みました")
-except ImportError as e:
-    log.warning(f"データ入稿モジュールの読み込みに失敗: {e}")
-    data_ingestion = None
+# 新しいデータフロー専用モジュール（一時的に無効化）
+data_ingestion = None  # クリーンなUIのため無効化
+# try:
+#     from dash_components.data_ingestion import data_ingestion
+#     log.info("データ入稿モジュールを正常に読み込みました")
+# except ImportError as e:
+#     log.warning(f"データ入稿モジュールの読み込みに失敗: {e}")
+#     data_ingestion = None
 
+# 新しい統一進捗管理システムを優先的に使用
 try:
-    from dash_components.processing_monitor import processing_monitor, start_processing, start_step, update_progress, complete_step, fail_step
-    log.info("処理監視モジュールを正常に読み込みました")
-except ImportError as e:
-    log.warning(f"処理監視モジュールの読み込みに失敗: {e}")
-    processing_monitor = None
+    from progress_manager import progress_manager, start_processing, start_step, update_progress, complete_step, fail_step
+    processing_monitor = progress_manager  # 互換性のため
+    log.info("新しい統一進捗管理システムを正常に読み込みました")
+    
+    # パフォーマンス改善とフィードバック改善モジュール
+    from performance_utils import performance, cached_data_load
+    from upload_feedback import upload_feedback
+    log.info("パフォーマンス改善モジュールを読み込みました")
+    
+    # UI改善モジュール
+    try:
+        from ui_improvements import ui_improvements
+        from graph_improvements import graph_improvements
+        log.info("UI改善モジュールを正常に読み込みました")
+    except ImportError:
+        ui_improvements = None
+        graph_improvements = None
+        log.warning("UI改善モジュールの読み込みに失敗")
+        
+except ImportError:
+    # フォールバック: 従来のシステムを使用
+    try:
+        from dash_components.processing_monitor import processing_monitor, start_processing, start_step, update_progress, complete_step, fail_step
+        progress_manager = processing_monitor  # 互換性のため
+        log.info("従来の処理監視モジュールを使用")
+    except ImportError as e:
+        log.warning(f"処理監視モジュールの読み込みに失敗: {e}")
+        processing_monitor = None
+        progress_manager = None
+        # ダミー関数を定義
+        start_processing = lambda: None
+        start_step = lambda *args, **kwargs: None
+        update_progress = lambda *args, **kwargs: None
+        complete_step = lambda *args, **kwargs: None
+        fail_step = lambda *args, **kwargs: None
 
 try:
     from dash_components.analysis_engine import OptimizedAnalysisEngine, performance_monitor
@@ -706,6 +744,13 @@ app = dash.Dash(
 server = app.server
 app.title = "Shift-Suite 高速分析ビューア"
 
+# エラー境界の適用
+app = apply_error_boundaries(app)
+
+# メモリガードの開始
+memory_guard.start_monitoring()
+log.info("Error boundaries and memory guard activated")
+
 # レスポンシブCSSをHTMLヘッダーに追加
 app.index_string = '''
 <!DOCTYPE html>
@@ -840,14 +885,44 @@ class ThreadSafeLRUCache:
             return list(self._cache.keys())
 
 # グローバルキャッシュとロック
-# スマートキャッシュシステムを使用（メモリ管理統合）
-if smart_cache:
-    DATA_CACHE = smart_cache
-    SYNERGY_CACHE = smart_cache  # 統一キャッシュシステムを使用
-else:
-    # フォールバック: 従来のキャッシュ
-    DATA_CACHE = ThreadSafeLRUCache(maxsize=50)
-    SYNERGY_CACHE = ThreadSafeLRUCache(maxsize=10)
+# 統一キャッシュシステム（メモリ管理改善）
+class UnifiedCacheManager:
+    """統一されたキャッシュ管理システム"""
+    def __init__(self, max_memory_mb=500):
+        self.max_memory_mb = max_memory_mb
+        # smart_cacheが利用可能な場合は使用、なければThreadSafeLRUCacheを使用
+        if smart_cache:
+            self.data_cache = smart_cache
+            self.synergy_cache = smart_cache
+            log.info("スマートキャッシュシステムを使用")
+        else:
+            # メモリ制限に基づいてサイズを調整
+            data_size = min(50, max_memory_mb // 10)
+            synergy_size = min(10, max_memory_mb // 50)
+            self.data_cache = ThreadSafeLRUCache(maxsize=data_size)
+            self.synergy_cache = ThreadSafeLRUCache(maxsize=synergy_size)
+            log.info(f"ThreadSafeLRUCacheを使用 (data:{data_size}, synergy:{synergy_size})")
+    
+    def get_memory_usage(self):
+        """現在のメモリ使用量を取得（MB）"""
+        import psutil
+        process = psutil.Process()
+        return process.memory_info().rss / 1024 / 1024
+    
+    def check_and_cleanup(self):
+        """メモリ圧迫時の自動クリーンアップ"""
+        if self.get_memory_usage() > self.max_memory_mb * 0.9:
+            log.warning(f"メモリ使用量が閾値を超過: {self.get_memory_usage():.1f}MB")
+            # 優先度の低いキャッシュをクリア
+            if hasattr(self.synergy_cache, 'clear'):
+                self.synergy_cache.clear()
+            return True
+        return False
+
+# グローバルキャッシュマネージャーのインスタンス化
+cache_manager = UnifiedCacheManager(max_memory_mb=500)
+DATA_CACHE = cache_manager.data_cache
+SYNERGY_CACHE = cache_manager.synergy_cache
 
 # 共通データの事前読み込みキャッシュ
 COMMON_DATA_KEYS = [
@@ -910,7 +985,7 @@ def create_standard_dropdown(dropdown_id: str, options: List[Dict] = None, place
         id=dropdown_id,
         options=options or [],
         placeholder=placeholder,
-        style={'marginBottom': '10px'}
+        style={'marginBottom': '10px', 'color': '#000000'}
     )
 
 # 動的スロット情報のグローバル保存
@@ -937,7 +1012,7 @@ def detect_slot_intervals_from_data(temp_dir_path: Path, scenarios: List[str]) -
         if long_df_path.exists():
             long_df = pd.read_parquet(long_df_path)
             if not long_df.empty and 'ds' in long_df.columns:
-                calculator = TimeAxisShortageCalculator(auto_detect=True)
+                calculator = TimeAxisShortageCalculator()
                 calculator._detect_and_update_slot_interval(long_df['ds'])
                 
                 detected_info = calculator.get_detected_slot_info()
@@ -1282,25 +1357,52 @@ def get_memory_usage() -> Dict[str, float]:
         return {"rss_mb": 0, "vms_mb": 0, "percent": 0}
 
 def check_memory_pressure() -> bool:
-    """メモリプレッシャーをチェック"""
+    """メモリプレッシャーをチェック（改善版）"""
     memory_info = get_memory_usage()
-    # メモリ使用率80%以上で警告
-    return memory_info["percent"] > 80
+    # 動的閾値: キャッシュマネージャーの設定に基づく
+    threshold = 80  # デフォルト80%
+    if 'cache_manager' in globals():
+        # キャッシュマネージャーがある場合は、その設定を使用
+        current_mb = memory_info.get("rss_mb", 0)
+        max_mb = cache_manager.max_memory_mb
+        if max_mb > 0:
+            usage_percent = (current_mb / max_mb) * 100
+            return usage_percent > 90  # 最大メモリの90%で警告
+    return memory_info["percent"] > threshold
 
 def emergency_cleanup():
-    """緊急メモリクリーンアップ"""
+    """緊急メモリクリーンアップ（段階的アプローチ）"""
     log.warning("緊急メモリクリーンアップを実行します")
+    memory_before = get_memory_usage()
     
-    # キャッシュをクリア
-    DATA_CACHE.clear()
-    safe_read_parquet.cache_clear()
-    safe_read_csv.cache_clear()
+    # 段階1: 優先度の低いキャッシュをクリア
+    if 'cache_manager' in globals():
+        if hasattr(cache_manager.synergy_cache, 'clear'):
+            cache_manager.synergy_cache.clear()
+            log.info("Stage 1: SYNERGYキャッシュをクリア")
+    
+    # メモリ圧迫が続く場合
+    if check_memory_pressure():
+        # 段階2: 関数キャッシュをクリア
+        if 'safe_read_parquet' in globals():
+            safe_read_parquet.cache_clear()
+        if 'safe_read_csv' in globals():
+            safe_read_csv.cache_clear()
+        log.info("Stage 2: 関数キャッシュをクリア")
+    
+    # それでもメモリ圧迫が続く場合
+    if check_memory_pressure():
+        # 段階3: データキャッシュもクリア
+        if 'cache_manager' in globals():
+            cache_manager.data_cache.clear()
+        log.info("Stage 3: データキャッシュをクリア")
     
     # 強制ガベージコレクション
     gc.collect()
     
     memory_after = get_memory_usage()
-    log.info(f"クリーンアップ後メモリ使用量: {memory_after['rss_mb']:.1f}MB ({memory_after['percent']:.1f}%)")
+    freed_mb = memory_before['rss_mb'] - memory_after['rss_mb']
+    log.info(f"クリーンアップ完了: {freed_mb:.1f}MB解放 (使用量: {memory_after['rss_mb']:.1f}MB, {memory_after['percent']:.1f}%)")
 
 # 新しい安定性向上版コールバックラッパー
 def safe_callback_enhanced(func):
@@ -1341,23 +1443,18 @@ def safe_callback_enhanced(func):
         except FileNotFoundError as e:
             log.error(f"File not found: {e}")
             return html.Div([
-                html.H4("Error: File not found", style={'color': 'red'}),
-                html.P(str(e)),
-                html.P("Please check if the file was uploaded correctly.")
+                ui_improvements.create_user_friendly_error("file_not_found") if ui_improvements else html.Div([html.H4("Error: File not found", style={'color': 'red'}), html.P(str(e)), html.P("Please check if the file was uploaded correctly.")])
             ])
         except pd.errors.EmptyDataError:
             log.error("Empty dataframe")
             return html.Div([
-                html.H4("Error: Data is empty", style={'color': 'orange'}),
-                html.P("The data file may be empty or corrupted.")
+                ui_improvements.create_user_friendly_error("empty_data") if ui_improvements else html.Div([html.H4("Error: Data is empty", style={'color': 'orange'}), html.P("The data file may be empty or corrupted.")])
             ])
         except MemoryError as e:
             log.error(f"Memory error: {e}")
             emergency_cleanup()
             return html.Div([
-                html.H4("Memory Error", style={'color': 'red'}),
-                html.P("Memory shortage occurred. Cache has been cleared."),
-                html.P("Please refresh the browser or try with smaller dataset.")
+                ui_improvements.create_user_friendly_error("memory_error") if ui_improvements else html.Div([html.H4("Memory Error", style={'color': 'red'}), html.P("Memory shortage occurred. Cache has been cleared."), html.P("Please refresh the browser or try with smaller dataset.")])
             ])
         except TimeoutError as e:
             log.error(f"Timeout: {e}")
@@ -1372,13 +1469,29 @@ def safe_callback_enhanced(func):
             if check_memory_pressure():
                 emergency_cleanup()
                 
+            # セキュリティ: エラー詳細を露出しない
+            import uuid
+            error_id = str(uuid.uuid4())[:8]
+            
+            # 内部ログには完全な情報を記録
+            log.error(f"Error ID {error_id}: Full stack trace for {func.__name__}", exc_info=True)
+            
+            # ユーザーには安全な情報のみ表示
+            error_type = type(e).__name__
+            safe_error_msg = {
+                'FileNotFoundError': 'ファイルが見つかりません',
+                'PermissionError': 'アクセス権限がありません',
+                'ValueError': 'データ形式が正しくありません',
+                'KeyError': 'データ項目が見つかりません',
+                'MemoryError': 'メモリ不足が発生しました',
+                'TimeoutError': 'タイムアウトが発生しました'
+            }.get(error_type, '予期しないエラーが発生しました')
+            
             return html.Div([
-                html.H4(f"Error occurred ({func.__name__})", style={'color': 'red'}),
-                html.Details([
-                    html.Summary("Show error details"),
-                    html.Pre(str(e), style={'background': '#f0f0f0', 'padding': '10px', 'overflow': 'auto'})
-                ]),
-                html.P("Please refresh the browser if the problem persists.")
+                html.H4(f"エラーが発生しました", style={'color': 'red'}),
+                html.P(f"エラー内容: {safe_error_msg}"),
+                html.P(f"エラーID: {error_id}", style={'fontSize': '12px', 'color': '#666'}),
+                html.P("問題が続く場合は、エラーIDと共に管理者にお問い合わせください。")
             ])
     return wrapper
 
@@ -4038,46 +4151,46 @@ app.layout = html.Div([
     html.Div([
         # 新しいデータ入稿フローを使用（利用可能な場合）
         data_ingestion.create_upload_ui() if data_ingestion else html.Div([
-            # フォールバック用の従来UI（改善版）
+            # プロフェッショナルなアップロードUI
             html.Div([
-                html.H4("📁 データファイルをアップロード", 
-                       style={'color': '#2c3e50', 'marginBottom': '10px'}),
-                html.P([
-                    "サポート形式: ",
-                    html.Code(".zip, .xlsx, .csv", 
-                             style={'backgroundColor': '#f8f9fa', 'padding': '2px 5px'})
-                ], style={'marginBottom': '15px', 'color': '#555'}),
-            ]),
-            dcc.Upload(
-                id='upload-data',
-                children=html.Div([
-                    html.Div([
+                # アップロードエリアのみ
+                dcc.Upload(
+                    id='upload-data',
+                    children=html.Div([
                         html.I(className="fas fa-cloud-upload-alt", 
-                              style={'fontSize': '48px', 'color': '#3498db', 'marginBottom': '10px'}),
-                        html.H5("ファイルをドラッグ&ドロップ", 
-                               style={'margin': '0', 'color': '#2c3e50'}),
-                        html.P("または クリックしてファイルを選択", 
-                              style={'margin': '5px 0 0 0', 'color': '#7f8c8d'})
-                    ], style={'textAlign': 'center', 'padding': '20px'})
-                ]),
-                style={
-                    'width': '100%',
-                    'height': '120px',
-                    'lineHeight': '120px',
-                    'borderWidth': '2px',
-                    'borderStyle': 'dashed',
-                    'borderColor': '#3498db',
-                    'borderRadius': '8px',
-                    'backgroundColor': '#f8f9ff',
-                    'textAlign': 'center',
-                    'margin': '10px 0',
-                    'cursor': 'pointer',
-                    'transition': 'all 0.3s ease'
-                },
-                multiple=False
-            ),
-        ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px', 'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'})
-    ], style={'padding': '0 20px'}),
+                              style={'fontSize': '40px', 'color': '#3498db'})
+                    ], style={
+                        'display': 'flex',
+                        'alignItems': 'center',
+                        'justifyContent': 'center',
+                        'height': '100%'
+                    }),
+                    style={
+                        'width': '100%',
+                        'height': '140px',
+                        'border': '2px dashed #3498db',
+                        'borderRadius': '8px',
+                        'backgroundColor': '#f0f8ff',
+                        'cursor': 'pointer',
+                        'transition': 'all 0.3s ease'
+                    },
+                    multiple=False,
+                    # ドラッグオーバー時のスタイル
+                    style_active={
+                        'borderColor': '#2ecc71',
+                        'backgroundColor': '#e8f8f5'
+                    },
+                    style_reject={
+                        'borderColor': '#e74c3c',
+                        'backgroundColor': '#ffe5e5'
+                    }
+                ),
+                # アップロードステータス表示用
+                dcc.Store(id='data-ingestion-output', storage_type='memory'),
+                html.Div(id='upload-status', style={'marginTop': '10px'})
+            ], style={'padding': '30px', 'backgroundColor': 'white', 'borderRadius': '12px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.08)'})
+        ])
+    ], style={'padding': '20px', 'maxWidth': '600px', 'margin': '0 auto'}),
 
     # 処理進捗表示エリア（新機能）
     html.Div([
@@ -4101,8 +4214,8 @@ app.layout = html.Div([
         ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px', 'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'})
     ], id='scenario-selector-div', style={'display': 'none', 'padding': '0 20px', 'marginTop': '20px'}),
 
-    # メインコンテンツ
-    html.Div(id='main-content', style={'padding': '20px'}),  # type: ignore
+    # メインコンテンツ（アップロード後に表示）
+    html.Div(id='main-content'),  # type: ignore
 
     # システム状態監視エリア（新機能）
     html.Div([
@@ -4206,15 +4319,30 @@ def update_progress_display(n_intervals, device_info):
     try:
         status = processing_monitor.get_status()
         
-        # 処理中でない場合は非表示
-        if not status['is_running'] and status['overall_progress'] == 0:
+        # 処理完了後も非表示にする（100%になったら消す）
+        if not status['is_running']:
+            # 100%到達を確認
+            if status.get('overall_progress', 0) >= 100:
+                log.info(f"進捗が100%に到達: {status.get('overall_progress')}%")
             return [], {'display': 'none'}
         
         # デバイス情報取得
         device_type = device_info.get('device_type', 'desktop') if device_info else 'desktop'
         
+        # 新しいシステムのcreate_dash_displayメソッドを優先使用
+        if hasattr(processing_monitor, 'create_dash_display'):
+            try:
+                progress_display = processing_monitor.create_dash_display(status)
+                return [progress_display], {
+                    'display': 'block', 
+                    'padding': '0 20px', 
+                    'marginTop': '20px'
+                }
+            except Exception as e:
+                log.warning(f"新システムの表示エラー、従来方法に切り替え: {e}")
+        
         # レスポンシブ対応進捗表示を作成
-        if visualization_engine and processing_monitor:
+        elif visualization_engine and processing_monitor:
             try:
                 # 可視化エンジンを使用した進捗表示
                 current_step = "データ処理中"
@@ -4239,25 +4367,39 @@ def update_progress_display(n_intervals, device_info):
             except Exception as e:
                 log.warning(f"可視化エンジンでエラー、従来方法に切り替え: {e}")
         
-        # フォールバック: 従来の進捗表示
-        display_data = processing_monitor.create_progress_display(status)
+        # シンプルな進捗表示（グラフを使わない）
+        progress_percent = status.get('overall_progress', 0)
         
         # 全体進捗表示
         progress_components = [
             html.Div([
-                html.H6("全体進捗", style={'marginBottom': '10px'}),
-                dcc.Graph(
-                    figure=display_data['overall_figure'],
-                    config={'displayModeBar': False},
-                    style={'height': '60px', 'marginBottom': '10px'}
-                ),
+                html.H6(f"処理進捗: {progress_percent}%", style={'marginBottom': '10px'}),
                 html.Div([
-                    html.Span(f"経過時間: {display_data['time_info']['elapsed']}", 
-                             style={'marginRight': '20px'}),
-                    html.Span(f"残り時間: {display_data['time_info']['remaining']}")
-                ], style={'fontSize': '12px', 'color': '#666'})
+                    html.Div(
+                        style={
+                            'width': f"{progress_percent}%",
+                            'height': '30px',
+                            'backgroundColor': '#3498db',
+                            'borderRadius': '4px',
+                            'transition': 'width 0.5s ease'
+                        }
+                    )
+                ], style={
+                    'width': '100%',
+                    'height': '30px',
+                    'backgroundColor': '#e0e0e0',
+                    'borderRadius': '4px',
+                    'marginBottom': '10px'
+                }),
+                html.Div([
+                    html.Span(f"処理中: {status.get('current_stage', '初期化')}", 
+                             style={'fontSize': '12px', 'color': '#666'})
+                ])
             ], style={'marginBottom': '20px'})
         ]
+        
+        # processing_monitorのcreate_progress_displayを使用してdisplay_dataを取得
+        display_data = processing_monitor.create_progress_display(status)
         
         # 個別ステップ表示
         steps_display = []
@@ -4387,96 +4529,148 @@ def update_system_status(n_intervals):
     
     return components
 
-@app.callback(
-    Output('data-loaded', 'data'),
-    Output('scenario-dropdown', 'options'),
-    Output('scenario-dropdown', 'value'),
-    Output('scenario-selector-div', 'style'),
-    Input('upload-data', 'contents'),
-    State('upload-data', 'filename')
-)
-@safe_callback
+# デバッグ用のコールバック（アップロード状態確認）
+def debug_upload_trigger(contents, filename):
+    """アップロードイベントの発火確認"""
+    if contents:
+        log.info(f"[DEBUG] Upload triggered: {filename}")
+        log.info(f"[DEBUG] Content type: {contents[:50]}")  # 最初の50文字を確認
+        # アップロード成功時のスタイル変更
+        return {
+            'width': '100%',
+            'height': '140px',
+            'border': '2px solid #2ecc71',
+            'borderRadius': '8px',
+            'backgroundColor': '#e8f8f5',
+            'cursor': 'pointer',
+            'transition': 'all 0.3s ease'
+        }
+    # デフォルトスタイル
+    return {
+        'width': '100%',
+        'height': '140px',
+        'border': '2px dashed #3498db',
+        'borderRadius': '8px',
+        'backgroundColor': '#f0f8ff',
+        'cursor': 'pointer',
+        'transition': 'all 0.3s ease'
+    }
+
 def process_upload(contents, filename):
     """改善されたファイルアップロード処理（データフロー最適化版）"""
+    log.info(f"[process_upload] Called with filename: {filename}, contents: {contents is not None}")
+    
     if contents is None:
+        log.info("[process_upload] Contents is None, raising PreventUpdate")
         raise PreventUpdate
 
     global TEMP_DIR_OBJ
     
     log.info(f"[データ入稿] ファイル受信: {filename}")
     
-    # 進捗監視開始
-    if processing_monitor:
-        start_processing()
-        start_step("upload", f"ファイル受信: {filename}")
+    try:
+        # 進捗監視開始（新しいシステムで動的にステップを登録）
+        if processing_monitor:
+            # ファイル処理のステップを動的に登録
+            if hasattr(processing_monitor, 'register_steps'):
+                # 新しいシステムの場合
+                processing_monitor.register_steps([
+                    {'name': 'upload', 'description': f'ファイル受信: {filename}', 'weight': 1.0},
+                    {'name': 'validation', 'description': 'ファイル検証', 'weight': 1.0},
+                    {'name': 'extraction', 'description': 'データ抽出', 'weight': 2.0},
+                    {'name': 'preprocessing', 'description': 'データ前処理', 'weight': 2.0},
+                    {'name': 'analysis', 'description': '分析処理', 'weight': 2.0},
+                    {'name': 'visualization', 'description': '可視化準備', 'weight': 1.0}
+                ])
+            start_processing()
+            start_step("upload", f"ファイル受信: {filename}")
 
-    # 新しいデータ入稿フローを使用した検証（利用可能な場合）
-    if data_ingestion:
-        try:
-            if processing_monitor:
-                start_step("validation", "ファイル検証を実行中...")
-                update_progress("upload", 100)
-            
-            validation_result = data_ingestion.validate_file(contents, filename)
-            log.info(f"[データ入稿] ファイル検証完了: {validation_result['valid']}")
-            
-            # 検証エラーがある場合はユーザーフレンドリーなエラーを返す
-            if not validation_result['valid']:
-                error_messages = validation_result.get('errors', ['不明なエラー'])
-                formatted_error = "ファイル検証エラー:\n" + "\n".join(f"• {error}" for error in error_messages)
-                log.warning(f"[データ入稿] 検証失敗: {formatted_error}")
+        # 新しいデータ入稿フローを使用した検証（利用可能な場合）
+        if data_ingestion:
+            try:
+                if processing_monitor:
+                    start_step("validation", "ファイル検証を実行中...")
+                    update_progress("upload", 100)
+                
+                validation_result = data_ingestion.validate_file(contents, filename)
+                log.info(f"[データ入稿] ファイル検証完了: {validation_result['valid']}")
+                
+                # 検証エラーがある場合はユーザーフレンドリーなエラーを返す
+                if not validation_result['valid']:
+                    error_messages = validation_result.get('errors', ['不明なエラー'])
+                    formatted_error = "ファイル検証エラー:\n" + "\n".join(f"• {error}" for error in error_messages)
+                    log.warning(f"[データ入稿] 検証失敗: {formatted_error}")
+                    
+                    if processing_monitor:
+                        fail_step("validation", formatted_error)
+                    
+                    return {
+                        'error': formatted_error,
+                        'validation_result': validation_result
+                    }, [], None, {'display': 'none'}
+                    
+                # 警告がある場合はログに記録
+                if validation_result.get('warnings'):
+                    for warning in validation_result['warnings']:
+                        log.warning(f"[データ入稿] 警告: {warning}")
                 
                 if processing_monitor:
-                    fail_step("validation", formatted_error)
-                
-                return {
-                    'error': formatted_error,
-                    'validation_result': validation_result
-                }, [], None, {'display': 'none'}
-                
-            # 警告がある場合はログに記録
-            if validation_result.get('warnings'):
-                for warning in validation_result['warnings']:
-                    log.warning(f"[データ入稿] 警告: {warning}")
-            
-            if processing_monitor:
-                complete_step("validation", "ファイル検証完了")
-                    
-        except Exception as e:
-            log.error(f"[データ入稿] 検証処理エラー: {e}", exc_info=True)
-            if processing_monitor:
-                fail_step("validation", f"検証処理エラー: {str(e)}")
-            # 検証に失敗した場合は従来の処理を継続
+                    complete_step("validation", "ファイル検証完了")
+                        
+            except Exception as e:
+                log.error(f"[データ入稿] 検証処理エラー: {e}", exc_info=True)
+                if processing_monitor:
+                    fail_step("validation", f"検証処理エラー: {str(e)}")
+                # 検証に失敗した場合は従来の処理を継続
 
-    # 一時ディレクトリ作成
-    if TEMP_DIR_OBJ:
-        TEMP_DIR_OBJ.cleanup()
+        # 一時ディレクトリ作成
+        if TEMP_DIR_OBJ:
+            TEMP_DIR_OBJ.cleanup()
 
-    TEMP_DIR_OBJ = tempfile.TemporaryDirectory(prefix="shift_suite_dash_")
-    temp_dir_path = Path(TEMP_DIR_OBJ.name)
-    log.info(f"[データ入稿] 一時ディレクトリ作成: {temp_dir_path}")
+        TEMP_DIR_OBJ = tempfile.TemporaryDirectory(prefix="shift_suite_dash_")
+        temp_dir_path = Path(TEMP_DIR_OBJ.name)
+        log.info(f"[データ入稿] 一時ディレクトリ作成: {temp_dir_path}")
 
-    # ファイル処理（進捗ログ付き）
-    if processing_monitor:
-        start_step("extraction", "データ抽出を開始...")
-    
-    content_type, content_string = contents.split(',')
-    decoded = base64.b64decode(content_string)
-    log.info(f"[データ入稿] ファイルデコード完了: {len(decoded)} bytes")
-    
-    if processing_monitor:
-        update_progress("extraction", 30, "ファイルデコード完了")
+        # ファイル処理（進捗ログ付き）
+        if processing_monitor:
+            start_step("extraction", "データ抽出を開始...")
+        
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+        log.info(f"[データ入稿] ファイルデコード完了: {len(decoded)} bytes")
+        
+        if processing_monitor:
+            update_progress("extraction", 30, "ファイルデコード完了")
 
-    try:
         file_ext = Path(filename).suffix.lower()
+        log.info(f"[データ入稿] ファイル拡張子: {file_ext}")
         
         if file_ext == '.zip':
-            # ZIPファイル処理
+            # ZIP処理
             log.info("[データ入稿] ZIPファイル展開開始")
             if processing_monitor:
                 update_progress("extraction", 50, "ZIPファイル展開中...")
                 
             with zipfile.ZipFile(io.BytesIO(decoded)) as zf:
+                # セキュリティ: パストラバーサル攻撃を防ぐ
+                import os
+                for member in zf.namelist():
+                    # 絶対パスや親ディレクトリ参照を検証
+                    if os.path.isabs(member) or ".." in member or member.startswith("/"):
+                        log.error(f"[セキュリティ] 危険なパスを検出: {member}")
+                        if processing_monitor:
+                            fail_step("extraction", f"セキュリティエラー: 危険なファイルパス {member}")
+                        return {
+                            'error': f'セキュリティエラー: 不正なファイルパスが含まれています\n危険なパス: {member}'
+                        }, [], None, {'display': 'none'}
+                    
+                    # ファイル名の正規化とサニタイゼーション
+                    normalized_path = os.path.normpath(member)
+                    if normalized_path.startswith(('..', os.sep)):
+                        log.error(f"[セキュリティ] 正規化後も危険なパス: {normalized_path}")
+                        continue
+                
+                # 検証をパスした場合のみ展開
                 zf.extractall(temp_dir_path)
             log.info(f"[データ入稿] ZIP展開完了: {temp_dir_path}")
             
@@ -4555,7 +4749,18 @@ def process_upload(contents, filename):
         if processing_monitor:
             start_step("preprocessing", "前処理準備完了")
             complete_step("preprocessing", "データ入稿フロー完了")
+            # 残りのステップも完了させて100%にする
+            start_step("analysis", "分析準備")
+            complete_step("analysis", "分析準備完了")
+            start_step("visualization", "可視化準備")
+            complete_step("visualization", "全処理完了")
+            # プロセスを正式に完了させる
+            if hasattr(processing_monitor, 'force_complete'):
+                processing_monitor.force_complete()
+            else:
+                processing_monitor.is_running = False
         
+        log.info("[process_upload] Returning success response")
         return {
             'success': True,
             'scenarios': scenario_paths,
@@ -4567,8 +4772,8 @@ def process_upload(contents, filename):
             }
         }, scenario_options, first_scenario, {'display': 'block'}
 
-    except zipfile.BadZipFile:
-        log.error("[データ入稿] 破損したZIPファイル")
+    except zipfile.BadZipFile as e:
+        log.error(f"[データ入稿] 破損したZIPファイル: {e}")
         return {
             'error': '破損したZIPファイルです。\n' +
                    'ファイルが正しくダウンロードされているか確認してください。'
@@ -4579,6 +4784,42 @@ def process_upload(contents, filename):
             'error': f'ファイル処理中にエラーが発生しました:\n{str(e)}\n\n' +
                    'ファイル形式や内容を確認してください。'
         }, [], None, {'display': 'none'}
+
+
+
+# === ZIPファイルアップロードコールバック ===
+@app.callback(
+    [Output('data-ingestion-output', 'data'),
+     Output('scenario-dropdown', 'options'),
+     Output('scenario-dropdown', 'value'),
+     Output('scenario-selector-container', 'style')],
+    [Input('upload-data', 'contents')],
+    [State('upload-data', 'filename')]
+)
+@safe_callback
+def handle_file_upload(contents, filename):
+    """ZIPファイルアップロード処理のコールバック"""
+    if contents is None:
+        # デフォルトシナリオがある場合はそれを使用
+        if CURRENT_SCENARIO_DIR:
+            scenarios = [CURRENT_SCENARIO_DIR.name]
+            return (
+                None,
+                [{'label': s, 'value': s} for s in scenarios],
+                scenarios[0] if scenarios else None,
+                {'display': 'block'}
+            )
+        return None, [], None, {'display': 'none'}
+    
+    # process_upload関数を呼び出し
+    result = process_upload(contents, filename)
+    
+    if isinstance(result, tuple) and len(result) == 4:
+        data, options, value, style = result
+        return data, options, value, style
+    else:
+        # エラーの場合
+        return result, [], None, {'display': 'none'}
 
 
 @app.callback(
@@ -4651,6 +4892,11 @@ def update_main_content(selected_scenario, data_status):
             
             if processing_monitor:
                 complete_step("analysis", "データ読み込み完了")
+                # visualizationステップも完了させて100%にする
+                start_step("visualization", "可視化準備中...")
+                complete_step("visualization", "処理完了")
+                # 処理を正式に終了させる
+                processing_monitor.is_running = False
             
             # パフォーマンス測定終了
             if performance_monitor:
@@ -4683,199 +4929,206 @@ def update_main_content(selected_scenario, data_status):
 
 
 def create_main_ui_tabs():
-    """メインUIタブを作成（論理的グループ化版）"""
-    # タブを論理的にグループ化
-    tabs = dcc.Tabs(id='main-tabs', value='overview', children=[
-        # 基本分析グループ
-        dcc.Tab(label='📊 概要', value='overview'),
-        dcc.Tab(label='🔥 ヒートマップ', value='heatmap'),
-        dcc.Tab(label='⚠️ 不足分析', value='shortage'),
-        
-        # 人事管理グループ  
-        dcc.Tab(label='👤 職員個別分析', value='individual_analysis'),
-        dcc.Tab(label='👥 チーム分析', value='team_analysis'),
-        dcc.Tab(label='😴 疲労分析', value='fatigue'),
-        dcc.Tab(label='🏖️ 休暇分析', value='leave'),
-        dcc.Tab(label='⚖️ 公平性', value='fairness'),
-        
-        # 最適化・計画グループ
-        dcc.Tab(label='⚡ 最適化分析', value='optimization'),
-        dcc.Tab(label='📈 需要予測', value='forecast'),
-        dcc.Tab(label='👷 採用計画', value='hire_plan'),
-        dcc.Tab(label='💰 コスト分析', value='cost'),
-        
-        # 高度分析グループ
-        dcc.Tab(label='📋 基準乖離分析', value='gap'),
-        dcc.Tab(label='🧠 作成ブループリント', value='blueprint_analysis'),
-        dcc.Tab(label='🔍 ロジック解明', value='logic_analysis'),
-    ])
+    """メインUIタブを作成（階層化構造版）"""
+    
+    # 階層化タブ構造
+    main_tab_groups = dcc.Tabs(
+        id='main-tab-groups',
+        value='basic',
+        children=[
+            dcc.Tab(label='📊 基本分析', value='basic', className='main-tab'),
+            dcc.Tab(label='👥 スタッフ分析', value='staff', className='main-tab'),
+            dcc.Tab(label='📈 計画・予測', value='planning', className='main-tab'),
+            dcc.Tab(label='🤖 高度な分析', value='advanced', className='main-tab'),
+        ],
+        className='main-tabs-container'
+    )
+    
+    # サブタブコンテナ（動的に更新される）
+    sub_tabs_container = html.Div(
+        id='sub-tabs-container',
+        className='sub-tabs-wrapper'
+    )
+    
+    # 互換性のための隠しストア
+    selected_tab_store = dcc.Store(id='selected-tab-store', data='overview')
+    
+    # 既存の互換性維持用（非表示）
+    legacy_tabs = html.Div(
+        dcc.Tabs(id='main-tabs', value='overview', children=[
+            # 基本分析グループ
+            dcc.Tab(label='📊 概要', value='overview'),
+            dcc.Tab(label='🔥 ヒートマップ', value='heatmap'),
+            dcc.Tab(label='⚠️ 不足分析', value='shortage'),
+            
+            # 人事管理グループ  
+            dcc.Tab(label='👤 職員個別分析', value='individual_analysis'),
+            dcc.Tab(label='👥 チーム分析', value='team_analysis'),
+            dcc.Tab(label='😴 疲労分析', value='fatigue'),
+            dcc.Tab(label='🏖️ 休暇分析', value='leave'),
+            dcc.Tab(label='⚖️ 公平性', value='fairness'),
+            
+            # 最適化・計画グループ
+            dcc.Tab(label='⚡ 最適化分析', value='optimization'),
+            dcc.Tab(label='📈 需要予測', value='forecast'),
+            dcc.Tab(label='👷 採用計画', value='hire_plan'),
+            dcc.Tab(label='💰 コスト分析', value='cost'),
+            
+            # 高度分析グループ
+            dcc.Tab(label='📋 基準乖離分析', value='gap'),
+            dcc.Tab(label='🧠 作成ブループリント', value='blueprint_analysis'),
+            dcc.Tab(label='🔍 ロジック解明', value='logic_analysis'),
+        ]),
+        style={'display': 'none'}  # 非表示
+    )
 
-    # カテゴリナビゲーション説明
+    # カテゴリナビゲーション説明（更新版）
     category_info = html.Div([
-        html.H6("📊 分析カテゴリ:", style={'margin': '10px 0 5px 0'}),
+        html.H6("📊 分析カテゴリ（階層化）:", style={'margin': '10px 0 5px 0'}),
         html.P([
-            html.Span("基本分析", style={'color': '#1f77b4', 'marginRight': '15px'}),
-            html.Span("人事管理", style={'color': '#ff7f0e', 'marginRight': '15px'}),
-            html.Span("最適化・計画", style={'color': '#2ca02c', 'marginRight': '15px'}),
-            html.Span("高度分析", style={'color': '#d62728'})
+            html.Span("基本分析（3項目）", style={'color': '#1f77b4', 'marginRight': '15px'}),
+            html.Span("スタッフ分析（5項目）", style={'color': '#ff7f0e', 'marginRight': '15px'}),
+            html.Span("計画・予測（4項目）", style={'color': '#2ca02c', 'marginRight': '15px'}),
+            html.Span("高度な分析（3項目）", style={'color': '#d62728'})
         ], style={'fontSize': '12px', 'margin': '0 0 10px 0'})
     ])
     
+    # 階層化タブのスタイル
+    tab_styles = html.Style('''
+        /* メインタブスタイル */
+        .main-tabs-container {
+            background-color: #f8f9fa;
+            padding: 0;
+            margin-bottom: 16px;
+        }
+        
+        .main-tab {
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 24px;
+            min-width: 150px;
+        }
+        
+        /* サブタブスタイル */
+        .sub-tabs-container {
+            background-color: white;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 16px;
+        }
+        
+        .sub-tab {
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+        
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .main-tabs-container,
+            .sub-tabs-container {
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+    ''')
+    
     # 全タブコンテナを静的に作成（CSS表示制御方式）
     main_layout = html.Div([
+        tab_styles,
         category_info,
-        tabs,
-        html.Div(style={'marginTop': '20px'}, children=[
-            # 各タブコンテナ（初期状態では概要タブのみ表示）
-            html.Div(id='overview-tab-container', 
-                    style={'display': 'block'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-overview",
-                            type="circle",
-                            children=html.Div(id='overview-content')
-                        )
-                    ]),
-            html.Div(id='heatmap-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-heatmap",
-                            type="circle",
-                            children=html.Div(id='heatmap-content')
-                        )
-                    ]),
-            html.Div(id='shortage-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-shortage",
-                            type="circle",
-                            children=html.Div(id='shortage-content')
-                        )
-                    ]),
-            html.Div(id='optimization-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-optimization",
-                            type="circle",
-                            children=html.Div(id='optimization-content')
-                        )
-                    ]),
-            html.Div(id='leave-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-leave",
-                            type="circle",
-                            children=html.Div(id='leave-content')
-                        )
-                    ]),
-            html.Div(id='cost-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-cost",
-                            type="circle",
-                            children=html.Div(id='cost-content')
-                        )
-                    ]),
-            html.Div(id='hire-plan-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-hire-plan",
-                            type="circle",
-                            children=html.Div(id='hire-plan-content')
-                        )
-                    ]),
-            html.Div(id='fatigue-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-fatigue",
-                            type="circle",
-                            children=html.Div(id='fatigue-content')
-                        )
-                    ]),
-            html.Div(id='forecast-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-forecast",
-                            type="circle",
-                            children=html.Div(id='forecast-content')
-                        )
-                    ]),
-            html.Div(id='fairness-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-fairness",
-                            type="circle",
-                            children=html.Div(id='fairness-content')
-                        )
-                    ]),
-            html.Div(id='gap-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-gap",
-                            type="circle",
-                            children=html.Div(id='gap-content')
-                        )
-                    ]),
-            html.Div(id='individual-analysis-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-individual-analysis",
-                            type="circle",
-                            children=html.Div(id='individual-analysis-content')
-                        )
-                    ]),
-            html.Div(id='team-analysis-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-team-analysis",
-                            type="circle",
-                            children=html.Div(id='team-analysis-content')
-                        )
-                    ]),
-            html.Div(id='blueprint-analysis-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-blueprint-analysis",
-                            type="circle",
-                            children=html.Div(id='blueprint-analysis-content')
-                        )
-                    ]),
-            html.Div(id='logic-analysis-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-logic-analysis",
-                            type="circle",
-                            children=html.Div(id='logic-analysis-content')
-                        )
-                    ]),
-            # 🧠 AI分析タブコンテナ
-            html.Div(id='ai-analysis-tab-container',
-                    style={'display': 'none'},
-                    children=[
-                        dcc.Loading(
-                            id="loading-ai-analysis",
-                            type="circle",
-                            children=html.Div(id='ai-analysis-content')
-                        )
-                    ]),
+        main_tab_groups,
+        sub_tabs_container,
+        selected_tab_store,
+        legacy_tabs,
+        # 各タブのコンテンツコンテナ（既存の構造を維持）
+        html.Div([
+            html.Div(id='overview-tab-container', style={'display': 'block'}),
+            html.Div(id='heatmap-tab-container', style={'display': 'none'}),
+            html.Div(id='shortage-tab-container', style={'display': 'none'}),
+            html.Div(id='optimization-tab-container', style={'display': 'none'}),
+            html.Div(id='leave-tab-container', style={'display': 'none'}),
+            html.Div(id='cost-tab-container', style={'display': 'none'}),
+            html.Div(id='hire-plan-tab-container', style={'display': 'none'}),
+            html.Div(id='fatigue-tab-container', style={'display': 'none'}),
+            html.Div(id='forecast-tab-container', style={'display': 'none'}),
+            html.Div(id='fairness-tab-container', style={'display': 'none'}),
+            html.Div(id='gap-tab-container', style={'display': 'none'}),
+            html.Div(id='individual-analysis-tab-container', style={'display': 'none'}),
+            html.Div(id='team-analysis-tab-container', style={'display': 'none'}),
+            html.Div(id='blueprint-analysis-tab-container', style={'display': 'none'}),
+            html.Div(id='logic-analysis-tab-container', style={'display': 'none'}),
+            html.Div(id='ai-analysis-tab-container', style={'display': 'none'}),
         ])
     ])
 
     return main_layout
+
+# 階層化タブ用コールバック
+def update_sub_tabs(selected_group):
+    """プライマリタブに応じてサブタブを表示"""
+    from dash.exceptions import PreventUpdate
+    
+    if not selected_group or selected_group not in ['basic', 'staff', 'planning', 'advanced']:
+        # デフォルトで基本分析を表示
+        selected_group = 'basic'
+    
+    # タブグループ定義
+    tab_configs = {
+        'basic': [
+            {'label': '📊 概要', 'value': 'overview'},
+            {'label': '🔥 ヒートマップ', 'value': 'heatmap'},
+            {'label': '⚠️ 不足分析', 'value': 'shortage'}
+        ],
+        'staff': [
+            {'label': '👤 個別分析', 'value': 'individual_analysis'},
+            {'label': '👥 チーム分析', 'value': 'team_analysis'},
+            {'label': '😴 疲労分析', 'value': 'fatigue'},
+            {'label': '🏖️ 休暇分析', 'value': 'leave'},
+            {'label': '⚖️ 公平性', 'value': 'fairness'}
+        ],
+        'planning': [
+            {'label': '⚡ 最適化', 'value': 'optimization'},
+            {'label': '📈 需要予測', 'value': 'forecast'},
+            {'label': '👷 採用計画', 'value': 'hire_plan'},
+            {'label': '💰 コスト分析', 'value': 'cost'}
+        ],
+        'advanced': [
+            {'label': '📋 基準乖離', 'value': 'gap'},
+            {'label': '🧠 ブループリント', 'value': 'blueprint_analysis'},
+            {'label': '🔍 ロジック解明', 'value': 'logic_analysis'}
+        ]
+    }
+    
+    tabs = tab_configs.get(selected_group, tab_configs['basic'])
+    
+    return dcc.Tabs(
+        id='sub-tabs',
+        value=tabs[0]['value'] if tabs else 'overview',
+        children=[
+            dcc.Tab(label=tab['label'], value=tab['value'], className='sub-tab')
+            for tab in tabs
+        ],
+        className='sub-tabs-container'
+    )
+
+# 選択されたタブを記録（互換性用）
+@app.callback(
+    Output('selected-tab-store', 'data'),
+    Input('sub-tabs', 'value')
+)
+@safe_callback
+def store_selected_tab(selected_tab):
+    """選択されたタブを記録（既存コールバックとの互換性）"""
+    return selected_tab
+
+# 既存のmain-tabsの値を更新（互換性用）
+@app.callback(
+    Output('main-tabs', 'value'),
+    Input('selected-tab-store', 'data')
+)
+@safe_callback  
+def update_legacy_tabs(selected_tab):
+    """互換性のため既存タブの値を更新"""
+    return selected_tab if selected_tab else 'overview'
 
 
 @app.callback(
@@ -7586,4 +7839,13 @@ def execute_mind_reader_analysis(n_intervals):
 
 # --- アプリケーション起動 ---
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8080, host='127.0.0.1')
+    import os
+    # セキュリティ: 環境変数でデバッグモードを制御（デフォルトは無効）
+    debug_mode = os.environ.get('DASH_DEBUG', 'False').lower() == 'true'
+    port = int(os.environ.get('DASH_PORT', '8080'))
+    host = os.environ.get('DASH_HOST', '127.0.0.1')
+    
+    if debug_mode:
+        log.warning("⚠️ デバッグモードが有効です。本番環境では無効にしてください。")
+    
+    app.run(debug=debug_mode, port=port, host=host)
