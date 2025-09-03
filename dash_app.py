@@ -1156,7 +1156,7 @@ def calculate_role_dynamic_need(df_heat: pd.DataFrame, date_cols: List[str], hea
     # 最適化エンジンが利用可能な場合は使用
     if analysis_engine:
         log.info(f"[最適化エンジン] {heat_key}の高速計算を開始")
-        if processing_monitor:
+        if processing_monitor and USE_PROGRESS_MONITOR:
             start_step("analysis", f"{heat_key}を分析中...")
         
         try:
@@ -1170,14 +1170,14 @@ def calculate_role_dynamic_need(df_heat: pd.DataFrame, date_cols: List[str], hea
                 df_heat, date_cols, heat_key, cache_dict
             )
             
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 complete_step("analysis", f"{heat_key}分析完了")
             
             return result
             
         except Exception as e:
             log.error(f"[最適化エンジン] エラー発生、従来方式にフォールバック: {e}")
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 fail_step("analysis", f"エラー: {str(e)}")
     
     # 従来の計算方式（フォールバック）
@@ -4626,7 +4626,7 @@ def process_upload(contents, filename):
         log.info(f"[process_upload] data_ingestion チェック: {data_ingestion}")
         if data_ingestion:
             try:
-                if processing_monitor:
+                if processing_monitor and USE_PROGRESS_MONITOR:
                     start_step("validation", "ファイル検証を実行中...")
                     update_progress("upload", 100)
                 
@@ -4639,7 +4639,7 @@ def process_upload(contents, filename):
                     formatted_error = "ファイル検証エラー:\n" + "\n".join(f"• {error}" for error in error_messages)
                     log.warning(f"[データ入稿] 検証失敗: {formatted_error}")
                     
-                    if processing_monitor:
+                    if processing_monitor and USE_PROGRESS_MONITOR:
                         fail_step("validation", formatted_error)
                     
                     return {
@@ -4652,12 +4652,12 @@ def process_upload(contents, filename):
                     for warning in validation_result['warnings']:
                         log.warning(f"[データ入稿] 警告: {warning}")
                 
-                if processing_monitor:
+                if processing_monitor and USE_PROGRESS_MONITOR:
                     complete_step("validation", "ファイル検証完了")
                         
             except Exception as e:
                 log.error(f"[データ入稿] 検証処理エラー: {e}", exc_info=True)
-                if processing_monitor:
+                if processing_monitor and USE_PROGRESS_MONITOR:
                     fail_step("validation", f"検証処理エラー: {str(e)}")
                 # 検証に失敗した場合は従来の処理を継続
                 log.info("[process_upload] 検証失敗、従来の処理を継続")
@@ -4697,8 +4697,11 @@ def process_upload(contents, filename):
             log.error(f"[process_upload] Decode error: {e}", exc_info=True)
             return {'error': f'Decode error: {str(e)}'}, [], None, {'display': 'none'}
         
-        if processing_monitor:
-            update_progress("extraction", 30, "ファイルデコード完了")
+        if processing_monitor and USE_PROGRESS_MONITOR:
+            try:
+                update_progress("extraction", 30, "ファイルデコード完了")
+            except Exception as e:
+                log.warning(f"[process_upload] update_progress error (ignored): {e}")
 
         file_ext = Path(filename).suffix.lower()
         log.info(f"[PROCESSING LAYER] Step 2: File type detection")
@@ -4709,7 +4712,7 @@ def process_upload(contents, filename):
             # ZIP処理
             log.info("[PROCESSING LAYER] Step 3: ZIP extraction")
             log.info(f"[process_upload] Starting ZIP extraction to: {temp_dir_path}")
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 update_progress("extraction", 50, "ZIPファイル展開中...")
                 
             with zipfile.ZipFile(io.BytesIO(decoded)) as zf:
@@ -4719,7 +4722,7 @@ def process_upload(contents, filename):
                     # 絶対パスや親ディレクトリ参照を検証
                     if os.path.isabs(member) or ".." in member or member.startswith("/"):
                         log.error(f"[セキュリティ] 危険なパスを検出: {member}")
-                        if processing_monitor:
+                        if processing_monitor and USE_PROGRESS_MONITOR:
                             fail_step("extraction", f"セキュリティエラー: 危険なファイルパス {member}")
                         return {
                             'error': f'セキュリティエラー: 不正なファイルパスが含まれています\n危険なパス: {member}'
@@ -4735,7 +4738,7 @@ def process_upload(contents, filename):
                 zf.extractall(temp_dir_path)
             log.info(f"[データ入稿] ZIP展開完了: {temp_dir_path}")
             
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 update_progress("extraction", 80, "展開完了、シナリオ検出中...")
 
             # シナリオ検出
@@ -4753,7 +4756,7 @@ def process_upload(contents, filename):
             if not scenarios:
                 log.error("[process_upload] No scenario folders detected")
                 log.error(f"[process_upload] Expected folders starting with 'out_' in {temp_dir_path}")
-                if processing_monitor:
+                if processing_monitor and USE_PROGRESS_MONITOR:
                     fail_step("extraction", "分析シナリオフォルダが見つかりません")
                 return {
                     'error': '分析シナリオのフォルダが見つかりません。\n' +
@@ -4761,7 +4764,7 @@ def process_upload(contents, filename):
                 }, [], None, {'display': 'none'}
 
             log.info(f"[process_upload] Scenarios found: {scenarios}")
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 complete_step("extraction", f"シナリオ{len(scenarios)}個を検出")
             
         elif file_ext in {'.xlsx', '.csv'}:
@@ -4832,20 +4835,28 @@ def process_upload(contents, filename):
         
         log.info(f"[データ入稿] 処理完了 - シナリオ数: {len(scenarios)}")
         
-        # 処理完了を記録
-        if processing_monitor:
-            start_step("preprocessing", "前処理準備完了")
-            complete_step("preprocessing", "データ入稿フロー完了")
-            # 残りのステップも完了させて100%にする
-            start_step("analysis", "分析準備")
-            complete_step("analysis", "分析準備完了")
-            start_step("visualization", "可視化準備")
-            complete_step("visualization", "全処理完了")
-            # プロセスを正式に完了させる
-            if hasattr(processing_monitor, 'force_complete'):
-                processing_monitor.force_complete()
-            else:
-                processing_monitor.is_running = False
+        # 処理完了を記録（USE_PROGRESS_MONITORフラグをチェック）
+        if processing_monitor and USE_PROGRESS_MONITOR:
+            log.info("[process_upload] Completing progress monitor steps")
+            try:
+                start_step("preprocessing", "前処理準備完了")
+                complete_step("preprocessing", "データ入稿フロー完了")
+                # 残りのステップも完了させて100%にする
+                start_step("analysis", "分析準備")
+                complete_step("analysis", "分析準備完了")
+                start_step("visualization", "可視化準備")
+                complete_step("visualization", "全処理完了")
+                # プロセスを正式に完了させる
+                if hasattr(processing_monitor, 'force_complete'):
+                    processing_monitor.force_complete()
+                else:
+                    processing_monitor.is_running = False
+                log.info("[process_upload] Progress monitor steps completed")
+            except Exception as e:
+                log.error(f"[process_upload] Error in progress monitor completion: {e}", exc_info=True)
+                # エラーが発生しても処理を継続
+        else:
+            log.info("[process_upload] Skipping progress monitor completion (disabled)")
         
         log.info("[PROCESSING LAYER] Step 6: Building return value")
         
@@ -5073,7 +5084,7 @@ def update_main_content(selected_scenario, data_status):
             log.info(f"按分方式データキャッシュ更新開始: {selected_scenario}")
             
             # 分析処理開始の監視
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 start_processing()
                 start_step("preprocessing", "データ前処理を実行中...")
             
@@ -5084,14 +5095,14 @@ def update_main_content(selected_scenario, data_status):
             update_data_cache_with_proportional(DATA_CACHE, excel_path, selected_scenario)
             log.info("按分方式データキャッシュ更新完了")
             
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 complete_step("preprocessing", "データ前処理完了")
                 start_step("analysis", "共通データ読み込み中...")
             
             # 共通データの事前読み込みを実行
             preload_common_data()
             
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 complete_step("analysis", "データ読み込み完了")
                 # visualizationステップも完了させて100%にする
                 start_step("visualization", "可視化準備中...")
@@ -5106,7 +5117,7 @@ def update_main_content(selected_scenario, data_status):
                 
         except Exception as e:
             log.warning(f"按分方式データ更新エラー: {e}")
-            if processing_monitor:
+            if processing_monitor and USE_PROGRESS_MONITOR:
                 fail_step("preprocessing", f"エラー: {str(e)}")
 
     pre_aggr = data_get('pre_aggregated_data')
