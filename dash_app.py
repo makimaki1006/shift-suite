@@ -5079,6 +5079,18 @@ def update_main_content(selected_scenario, data_status):
         raise PreventUpdate
 
     log.info(f"Switching to scenario {selected_scenario} at {data_dir}")
+    
+    # 正しいシナリオパスを確実に取得
+    if selected_scenario == 'out_median_based':
+        correct_path = data_dir.parent / 'out_median_based'
+        if correct_path.exists():
+            data_dir = correct_path
+    elif selected_scenario == 'out_p25_based':
+        correct_path = data_dir.parent / 'out_p25_based'
+        if correct_path.exists():
+            data_dir = correct_path
+    
+    log.info(f"[FIXED] Correct scenario path: {data_dir}")
 
     # Scenario has changed; reset caches and store new directory
     CURRENT_SCENARIO_DIR = data_dir
@@ -5238,22 +5250,22 @@ def create_main_ui_tabs():
         legacy_tabs,
         # 各タブのコンテンツコンテナ（既存の構造を維持）
         html.Div([
-            html.Div(id='overview-tab-container', style={'display': 'block'}),
-            html.Div(id='heatmap-tab-container', style={'display': 'none'}),
-            html.Div(id='shortage-tab-container', style={'display': 'none'}),
-            html.Div(id='optimization-tab-container', style={'display': 'none'}),
-            html.Div(id='leave-tab-container', style={'display': 'none'}),
-            html.Div(id='cost-tab-container', style={'display': 'none'}),
-            html.Div(id='hire-plan-tab-container', style={'display': 'none'}),
-            html.Div(id='fatigue-tab-container', style={'display': 'none'}),
-            html.Div(id='forecast-tab-container', style={'display': 'none'}),
-            html.Div(id='fairness-tab-container', style={'display': 'none'}),
-            html.Div(id='gap-tab-container', style={'display': 'none'}),
-            html.Div(id='individual-analysis-tab-container', style={'display': 'none'}),
-            html.Div(id='team-analysis-tab-container', style={'display': 'none'}),
-            html.Div(id='blueprint-analysis-tab-container', style={'display': 'none'}),
-            html.Div(id='logic-analysis-tab-container', style={'display': 'none'}),
-            html.Div(id='ai-analysis-tab-container', style={'display': 'none'}),
+            html.Div(id='overview-tab-container', style={'display': 'block'}, children=html.Div(id='overview-content')),
+            html.Div(id='heatmap-tab-container', style={'display': 'none'}, children=html.Div(id='heatmap-content')),
+            html.Div(id='shortage-tab-container', style={'display': 'none'}, children=html.Div(id='shortage-content')),
+            html.Div(id='optimization-tab-container', style={'display': 'none'}, children=html.Div(id='optimization-content')),
+            html.Div(id='leave-tab-container', style={'display': 'none'}, children=html.Div(id='leave-content')),
+            html.Div(id='cost-tab-container', style={'display': 'none'}, children=html.Div(id='cost-content')),
+            html.Div(id='hire-plan-tab-container', style={'display': 'none'}, children=html.Div(id='hire-plan-content')),
+            html.Div(id='fatigue-tab-container', style={'display': 'none'}, children=html.Div(id='fatigue-content')),
+            html.Div(id='forecast-tab-container', style={'display': 'none'}, children=html.Div(id='forecast-content')),
+            html.Div(id='fairness-tab-container', style={'display': 'none'}, children=html.Div(id='fairness-content')),
+            html.Div(id='gap-tab-container', style={'display': 'none'}, children=html.Div(id='gap-content')),
+            html.Div(id='individual-analysis-tab-container', style={'display': 'none'}, children=html.Div(id='individual-analysis-content')),
+            html.Div(id='team-analysis-tab-container', style={'display': 'none'}, children=html.Div(id='team-analysis-content')),
+            html.Div(id='blueprint-analysis-tab-container', style={'display': 'none'}, children=html.Div(id='blueprint-analysis-content')),
+            html.Div(id='logic-analysis-tab-container', style={'display': 'none'}, children=html.Div(id='logic-analysis-content')),
+            html.Div(id='ai-analysis-tab-container', style={'display': 'none'}, children=html.Div(id='ai-analysis-content')),
         ])
     ])
 
@@ -5401,7 +5413,11 @@ def update_tab_visibility(active_tab, sub_tab, selected_scenario, data_status):
 @safe_callback
 def initialize_overview_content(style, selected_scenario, data_status):
     """概要タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    log.info(f"[initialize_overview_content] Called with scenario: {selected_scenario}, data_status: {data_status}, style: {style}")
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    # data_statusがboolの場合もあるので、Falseの場合のみチェック
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_overview_tab(selected_scenario)
@@ -5418,7 +5434,10 @@ def initialize_overview_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_heatmap_content(style, selected_scenario, data_status):
     """ヒートマップタブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    log.info(f"[initialize_heatmap_content] Called with scenario: {selected_scenario}, data_status: {data_status}, style: {style}")
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_heatmap_tab()
@@ -5460,7 +5479,9 @@ def initialize_shortage_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_optimization_content(style, selected_scenario, data_status):
     """最適化分析タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_optimization_tab()
@@ -5502,7 +5523,9 @@ def initialize_leave_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_cost_content(style, selected_scenario, data_status):
     """コスト分析タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_cost_analysis_tab()
@@ -5519,7 +5542,9 @@ def initialize_cost_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_hire_plan_content(style, selected_scenario, data_status):
     """採用計画タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_hire_plan_tab()
@@ -5536,7 +5561,9 @@ def initialize_hire_plan_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_fatigue_content(style, selected_scenario, data_status):
     """疲労分析タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_fatigue_tab()
@@ -5553,7 +5580,9 @@ def initialize_fatigue_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_forecast_content(style, selected_scenario, data_status):
     """需要予測タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_forecast_tab()
@@ -5570,7 +5599,9 @@ def initialize_forecast_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_fairness_content(style, selected_scenario, data_status):
     """公平性タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_fairness_tab()
@@ -5587,7 +5618,9 @@ def initialize_fairness_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_gap_content(style, selected_scenario, data_status):
     """基準乖離分析タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_gap_analysis_tab()
@@ -5604,7 +5637,9 @@ def initialize_gap_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_team_analysis_content(style, selected_scenario, data_status):
     """チーム分析タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_team_analysis_tab()
@@ -5621,7 +5656,9 @@ def initialize_team_analysis_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_blueprint_analysis_content(style, selected_scenario, data_status):
     """作成ブループリントタブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_blueprint_analysis_tab()
@@ -5638,7 +5675,9 @@ def initialize_blueprint_analysis_content(style, selected_scenario, data_status)
 @safe_callback
 def initialize_logic_analysis_content(style, selected_scenario, data_status):
     """ロジック解明タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_creation_logic_analysis_tab()
@@ -5657,7 +5696,9 @@ def initialize_logic_analysis_content(style, selected_scenario, data_status):
 @safe_callback
 def initialize_individual_analysis_content(style, selected_scenario, data_status):
     """職員個別分析タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_individual_analysis_tab()
@@ -7852,7 +7893,9 @@ def update_progress_bar(n_intervals, progress_data):
 @safe_callback
 def initialize_ai_analysis_content(style, selected_scenario, data_status):
     """AI分析タブの内容を初期化"""
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or style.get('display') == 'none':
+        raise PreventUpdate
+    if data_status is False:
         raise PreventUpdate
     try:
         return create_ai_analysis_tab()
