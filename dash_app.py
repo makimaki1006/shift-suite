@@ -5037,6 +5037,7 @@ def handle_file_upload(contents, filename):
 @app.callback(
     Output('kpi-data-store', 'data'),
     Output('main-content', 'children'),
+    Output('data-loaded', 'data'),  # Add data-loaded output
     Input('scenario-dropdown', 'value'),
     State('data-loaded', 'data')
 )
@@ -5058,7 +5059,7 @@ def update_main_content(selected_scenario, data_status):
             # デフォルトのKPIデータを作成
             kpi_data = {}
             # UIを表示（アップロード不要）
-            return kpi_data, create_main_ui_tabs()
+            return kpi_data, create_main_ui_tabs(), True  # Set data-loaded to True, True  # Set data-loaded to True
         else:
             raise PreventUpdate
 
@@ -5137,7 +5138,7 @@ def update_main_content(selected_scenario, data_status):
     except Exception as e_report:
         log.error(f"[dash_app] ダッシュボード分析レポート生成エラー: {e_report}")
 
-    return kpi_data, create_main_ui_tabs()
+    return kpi_data, create_main_ui_tabs(), True  # Set data-loaded to True
 
 
 def create_main_ui_tabs():
