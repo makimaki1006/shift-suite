@@ -4680,25 +4680,35 @@ def process_upload(contents, filename):
             except Exception as e:
                 log.error(f"[process_upload] start_step(extraction) エラー: {e}", exc_info=True)
         
-        log.info("[process_upload] コンテンツのデコード開始")
+        log.info("[PROCESSING LAYER] Step 1: Decoding Base64 content")
         try:
-            content_type, content_string = contents.split(',')
-            log.info(f"[process_upload] content_type: {content_type[:50]}...")
+            if ',' not in contents:
+                log.error("[process_upload] Invalid format: No comma separator in contents")
+                return {'error': 'Invalid file format'}, [], None, {'display': 'none'}
+                
+            content_type, content_string = contents.split(',', 1)
+            log.info(f"[process_upload] Content metadata: {content_type}")
+            log.info(f"[process_upload] Base64 data length: {len(content_string)}")
+            
             decoded = base64.b64decode(content_string)
-            log.info(f"[データ入稿] ファイルデコード完了: {len(decoded)} bytes")
+            log.info(f"[process_upload] Decoded binary size: {len(decoded)} bytes")
+            log.info(f"[process_upload] Decoded first 10 bytes: {decoded[:10]}")
         except Exception as e:
-            log.error(f"[process_upload] デコードエラー: {e}", exc_info=True)
-            raise
+            log.error(f"[process_upload] Decode error: {e}", exc_info=True)
+            return {'error': f'Decode error: {str(e)}'}, [], None, {'display': 'none'}
         
         if processing_monitor:
             update_progress("extraction", 30, "ファイルデコード完了")
 
         file_ext = Path(filename).suffix.lower()
-        log.info(f"[データ入稿] ファイル拡張子: {file_ext}")
+        log.info(f"[PROCESSING LAYER] Step 2: File type detection")
+        log.info(f"[process_upload] File extension: {file_ext}")
+        log.info(f"[process_upload] File name: {filename}")
         
         if file_ext == '.zip':
             # ZIP処理
-            log.info("[データ入稿] ZIPファイル展開開始")
+            log.info("[PROCESSING LAYER] Step 3: ZIP extraction")
+            log.info(f"[process_upload] Starting ZIP extraction to: {temp_dir_path}")
             if processing_monitor:
                 update_progress("extraction", 50, "ZIPファイル展開中...")
                 
@@ -4729,9 +4739,20 @@ def process_upload(contents, filename):
                 update_progress("extraction", 80, "展開完了、シナリオ検出中...")
 
             # シナリオ検出
+            log.info("[PROCESSING LAYER] Step 4: Scenario detection")
+            log.info(f"[process_upload] Scanning directory: {temp_dir_path}")
+            
+            all_items = list(temp_dir_path.iterdir())
+            log.info(f"[process_upload] Found {len(all_items)} items in temp directory")
+            for item in all_items:
+                log.info(f"  - {item.name} (is_dir: {item.is_dir()}, starts_with_out: {item.name.startswith('out_')})")
+            
             scenarios = [d.name for d in temp_dir_path.iterdir() if d.is_dir() and d.name.startswith('out_')]
+            log.info(f"[process_upload] Detected {len(scenarios)} scenarios: {scenarios}")
+            
             if not scenarios:
-                log.error("[データ入稿] 分析シナリオフォルダ未検出")
+                log.error("[process_upload] No scenario folders detected")
+                log.error(f"[process_upload] Expected folders starting with 'out_' in {temp_dir_path}")
                 if processing_monitor:
                     fail_step("extraction", "分析シナリオフォルダが見つかりません")
                 return {
@@ -4739,7 +4760,7 @@ def process_upload(contents, filename):
                            'ZIPファイル内に "out_" で始まるフォルダが必要です。'
                 }, [], None, {'display': 'none'}
 
-            log.info(f"[データ入稿] シナリオ検出: {scenarios}")
+            log.info(f"[process_upload] Scenarios found: {scenarios}")
             if processing_monitor:
                 complete_step("extraction", f"シナリオ{len(scenarios)}個を検出")
             
@@ -4771,14 +4792,18 @@ def process_upload(contents, filename):
             }, [], None, {'display': 'none'}
         
         # 動的スロット検出を実行
-        log.info("[データ入稿] 動的スロット検出開始") 
+        log.info("[PROCESSING LAYER] Step 5: Slot interval detection")
+        log.info(f"[process_upload] Target directory: {temp_dir_path}")
+        log.info(f"[process_upload] Target scenarios: {scenarios}")
+        
         try:
-            log.info(f"[データ入稿] 検出対象ディレクトリ: {temp_dir_path}")
-            log.info(f"[データ入稿] 検出対象シナリオ: {scenarios}")
+            log.info("[process_upload] Calling detect_slot_intervals_from_data...")
             detect_slot_intervals_from_data(temp_dir_path, scenarios)
-            log.info(f"[データ入稿] 動的スロット検出完了: {DETECTED_SLOT_INFO['slot_minutes']}分間隔")
+            log.info(f"[process_upload] Slot detection completed")
+            log.info(f"[process_upload] Detected slot interval: {DETECTED_SLOT_INFO.get('slot_minutes', 'N/A')} minutes")
         except Exception as e:
-            log.error(f"[データ入稿] 動的スロット検出エラー: {e}", exc_info=True)
+            log.error(f"[process_upload] Slot detection error: {e}", exc_info=True)
+            log.info("[process_upload] Continuing with default slot values")
             # エラーが発生してもデフォルト値で継続
 
         # 日本語ラベル用のマッピング（拡張版）
@@ -4822,8 +4847,9 @@ def process_upload(contents, filename):
             else:
                 processing_monitor.is_running = False
         
-        log.info("[process_upload] Returning success response")
-        return {
+        log.info("[PROCESSING LAYER] Step 6: Building return value")
+        
+        return_data = {
             'success': True,
             'scenarios': scenario_paths,
             'file_info': {
@@ -4832,7 +4858,23 @@ def process_upload(contents, filename):
                 'type': file_ext,
                 'scenarios_count': len(scenarios)
             }
-        }, scenario_options, first_scenario, {'display': 'block'}
+        }
+        
+        return_tuple = (
+            return_data,
+            scenario_options,
+            first_scenario,
+            {'display': 'block'}
+        )
+        
+        log.info(f"[process_upload] Return value constructed:")
+        log.info(f"  - Element 1 (data): dict with keys {list(return_data.keys())}")
+        log.info(f"  - Element 2 (options): {len(scenario_options)} options")
+        log.info(f"  - Element 3 (value): {first_scenario}")
+        log.info(f"  - Element 4 (style): {{'display': 'block'}}")
+        log.info(f"[process_upload] RETURNING SUCCESS TUPLE")
+        
+        return return_tuple
 
     except zipfile.BadZipFile as e:
         log.error(f"[データ入稿] 破損したZIPファイル: {e}")
@@ -4860,58 +4902,125 @@ def process_upload(contents, filename):
 )
 def handle_file_upload(contents, filename):
     """ZIPファイルアップロード処理のコールバック"""
-    log.info(f"[handle_file_upload] ========== UPLOAD STARTED ==========")
-    log.info(f"[handle_file_upload] Called with filename: {filename}")
-    log.info(f"[handle_file_upload] Contents is None: {contents is None}")
-    log.info(f"[handle_file_upload] Contents type: {type(contents) if contents else 'None'}")
+    import json
+    
+    log.info("="*80)
+    log.info("[SYSTEM FLOW] 1. FRONTEND -> CALLBACK LAYER")
+    log.info("="*80)
+    log.info(f"[handle_file_upload] ENTRY POINT")
+    log.info(f"  - Function: handle_file_upload")
+    log.info(f"  - Filename: {filename}")
+    log.info(f"  - Contents type: {type(contents)}")
+    log.info(f"  - Contents is None: {contents is None}")
+    
+    if contents:
+        # コンテンツの詳細情報
+        log.info(f"  - Contents length: {len(contents)}")
+        log.info(f"  - Contents preview: {contents[:100]}...")
+        
+        # Base64フォーマットの確認
+        if ',' in contents:
+            header, data = contents.split(',', 1)
+            log.info(f"  - Data header: {header}")
+            log.info(f"  - Data length: {len(data)}")
+        else:
+            log.info(f"  - WARNING: No comma separator found in contents")
+    
+    log.info("[handle_file_upload] ========== PROCESSING START ==========")
     
     if contents is None:
+        log.info("[handle_file_upload] BRANCH: No contents")
         # デフォルトシナリオがある場合はそれを使用
         if CURRENT_SCENARIO_DIR:
             scenarios = [CURRENT_SCENARIO_DIR.name]
             log.info(f"[handle_file_upload] Using default scenario: {scenarios}")
-            return (
+            
+            result = (
                 None,
                 [{'label': s, 'value': s} for s in scenarios],
                 scenarios[0] if scenarios else None,
                 {'display': 'block'}
             )
+            
+            log.info(f"[handle_file_upload] RETURN (default): tuple with {len(result)} elements")
+            return result
+            
         log.info("[handle_file_upload] No contents and no default scenario")
-        return None, [], None, {'display': 'none'}
+        result = (None, [], None, {'display': 'none'})
+        log.info(f"[handle_file_upload] RETURN (empty): {result}")
+        return result
     
     try:
+        log.info("[handle_file_upload] BRANCH: Processing upload")
         log.info(f"[handle_file_upload] Starting to process upload for: {filename}")
         
         # ファイルタイプをチェック
         if not filename.lower().endswith('.zip'):
             log.warning(f"[handle_file_upload] Not a ZIP file: {filename}")
-            return None, [], None, {'display': 'none'}
+            result = (None, [], None, {'display': 'none'})
+            log.info(f"[handle_file_upload] RETURN (not zip): {result}")
+            return result
         
         # process_upload関数を呼び出し
+        log.info("="*80)
+        log.info("[SYSTEM FLOW] 2. CALLBACK -> PROCESSING LAYER")
+        log.info("="*80)
         log.info(f"[handle_file_upload] Calling process_upload...")
+        log.info(f"  - Input filename: {filename}")
+        log.info(f"  - Input contents length: {len(contents)}")
+        
         result = process_upload(contents, filename)
         
-        log.info(f"[handle_file_upload] process_upload returned type: {type(result)}")
-        log.info(f"[handle_file_upload] process_upload returned value: {result}")
+        log.info("="*80)
+        log.info("[SYSTEM FLOW] 3. PROCESSING -> CALLBACK LAYER")
+        log.info("="*80)
+        log.info(f"[handle_file_upload] process_upload returned")
+        log.info(f"  - Return type: {type(result)}")
+        log.info(f"  - Is tuple: {isinstance(result, tuple)}")
+        if isinstance(result, tuple):
+            log.info(f"  - Tuple length: {len(result)}")
+            log.info(f"  - Element types: {[type(x).__name__ for x in result]}")
+        log.info(f"  - Return value preview: {str(result)[:500]}")
         
         if isinstance(result, tuple) and len(result) == 4:
             data, options, value, style = result
-            log.info(f"[handle_file_upload] SUCCESS - scenarios found: {[opt['value'] for opt in options] if options else 'none'}")
-            log.info(f"[handle_file_upload] Selected scenario: {value}")
-            log.info(f"[handle_file_upload] Style: {style}")
+            log.info(f"[handle_file_upload] SUCCESS - Unpacked 4 values")
+            log.info(f"  - data type: {type(data)}")
+            log.info(f"  - data content: {str(data)[:200] if data else 'None'}")
+            log.info(f"  - options: {options}")
+            log.info(f"  - value: {value}")
+            log.info(f"  - style: {style}")
+            
+            log.info("="*80)
+            log.info("[SYSTEM FLOW] 4. CALLBACK -> FRONTEND LAYER")
+            log.info("="*80)
+            log.info(f"[handle_file_upload] RETURN (success): Sending to frontend")
+            log.info(f"  - Returning 4 values to Dash callbacks")
+            log.info(f"  - Output 1 (data-ingestion-output): {type(data).__name__}")
+            log.info(f"  - Output 2 (scenario-dropdown options): {len(options) if options else 0} items")
+            log.info(f"  - Output 3 (scenario-dropdown value): {value}")
+            log.info(f"  - Output 4 (scenario-selector-div style): {style}")
             return data, options, value, style
         else:
             # エラーの場合
-            log.error(f"[handle_file_upload] UNEXPECTED result format: {result}")
-            log.error(f"[handle_file_upload] Expected tuple of 4 elements, got: {type(result)}")
-            return None, [], None, {'display': 'none'}
+            log.error(f"[handle_file_upload] UNEXPECTED result format")
+            log.error(f"  - Expected: tuple of 4 elements")
+            log.error(f"  - Got: {type(result)}")
+            log.error(f"  - Result content: {str(result)[:500]}")
+            result = (None, [], None, {'display': 'none'})
+            log.info(f"[handle_file_upload] RETURN (error): {result}")
+            return result
+            
     except Exception as e:
         log.error(f"[handle_file_upload] EXCEPTION occurred: {e}", exc_info=True)
         import traceback
-        log.error(f"[handle_file_upload] Traceback:\n{traceback.format_exc()}")
-        return None, [], None, {'display': 'none'}
+        log.error(f"[handle_file_upload] Full traceback:\n{traceback.format_exc()}")
+        result = (None, [], None, {'display': 'none'})
+        log.info(f"[handle_file_upload] RETURN (exception): {result}")
+        return result
     finally:
         log.info(f"[handle_file_upload] ========== UPLOAD ENDED ==========")
+        log.info("="*80)
 
 
 @app.callback(
