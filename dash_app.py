@@ -5331,14 +5331,23 @@ def update_legacy_tabs(selected_tab):
      Output('blueprint-analysis-tab-container', 'style'),
      Output('logic-analysis-tab-container', 'style'),
      Output('ai-analysis-tab-container', 'style')],
-    Input('main-tabs', 'value'),
+    [Input('main-tabs', 'value'),
+     Input('sub-tabs', 'value')],  # sub-tabsも監視
     State('scenario-dropdown', 'value'),
     State('data-loaded', 'data'),
 )
 @safe_callback
-def update_tab_visibility(active_tab, selected_scenario, data_status):
+def update_tab_visibility(active_tab, sub_tab, selected_scenario, data_status):
     """タブの表示制御（CSS visibility方式）"""
-    if not selected_scenario or not data_status:
+    log.info(f"[update_tab_visibility] active_tab: {active_tab}, sub_tab: {sub_tab}")
+    
+    # sub_tabsの値を優先的に使用（新しいタブシステム）
+    if sub_tab:
+        active_tab = sub_tab
+    
+    # デフォルトシナリオでも動作するように条件を緩和
+    if not CURRENT_SCENARIO_DIR:
+        log.warning("[update_tab_visibility] No scenario directory available")
         raise PreventUpdate
     
     # 全タブのスタイル定義
