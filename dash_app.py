@@ -1487,12 +1487,24 @@ def safe_callback_enhanced(func):
                 'TimeoutError': 'タイムアウトが発生しました'
             }.get(error_type, '予期しないエラーが発生しました')
             
-            return html.Div([
-                html.H4(f"エラーが発生しました", style={'color': 'red'}),
-                html.P(f"エラー内容: {safe_error_msg}"),
-                html.P(f"エラーID: {error_id}", style={'fontSize': '12px', 'color': '#666'}),
-                html.P("問題が続く場合は、エラーIDと共に管理者にお問い合わせください。")
-            ])
+            # 関数の戻り値の数を判定して適切に返す
+            if func.__name__ == 'update_main_content':
+                # update_main_contentは2つの値を返す必要がある
+                error_div = html.Div([
+                    html.H4(f"エラーが発生しました", style={'color': 'red'}),
+                    html.P(f"エラー内容: {safe_error_msg}"),
+                    html.P(f"エラーID: {error_id}", style={'fontSize': '12px', 'color': '#666'}),
+                    html.P("問題が続く場合は、エラーIDと共に管理者にお問い合わせください。")
+                ])
+                return {}, error_div  # kpi_data (空の辞書), main_content (エラー表示)
+            else:
+                # その他のコールバックは単一の値を返す
+                return html.Div([
+                    html.H4(f"エラーが発生しました", style={'color': 'red'}),
+                    html.P(f"エラー内容: {safe_error_msg}"),
+                    html.P(f"エラーID: {error_id}", style={'fontSize': '12px', 'color': '#666'}),
+                    html.P("問題が続く場合は、エラーIDと共に管理者にお問い合わせください。")
+                ])
     return wrapper
 
 # 統一されたsafe_callback関数（Enhanced版を使用）
@@ -4722,10 +4734,12 @@ def process_upload(contents, filename):
         # 動的スロット検出を実行
         log.info("[データ入稿] 動的スロット検出開始") 
         try:
+            log.info(f"[データ入稿] 検出対象ディレクトリ: {temp_dir_path}")
+            log.info(f"[データ入稿] 検出対象シナリオ: {scenarios}")
             detect_slot_intervals_from_data(temp_dir_path, scenarios)
             log.info(f"[データ入稿] 動的スロット検出完了: {DETECTED_SLOT_INFO['slot_minutes']}分間隔")
         except Exception as e:
-            log.warning(f"[データ入稿] 動的スロット検出エラー: {e}")
+            log.error(f"[データ入稿] 動的スロット検出エラー: {e}", exc_info=True)
             # エラーが発生してもデフォルト値で継続
 
         # 日本語ラベル用のマッピング（拡張版）
@@ -5032,47 +5046,9 @@ def create_main_ui_tabs():
         ], style={'fontSize': '12px', 'margin': '0 0 10px 0'})
     ])
     
-    # 階層化タブのスタイル
-    tab_styles = html.Style('''
-        /* メインタブスタイル */
-        .main-tabs-container {
-            background-color: #f8f9fa;
-            padding: 0;
-            margin-bottom: 16px;
-        }
-        
-        .main-tab {
-            font-size: 16px;
-            font-weight: 600;
-            padding: 12px 24px;
-            min-width: 150px;
-        }
-        
-        /* サブタブスタイル */
-        .sub-tabs-container {
-            background-color: white;
-            border-bottom: 1px solid #dee2e6;
-            margin-bottom: 16px;
-        }
-        
-        .sub-tab {
-            font-size: 14px;
-            padding: 8px 16px;
-        }
-        
-        /* レスポンシブ対応 */
-        @media (max-width: 768px) {
-            .main-tabs-container,
-            .sub-tabs-container {
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-        }
-    ''')
-    
     # 全タブコンテナを静的に作成（CSS表示制御方式）
+    # 注: スタイルはassets/style.cssまたはインラインで適用
     main_layout = html.Div([
-        tab_styles,
         category_info,
         main_tab_groups,
         sub_tabs_container,
