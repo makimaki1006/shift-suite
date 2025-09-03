@@ -5154,6 +5154,7 @@ def update_main_content(selected_scenario, data_status):
 
 def create_main_ui_tabs():
     """メインUIタブを作成（階層化構造版）"""
+    log.info("[create_main_ui_tabs] Creating main UI tabs with initial sub-tabs")
     
     # 階層化タブ構造
     main_tab_groups = dcc.Tabs(
@@ -5168,10 +5169,20 @@ def create_main_ui_tabs():
         className='main-tabs-container'
     )
     
-    # サブタブコンテナ（動的に更新される）
+    # サブタブコンテナ（初期タブ付き）
     sub_tabs_container = html.Div(
         id='sub-tabs-container',
-        className='sub-tabs-wrapper'
+        className='sub-tabs-wrapper',
+        children=dcc.Tabs(
+            id='sub-tabs',
+            value='overview',
+            children=[
+                dcc.Tab(label='📊 概要', value='overview', className='sub-tab'),
+                dcc.Tab(label='🔥 ヒートマップ', value='heatmap', className='sub-tab'),
+                dcc.Tab(label='⚠️ 不足分析', value='shortage', className='sub-tab')
+            ],
+            className='sub-tabs-container'
+        )
     )
     
     # 互換性のための隠しストア
