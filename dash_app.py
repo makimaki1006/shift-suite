@@ -1489,14 +1489,14 @@ def safe_callback_enhanced(func):
             
             # 関数の戻り値の数を判定して適切に返す
             if func.__name__ == 'update_main_content':
-                # update_main_contentは2つの値を返す必要がある
+                # update_main_contentは3つの値を返す必要がある
                 error_div = html.Div([
                     html.H4(f"エラーが発生しました", style={'color': 'red'}),
                     html.P(f"エラー内容: {safe_error_msg}"),
                     html.P(f"エラーID: {error_id}", style={'fontSize': '12px', 'color': '#666'}),
                     html.P("問題が続く場合は、エラーIDと共に管理者にお問い合わせください。")
                 ])
-                return {}, error_div  # kpi_data (空の辞書), main_content (エラー表示)
+                return {}, error_div, False  # kpi_data (空の辞書), main_content (エラー表示), data_loaded (False)
             else:
                 # その他のコールバックは単一の値を返す
                 return html.Div([
@@ -5046,12 +5046,23 @@ def update_main_content(selected_scenario, data_status):
     """シナリオ選択に応じてデータを読み込み、メインUIを更新（按分方式対応）"""
     global CURRENT_SCENARIO_DIR
     
+    # data_statusがbool型の場合（data-loadedがTrueの場合）はdictに変換
+    if isinstance(data_status, bool):
+        if data_status and CURRENT_SCENARIO_DIR and CURRENT_SCENARIO_DIR.exists():
+            # すでに読み込み済みの場合はそのまま使用
+            data_status = {
+                'success': True,
+                'scenarios': {selected_scenario or 'out_mean_based': str(CURRENT_SCENARIO_DIR)}
+            }
+        else:
+            data_status = None
+    
     # データステータスがない場合でも、デフォルトのシナリオが利用可能ならそれを使用
     if (
         not selected_scenario
         or not data_status
-        or 'success' not in data_status
-        or 'scenarios' not in data_status
+        or (isinstance(data_status, dict) and 'success' not in data_status)
+        or (isinstance(data_status, dict) and 'scenarios' not in data_status)
     ):
         # デフォルトのシナリオディレクトリが利用可能かチェック
         if CURRENT_SCENARIO_DIR and CURRENT_SCENARIO_DIR.exists():
@@ -5059,7 +5070,7 @@ def update_main_content(selected_scenario, data_status):
             # デフォルトのKPIデータを作成
             kpi_data = {}
             # UIを表示（アップロード不要）
-            return kpi_data, create_main_ui_tabs(), True  # Set data-loaded to True, True  # Set data-loaded to True
+            return kpi_data, create_main_ui_tabs(), True  # Set data-loaded to True
         else:
             raise PreventUpdate
 
