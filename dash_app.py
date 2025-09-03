@@ -5411,7 +5411,7 @@ def update_tab_visibility(active_tab, sub_tab, selected_scenario, data_status):
     Output('overview-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_overview_content(selected_tab, selected_scenario, data_status):
@@ -5432,7 +5432,7 @@ def initialize_overview_content(selected_tab, selected_scenario, data_status):
     Output('heatmap-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_heatmap_content(selected_tab, selected_scenario, data_status):
@@ -5477,7 +5477,7 @@ def initialize_shortage_content(selected_tab, selected_scenario, data_status):
     Output('optimization-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_optimization_content(selected_tab, selected_scenario, data_status):
@@ -5496,7 +5496,7 @@ def initialize_optimization_content(selected_tab, selected_scenario, data_status
     Output('leave-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_leave_content(selected_tab, selected_scenario, data_status):
@@ -5521,7 +5521,7 @@ def initialize_leave_content(selected_tab, selected_scenario, data_status):
     Output('cost-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_cost_content(selected_tab, selected_scenario, data_status):
@@ -5540,7 +5540,7 @@ def initialize_cost_content(selected_tab, selected_scenario, data_status):
     Output('hire-plan-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_hire_plan_content(selected_tab, selected_scenario, data_status):
@@ -5559,7 +5559,7 @@ def initialize_hire_plan_content(selected_tab, selected_scenario, data_status):
     Output('fatigue-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_fatigue_content(selected_tab, selected_scenario, data_status):
@@ -5578,7 +5578,7 @@ def initialize_fatigue_content(selected_tab, selected_scenario, data_status):
     Output('forecast-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_forecast_content(selected_tab, selected_scenario, data_status):
@@ -5597,7 +5597,7 @@ def initialize_forecast_content(selected_tab, selected_scenario, data_status):
     Output('fairness-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_fairness_content(selected_tab, selected_scenario, data_status):
@@ -5616,7 +5616,7 @@ def initialize_fairness_content(selected_tab, selected_scenario, data_status):
     Output('gap-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_gap_content(selected_tab, selected_scenario, data_status):
@@ -5635,7 +5635,7 @@ def initialize_gap_content(selected_tab, selected_scenario, data_status):
     Output('team-analysis-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_team_analysis_content(selected_tab, selected_scenario, data_status):
@@ -5654,7 +5654,7 @@ def initialize_team_analysis_content(selected_tab, selected_scenario, data_statu
     Output('blueprint-analysis-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_blueprint_analysis_content(selected_tab, selected_scenario, data_status):
@@ -5673,7 +5673,7 @@ def initialize_blueprint_analysis_content(selected_tab, selected_scenario, data_
     Output('logic-analysis-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_logic_analysis_content(selected_tab, selected_scenario, data_status):
@@ -5693,7 +5693,7 @@ def initialize_logic_analysis_content(selected_tab, selected_scenario, data_stat
     Output('individual-analysis-content', 'children', allow_duplicate=True),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
     prevent_initial_call=True
 )
 @safe_callback
@@ -7891,7 +7891,7 @@ def update_progress_bar(n_intervals, progress_data):
     Output('ai-analysis-content', 'children'),
     [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
-    State('data-loaded', 'data'),
+    [State('data-loaded', 'data')],
 )
 @safe_callback
 def initialize_ai_analysis_content(selected_tab, selected_scenario, data_status):
