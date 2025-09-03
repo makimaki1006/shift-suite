@@ -18,7 +18,7 @@ dash-bootstrap-components==1.6.0  # Bootstrap UI (安定版：1.7.0はbroken bui
 dash-cytoscape==1.0.2   # ネットワークグラフ可視化 (dash_app.py用)
 
 # ===== VISUALIZATION =====
-plotly==5.17.0          # 可視化 (narwhals問題回避のため固定)
+plotly==5.18.0          # 可視化 (6.3.0の構文エラー回避のため固定)
 matplotlib==3.8.4      # 基本グラフ
 seaborn==0.13.2         # 統計可視化
 
