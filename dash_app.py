@@ -4578,26 +4578,52 @@ def process_upload(contents, filename):
 
     global TEMP_DIR_OBJ
     
+    # 一時的に進捗監視を無効化（デバッグのため）
+    USE_PROGRESS_MONITOR = False  # 問題の切り分けのため無効化
+    
     log.info(f"[データ入稿] ファイル受信: {filename}")
     
     try:
         # 進捗監視開始（新しいシステムで動的にステップを登録）
-        if processing_monitor:
+        log.info("[process_upload] 進捗監視チェック開始")
+        
+        if processing_monitor and USE_PROGRESS_MONITOR:
+            log.info(f"[process_upload] processing_monitor exists: {processing_monitor}")
             # ファイル処理のステップを動的に登録
             if hasattr(processing_monitor, 'register_steps'):
+                log.info("[process_upload] register_steps メソッドが存在")
                 # 新しいシステムの場合
-                processing_monitor.register_steps([
-                    {'name': 'upload', 'description': f'ファイル受信: {filename}', 'weight': 1.0},
-                    {'name': 'validation', 'description': 'ファイル検証', 'weight': 1.0},
-                    {'name': 'extraction', 'description': 'データ抽出', 'weight': 2.0},
-                    {'name': 'preprocessing', 'description': 'データ前処理', 'weight': 2.0},
-                    {'name': 'analysis', 'description': '分析処理', 'weight': 2.0},
-                    {'name': 'visualization', 'description': '可視化準備', 'weight': 1.0}
-                ])
-            start_processing()
-            start_step("upload", f"ファイル受信: {filename}")
+                try:
+                    processing_monitor.register_steps([
+                        {'name': 'upload', 'description': f'ファイル受信: {filename}', 'weight': 1.0},
+                        {'name': 'validation', 'description': 'ファイル検証', 'weight': 1.0},
+                        {'name': 'extraction', 'description': 'データ抽出', 'weight': 2.0},
+                        {'name': 'preprocessing', 'description': 'データ前処理', 'weight': 2.0},
+                        {'name': 'analysis', 'description': '分析処理', 'weight': 2.0},
+                        {'name': 'visualization', 'description': '可視化準備', 'weight': 1.0}
+                    ])
+                    log.info("[process_upload] ステップ登録完了")
+                except Exception as e:
+                    log.error(f"[process_upload] register_steps エラー: {e}", exc_info=True)
+            
+            try:
+                log.info("[process_upload] start_processing を呼び出し")
+                start_processing()
+                log.info("[process_upload] start_processing 完了")
+            except Exception as e:
+                log.error(f"[process_upload] start_processing エラー: {e}", exc_info=True)
+            
+            try:
+                log.info("[process_upload] start_step を呼び出し")
+                start_step("upload", f"ファイル受信: {filename}")
+                log.info("[process_upload] start_step 完了")
+            except Exception as e:
+                log.error(f"[process_upload] start_step エラー: {e}", exc_info=True)
+        else:
+            log.info("[process_upload] processing_monitor をスキップ（無効化中）")
 
         # 新しいデータ入稿フローを使用した検証（利用可能な場合）
+        log.info(f"[process_upload] data_ingestion チェック: {data_ingestion}")
         if data_ingestion:
             try:
                 if processing_monitor:
@@ -4634,9 +4660,12 @@ def process_upload(contents, filename):
                 if processing_monitor:
                     fail_step("validation", f"検証処理エラー: {str(e)}")
                 # 検証に失敗した場合は従来の処理を継続
+                log.info("[process_upload] 検証失敗、従来の処理を継続")
 
         # 一時ディレクトリ作成
+        log.info("[process_upload] 一時ディレクトリ作成処理開始")
         if TEMP_DIR_OBJ:
+            log.info("[process_upload] 既存の一時ディレクトリをクリーンアップ")
             TEMP_DIR_OBJ.cleanup()
 
         TEMP_DIR_OBJ = tempfile.TemporaryDirectory(prefix="shift_suite_dash_")
@@ -4644,12 +4673,22 @@ def process_upload(contents, filename):
         log.info(f"[データ入稿] 一時ディレクトリ作成: {temp_dir_path}")
 
         # ファイル処理（進捗ログ付き）
-        if processing_monitor:
-            start_step("extraction", "データ抽出を開始...")
+        if processing_monitor and USE_PROGRESS_MONITOR:
+            log.info("[process_upload] extraction ステップ開始")
+            try:
+                start_step("extraction", "データ抽出を開始...")
+            except Exception as e:
+                log.error(f"[process_upload] start_step(extraction) エラー: {e}", exc_info=True)
         
-        content_type, content_string = contents.split(',')
-        decoded = base64.b64decode(content_string)
-        log.info(f"[データ入稿] ファイルデコード完了: {len(decoded)} bytes")
+        log.info("[process_upload] コンテンツのデコード開始")
+        try:
+            content_type, content_string = contents.split(',')
+            log.info(f"[process_upload] content_type: {content_type[:50]}...")
+            decoded = base64.b64decode(content_string)
+            log.info(f"[データ入稿] ファイルデコード完了: {len(decoded)} bytes")
+        except Exception as e:
+            log.error(f"[process_upload] デコードエラー: {e}", exc_info=True)
+            raise
         
         if processing_monitor:
             update_progress("extraction", 30, "ファイルデコード完了")
