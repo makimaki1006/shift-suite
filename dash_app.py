@@ -5237,9 +5237,17 @@ def create_main_ui_tabs():
     return main_layout
 
 # 階層化タブ用コールバック
+@app.callback(
+    Output('sub-tabs-container', 'children'),
+    Input('main-tab-groups', 'value')
+)
+@safe_callback
 def update_sub_tabs(selected_group):
     """プライマリタブに応じてサブタブを表示"""
     from dash.exceptions import PreventUpdate
+    
+    # デバッグログ追加
+    log.info(f"[update_sub_tabs] Called with selected_group: {selected_group}")
     
     if not selected_group or selected_group not in ['basic', 'staff', 'planning', 'advanced']:
         # デフォルトで基本分析を表示
@@ -5292,6 +5300,7 @@ def update_sub_tabs(selected_group):
 @safe_callback
 def store_selected_tab(selected_tab):
     """選択されたタブを記録（既存コールバックとの互換性）"""
+    log.info(f"[store_selected_tab] Selected tab: {selected_tab}")
     return selected_tab
 
 # 既存のmain-tabsの値を更新（互換性用）
