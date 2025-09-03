@@ -5081,16 +5081,20 @@ def update_main_content(selected_scenario, data_status):
     log.info(f"Switching to scenario {selected_scenario} at {data_dir}")
     
     # 正しいシナリオパスを確実に取得
-    if selected_scenario == 'out_median_based':
-        correct_path = data_dir.parent / 'out_median_based'
-        if correct_path.exists():
-            data_dir = correct_path
-    elif selected_scenario == 'out_p25_based':
-        correct_path = data_dir.parent / 'out_p25_based'
-        if correct_path.exists():
-            data_dir = correct_path
-    
-    log.info(f"[FIXED] Correct scenario path: {data_dir}")
+    if isinstance(data_status, dict) and 'scenarios' in data_status:
+        correct_scenario_path = data_status['scenarios'].get(selected_scenario, '')
+        if correct_scenario_path and Path(correct_scenario_path).exists():
+            data_dir = Path(correct_scenario_path)
+            log.info(f"[FIXED] Using correct scenario path from data_status: {data_dir}")
+        else:
+            # フォールバック: 親ディレクトリから探す
+            parent_dir = data_dir.parent
+            scenario_dir = parent_dir / selected_scenario
+            if scenario_dir.exists():
+                data_dir = scenario_dir
+                log.info(f"[FIXED] Found scenario in parent directory: {data_dir}")
+                if isinstance(data_status, dict):
+                    data_status['scenarios'][selected_scenario] = str(data_dir)
 
     # Scenario has changed; reset caches and store new directory
     CURRENT_SCENARIO_DIR = data_dir
@@ -5368,7 +5372,6 @@ def update_legacy_tabs(selected_tab):
      Output('ai-analysis-tab-container', 'style')],
     [Input('main-tabs', 'value'),
      Input('sub-tabs', 'value')],  # sub-tabsも監視
-    State('scenario-dropdown', 'value'),
     State('data-loaded', 'data'),
 )
 @safe_callback
@@ -5406,15 +5409,15 @@ def update_tab_visibility(active_tab, sub_tab, selected_scenario, data_status):
 # 各タブコンテンツの初期化コールバック
 @app.callback(
     Output('overview-content', 'children'),
-    [Input('overview-tab-container', 'style'),
+    [Input('selected-tab-store', 'data'),
      Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_overview_content(style, selected_scenario, data_status):
+def initialize_overview_content(selected_tab, selected_scenario, data_status):
     """概要タブの内容を初期化"""
-    log.info(f"[initialize_overview_content] Called with scenario: {selected_scenario}, data_status: {data_status}, style: {style}")
-    if not selected_scenario or style.get('display') == 'none':
+    log.info(f"[initialize_overview_content] Called with tab: {selected_tab}, scenario: {selected_scenario}, data_status: {data_status}")
+    if not selected_scenario or selected_tab != 'overview':
         raise PreventUpdate
     # data_statusがboolの場合もあるので、Falseの場合のみチェック
     if data_status is False:
@@ -5427,15 +5430,15 @@ def initialize_overview_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('heatmap-content', 'children'),
-    Input('heatmap-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_heatmap_content(style, selected_scenario, data_status):
+def initialize_heatmap_content(selected_tab, selected_scenario, data_status):
     """ヒートマップタブの内容を初期化"""
-    log.info(f"[initialize_heatmap_content] Called with scenario: {selected_scenario}, data_status: {data_status}, style: {style}")
-    if not selected_scenario or style.get('display') == 'none':
+    log.info(f"[initialize_heatmap_content] Called with tab: {selected_tab}, scenario: {selected_scenario}, data_status: {data_status}")
+    if not selected_scenario or selected_tab != 'heatmap':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5452,11 +5455,11 @@ def initialize_heatmap_content(style, selected_scenario, data_status):
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_shortage_content(style, selected_scenario, data_status):
+def initialize_shortage_content(selected_tab, selected_scenario, data_status):
     """不足分析タブの内容を初期化"""
-    log.info(f"[shortage_tab] 初期化開始 - scenario: {selected_scenario}, data_status: {data_status}, style: {style}")
+    log.info(f"[shortage_tab] 初期化開始 - scenario: {selected_scenario}, data_status: {data_status}")
     
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or not data_status or selected_tab != 'shortage':
         log.info("[shortage_tab] PreventUpdate - 条件不満足")
         raise PreventUpdate
     try:
@@ -5472,14 +5475,14 @@ def initialize_shortage_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('optimization-content', 'children'),
-    Input('optimization-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_optimization_content(style, selected_scenario, data_status):
+def initialize_optimization_content(selected_tab, selected_scenario, data_status):
     """最適化分析タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'optimization':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5491,16 +5494,16 @@ def initialize_optimization_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('leave-content', 'children'),
-    Input('leave-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_leave_content(style, selected_scenario, data_status):
+def initialize_leave_content(selected_tab, selected_scenario, data_status):
     """休暇分析タブの内容を初期化"""
-    log.info(f"[leave_tab] 初期化開始 - scenario: {selected_scenario}, data_status: {data_status}, style: {style}")
+    log.info(f"[leave_tab] 初期化開始 - scenario: {selected_scenario}, data_status: {data_status}")
     
-    if not selected_scenario or not data_status or style.get('display') == 'none':
+    if not selected_scenario or not data_status or selected_tab != 'leave':
         log.info("[leave_tab] PreventUpdate - 条件不満足")
         raise PreventUpdate
     try:
@@ -5516,14 +5519,14 @@ def initialize_leave_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('cost-content', 'children'),
-    Input('cost-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_cost_content(style, selected_scenario, data_status):
+def initialize_cost_content(selected_tab, selected_scenario, data_status):
     """コスト分析タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'cost':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5535,14 +5538,14 @@ def initialize_cost_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('hire-plan-content', 'children'),
-    Input('hire-plan-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_hire_plan_content(style, selected_scenario, data_status):
+def initialize_hire_plan_content(selected_tab, selected_scenario, data_status):
     """採用計画タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'hire_plan':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5554,14 +5557,14 @@ def initialize_hire_plan_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('fatigue-content', 'children'),
-    Input('fatigue-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_fatigue_content(style, selected_scenario, data_status):
+def initialize_fatigue_content(selected_tab, selected_scenario, data_status):
     """疲労分析タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'fatigue':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5573,14 +5576,14 @@ def initialize_fatigue_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('forecast-content', 'children'),
-    Input('forecast-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_forecast_content(style, selected_scenario, data_status):
+def initialize_forecast_content(selected_tab, selected_scenario, data_status):
     """需要予測タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'forecast':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5592,14 +5595,14 @@ def initialize_forecast_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('fairness-content', 'children'),
-    Input('fairness-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_fairness_content(style, selected_scenario, data_status):
+def initialize_fairness_content(selected_tab, selected_scenario, data_status):
     """公平性タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'fairness':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5611,14 +5614,14 @@ def initialize_fairness_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('gap-content', 'children'),
-    Input('gap-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_gap_content(style, selected_scenario, data_status):
+def initialize_gap_content(selected_tab, selected_scenario, data_status):
     """基準乖離分析タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'gap':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5630,14 +5633,14 @@ def initialize_gap_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('team-analysis-content', 'children'),
-    Input('team-analysis-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_team_analysis_content(style, selected_scenario, data_status):
+def initialize_team_analysis_content(selected_tab, selected_scenario, data_status):
     """チーム分析タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'team_analysis':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5649,14 +5652,14 @@ def initialize_team_analysis_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('blueprint-analysis-content', 'children'),
-    Input('blueprint-analysis-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_blueprint_analysis_content(style, selected_scenario, data_status):
+def initialize_blueprint_analysis_content(selected_tab, selected_scenario, data_status):
     """作成ブループリントタブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'blueprint_analysis':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5668,14 +5671,14 @@ def initialize_blueprint_analysis_content(style, selected_scenario, data_status)
 
 @app.callback(
     Output('logic-analysis-content', 'children'),
-    Input('logic-analysis-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_logic_analysis_content(style, selected_scenario, data_status):
+def initialize_logic_analysis_content(selected_tab, selected_scenario, data_status):
     """ロジック解明タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'logic_analysis':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -5688,15 +5691,15 @@ def initialize_logic_analysis_content(style, selected_scenario, data_status):
 
 @app.callback(
     Output('individual-analysis-content', 'children', allow_duplicate=True),
-    Input('individual-analysis-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
     prevent_initial_call=True
 )
 @safe_callback
-def initialize_individual_analysis_content(style, selected_scenario, data_status):
+def initialize_individual_analysis_content(selected_tab, selected_scenario, data_status):
     """職員個別分析タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'individual_analysis':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
@@ -7886,14 +7889,14 @@ def update_progress_bar(n_intervals, progress_data):
 # 🧠 AI分析タブのコールバック
 @app.callback(
     Output('ai-analysis-content', 'children'),
-    Input('ai-analysis-tab-container', 'style'),
-    State('scenario-dropdown', 'value'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_ai_analysis_content(style, selected_scenario, data_status):
+def initialize_ai_analysis_content(selected_tab, selected_scenario, data_status):
     """AI分析タブの内容を初期化"""
-    if not selected_scenario or style.get('display') == 'none':
+    if not selected_scenario or selected_tab != 'ai_analysis':
         raise PreventUpdate
     if data_status is False:
         raise PreventUpdate
