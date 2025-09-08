@@ -106,6 +106,4 @@ rpds-py==0.18.1
 zipp==3.18.1
 importlib-metadata==7.1.0
 toml==0.10.2
-EditorConfig==0.12.8
-jsbeautifier==1.15.1
-narwhals==1.4.0
+# EditorConfig, jsbeautifier, narwhals are not essential for core functionality
