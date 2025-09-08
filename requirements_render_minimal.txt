@@ -1,0 +1,15 @@
+# Render.com deployment - Ultra minimal version
+# Streamlit app only
+
+streamlit==1.32.2
+pandas==2.2.2
+numpy==1.26.4
+plotly==5.18.0
+openpyxl==3.1.2
+XlsxWriter==3.2.0
+pyarrow==15.0.2
+scikit-learn==1.4.2
+matplotlib==3.8.4
+seaborn==0.13.2
+psutil==5.9.8
+altair<5
