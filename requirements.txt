@@ -1,121 +1,15 @@
-# 18セクション完全統合システム対応 requirements.txt
-# Phase 1A/1B/2/3 + MECE統合 + 予測最適化統合 + 基本12セクション
-# 最終更新: 2025-09-02 (app.py/dash_app.py両対応版)
+# Render.com deployment - Ultra minimal version
+# Streamlit app only
 
-# ===== CORE DATA PROCESSING =====
-pandas==2.2.2           # データ処理 (安定版固定)
-numpy==1.26.4           # 数値計算 (安定版固定)
-scipy==1.11.4           # 科学計算・統計・最適化 (新エンジン必須)
-openpyxl==3.1.2         # Excel I/O
-XlsxWriter>=3.2.0       # Excel出力
-pyarrow==15.0.2         # Parquetファイル読み書き (dash_app.py用)
-
-# ===== WEB FRAMEWORKS =====
-streamlit==1.32.2       # app.py用メインフレームワーク (最新安定版)
-Flask==3.0.3            # app.py用Webフレームワーク (安定版更新)
-dash==2.17.1            # ダッシュボード (安定版固定)
-dash-bootstrap-components==1.6.0  # Bootstrap UI (安定版：1.7.0はbroken build)
-dash-cytoscape==1.0.2   # ネットワークグラフ可視化 (dash_app.py用)
-
-# ===== VISUALIZATION =====
-plotly==5.18.0          # 可視化 (6.3.0の構文エラー回避のため固定)
-matplotlib==3.8.4      # 基本グラフ
-seaborn==0.13.2         # 統計可視化
-
-# ===== MACHINE LEARNING & STATISTICS =====
-scikit-learn==1.4.2    # 機械学習 (アンサンブル・予測最適化用)
-lightgbm==4.3.0        # 勾配ブースティング
-prophet==1.1.5         # 時系列予測
-torch==2.3.1           # ディープラーニング (CPU版)
-statsmodels==0.14.2    # 統計モデル (ARIMA等)
-
-# ===== OPTIMIZATION & DECISION THEORY =====
-ortools==9.9.3963       # 制約プログラミング・線形プログラミング
-cvxpy==1.4.3            # 凸最適化
-pulp==2.8.0             # 線形プログラミング
-
-# ===== NETWORK & GRAPH ANALYSIS =====
-networkx==3.2.1        # ネットワーク分析 (MECE統合・組織分析用)
-
-# ===== COGNITIVE & BEHAVIORAL ANALYSIS =====
-# Phase 1A: 認知科学的深度分析用
-# psychopy>=2024.1.4     # 認知心理学実験 (オプション) - Python 3.11では利用不可
-# Phase 1B: 組織パターン分析用 
-# Phase 2: システム思考分析用
-# Phase 3: ブループリント深度分析用
-
-# ===== TIME SERIES & FORECASTING =====
-# Box-Jenkins ARIMA, State Space Models用
-filterpy==1.4.5        # カルマンフィルタ
-arch==6.3.0            # GARCH・ARCH時系列モデル
-
-# ===== MULTI-CRITERIA DECISION MAKING =====
-# TOPSIS, AHP等の意思決定手法
-pymcdm==1.1.4          # 多基準意思決定
-
-# ===== BAYESIAN ANALYSIS =====
-# ベイズ統計・推論用
-pymc==5.10.4           # ベイズ統計モデリング
-arviz==0.18.0          # ベイズ分析結果可視化
-
-# ===== CONSTRAINT PROGRAMMING & SYSTEM ANALYSIS =====
-# 制約理論・システム分析用
-python-constraint==1.4.0  # 制約満足問題
-
-# ===== REINFORCEMENT LEARNING =====
-stable-baselines3==2.3.2   # 強化学習
-gymnasium==0.29.1          # RL環境
-
-# ===== NATURAL LANGUAGE PROCESSING =====
-# レポート生成・テキスト分析用
-nltk==3.8.1
-textblob==0.17.1
-
-# ===== UTILITIES & TOOLS =====
-python-pptx>=0.6.23    # PowerPoint生成
-Pillow==10.3.0          # 画像処理
-requests==2.31.0       # HTTP通信
-python-dateutil==2.9.0 # 日付処理
-
-# ===== DEVELOPMENT & TESTING =====
-ruff==0.4.4            # リンター
-pytest==8.2.1         # テスト
-pytest-cov==5.0.0     # カバレッジ
-
-# ===== COMPATIBILITY FIXES =====
-# plotly 5.17.0 の依存関係問題解決用
-tenacity==8.2.3        # リトライ処理
-packaging==24.0        # パッケージ管理
-
-# ===== OPTIONAL: ADVANCED ANALYTICS =====
-# 高度な分析機能用 (オプション)
-# xgboost==2.0.3        # 勾配ブースティング (高性能版)
-# catboost==1.2.5       # カテゴリカルブースティング
-# optuna==3.6.1         # ハイパーパラメータ最適化
-
-# ===== JUPYTER SUPPORT (オプション) =====
-# Jupyter環境での実行用
-# jupyter==1.0.0
-# ipykernel==6.29.4
-# ipywidgets==8.1.2
-
-# ===== MONITORING & LOGGING =====
-psutil==5.9.8          # システムモニタリング
-logging-json==0.4.1    # JSON構造化ログ
-
-# ===== MEMORY MANAGEMENT =====
-memory-profiler==0.61.0  # メモリプロファイリング
-
-# ===== VERSION COMPATIBILITY =====
-# Python 3.11/3.12 対応確認済み
-# Windows 10/11, WSL2, Linux対応
-# 18セクション完全統合システム動作確認済み
-
-# ===== INSTALLATION NOTES =====
-# 1. 仮想環境クリーンインストール推奨
-# 2. pip install --upgrade pip 実行後インストール
-# 3. Windows環境: Microsoft Visual C++ 14.0 必要 (一部パッケージ)
-# 4. メモリ: 最低8GB推奨 (18セクション統合処理用)
-
-# Total packages: ~50パッケージ
-# 18セクション究極統合システム完全対応版
+streamlit==1.32.2
+pandas==2.2.2
+numpy==1.26.4
+plotly==5.18.0
+openpyxl==3.1.2
+XlsxWriter==3.2.0
+pyarrow==15.0.2
+scikit-learn==1.4.2
+matplotlib==3.8.4
+seaborn==0.13.2
+psutil==5.9.8
+altair<5
