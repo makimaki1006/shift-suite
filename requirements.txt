@@ -39,7 +39,7 @@ networkx==3.2.1        # ネットワーク分析 (MECE統合・組織分析用)
 
 # ===== COGNITIVE & BEHAVIORAL ANALYSIS =====
 # Phase 1A: 認知科学的深度分析用
-psychopy>=2024.1.4     # 認知心理学実験 (オプション)
+# psychopy>=2024.1.4     # 認知心理学実験 (オプション) - Python 3.11では利用不可
 # Phase 1B: 組織パターン分析用 
 # Phase 2: システム思考分析用
 # Phase 3: ブループリント深度分析用
