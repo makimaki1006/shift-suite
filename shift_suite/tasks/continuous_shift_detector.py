@@ -87,7 +87,13 @@ class ContinuousShiftDetector:
         for date, group in staff_data.groupby('date'):
             date_str = date.strftime('%Y-%m-%d')
             times = [t.strftime('%H:%M') for t in group['time']]
-            codes = group['code'].unique()
+            # 'code'カラムがない場合は'task'カラムを使用
+            if 'code' in group.columns:
+                codes = group['code'].unique()
+            elif 'task' in group.columns:
+                codes = group['task'].unique()
+            else:
+                codes = []
             
             # 夜勤パターンの検出（16:00以降にシフトが開始）
             has_night_shift = any(

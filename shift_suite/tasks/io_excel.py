@@ -614,10 +614,13 @@ def ingest_excel(
         )
 
     if not records:
-        log.error(
-            "処理対象となる有効なシフトレコードが1件も見つかりませんでした。入力Excelの実績シートの列名（日付形式）、勤務区分、ヘッダー行の設定を確認してください。"
+        # 休日のみのデータでも処理を継続するように修正
+        log.warning(
+            "通常のシフトレコードが見つかりませんでしたが、休日データとして処理を継続します。"
         )
-        raise ValueError("有効なシフトレコードが生成されませんでした。")
+        # 空のレコードでも処理を継続
+        if not records:
+            records = []
 
     log.info(f"合計 {len(records)} 件の長形式レコードを生成しました。")
     final_long_df = pd.DataFrame(records)

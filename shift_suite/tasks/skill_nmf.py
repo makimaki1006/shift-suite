@@ -67,6 +67,6 @@ def build_skill_matrix(long_df: pd.DataFrame, out_dir: Path):
     W = model.fit_transform(mat.values)
     skill = pd.Series(W[:, 0], index=mat.index, name="skill_score")
     skill = (skill / skill.max() * 5).round(2)
-    save_df_xlsx(skill.to_frame(), out_dir / "skill_matrix.xlsx", sheet="skill")
+    save_df_xlsx(skill.to_frame(), out_dir / "skill_matrix.xlsx", sheet_name="skill")
     log.info("skill_nmf: matrix written")
     return skill

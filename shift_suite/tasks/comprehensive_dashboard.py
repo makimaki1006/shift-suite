@@ -638,7 +638,7 @@ class IntegratedVisualizationSystem:
                 showscale=True,
                 colorbar=dict(
                     title="疲労度レベル",
-                    titlefont=dict(size=12)
+                    title_font=dict(size=12)
                 ),
                 hovertext=hover_text,
                 hoverinfo='text'

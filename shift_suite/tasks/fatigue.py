@@ -243,7 +243,8 @@ def train_fatigue(long_df: pd.DataFrame, out_dir: Path, weights: dict = None, sl
     
     # 両形式で保存（互換性確保）
     save_df_xlsx(final_df, out_dir / "fatigue_score.xlsx", "fatigue", index=True)
-    save_df_parquet(final_df, out_dir / "fatigue_score.parquet", index=True)
+    result_path = out_dir / "fatigue_score.parquet"
+    save_df_parquet(final_df, result_path, index=True)
     
     log.info(f"fatigue: comprehensive analysis completed, saved {len(available_cols)} features for {len(final_df)} staff")
-    return None
+    return result_path

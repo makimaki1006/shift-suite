@@ -19,6 +19,34 @@ def calculate_all_statistical_needs(
     df = actual_df.copy()
     freq = f"{time_unit_minutes}min"
 
+    # カラム名の正規化：英語→日本語に統一
+    column_mapping = {
+        'role': '職種',
+        'employment': '雇用形態',
+        'employment_type': '雇用形態'
+    }
+    
+    # 存在するカラムのみをリネーム
+    rename_dict = {}
+    for eng_col, jp_col in column_mapping.items():
+        if eng_col in df.columns:
+            rename_dict[eng_col] = jp_col
+    
+    if rename_dict:
+        df = df.rename(columns=rename_dict)
+    
+    # 必須カラムが存在するかチェック
+    required_columns = ['職種', '雇用形態']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    
+    if missing_columns:
+        # 欠損カラムをデフォルト値で補完
+        for col in missing_columns:
+            if col == '職種':
+                df['職種'] = 'unknown_role'
+            elif col == '雇用形態':
+                df['雇用形態'] = 'unknown_employment'
+
     # 時間単位で丸め、時間帯情報を追加
     df['time_group'] = df['timestamp'].dt.floor(freq)
     df['time_of_day'] = df['time_group'].dt.time

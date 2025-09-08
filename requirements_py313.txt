@@ -1,0 +1,86 @@
+# Python 3.13対応 requirements.txt
+# 更新日: 2025-09-08
+
+# ===== CORE DATA PROCESSING =====
+pandas==2.3.2           # データ処理 (Python 3.13対応)
+numpy==1.26.4           # 数値計算
+scipy==1.11.4           # 科学計算・統計・最適化
+openpyxl==3.1.2         # Excel I/O
+XlsxWriter>=3.2.0       # Excel出力
+pyarrow==15.0.2         # Parquetファイル読み書き
+
+# ===== WEB FRAMEWORKS =====
+streamlit==1.49.1       # 最新版 (Python 3.13対応)
+Flask==3.1.2            # 最新版
+dash==2.17.1            # ダッシュボード
+dash-bootstrap-components==2.0.4  # Bootstrap UI
+dash-cytoscape==1.0.2   # ネットワークグラフ
+
+# ===== VISUALIZATION =====
+plotly==6.3.0           # Python 3.13対応版（重要！）
+matplotlib==3.10.6      # 最新版
+seaborn==0.13.2         # 統計可視化
+
+# ===== MACHINE LEARNING & STATISTICS =====
+scikit-learn==1.4.2     # 機械学習
+lightgbm==4.3.0         # 勾配ブースティング
+prophet==1.1.5          # 時系列予測
+torch==2.3.1            # ディープラーニング (CPU版)
+statsmodels==0.14.2     # 統計モデル
+
+# ===== OPTIMIZATION & DECISION THEORY =====
+ortools==9.9.3963       # 制約プログラミング
+cvxpy==1.4.3            # 凸最適化
+pulp==2.8.0             # 線形プログラミング
+
+# ===== NETWORK & GRAPH ANALYSIS =====
+networkx==3.2.1         # ネットワーク分析
+
+# ===== TIME SERIES & FORECASTING =====
+filterpy==1.4.5         # カルマンフィルタ
+arch==6.3.0             # 時系列モデル
+
+# ===== MULTI-CRITERIA DECISION MAKING =====
+pymcdm==1.1.4           # 多基準意思決定
+
+# ===== BAYESIAN ANALYSIS =====
+pymc==5.10.4            # ベイズ統計
+arviz==0.18.0           # ベイズ分析可視化
+
+# ===== CONSTRAINT PROGRAMMING =====
+python-constraint==1.4.0  # 制約満足問題
+
+# ===== REINFORCEMENT LEARNING =====
+stable-baselines3==2.3.2   # 強化学習
+gymnasium==0.29.1          # RL環境
+
+# ===== NLP =====
+nltk==3.8.1
+textblob==0.17.1
+
+# ===== UTILITIES & TOOLS =====
+python-pptx>=0.6.23     # PowerPoint生成
+Pillow==10.3.0          # 画像処理
+requests==2.32.5        # HTTP通信
+python-dateutil==2.9.0  # 日付処理
+
+# ===== DEVELOPMENT & TESTING =====
+ruff==0.4.4             # リンター
+pytest==8.2.1           # テスト
+pytest-cov==5.0.0       # カバレッジ
+
+# ===== COMPATIBILITY FIXES =====
+tenacity==8.2.3         # リトライ処理
+packaging==25.0         # パッケージ管理
+typing_extensions==4.15.0  # Python 3.13対応
+
+# ===== MONITORING & LOGGING =====
+psutil==5.9.8           # システムモニタリング
+logging-json==0.4.1     # JSON構造化ログ
+
+# ===== MEMORY MANAGEMENT =====
+memory-profiler==0.61.0  # メモリプロファイリング
+
+# ===== VERSION COMPATIBILITY =====
+# Python 3.13対応確認済み
+# Windows 10/11, WSL2, Linux対応

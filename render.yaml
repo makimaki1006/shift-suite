@@ -1,0 +1,26 @@
+services:
+  # Streamlit App
+  - type: web
+    name: shiftanalysis-streamlit
+    runtime: python
+    buildCommand: pip install -r requirements_render.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: true
+      - key: STREAMLIT_SERVER_ENABLE_CORS
+        value: false
+    
+  # Dash App (Alternative)
+  - type: web
+    name: shiftanalysis-dash
+    runtime: python
+    buildCommand: pip install -r requirements_render.txt
+    startCommand: python dash_app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DASH_PORT
+        value: $PORT

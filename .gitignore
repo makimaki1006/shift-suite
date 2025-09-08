@@ -41,6 +41,18 @@ simple_*.py
 temp_*
 tmp_*
 
+# Backup files
+*.backup
+*.backup_*
+*.bak
+*_backup_*
+*.py.backup_*
+*backup*.py
+*_backup.py
+*.backup.*
+backup_*
+*BACKUP*
+
 # Report and documentation files
 *_report.md
 *_analysis.md
@@ -71,6 +83,7 @@ lightweight_reports/
 # Large documentation files
 *.md
 !README.md
+!VENV_MANAGEMENT.md
 !LICENSE
 
 # JSON result files

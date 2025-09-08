@@ -309,21 +309,31 @@ def run_fairness(
         log.info(
             f"[fairness] fairness_before.parquet / fairness_after.parquet 保存 (Jain: {jain_index_val:.3f})"
         )
+        return after_fp_path  # Return the result file path
     except Exception as e:
         log.error(f"[fairness] Parquet書出エラー: {e}", exc_info=True)
+        return None
 
 
-def calculate_jain_index(night_ratios: pd.Series) -> float:
+def calculate_jain_index(night_ratios) -> float:
     """
     Jain's Fairness Index計算関数
     
     Args:
-        night_ratios: 夜勤比率のSeries
+        night_ratios: 夜勤比率のSeries、またはリスト/配列
         
     Returns:
         float: Jain's Fairness Index (0.0-1.0, 1.0が最も公平)
     """
-    if night_ratios.empty:
+    # リストや配列をpd.Seriesに変換
+    if not isinstance(night_ratios, pd.Series):
+        night_ratios = pd.Series(night_ratios)
+    
+    if night_ratios.empty or len(night_ratios) == 0:
+        return 1.0
+    
+    # 0除算を避けるため、すべて0の場合は完全公平とする
+    if (night_ratios ** 2).sum() == 0:
         return 1.0
     
     s = night_ratios

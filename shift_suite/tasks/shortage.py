@@ -990,7 +990,7 @@ def shortage_and_brief(
         
         # 雇用形態別ファイル(heat_emp_*)は職種別処理から除外
         if fp_role_heatmap_item.name.startswith("heat_emp_"):
-            shortage_log.debug(f"スキップ: {fp_role_heatmap_item.name} (雇用形態別データ)")
+            log.info(f"[shortage] スキップ: {fp_role_heatmap_item.name} (雇用形態別データのため職種処理から除外)")
             continue
 
         role_name_current = fp_role_heatmap_item.stem.replace("heat_", "")
@@ -1297,7 +1297,16 @@ def shortage_and_brief(
     # 按分計算は使用しないため、role_shortagesは使わない
     role_shortages = {}
 
-    role_summary_df = pd.DataFrame(role_kpi_rows)
+    # emp_データを除外するフィルタリング
+    role_kpi_rows_filtered = []
+    for row in role_kpi_rows:
+        role_name = row.get('role', '')
+        if role_name.startswith('emp_'):
+            log.warning(f"[shortage] 雇用形態データを職種リストから除外: {role_name}")
+        else:
+            role_kpi_rows_filtered.append(row)
+    
+    role_summary_df = pd.DataFrame(role_kpi_rows_filtered)
     if not role_summary_df.empty:
         role_summary_df = role_summary_df.sort_values(
             "lack_h", ascending=False, na_position="last"
@@ -1719,6 +1728,63 @@ def shortage_and_brief(
         analysis_results['calculation_details'] = calculation_details
         create_timestamped_log(analysis_results, out_dir_path)
         
+        # リアルタイム洞察検出を実行
+        try:
+            from shift_suite.tasks.real_time_insight_detector import RealTimeInsightDetector
+            
+            # 必要なデータの準備
+            intermediate_path = out_dir_path / 'intermediate_data.parquet'
+            shortage_role_path = fp_shortage_role if fp_shortage_role else None
+            
+            if intermediate_path.exists() and shortage_role_path and shortage_role_path.exists():
+                intermediate_df = pd.read_parquet(intermediate_path)
+                shortage_df = pd.read_parquet(shortage_role_path)
+                
+                # 洞察検出器を初期化
+                detector = RealTimeInsightDetector()
+                
+                # 洞察を検出
+                insights = detector.analyze_shortage_data(
+                    shortage_data=shortage_df,
+                    intermediate_data=intermediate_df,
+                    need_data=None  # 必要に応じて追加
+                )
+                
+                # レポート生成
+                insight_report_path = out_dir_path / 'real_time_insights.json'
+                report = detector.generate_insight_report(insight_report_path)
+                
+                # エグゼクティブサマリー生成
+                summary = detector.generate_executive_summary()
+                summary_path = out_dir_path / 'insight_executive_summary.txt'
+                with open(summary_path, 'w', encoding='utf-8') as f:
+                    f.write(summary)
+                
+                log.info(f"[INSIGHTS] リアルタイム洞察検出完了: {len(insights)}個の洞察を発見")
+                
+                # 重要な洞察をログに記録
+                critical_insights = [i for i in insights if i.severity.value in ['critical', 'high']]
+                for insight in critical_insights[:5]:
+                    log.warning(f"[CRITICAL_INSIGHT] {insight.title}: {insight.description}")
+                    if insight.financial_impact:
+                        log.warning(f"  財務影響: {insight.financial_impact:.1f}万円/月")
+                    if insight.recommended_action:
+                        log.warning(f"  推奨アクション: {insight.recommended_action}")
+                
+                # 分析結果に洞察情報を追加
+                analysis_results['insights'] = {
+                    'total_count': len(insights),
+                    'critical_count': sum(1 for i in insights if i.severity.value == 'critical'),
+                    'high_count': sum(1 for i in insights if i.severity.value == 'high'),
+                    'total_financial_impact': report['total_financial_impact'],
+                    'report_path': str(insight_report_path),
+                    'summary_path': str(summary_path)
+                }
+                
+        except Exception as e:
+            log.error(f"[INSIGHTS] リアルタイム洞察検出でエラー: {e}")
+            # エラーでも処理は継続
+        
     except Exception as e:
         log.error(f"[shortage] タイムスタンプ付きログ生成エラー: {e}")
     
@@ -1905,12 +1971,53 @@ def assign_shortage_to_individuals(
     df = actual_df.copy()
     df['time_group'] = df['timestamp'].dt.floor(freq)
 
+    # カラム名の正規化：英語→日本語に統一
+    column_mapping = {
+        'role': '職種',
+        'employment': '雇用形態',
+        'employment_type': '雇用形態'
+    }
+    
+    # 実績データのカラム正規化
+    rename_dict = {}
+    for eng_col, jp_col in column_mapping.items():
+        if eng_col in df.columns:
+            rename_dict[eng_col] = jp_col
+    
+    if rename_dict:
+        df = df.rename(columns=rename_dict)
+    
+    # 不足データのカラム正規化
+    shortage_df_normalized = shortage_df.copy()
+    shortage_rename_dict = {}
+    for eng_col, jp_col in column_mapping.items():
+        if eng_col in shortage_df_normalized.columns:
+            shortage_rename_dict[eng_col] = jp_col
+    
+    if shortage_rename_dict:
+        shortage_df_normalized = shortage_df_normalized.rename(columns=shortage_rename_dict)
+    
+    # 必須カラムが存在するかチェック
+    required_columns = ['職種', '雇用形態']
+    for col in required_columns:
+        if col not in df.columns:
+            if col == '職種':
+                df['職種'] = 'unknown_role'
+            elif col == '雇用形態':
+                df['雇用形態'] = 'unknown_employment'
+        
+        if col not in shortage_df_normalized.columns:
+            if col == '職種':
+                shortage_df_normalized['職種'] = 'unknown_role'
+            elif col == '雇用形態':
+                shortage_df_normalized['雇用形態'] = 'unknown_employment'
+
     merge_cols = ['time_group', '職種', '雇用形態']
     shortage_cols = ['shortage_mean', 'shortage_median', 'shortage_p25']
     cols_to_add = ['actual_count'] + shortage_cols
 
     merged = df.merge(
-        shortage_df[merge_cols + cols_to_add],
+        shortage_df_normalized[merge_cols + cols_to_add],
         on=merge_cols,
         how='left'
     ).fillna({col: 0 for col in cols_to_add})

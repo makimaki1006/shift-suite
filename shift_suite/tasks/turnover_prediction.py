@@ -18,14 +18,31 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-# sklearn imports removed - using simple implementations
-# from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-# from sklearn.model_selection import train_test_split, cross_val_score
-# from sklearn.preprocessing import StandardScaler, LabelEncoder
-# from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
-# from sklearn.linear_model import LogisticRegression
 
-# Simple implementations to replace sklearn
+# Define SLOT_HOURS constant (30 minutes = 0.5 hours)
+SLOT_HOURS = 0.5
+
+# sklearn imports for ML-based prediction
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
+from sklearn.linear_model import LogisticRegression
+
+# Try to import XGBoost and LightGBM for better accuracy
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+
+try:
+    import lightgbm as lgb
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+
+# Legacy simple implementations (kept for backward compatibility)
 class SimpleRandomForestClassifier:
     """Simple Random Forest Classifier implementation"""
     
@@ -166,19 +183,39 @@ class SimpleLabelEncoder:
     def fit_transform(self, y):
         return self.fit(y).transform(y)
 
-def simple_train_test_split(X, y, test_size=0.2, random_state=None):
-    """Simple train/test split implementation"""
+def simple_train_test_split(X, y, test_size=0.2, random_state=None, stratify=None):
+    """Simple train/test split implementation with optional stratification"""
     if random_state:
         np.random.seed(random_state)
     
     n_samples = len(X)
     n_test = int(n_samples * test_size)
     
-    indices = np.arange(n_samples)
-    np.random.shuffle(indices)
-    
-    test_indices = indices[:n_test]
-    train_indices = indices[n_test:]
+    # If stratify is provided, attempt stratified split
+    if stratify is not None:
+        # Simple stratification: group by class and sample proportionally
+        unique_classes = np.unique(stratify)
+        train_indices = []
+        test_indices = []
+        
+        for cls in unique_classes:
+            cls_indices = np.where(stratify == cls)[0]
+            n_cls_test = max(1, int(len(cls_indices) * test_size))
+            
+            np.random.shuffle(cls_indices)
+            test_indices.extend(cls_indices[:n_cls_test])
+            train_indices.extend(cls_indices[n_cls_test:])
+        
+        # Shuffle the indices
+        np.random.shuffle(train_indices)
+        np.random.shuffle(test_indices)
+    else:
+        # Regular random split
+        indices = np.arange(n_samples)
+        np.random.shuffle(indices)
+        
+        test_indices = indices[:n_test]
+        train_indices = indices[n_test:]
     
     if isinstance(X, pd.DataFrame):
         X_train = X.iloc[train_indices]
@@ -275,26 +312,44 @@ def simple_confusion_matrix(y_true, y_pred):
     
     return matrix
 
-# Replace sklearn imports with simple implementations
-RandomForestClassifier = SimpleRandomForestClassifier
-GradientBoostingClassifier = SimpleGradientBoostingClassifier
-LogisticRegression = SimpleLogisticRegression
-StandardScaler = SimpleStandardScaler
-LabelEncoder = SimpleLabelEncoder
-train_test_split = simple_train_test_split
-cross_val_score = simple_cross_val_score
-classification_report = simple_classification_report
-roc_auc_score = simple_roc_auc_score
-confusion_matrix = simple_confusion_matrix
+# Use sklearn if available, otherwise fall back to simple implementations
+try:
+    # Try to use sklearn imports (already imported above)
+    from sklearn.ensemble import RandomForestClassifier as _test_rf
+    # sklearn is available, use it
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    # Fall back to simple implementations
+    SKLEARN_AVAILABLE = False
+    RandomForestClassifier = SimpleRandomForestClassifier
+    GradientBoostingClassifier = SimpleGradientBoostingClassifier
+    LogisticRegression = SimpleLogisticRegression
+    StandardScaler = SimpleStandardScaler
+    LabelEncoder = SimpleLabelEncoder
+    train_test_split = simple_train_test_split
+    cross_val_score = simple_cross_val_score
+    classification_report = simple_classification_report
+    roc_auc_score = simple_roc_auc_score
+    confusion_matrix = simple_confusion_matrix
 import warnings
 
 from .utils import log, save_df_parquet, write_meta
 from .constants import NIGHT_START_HOUR, NIGHT_END_HOUR, is_night_shift_time
 from .utils import validate_and_convert_slot_minutes, safe_slot_calculation
 
-# XGBoost disabled to avoid sklearn dependency issues
-_HAS_XGBOOST = False
-log.warning("[turnover_prediction] XGBoost disabled -- Using simple models")
+# Log model availability
+if SKLEARN_AVAILABLE:
+    log.info("[turnover_prediction] sklearn detected -- ML models enabled")
+else:
+    log.warning("[turnover_prediction] sklearn not available -- Using simple models")
+    
+if not XGBOOST_AVAILABLE:
+    log.warning("[turnover_prediction] XGBoost not available -- Will use sklearn models")
+else:
+    log.info("[turnover_prediction] XGBoost available for enhanced predictions")
+    
+if LIGHTGBM_AVAILABLE:
+    log.info("[turnover_prediction] LightGBM available for enhanced predictions")
 
 # Simple XGBoost replacement
 class SimpleXGBClassifier:
@@ -565,47 +620,65 @@ class TurnoverPredictionEngine:
             risk_score = 0
             
             # 勤務時間の不安定性
-            if row['std_total_hours'] > row['avg_total_hours'] * 0.3:
+            if row.get('std_total_hours', 0) > row.get('avg_total_hours', 160) * 0.3:
                 risk_score += 0.2
             
             # 長時間労働
-            if row['avg_total_hours'] > 200:  # 月200時間以上
+            if row.get('avg_total_hours', 0) > 200:  # 月200時間以上
                 risk_score += 0.3
+            elif row.get('avg_total_hours', 0) > 180:  # 月180時間以上
+                risk_score += 0.15
             
             # 夜勤比率が高い
-            if row['avg_night_ratio'] > 0.4:
-                risk_score += 0.2
+            if row.get('avg_night_ratio', 0) > 0.5:
+                risk_score += 0.3
+            elif row.get('avg_night_ratio', 0) > 0.3:
+                risk_score += 0.15
             
             # 勤務開始時刻の不規則性
-            if row['avg_start_time_variance'] > 3:
+            if row.get('avg_start_time_variance', 0) > 3:
                 risk_score += 0.2
             
             # 連続勤務日数が多い
-            if row['max_consecutive_days'] > 7:
+            if row.get('max_consecutive_days', 0) > 10:
+                risk_score += 0.3
+            elif row.get('max_consecutive_days', 0) > 7:
                 risk_score += 0.15
             
             # 休息時間が少ない
-            if row['avg_rest_ratio'] < 0.2:
+            if row.get('avg_rest_ratio', 1) < 0.2:
                 risk_score += 0.15
             
             # 勤務パターンの悪化傾向
-            if row['hours_trend'] < -20:  # 勤務時間の大幅減少
+            if row.get('hours_trend', 0) < -20:  # 勤務時間の大幅減少
                 risk_score += 0.25
-            if row['variance_trend'] > 10:  # 不規則性の増加
+            if row.get('variance_trend', 0) > 10:  # 不規則性の増加
                 risk_score += 0.2
             
             # 勤務期間の影響
-            if row['tenure_months'] < 6:
+            if row.get('tenure_months', 12) < 6:
                 risk_score += 0.1  # 新人は離職リスクが高い
-            elif row['tenure_months'] > 60:
+            elif row.get('tenure_months', 12) > 60:
                 risk_score -= 0.1  # 長期勤務者は安定
             
-            risk_scores.append(min(risk_score, 1.0))
+            # 総労働時間が異常に高い
+            if row.get('total_hours', 0) > 250:
+                risk_score += 0.3
+            elif row.get('total_hours', 0) > 220:
+                risk_score += 0.15
+            
+            risk_scores.append(min(max(risk_score, 0), 1.0))
         
         # リスクスコアを離職確率に変換
-        # 閾値を使ってバイナリラベルを生成
+        # 閾値を調整してクラスバランスを改善（0.4に下げる）
         features_df['risk_score'] = risk_scores
-        features_df['will_turnover'] = (np.array(risk_scores) > 0.6).astype(int)
+        features_df['will_turnover'] = (np.array(risk_scores) > 0.4).astype(int)
+        
+        # 少なくともいくつかのサンプルにラベル1を確保
+        if features_df['will_turnover'].sum() == 0 and len(features_df) > 2:
+            # 最もリスクが高い2つをラベル1にする
+            top_risk_indices = np.argsort(risk_scores)[-2:]
+            features_df.loc[features_df.index[top_risk_indices], 'will_turnover'] = 1
         
         return features_df
     
@@ -647,8 +720,16 @@ class TurnoverPredictionEngine:
         """機械学習モデルの訓練"""
         log.info("[TurnoverPredictionEngine] Training turnover prediction models...")
         
-        # データ分割
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        # データ分割 - 小さなデータセットの場合はstratifyを無効化
+        n_samples = len(X)
+        n_minority_class = min(np.bincount(y)) if len(np.unique(y)) > 1 else 0
+        
+        # stratifyは各クラスに最低2サンプル必要
+        if n_samples < 10 or n_minority_class < 2:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=None)
+            log.warning(f"[TurnoverPredictionEngine] Small dataset ({n_samples} samples) - stratification disabled")
+        else:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
         
         # スケーリング
         scaler = StandardScaler()
@@ -687,9 +768,15 @@ class TurnoverPredictionEngine:
                 'feature_importance': dict(zip(feature_names, rf_model.feature_importances_))
             }
         
-        # 3. XGBoost
-        if _HAS_XGBOOST and self.model_type in ['xgboost', 'ensemble']:
-            xgb_model = xgb.XGBClassifier(random_state=42, eval_metric='logloss')
+        # 3. XGBoost（高精度モデル）
+        if XGBOOST_AVAILABLE and self.model_type in ['xgboost', 'ensemble']:
+            xgb_model = xgb.XGBClassifier(
+                n_estimators=200,
+                max_depth=6,
+                learning_rate=0.1,
+                random_state=42, 
+                eval_metric='logloss'
+            )
             xgb_model.fit(X_train, y_train)
             
             xgb_pred_proba = xgb_model.predict_proba(X_test)[:, 1]
@@ -700,6 +787,28 @@ class TurnoverPredictionEngine:
                 'auc': xgb_auc,
                 'feature_importance': dict(zip(feature_names, xgb_model.feature_importances_))
             }
+        
+        # 4. LightGBM（高速・高精度モデル）
+        if LIGHTGBM_AVAILABLE and self.model_type in ['lightgbm', 'ensemble']:
+            lgb_model = lgb.LGBMClassifier(
+                n_estimators=200,
+                max_depth=6,
+                learning_rate=0.1,
+                num_leaves=31,
+                random_state=42,
+                verbosity=-1
+            )
+            lgb_model.fit(X_train, y_train)
+            
+            lgb_pred_proba = lgb_model.predict_proba(X_test)[:, 1]
+            lgb_auc = roc_auc_score(y_test, lgb_pred_proba) if len(np.unique(y_test)) > 1 else 0.5
+            
+            self.models['lightgbm'] = lgb_model
+            results['lightgbm'] = {
+                'auc': lgb_auc,
+                'feature_importance': dict(zip(feature_names, lgb_model.feature_importances_))
+            }
+            log.info(f"[TurnoverPredictionEngine] LightGBM AUC: {lgb_auc:.4f}")
         
         # アンサンブルモデル
         if self.model_type == 'ensemble' and len(self.models) > 1:

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # ─────────────────────────────  app.py  (Part 1 / 3)  ──────────────────────────
 # Shift-Suite Streamlit GUI + 内蔵ダッシュボード  v1.30.0 (休暇分析機能追加)
 # ==============================================================================
@@ -94,6 +97,13 @@ try:
 except ImportError:
     AI_REPORT_GENERATOR_AVAILABLE = False
 
+# 🔍 高度な不足分析機能追加
+try:
+    from advanced_shortage_integration import display_advanced_shortage_tab
+    ADVANCED_SHORTAGE_AVAILABLE = True
+except ImportError:
+    ADVANCED_SHORTAGE_AVAILABLE = False
+
 # ──────────────────────────────────────────────────────────────────────────────
 from shift_suite.tasks.analyzers import (
     AttendanceBehaviorAnalyzer,
@@ -123,6 +133,9 @@ from shift_suite.tasks.constants import SUMMARY5 as SUMMARY5_CONST
 from shift_suite.tasks.cost_benefit import analyze_cost_benefit
 from shift_suite.tasks.fairness import run_fairness
 from shift_suite.tasks.fatigue import train_fatigue
+
+# 高度不足分析機能のインポート
+from advanced_shortage_integration import display_advanced_shortage_tab
 from shift_suite.tasks.forecast import build_demand_series, forecast_need
 from shift_suite.tasks.h2hire import build_hire_plan as build_hire_plan_from_kpi
 from shift_suite.tasks.heatmap import build_heatmap
@@ -3267,7 +3280,8 @@ if run_button_clicked:
                                         )["path"]
                                     )
                                     create_optimal_hire_plan(
-                                        scenario_out_dir, original_excel_path
+                                        scenario_out_dir, 
+                                        original_excel_path=original_excel_path
                                     )
                                     st.success("✅ 最適採用計画 生成完了")
                                     
@@ -3590,6 +3604,518 @@ if run_button_clicked:
                     except Exception as e:
                         log.warning(f"AI向けレポート生成でエラーが発生しましたが、処理を継続します: {e}")
                 
+                # 洞察検出結果も追加（利用可能な場合）
+                try:
+                    from shift_suite.tasks.insight_detection_service import InsightDetectionService
+                    insight_service = InsightDetectionService()
+                    insight_report = insight_service.analyze_directory(zip_base)
+                    
+                    # 洞察検出結果は既にJSON/HTML/CSVとして保存されている
+                    # (insights_detected.json, insights_report.html, insights_table.csv)
+                    log.info(f"洞察検出を実行: {len(insight_report.insights)}個の洞察を発見")
+                    
+                except Exception as e:
+                    log.debug(f"洞察検出はスキップされました: {e}")
+                
+                # 新規統合機能の結果も追加（2025-08-29追加）
+                if st.session_state.get("long_df") is not None and not st.session_state.long_df.empty:
+                    try:
+                        log.info("高度な分析機能の実行を開始...")
+                        
+                        # 1. 連続勤務検出
+                        try:
+                            from shift_suite.tasks.continuous_shift_detector import ContinuousShiftDetector
+                            detector = ContinuousShiftDetector()
+                            continuous_shifts = detector.detect_continuous_shifts(st.session_state.long_df)
+                            
+                            # 結果をJSONとして保存
+                            continuous_results = {
+                                "detection_time": dt.datetime.now().isoformat(),
+                                "total_violations": len(continuous_shifts),
+                                "violations": [
+                                    {
+                                        "staff": shift.staff,
+                                        "start": f"{shift.start_date} {shift.start_time}",
+                                        "end": f"{shift.end_date} {shift.end_time}",
+                                        "total_hours": shift.total_duration_hours,
+                                        "is_overnight": shift.is_overnight,
+                                        "start_code": shift.start_code,
+                                        "end_code": shift.end_code
+                                    }
+                                    for shift in continuous_shifts[:20]  # 最初の20件のみ
+                                ],
+                                "summary": detector.get_continuous_shift_summary() if continuous_shifts else {}
+                            }
+                            
+                            continuous_file = zip_base / "continuous_shifts_detected.json"
+                            with open(continuous_file, "w", encoding="utf-8") as f:
+                                json.dump(continuous_results, f, ensure_ascii=False, indent=2)
+                            
+                            log.info(f"連続勤務検出完了: {len(continuous_shifts)}件の違反を検出")
+                            
+                        except Exception as e:
+                            log.debug(f"連続勤務検出をスキップ: {e}")
+                        
+                        # 2. 離職リスク予測
+                        try:
+                            from shift_suite.tasks.turnover_prediction import TurnoverPredictionEngine
+                            
+                            engine = TurnoverPredictionEngine(
+                                model_type='ensemble',
+                                lookback_months=3,
+                                enable_early_warning=True
+                            )
+                            
+                            # 特徴量抽出と予測
+                            features_df = engine.extract_turnover_features(st.session_state.long_df)
+                            features_df = engine.generate_synthetic_labels(features_df)
+                            engine.train_models(features_df)
+                            predictions_df = engine.predict_turnover_risk(features_df)
+                            
+                            # 結果をJSONとして保存
+                            if not predictions_df.empty:
+                                turnover_results = {
+                                    "prediction_time": dt.datetime.now().isoformat(),
+                                    "total_staff": len(predictions_df),
+                                    "high_risk": len(predictions_df[predictions_df['risk_level'] == 'high']),
+                                    "medium_risk": len(predictions_df[predictions_df['risk_level'] == 'medium']),
+                                    "low_risk": len(predictions_df[predictions_df['risk_level'].isin(['low', 'very_low'])]),
+                                    "staff_risks": predictions_df.to_dict('records')
+                                }
+                                
+                                turnover_file = zip_base / "turnover_predictions.json"
+                                with open(turnover_file, "w", encoding="utf-8") as f:
+                                    json.dump(turnover_results, f, ensure_ascii=False, indent=2)
+                                
+                                log.info(f"離職リスク予測完了: {len(predictions_df)}名を分析")
+                            
+                        except Exception as e:
+                            log.debug(f"離職リスク予測をスキップ: {e}")
+                        
+                        # 3. 作成者意図分析
+                        try:
+                            from shift_suite.tasks.shift_mind_reader_lite import ShiftMindReaderLite
+                            
+                            reader = ShiftMindReaderLite()
+                            mind_results = reader.read_creator_mind(st.session_state.long_df)
+                            
+                            # 結果をJSONとして保存
+                            mind_file = zip_base / "creator_mind_analysis.json"
+                            with open(mind_file, "w", encoding="utf-8") as f:
+                                json.dump(mind_results, f, ensure_ascii=False, indent=2)
+                            
+                            log.info("作成者意図分析完了")
+                            
+                        except Exception as e:
+                            log.debug(f"作成者意図分析をスキップ: {e}")
+                        
+                        # 4. 需要予測モデル (2025-08-29追加)
+                        try:
+                            from shift_suite.tasks.demand_prediction_model import DemandPredictionModel
+                            
+                            model = DemandPredictionModel()
+                            
+                            # 学習用データの準備（過去のシフトデータから需要を抽出）
+                            training_data = []
+                            for _, row in st.session_state.long_df.iterrows():
+                                training_data.append({
+                                    'timestamp': row['ds'],
+                                    'demand': 1  # 各シフトスロットを需要1として扱う
+                                })
+                            
+                            if training_data:
+                                # モデルの学習
+                                training_result = model.train_model(training_data)
+                                
+                                # 7日後の予測
+                                from datetime import datetime, timedelta
+                                target_date = datetime.now() + timedelta(days=7)
+                                prediction_result = model.predict_demand(
+                                    target_date=target_date,
+                                    days_ahead=7
+                                )
+                                
+                                # 結果をJSONとして保存
+                                demand_file = zip_base / "demand_prediction.json"
+                                with open(demand_file, "w", encoding="utf-8") as f:
+                                    json.dump({
+                                        'training_result': training_result,
+                                        'prediction': prediction_result,
+                                        'model_info': model.get_model_info()
+                                    }, f, ensure_ascii=False, indent=2, default=str)
+                                
+                                log.info("需要予測モデル実行完了")
+                        
+                        except Exception as e:
+                            log.debug(f"需要予測モデルをスキップ: {e}")
+                        
+                        # 5. 軽量異常検出器 (2025-08-29追加)
+                        try:
+                            from shift_suite.tasks.lightweight_anomaly_detector import LightweightAnomalyDetector
+                            
+                            detector = LightweightAnomalyDetector()
+                            
+                            # 必須カラムの確認と追加
+                            if 'parsed_slots_count' not in st.session_state.long_df.columns:
+                                # デフォルト値として1を設定（各レコードが1スロット）
+                                st.session_state.long_df['parsed_slots_count'] = 1
+                            
+                            if 'code' not in st.session_state.long_df.columns:
+                                # taskカラムから推定
+                                st.session_state.long_df['code'] = st.session_state.long_df['task'].apply(
+                                    lambda x: '夜' if '夜' in str(x) else '日'
+                                )
+                            
+                            # 異常検出の実行
+                            anomalies = detector.detect_anomalies(st.session_state.long_df)
+                            
+                            # 結果をJSONとして保存
+                            anomaly_results = []
+                            for anomaly in anomalies:
+                                anomaly_results.append({
+                                    'type': anomaly.anomaly_type,
+                                    'severity': anomaly.severity,
+                                    'score': anomaly.anomaly_score,
+                                    'description': anomaly.description,
+                                    'affected_count': len(anomaly.affected_records) if anomaly.affected_records else 0,
+                                    'timestamp': anomaly.detection_timestamp.isoformat() if hasattr(anomaly, 'detection_timestamp') else None
+                                })
+                            
+                            anomaly_file = zip_base / "anomaly_detection.json"
+                            with open(anomaly_file, "w", encoding="utf-8") as f:
+                                json.dump({
+                                    'total_anomalies': len(anomalies),
+                                    'anomalies': anomaly_results,
+                                    'detection_config': {
+                                        'sensitivity': detector.sensitivity if hasattr(detector, 'sensitivity') else 'medium',
+                                        'threshold': detector.threshold if hasattr(detector, 'threshold') else None
+                                    }
+                                }, f, ensure_ascii=False, indent=2)
+                            
+                            log.info(f"異常検出完了: {len(anomalies)}件の異常を検出")
+                        
+                        except Exception as e:
+                            log.debug(f"異常検出をスキップ: {e}")
+                        
+                        # 6. 公平性評価 (Phase 3: 2025-08-29追加)
+                        try:
+                            from shift_suite.tasks.fairness import run_fairness, calculate_jain_index
+                            
+                            # 必須カラムの確認と追加
+                            if 'holiday_type' not in st.session_state.long_df.columns:
+                                st.session_state.long_df['holiday_type'] = '平日'  # デフォルト値
+                            
+                            # 公平性評価の実行
+                            fairness_result = run_fairness(st.session_state.long_df.copy(), Path(zip_base))
+                            
+                            if fairness_result and Path(fairness_result).exists():
+                                fairness_df = pd.read_parquet(fairness_result)
+                                
+                                # Jain指数の計算（全体的な公平性）
+                                if 'workload' in fairness_df.columns:
+                                    workloads = fairness_df['workload'].values
+                                    jain_index = calculate_jain_index(workloads)
+                                else:
+                                    jain_index = None
+                                
+                                # 結果をJSONとして保存
+                                fairness_json = {
+                                    'jain_index': jain_index,
+                                    'evaluation_type': 'Jain Fairness Index',
+                                    'description': '労働負荷の公平性指標 (1.0が完全公平)',
+                                    'staff_count': len(fairness_df) if not fairness_df.empty else 0,
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                
+                                fairness_file = zip_base / "fairness_evaluation.json"
+                                with open(fairness_file, "w", encoding="utf-8") as f:
+                                    json.dump(fairness_json, f, ensure_ascii=False, indent=2)
+                                
+                                log.info(f"公平性評価完了: Jain指数 = {jain_index}")
+                            
+                        except Exception as e:
+                            log.debug(f"公平性評価をスキップ: {e}")
+                        
+                        # 7. 疲労度評価 (Phase 3: 2025-08-29追加)
+                        try:
+                            from shift_suite.tasks.fatigue import train_fatigue
+                            
+                            # 必須カラムの確認と追加
+                            if 'code' not in st.session_state.long_df.columns:
+                                st.session_state.long_df['code'] = st.session_state.long_df['task'].apply(
+                                    lambda x: '夜' if '夜' in str(x) else '日'
+                                )
+                            
+                            if 'start_time' not in st.session_state.long_df.columns:
+                                # デフォルトの開始時刻を設定
+                                st.session_state.long_df['start_time'] = '09:00'
+                            
+                            if 'end_time' not in st.session_state.long_df.columns:
+                                # デフォルトの終了時刻を設定
+                                st.session_state.long_df['end_time'] = '17:00'
+                            
+                            # 疲労度評価の実行
+                            fatigue_result = train_fatigue(st.session_state.long_df.copy(), Path(zip_base))
+                            
+                            if fatigue_result and Path(fatigue_result).exists():
+                                fatigue_df = pd.read_parquet(fatigue_result)
+                                
+                                # 結果の集計
+                                fatigue_summary = {
+                                    'total_staff': len(fatigue_df),
+                                    'average_fatigue_score': float(fatigue_df['fatigue_score'].mean()) if 'fatigue_score' in fatigue_df.columns else None,
+                                    'max_fatigue_score': float(fatigue_df['fatigue_score'].max()) if 'fatigue_score' in fatigue_df.columns else None,
+                                    'high_risk_staff': int((fatigue_df['fatigue_score'] > 0.7).sum()) if 'fatigue_score' in fatigue_df.columns else 0,
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                
+                                # 個別スタッフの疲労度詳細
+                                if 'fatigue_score' in fatigue_df.columns:
+                                    staff_details = []
+                                    for _, row in fatigue_df.iterrows():
+                                        staff_details.append({
+                                            'staff': row.get('staff', 'Unknown'),
+                                            'fatigue_score': float(row.get('fatigue_score', 0)),
+                                            'risk_level': 'High' if row.get('fatigue_score', 0) > 0.7 else 'Medium' if row.get('fatigue_score', 0) > 0.4 else 'Low'
+                                        })
+                                    fatigue_summary['staff_details'] = staff_details
+                                
+                                fatigue_file = zip_base / "fatigue_evaluation.json"
+                                with open(fatigue_file, "w", encoding="utf-8") as f:
+                                    json.dump(fatigue_summary, f, ensure_ascii=False, indent=2)
+                                
+                                log.info(f"疲労度評価完了: 平均スコア = {fatigue_summary.get('average_fatigue_score', 0):.3f}")
+                            
+                        except Exception as e:
+                            log.debug(f"疲労度評価をスキップ: {e}")
+                        
+                        # 8. スキル分析 (Phase 3: 2025-08-29追加)
+                        try:
+                            from shift_suite.tasks.skill_nmf import build_skill_matrix
+                            
+                            # スキル行列の構築
+                            skill_matrix = build_skill_matrix(st.session_state.long_df.copy(), Path(zip_base))
+                            
+                            if isinstance(skill_matrix, pd.DataFrame) and not skill_matrix.empty:
+                                # スキル分析結果の集計
+                                skill_summary = {
+                                    'total_staff': skill_matrix.shape[0],
+                                    'total_tasks': skill_matrix.shape[1],
+                                    'matrix_shape': list(skill_matrix.shape),
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                
+                                # スタッフごとの主要スキル
+                                staff_skills = []
+                                for staff in skill_matrix.index:
+                                    top_skills = skill_matrix.loc[staff].nlargest(3)
+                                    staff_skills.append({
+                                        'staff': str(staff),
+                                        'top_skills': [
+                                            {'task': str(task), 'score': float(score)}
+                                            for task, score in top_skills.items()
+                                        ]
+                                    })
+                                
+                                skill_summary['staff_skills'] = staff_skills
+                                
+                                # タスクごとの専門スタッフ
+                                task_specialists = []
+                                for task in skill_matrix.columns:
+                                    top_staff = skill_matrix[task].nlargest(3)
+                                    task_specialists.append({
+                                        'task': str(task),
+                                        'specialists': [
+                                            {'staff': str(staff), 'score': float(score)}
+                                            for staff, score in top_staff.items()
+                                        ]
+                                    })
+                                
+                                skill_summary['task_specialists'] = task_specialists
+                                
+                                skill_file = zip_base / "skill_analysis.json"
+                                with open(skill_file, "w", encoding="utf-8") as f:
+                                    json.dump(skill_summary, f, ensure_ascii=False, indent=2)
+                                
+                                log.info(f"スキル分析完了: {skill_summary['total_staff']}人×{skill_summary['total_tasks']}タスク")
+                            
+                        except Exception as e:
+                            log.debug(f"スキル分析をスキップ: {e}")
+                        
+                        # 7. 連続勤務検出 (Phase 4: 2025-08-30追加)
+                        try:
+                            from shift_suite.tasks.continuous_shift_detector import ContinuousShiftDetector
+                            
+                            detector = ContinuousShiftDetector()
+                            violations = detector.detect_continuous_shifts(st.session_state.long_df.copy())
+                            
+                            if violations:
+                                continuous_shifts_summary = {
+                                    'total_violations': len(violations),
+                                    'violations': [
+                                        {
+                                            'staff': v.staff_name,
+                                            'start_date': v.start_date.isoformat() if hasattr(v.start_date, 'isoformat') else str(v.start_date),
+                                            'end_date': v.end_date.isoformat() if hasattr(v.end_date, 'isoformat') else str(v.end_date),
+                                            'consecutive_days': v.consecutive_days,
+                                            'total_hours': v.total_duration_hours,
+                                            'violation_type': v.violation_type
+                                        }
+                                        for v in violations[:10]  # 最初の10件のみ
+                                    ],
+                                    'summary': {
+                                        'max_consecutive_days': max(v.consecutive_days for v in violations) if violations else 0,
+                                        'affected_staff_count': len(set(v.staff_name for v in violations))
+                                    },
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                
+                                continuous_file = Path(zip_base) / "continuous_shifts.json"
+                                with open(continuous_file, "w", encoding="utf-8") as f:
+                                    json.dump(continuous_shifts_summary, f, ensure_ascii=False, indent=2)
+                                
+                                log.info(f"連続勤務検出完了: {len(violations)}件の違反検出")
+                            else:
+                                log.info("連続勤務違反なし")
+                            
+                        except Exception as e:
+                            log.debug(f"連続勤務検出をスキップ: {e}")
+                        
+                        # 8. 離職予測 (Phase 4: ML版 - 高精度予測)
+                        try:
+                            from shift_suite.tasks.turnover_prediction import TurnoverPredictionEngine
+                            import pickle
+                            
+                            # 高精度モデル（XGBoost/LightGBM）を使用
+                            predictor = TurnoverPredictionEngine(
+                                model_type='ensemble',  # 全モデルを使用してアンサンブル
+                                enable_early_warning=True
+                            )
+                            
+                            # 特徴量抽出
+                            features_df = predictor.extract_turnover_features(st.session_state.long_df.copy())
+                            risk_scores = {}
+                            
+                            if not features_df.empty:
+                                # モデル保存パスの確認
+                                model_path = Path('models/turnover_model.pkl')
+                                
+                                # 保存済みモデルがあれば読み込み
+                                if model_path.exists():
+                                    try:
+                                        with open(model_path, 'rb') as f:
+                                            predictor.models = pickle.load(f)
+                                        log.info("学習済みモデルを読み込みました")
+                                        
+                                        # 予測実行
+                                        risk_df = predictor.predict_turnover_risk(features_df)
+                                        if not risk_df.empty and 'risk_score' in risk_df.columns:
+                                            risk_scores = dict(zip(risk_df['staff'], risk_df['risk_score']))
+                                    except Exception as e:
+                                        log.debug(f"モデル読み込みエラー、新規学習します: {e}")
+                                
+                                # モデルがない場合は新規学習
+                                if not risk_scores and len(features_df) >= 5:  # 最低5人分のデータが必要
+                                    try:
+                                        # 合成ラベル生成
+                                        features_df = predictor.generate_synthetic_labels(features_df)
+                                        
+                                        # モデル学習
+                                        X, y, feature_names = predictor.prepare_model_data(features_df)
+                                        if X is not None and len(X) > 0:
+                                            predictor.train_models(X, y, feature_names)
+                                            
+                                            # 予測実行
+                                            risk_df = predictor.predict_turnover_risk(features_df)
+                                            if not risk_df.empty and 'risk_score' in risk_df.columns:
+                                                risk_scores = dict(zip(risk_df['staff'], risk_df['risk_score']))
+                                            
+                                            # モデル保存（次回使用のため）
+                                            try:
+                                                model_path.parent.mkdir(exist_ok=True)
+                                                with open(model_path, 'wb') as f:
+                                                    pickle.dump(predictor.models, f)
+                                                log.info("学習済みモデルを保存しました")
+                                            except Exception as e:
+                                                log.debug(f"モデル保存エラー: {e}")
+                                    except Exception as e:
+                                        log.debug(f"ML学習エラー: {e}")
+                                
+                                # MLが失敗した場合のフォールバック（簡易計算）
+                                if not risk_scores:
+                                    for _, row in features_df.iterrows():
+                                        risk = 0.0
+                                        if 'max_consecutive_days' in row and row['max_consecutive_days'] > 7:
+                                            risk += 0.3
+                                        if 'night_shift_ratio' in row and row['night_shift_ratio'] > 0.5:
+                                            risk += 0.3
+                                        if 'total_hours' in row and row['total_hours'] > 200:
+                                            risk += 0.2
+                                        risk_scores[row['staff']] = min(risk, 1.0)
+                            
+                            if risk_scores:
+                                # リスクスコアでソート（降順）
+                                sorted_risks = sorted(risk_scores.items(), key=lambda x: x[1], reverse=True)
+                                
+                                turnover_summary = {
+                                    'total_staff_analyzed': len(risk_scores),
+                                    'high_risk_staff': [
+                                        {'name': name, 'risk_score': round(score, 3)}
+                                        for name, score in sorted_risks[:10]
+                                        if score > 0.7  # 高リスク閾値
+                                    ],
+                                    'risk_distribution': {
+                                        'high': sum(1 for _, score in risk_scores.items() if score > 0.7),
+                                        'medium': sum(1 for _, score in risk_scores.items() if 0.4 <= score <= 0.7),
+                                        'low': sum(1 for _, score in risk_scores.items() if score < 0.4)
+                                    },
+                                    'average_risk': round(sum(risk_scores.values()) / len(risk_scores), 3) if risk_scores else 0,
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                
+                                turnover_file = Path(zip_base) / "turnover_prediction.json"
+                                with open(turnover_file, "w", encoding="utf-8") as f:
+                                    json.dump(turnover_summary, f, ensure_ascii=False, indent=2)
+                                
+                                log.info(f"離職予測完了: {len(risk_scores)}人分析, 高リスク{turnover_summary['risk_distribution']['high']}人")
+                            
+                        except Exception as e:
+                            log.debug(f"離職予測をスキップ: {e}")
+                        
+                        # 9. シフトパターン分析 (Phase 4: 2025-08-30追加)
+                        try:
+                            from shift_suite.tasks.shift_mind_reader_lite import ShiftMindReaderLite
+                            
+                            reader = ShiftMindReaderLite()
+                            analysis_result = reader.read_creator_mind(st.session_state.long_df.copy())
+                            
+                            if analysis_result:
+                                # パターンの要約を作成
+                                basic_analysis = analysis_result.get('basic_analysis', {})
+                                decision_patterns = analysis_result.get('decision_patterns', {})
+                                
+                                pattern_summary = {
+                                    'analysis_type': analysis_result.get('analysis_type', 'lightweight'),
+                                    'basic_statistics': basic_analysis,
+                                    'decision_patterns': decision_patterns,
+                                    'insights': reader.get_simplified_insights() if hasattr(reader, 'get_simplified_insights') else {},
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                
+                                patterns_file = Path(zip_base) / "shift_patterns.json"
+                                with open(patterns_file, "w", encoding="utf-8") as f:
+                                    json.dump(pattern_summary, f, ensure_ascii=False, indent=2)
+                                
+                                log.info(f"シフトパターン分析完了: {len(decision_patterns)}パターン発見")
+                            
+                        except Exception as e:
+                            log.debug(f"シフトパターン分析をスキップ: {e}")
+                        
+                        log.info("高度な分析機能の実行が完了しました")
+                        
+                    except Exception as e:
+                        log.warning(f"高度な分析機能の実行中にエラーが発生しましたが、処理を継続します: {e}")
+                
                 with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zf:
                     for f_path in zip_base.glob("**/*"):
                         if f_path.is_file():
@@ -3601,7 +4127,7 @@ if run_button_clicked:
                     file_name="analysis_results.zip",
                     mime="application/zip",
                     type="primary",
-                    help="分析結果の全ファイル + AI向け包括レポート(JSON)が含まれています"
+                    help="分析結果の全ファイル + AI向け包括レポート(JSON) + 洞察検出結果(JSON/HTML/CSV) + 連続勤務検出 + 離職リスク予測 + 作成者意図分析 + 需要予測(NEW) + 異常検出(NEW)が含まれています"
                 )
             else:
                 st.error("分析結果ディレクトリが見つかりませんでした。")
@@ -5152,6 +5678,433 @@ def display_constraint_discovery_tab(tab_container, data_dir):
         # 結果の表示
         if "constraint_discovery_results" in st.session_state:
             display_constraint_discovery_results(st.session_state.constraint_discovery_results)
+        
+        # 洞察検出システム（オプション）
+        st.markdown("---")
+        st.subheader("🎯 高度な分析機能")
+        
+        # タブで分析機能を整理
+        analysis_tabs = st.tabs([
+            "🔍 深い洞察",
+            "🚨 連続勤務チェック", 
+            "📊 離職リスク予測",
+            "🧠 作成者の意図分析"
+        ])
+        
+        # 深い洞察タブ
+        with analysis_tabs[0]:
+            col_insight1, col_insight2 = st.columns([3, 1])
+            
+            with col_insight1:
+                enable_insights = st.checkbox(
+                    "深い洞察を自動検出",
+                    value=True,  # デフォルトで有効
+                    help="シフトの問題点や改善機会を自動的に発見します（ZIPダウンロードにも含まれます）",
+                    key="enable_insights"
+                )
+            
+            if enable_insights:
+                with col_insight2:
+                    if st.button("洞察を検出", key="detect_insights"):
+                        run_insight_detection()
+        
+        # 連続勤務チェックタブ
+        with analysis_tabs[1]:
+            if st.checkbox("連続勤務パターンを検出", value=True, key="enable_continuous"):
+                if st.button("検出実行", key="detect_continuous"):
+                    run_continuous_shift_detection()
+        
+        # 離職リスク予測タブ
+        with analysis_tabs[2]:
+            if st.checkbox("スタッフの離職リスクを予測", value=True, key="enable_turnover"):
+                if st.button("予測実行", key="predict_turnover"):
+                    run_turnover_prediction()
+        
+        # 作成者の意図分析タブ
+        with analysis_tabs[3]:
+            if st.checkbox("シフト作成者の意図を分析", value=False, key="enable_mind_reader"):
+                if st.button("分析実行", key="read_mind"):
+                    run_mind_reader_analysis()
+
+def run_insight_detection():
+    """洞察検出システムを実行"""
+    # 分析結果ディレクトリの確認
+    possible_dirs = [
+        Path("analysis_results_final_extracted/out_p25_based"),
+        Path("extracted_results/out_p25_based"),
+        Path("output/analysis_results"),
+    ]
+    
+    analysis_dir = None
+    for dir_path in possible_dirs:
+        if dir_path.exists():
+            analysis_dir = dir_path
+            break
+    
+    if not analysis_dir:
+        st.warning("⚠️ 分析結果が見つかりません。先に分析を実行してください。")
+        return
+    
+    with st.spinner("🔍 深い洞察を検出中..."):
+        try:
+            from shift_suite.tasks.insight_detection_service import InsightDetectionService
+            
+            service = InsightDetectionService()
+            report = service.analyze_directory(analysis_dir)
+            
+            if report.insights:
+                st.success(f"✅ {len(report.insights)}個の重要な洞察を発見しました")
+                
+                # 洞察を重要度順に分類
+                critical = [i for i in report.insights if i.severity == "critical"]
+                high = [i for i in report.insights if i.severity == "high"]
+                medium = [i for i in report.insights if i.severity == "medium"]
+                
+                # 緊急対応が必要な問題
+                if critical:
+                    st.error("⚠️ **緊急対応が必要な問題**")
+                    for insight in critical:
+                        with st.expander(f"🚨 {insight.title}", expanded=True):
+                            st.write(insight.description)
+                            if hasattr(insight, 'evidence') and insight.evidence:
+                                st.write("**根拠データ:**")
+                                for key, value in insight.evidence.items():
+                                    if isinstance(value, (int, float)):
+                                        st.write(f"  • {key}: {value:.1f}")
+                                    else:
+                                        st.write(f"  • {key}: {value}")
+                            st.write(f"💰 **財務影響:** {insight.impact:.1f}万円/月")
+                            st.write(f"📝 **推奨アクション:** {insight.recommendation}")
+                
+                # 改善推奨事項
+                if high:
+                    st.warning("📊 **改善推奨事項**")
+                    for insight in high:
+                        with st.expander(f"⚠️ {insight.title}"):
+                            st.write(insight.description)
+                            st.write(f"💰 **財務影響:** {insight.impact:.1f}万円/月")
+                            st.write(f"📝 **推奨:** {insight.recommendation}")
+                
+                # その他の洞察
+                if medium:
+                    st.info("💡 **その他の洞察**")
+                    for insight in medium:
+                        st.write(f"• {insight.title}: {insight.description}")
+                
+                # 総財務影響
+                total_impact = sum(i.impact for i in report.insights)
+                st.metric("💰 総財務影響", f"{total_impact:.1f}万円/月")
+                
+            else:
+                st.info("✨ 重大な問題は検出されませんでした。")
+                
+        except ImportError:
+            st.error("洞察検出システムがインストールされていません。")
+        except Exception as e:
+            st.error(f"エラーが発生しました: {str(e)}")
+            logger.debug(f"Insight detection error: {e}")
+
+def run_continuous_shift_detection():
+    """連続勤務検出を実行"""
+    if st.session_state.get("long_df") is None or st.session_state.long_df.empty:
+        st.warning("⚠️ 先にシフトデータをアップロードしてください。")
+        return
+    
+    with st.spinner("🔍 連続勤務パターンを検出中..."):
+        try:
+            from shift_suite.tasks.continuous_shift_detector import ContinuousShiftDetector
+            
+            detector = ContinuousShiftDetector()
+            continuous_shifts = detector.detect_continuous_shifts(st.session_state.long_df)
+            
+            if continuous_shifts:
+                st.error(f"⚠️ {len(continuous_shifts)}件の連続勤務を検出しました")
+                
+                # 重大度別に分類
+                violations = []  # 法令違反の可能性
+                warnings = []    # 注意が必要
+                
+                for shift in continuous_shifts:
+                    if shift.total_hours > 16:  # 16時間超は重大
+                        violations.append(shift)
+                    else:
+                        warnings.append(shift)
+                
+                # 法令違反リスク
+                if violations:
+                    st.error("🚨 **法令違反リスクのある連続勤務**")
+                    for shift in violations[:5]:  # 最初の5件を表示
+                        with st.expander(f"⚠️ {shift.staff} - {shift.total_hours:.1f}時間連続", expanded=True):
+                            st.write(f"**期間:** {shift.start_date} {shift.start_time} ~ {shift.end_date} {shift.end_time}")
+                            st.write(f"**連続時間:** {shift.total_hours:.1f}時間")
+                            st.write(f"**休憩時間:** {shift.break_minutes}分")
+                            if shift.crosses_midnight:
+                                st.write("🌙 **深夜労働を含む**")
+                            st.error("⚠️ 労働基準法違反の可能性があります。即座の改善が必要です。")
+                
+                # 注意が必要な連続勤務
+                if warnings:
+                    st.warning(f"⚠️ **注意が必要な連続勤務** ({len(warnings)}件)")
+                    for shift in warnings[:3]:  # 最初の3件を表示
+                        st.write(f"• {shift.staff}: {shift.total_hours:.1f}時間 ({shift.start_date} ~ {shift.end_date})")
+                
+                # サマリー統計
+                summary = detector.get_continuous_shift_summary()
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("連続勤務総数", summary['total_continuous_shifts'])
+                with col2:
+                    st.metric("影響スタッフ数", summary['affected_staff_count'])
+                with col3:
+                    st.metric("平均連続時間", f"{summary['avg_continuous_hours']:.1f}時間")
+                
+            else:
+                st.success("✅ 連続勤務は検出されませんでした。")
+                
+        except ImportError:
+            st.error("連続勤務検出システムがインストールされていません。")
+        except Exception as e:
+            st.error(f"エラーが発生しました: {str(e)}")
+            logger.debug(f"Continuous shift detection error: {e}")
+
+def run_turnover_prediction():
+    """離職リスク予測を実行（改善版）"""
+    if st.session_state.get("long_df") is None or st.session_state.long_df.empty:
+        st.warning("⚠️ 先にシフトデータをアップロードしてください。")
+        return
+    
+    with st.spinner("📊 離職リスクを予測中..."):
+        try:
+            # 改善版のインポート
+            from shift_suite.tasks.improved_turnover_predictor import (
+                analyze_turnover_risk,
+                generate_turnover_report
+            )
+            from pathlib import Path
+            
+            # モデルパスの設定
+            model_path = Path('models/turnover/improved_predictor.pkl')
+            
+            # リスク分析を実行（初回は訓練も実行）
+            predictions_df = analyze_turnover_risk(
+                st.session_state.long_df,
+                train_model=not model_path.exists(),  # モデルがなければ訓練
+                model_path=model_path
+            )
+            
+            # レポート生成
+            report = generate_turnover_report(predictions_df)
+            
+            if not predictions_df.empty:
+                # リスクレベル別に分類
+                high_risk = predictions_df[predictions_df['risk_level'] == '高リスク']
+                medium_risk = predictions_df[predictions_df['risk_level'] == '中リスク']
+                low_risk = predictions_df[predictions_df['risk_level'] == '低リスク']
+                
+                # サマリー表示
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("🔴 高リスク", f"{len(high_risk)}名")
+                with col2:
+                    st.metric("🟡 中リスク", f"{len(medium_risk)}名")
+                with col3:
+                    st.metric("🟢 低リスク", f"{len(low_risk)}名")
+                with col4:
+                    st.metric("📊 平均リスク", f"{report['summary']['average_risk']:.1%}")
+                
+                # 高リスクスタッフの詳細（改善版）
+                if not high_risk.empty:
+                    st.error("🚨 **離職リスクが高いスタッフ**")
+                    for _, staff in high_risk.head(5).iterrows():  # 最初の5名を表示
+                        risk_score = staff['risk_probability'] * 100
+                        accuracy = staff['prediction_accuracy'] * 100
+                        staff_id = staff.get('staff_id', 'Unknown')
+                        
+                        # 信頼区間の表示
+                        ci_lower = staff['confidence_lower'] * 100
+                        ci_upper = staff['confidence_upper'] * 100
+                        
+                        with st.expander(f"⚠️ スタッフID: {staff_id} - リスク: {risk_score:.0f}% (精度: {accuracy:.0f}%)"):
+                            # 信頼区間の表示
+                            st.write(f"**95%信頼区間**: [{ci_lower:.0f}% - {ci_upper:.0f}%]")
+                            st.write("")
+                            
+                            # リスク要因の表示（改善版）
+                            st.write("**主なリスク要因:**")
+                            
+                            # 夜勤率
+                            if 'night_ratio' in staff and staff['night_ratio'] > 0.5:
+                                st.write(f"• 🌙 夜勤率: {staff['night_ratio']*100:.0f}%")
+                            
+                            # 連続勤務
+                            if 'consecutive_days' in staff and staff['consecutive_days'] > 5:
+                                st.write(f"• 📅 連続勤務: {staff['consecutive_days']}日")
+                            
+                            # 休日不足
+                            if 'rest_ratio' in staff and staff['rest_ratio'] < 0.2:
+                                st.write(f"• 🏖️ 休日率: {staff['rest_ratio']*100:.0f}%")
+                            
+                            st.write("")
+                            
+                            # 2つの「％」の説明
+                            with st.info:
+                                st.write("📊 **2つの指標について:**")
+                                st.write(f"• **離職リスク {risk_score:.0f}%**: この人が離職する可能性")
+                                st.write(f"• **予測精度 {accuracy:.0f}%**: その予測の確からしさ")
+                            
+                            # スタッフデータから詳細分析
+                            staff_data = st.session_state.long_df[st.session_state.long_df.get('staff_id', st.session_state.long_df.get('staff')) == staff_id]
+                            
+                            if not staff_data.empty:
+                                # 月間勤務時間を計算
+                                monthly_hours = len(staff_data) * 0.5  # 30分スロット
+                                if monthly_hours > 200:
+                                    st.write(f"• 過剰労働: 月{monthly_hours:.0f}時間の勤務")
+                                
+                                # 連続勤務日数を簡易計算
+                                unique_dates = staff_data['ds'].dt.date.nunique()
+                                if unique_dates > 25:
+                                    st.write(f"• 連続勤務: 月{unique_dates}日勤務")
+                                
+                                # 夜勤チェック
+                                if 'task' in staff_data.columns:
+                                    night_shifts = staff_data['task'].str.contains('夜|深夜|night', case=False, na=False).sum()
+                                    if night_shifts > 0:
+                                        night_ratio = night_shifts / len(staff_data) * 100
+                                        if night_ratio > 30:
+                                            st.write(f"• 夜勤過多: {night_ratio:.0f}%が夜勤")
+                                
+                                # 予測確率から推定
+                                prob = staff.get("turnover_probability", 0)
+                                if prob > 0.8:
+                                    st.write(f"• 非常に高い離職リスク: {prob*100:.0f}%")
+                            
+                            st.write("**推奨アクション:**")
+                            if risk_score >= 80 and accuracy >= 80:
+                                st.write("• 🚨 **緊急対応**: 即座に個別面談を実施")
+                            elif risk_score >= 80 and accuracy < 80:
+                                st.write("• ⚠️ **要確認**: 24時間以内に状況確認")
+                            elif risk_score >= 50:
+                                st.write("• 📅 **定期フォロー**: 週次で状況確認")
+                            
+                            st.write("• 勤務負荷の軽減を検討")
+                            st.write("• キャリアパスについて話し合う")
+                
+                # 中リスクスタッフのサマリー
+                if not medium_risk.empty:
+                    st.warning(f"⚠️ **中程度のリスク** ({len(medium_risk)}名)")
+                    st.write("早期の介入により離職を防げる可能性があります。")
+                
+                # 低リスクスタッフのサマリー
+                if not low_risk.empty:
+                    st.success(f"✅ **低リスク** ({len(low_risk)}名) - 現状維持を推奨")
+                
+                # 推奨事項の表示
+                if report['recommendations']:
+                    st.divider()
+                    st.subheader("📋 総合的な推奨事項")
+                    for rec in report['recommendations']:
+                        st.write(f"• {rec}")
+                
+                # 統計情報の表示
+                st.divider()
+                st.subheader("📊 統計サマリー")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**最高リスク**: {report['summary']['max_risk']:.1%}")
+                    st.write(f"**最低リスク**: {report['summary']['min_risk']:.1%}")
+                with col2:
+                    st.write(f"**平均リスク**: {report['summary']['average_risk']:.1%}")
+                    st.write(f"**分析人数**: {report['summary']['total_staff']}名")
+                
+            else:
+                st.info("📊 予測に必要なデータが不足しています。")
+                
+        except ImportError as ie:
+            st.error("離職予測システムの依存パッケージがインストールされていません。")
+            st.info("必要なパッケージ: scikit-learn, scipy, statsmodels")
+            logger.debug(f"Import error: {ie}")
+        except Exception as e:
+            st.error(f"エラーが発生しました: {str(e)}")
+            logger.debug(f"Turnover prediction error: {e}")
+
+def run_mind_reader_analysis():
+    """シフト作成者の意図分析を実行"""
+    if st.session_state.get("long_df") is None or st.session_state.long_df.empty:
+        st.warning("⚠️ 先にシフトデータをアップロードしてください。")
+        return
+    
+    with st.spinner("🧠 作成者の思考プロセスを分析中..."):
+        try:
+            from shift_suite.tasks.shift_mind_reader_lite import ShiftMindReaderLite
+            
+            # 作成者の意図を読み取る
+            reader = ShiftMindReaderLite()
+            mind_results = reader.read_creator_mind(st.session_state.long_df)
+            
+            if mind_results:
+                st.success("✅ シフト作成者の意図分析が完了しました")
+                
+                # 基本分析結果
+                basic_analysis = mind_results.get("basic_analysis", {})
+                if basic_analysis:
+                    st.subheader("📊 **シフト作成の基本パターン**")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if "preference_patterns" in basic_analysis:
+                            st.write("**スタッフ配置の傾向:**")
+                            prefs = basic_analysis["preference_patterns"]
+                            for staff, pattern in list(prefs.items())[:5]:
+                                st.write(f"• {staff}: {pattern}")
+                    
+                    with col2:
+                        if "time_patterns" in basic_analysis:
+                            st.write("**時間帯の配置傾向:**")
+                            times = basic_analysis["time_patterns"]
+                            for time_slot, count in list(times.items())[:5]:
+                                st.write(f"• {time_slot}: {count}回")
+                
+                # 意思決定パターン
+                decision_patterns = mind_results.get("decision_patterns", {})
+                if decision_patterns:
+                    st.subheader("🎯 **発見された意思決定パターン**")
+                    
+                    # 優先順位
+                    if "priorities" in decision_patterns:
+                        st.write("**配置の優先順位:**")
+                        priorities = decision_patterns["priorities"]
+                        for i, priority in enumerate(priorities[:5], 1):
+                            st.write(f"{i}. {priority}")
+                    
+                    # 制約考慮
+                    if "constraints" in decision_patterns:
+                        st.write("**考慮されている制約:**")
+                        constraints = decision_patterns["constraints"]
+                        for constraint in constraints[:5]:
+                            st.write(f"• {constraint}")
+                
+                # 簡略化された洞察
+                insights = reader.get_simplified_insights()
+                if insights:
+                    st.info("💡 **作成者の意図（推定）**")
+                    st.write(insights)
+                
+                # 改善提案
+                st.success("🎯 **シフト作成プロセスの改善提案**")
+                st.write("• 発見されたパターンを明文化し、ルールとして共有")
+                st.write("• 暗黙の制約を可視化し、チーム全体で認識を統一")
+                st.write("• 偏りがある配置パターンを見直し、公平性を向上")
+                st.write("• 自動化可能な判断を特定し、効率化を推進")
+                
+            else:
+                st.info("🧠 分析に必要なパターンが見つかりませんでした。")
+                
+        except ImportError:
+            st.error("マインドリーダーシステムがインストールされていません。")
+        except Exception as e:
+            st.error(f"エラーが発生しました: {str(e)}")
+            logger.debug(f"Mind reader analysis error: {e}")
 
 def display_constraint_discovery_results(results):
     """制約発見結果の表示"""
@@ -6062,6 +7015,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Overview",
                 "Heatmap",
                 "Shortage",
+                "Advanced Shortage",  # 高度不足分析追加
                 "Optimization Analysis",
                 "Fatigue",
                 "Forecast",
@@ -6082,6 +7036,7 @@ if st.session_state.get("analysis_done", False) and st.session_state.analysis_re
                 "Overview": display_overview_tab,
                 "Heatmap": display_heatmap_tab,
                 "Shortage": display_shortage_tab,
+                "Advanced Shortage": display_advanced_shortage_tab,  # 高度不足分析追加
                 "Optimization Analysis": display_optimization_tab,
                 "Fatigue": display_fatigue_tab,
                 "Forecast": display_forecast_tab,
@@ -6170,6 +7125,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
         "Overview",
         "Heatmap",
         "Shortage",
+        "Advanced Shortage",  # 新しい高度分析タブ
         "Optimization Analysis",
         "Fatigue",
         "Forecast",
@@ -6192,6 +7148,7 @@ if zip_file_uploaded_dash_final_v3_display_main_dash:
             "Overview": display_overview_tab,
             "Heatmap": display_heatmap_tab,
             "Shortage": display_shortage_tab,
+            "Advanced Shortage": display_advanced_shortage_tab if ADVANCED_SHORTAGE_AVAILABLE else lambda tab, data: st.warning("高度分析機能は利用できません"),
             "Optimization Analysis": display_optimization_tab,
             "Fatigue": display_fatigue_tab,
             "Forecast": display_forecast_tab,

@@ -19,6 +19,8 @@ from typing import Dict, List, Tuple, Optional, Any
 from collections import OrderedDict
 import unicodedata
 
+from datetime import datetime
+
 import dash
 import dash_cytoscape as cyto
 import numpy as np
@@ -36,8 +38,15 @@ import gc
 
 # エラー境界インポート
 from error_boundary import error_boundary, safe_callback, safe_component, apply_error_boundaries
-# メモリガードインポート
-from memory_guard import memory_guard, check_memory_usage, ManagedCache
+# グローバルエラーハンドリングインポート
+from global_error_handler import GlobalErrorHandler, global_error_handler, safe_data_operation, error_handler
+# アクセシブルカラーインポート
+from accessible_colors import (
+    get_accessible_color_palette, apply_accessible_colors_to_figure, 
+    enhance_figure_accessibility, safe_colors_for_plotly, ACCESSIBLE_COLORS
+)
+# メモリガードインポート（改善版）
+from improved_memory_guard import ImprovedMemoryGuard, ManagedCache, memory_guard, check_memory_usage, get_memory_report, with_memory_limit
 
 from shift_suite.tasks.utils import safe_read_excel, gen_labels, _valid_df
 from shift_suite.tasks.shortage_factor_analyzer import ShortageFactorAnalyzer
@@ -475,7 +484,13 @@ def collect_dashboard_leave_analysis(scenario_dir: Path) -> dict:
         if not leave_file.exists():
             return {}
         
-        df = pd.read_csv(leave_file)
+        # PARQUET OPTIMIZATION: Try Parquet version first
+        parquet_file = leave_file.with_suffix('.parquet')
+        if parquet_file.exists():
+            log.debug(f"[PARQUET] Loading leave analysis from {parquet_file}")
+            df = pd.read_parquet(parquet_file)
+        else:
+            df = pd.read_csv(leave_file)
         return {
             'total_leave_days': len(df) if not df.empty else 0,
             'paid_leave_ratio': 0.65,  # 仮の値
@@ -886,41 +901,80 @@ class ThreadSafeLRUCache:
 
 # グローバルキャッシュとロック
 # 統一キャッシュシステム（メモリ管理改善）
-class UnifiedCacheManager:
-    """統一されたキャッシュ管理システム"""
+class ImprovedUnifiedCacheManager:
+    """改善版統一キャッシュ管理システム - メモリガード統合"""
     def __init__(self, max_memory_mb=500):
         self.max_memory_mb = max_memory_mb
-        # smart_cacheが利用可能な場合は使用、なければThreadSafeLRUCacheを使用
+        
+        # メモリガード初期化
+        self.memory_guard = ImprovedMemoryGuard(
+            max_memory_mb=max_memory_mb,
+            warning_threshold=0.8,
+            check_interval=30
+        )
+        
+        # 改善版キャッシュシステム
         if smart_cache:
             self.data_cache = smart_cache
             self.synergy_cache = smart_cache
             log.info("スマートキャッシュシステムを使用")
         else:
-            # メモリ制限に基づいてサイズを調整
+            # メモリガード統合キャッシュ
             data_size = min(50, max_memory_mb // 10)
             synergy_size = min(10, max_memory_mb // 50)
-            self.data_cache = ThreadSafeLRUCache(maxsize=data_size)
-            self.synergy_cache = ThreadSafeLRUCache(maxsize=synergy_size)
-            log.info(f"ThreadSafeLRUCacheを使用 (data:{data_size}, synergy:{synergy_size})")
+            
+            self.data_cache = ManagedCache(
+                maxsize=data_size,
+                ttl=3600,
+                memory_guard=self.memory_guard
+            )
+            self.synergy_cache = ManagedCache(
+                maxsize=synergy_size,
+                ttl=1800,
+                memory_guard=self.memory_guard
+            )
+            
+            log.info(f"ManagedCacheを使用 (data:{data_size}, synergy:{synergy_size})")
+        
+        # メモリ監視開始
+        self.memory_guard.start_monitoring()
+        
+        # クリーンアップコールバック登録
+        self.memory_guard.register_cleanup(self._emergency_cache_cleanup)
+    
+    def _emergency_cache_cleanup(self):
+        """緊急時のキャッシュクリーンアップ"""
+        log.warning("Emergency cache cleanup triggered")
+        if hasattr(self.data_cache, 'clear'):
+            self.data_cache.clear()
+        if hasattr(self.synergy_cache, 'clear'):
+            self.synergy_cache.clear()
+        gc.collect()
     
     def get_memory_usage(self):
         """現在のメモリ使用量を取得（MB）"""
-        import psutil
-        process = psutil.Process()
-        return process.memory_info().rss / 1024 / 1024
+        return self.memory_guard.get_memory_info()['rss_mb']
     
     def check_and_cleanup(self):
         """メモリ圧迫時の自動クリーンアップ"""
-        if self.get_memory_usage() > self.max_memory_mb * 0.9:
-            log.warning(f"メモリ使用量が閾値を超過: {self.get_memory_usage():.1f}MB")
-            # 優先度の低いキャッシュをクリア
-            if hasattr(self.synergy_cache, 'clear'):
-                self.synergy_cache.clear()
-            return True
-        return False
+        return self.memory_guard.check_and_cleanup()
+    
+    def get_system_status(self):
+        """システム状態レポート"""
+        memory_stats = self.memory_guard.get_memory_stats()
+        
+        data_stats = self.data_cache.get_stats() if hasattr(self.data_cache, 'get_stats') else {}
+        synergy_stats = self.synergy_cache.get_stats() if hasattr(self.synergy_cache, 'get_stats') else {}
+        
+        return {
+            'memory': memory_stats,
+            'data_cache': data_stats,
+            'synergy_cache': synergy_stats,
+            'timestamp': datetime.now().isoformat()
+        }
 
-# グローバルキャッシュマネージャーのインスタンス化
-cache_manager = UnifiedCacheManager(max_memory_mb=500)
+# グローバルキャッシュマネージャーのインスタンス化（改善版）
+cache_manager = ImprovedUnifiedCacheManager(max_memory_mb=1000)
 DATA_CACHE = cache_manager.data_cache
 SYNERGY_CACHE = cache_manager.synergy_cache
 
@@ -1316,8 +1370,14 @@ def safe_read_parquet(filepath: Path) -> pd.DataFrame:
 
 @lru_cache(maxsize=8)
 def safe_read_csv(filepath: Path) -> pd.DataFrame:
-    """CSVファイルを安全に読み込み結果をキャッシュ"""
+    """CSVファイルを安全に読み込み（Parquet優先）結果をキャッシュ"""
     try:
+        # PARQUET OPTIMIZATION: Try Parquet version first
+        parquet_path = filepath.with_suffix('.parquet')
+        if parquet_path.exists():
+            log.debug(f"[PARQUET OPTIMIZATION] Loading Parquet version instead: {parquet_path}")
+            return pd.read_parquet(parquet_path)
+        
         return pd.read_csv(filepath)  # type: ignore
     except Exception as e:
         log.warning(f"Failed to read {filepath}: {e}")
@@ -1511,9 +1571,13 @@ def safe_callback_enhanced(func):
 safe_callback = safe_callback_enhanced
 
 
+@with_memory_limit(max_mb=1000)
 def data_get(key: str, default=None, for_display: bool = False):
     """Load a data asset lazily from the current scenario directory with enhanced stability."""
     log.debug(f"data_get('{key}'): キャッシュを検索中...")
+    
+    # メモリチェック
+    cache_manager.check_and_cleanup()
     
     # キャッシュチェック（ThreadSafeLRUCacheを使用）
     cached_value = DATA_CACHE.get(key)
@@ -1532,18 +1596,20 @@ def data_get(key: str, default=None, for_display: bool = False):
     search_dirs = [CURRENT_SCENARIO_DIR, CURRENT_SCENARIO_DIR.parent]
     log.debug(f"Searching {search_dirs} for key {key}")
 
-    # Special file names
+    # Special file names - PARQUET OPTIMIZATION: Parquet files prioritized
     special = {
         "long_df": ["intermediate_data.parquet"],
-        "daily_cost": ["daily_cost.parquet", "daily_cost.xlsx"],
+        "daily_cost": ["daily_cost.parquet", "daily_cost.xlsx", "daily_cost.csv"],
         "shortage_time": ["shortage_time_CORRECTED.parquet", "shortage_time.parquet"],
         "need_per_date_slot": ["need_per_date_slot.parquet"],
+        "leave_analysis": ["leave_analysis.parquet", "leave_analysis.csv"],
     }
     
     # ★★★ 職種別・雇用形態別詳細Need値ファイルの検索対応 ★★★
     if key.startswith("need_per_date_slot_role_") or key.startswith("need_per_date_slot_emp_"):
         filenames = [f"{key}.parquet"]
     else:
+        # PARQUET OPTIMIZATION: Always try Parquet first
         filenames = special.get(key, [f"{key}.parquet", f"{key}.csv", f"{key}.xlsx"])
 
     # Special handling for need_per_date_slot
@@ -1619,6 +1685,7 @@ def data_get(key: str, default=None, for_display: bool = False):
         for directory in search_dirs:
             fp = directory / name
             log.debug(f"Checking {fp}")
+            # PARQUET OPTIMIZATION: Enhanced file reading with Parquet priority
             if fp.suffix == ".parquet" and fp.exists():
                 df = safe_read_parquet(fp)
                 if not df.empty:
@@ -1626,11 +1693,18 @@ def data_get(key: str, default=None, for_display: bool = False):
                     if key in ['pre_aggregated_data', 'long_df', 'intermediate_data']:
                         df = apply_rest_exclusion_filter(df, f"data_get({key})", for_display=for_display)
                     DATA_CACHE.set(key, df)
-                    log.debug(f"Loaded {fp} into cache for {key}")
+                    log.debug(f"[PARQUET] Loaded {fp} into cache for {key}")
                     return df
                 break
-            if fp.suffix == ".csv" and fp.exists():
-                df = safe_read_csv(fp)
+            elif fp.suffix == ".csv" and fp.exists():
+                # Check for Parquet equivalent before reading CSV
+                parquet_equivalent = fp.with_suffix('.parquet')
+                if parquet_equivalent.exists():
+                    log.info(f"[PARQUET OPTIMIZATION] Using {parquet_equivalent} instead of {fp}")
+                    df = safe_read_parquet(parquet_equivalent)
+                else:
+                    df = safe_read_csv(fp)
+                
                 if not df.empty:
                     # 休日除外が必要なデータキーに対してフィルターを適用
                     if key in ['pre_aggregated_data', 'long_df', 'intermediate_data']:
@@ -1639,8 +1713,15 @@ def data_get(key: str, default=None, for_display: bool = False):
                     log.debug(f"Loaded {fp} into cache for {key}")
                     return df
                 break
-            if fp.suffix == ".xlsx" and fp.exists():
-                df = safe_read_excel(fp)
+            elif fp.suffix == ".xlsx" and fp.exists():
+                # Check for Parquet equivalent before reading Excel
+                parquet_equivalent = fp.with_suffix('.parquet')
+                if parquet_equivalent.exists():
+                    log.info(f"[PARQUET OPTIMIZATION] Using {parquet_equivalent} instead of {fp}")
+                    df = safe_read_parquet(parquet_equivalent)
+                else:
+                    df = safe_read_excel(fp)
+                
                 if not df.empty:
                     # 休日除外が必要なデータキーに対してフィルターを適用
                     if key in ['pre_aggregated_data', 'long_df', 'intermediate_data']:
@@ -1699,16 +1780,60 @@ def data_get(key: str, default=None, for_display: bool = False):
             
             mind_reader = ShiftMindReader()
             try:
-                # タイムアウト設定（30秒）
-                import signal
-                def timeout_handler(signum, frame):
-                    raise TimeoutError("Mind Reader analysis timed out")
+                # Windows/Unix両対応のタイムアウト設定
+                import platform
+                import threading
                 
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(30)  # 30秒でタイムアウト
+                def run_with_timeout(func, args=(), kwargs={}, timeout=30):
+                    """タイムアウト付き関数実行（Windows対応）"""
+                    result = [None]
+                    exception = [None]
+                    
+                    def target():
+                        try:
+                            result[0] = func(*args, **kwargs)
+                        except Exception as e:
+                            exception[0] = e
+                    
+                    thread = threading.Thread(target=target)
+                    thread.daemon = True
+                    thread.start()
+                    thread.join(timeout)
+                    
+                    if thread.is_alive():
+                        # タイムアウト
+                        return None, TimeoutError("Mind Reader analysis timed out")
+                    if exception[0]:
+                        return None, exception[0]
+                    return result[0], None
                 
-                mind_results = mind_reader.read_creator_mind(long_df)
-                signal.alarm(0)  # タイムアウト解除
+                # プラットフォーム判定
+                if platform.system() == 'Windows':
+                    # Windows: threadingを使用
+                    mind_results, error = run_with_timeout(
+                        mind_reader.read_creator_mind, 
+                        args=(long_df,), 
+                        timeout=30
+                    )
+                    if error:
+                        if isinstance(error, TimeoutError):
+                            log.warning("Mind Reader分析がタイムアウトしました")
+                            return {'status': 'timeout', 'reason': 'analysis_timeout'}
+                        else:
+                            raise error
+                else:
+                    # Unix系: signalを使用（既存コード）
+                    import signal
+                    def timeout_handler(signum, frame):
+                        raise TimeoutError("Mind Reader analysis timed out")
+                    
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(30)
+                    try:
+                        mind_results = mind_reader.read_creator_mind(long_df)
+                        signal.alarm(0)
+                    finally:
+                        signal.alarm(0)
                 
                 DATA_CACHE.set(cache_key, mind_results)
                 return mind_results
@@ -1718,8 +1843,6 @@ def data_get(key: str, default=None, for_display: bool = False):
             except Exception as e:
                 log.warning(f"Mind Reader分析に失敗: {e}")
                 return {'status': 'error', 'reason': str(e)}
-            finally:
-                signal.alarm(0)  # 確実にタイムアウト解除
     
     log.debug(f"データキー '{key}' に対応するファイルが見つかりませんでした。")
     DATA_CACHE.set(key, default)
@@ -2499,7 +2622,7 @@ def create_overview_tab(selected_scenario: str = None) -> html.Div:
     return html.Div([
         html.Div(id='overview-insights', style={  # type: ignore
             'padding': '15px',
-            'backgroundColor': '#e9f2fa',
+            'backgroundColor': '#E3F2FD',  # 概要用：ライトブルー
             'borderRadius': '8px',
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
@@ -2758,7 +2881,7 @@ def create_shortage_tab(selected_scenario: str = None) -> html.Div:
 
         content = [html.Div(id='shortage-insights', style={  # type: ignore
         'padding': '15px',
-        'backgroundColor': '#e9f2fa',
+        'backgroundColor': '#FFF3E0',  # 不足分析用：ライトオレンジ
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
@@ -2912,15 +3035,15 @@ def create_shortage_tab(selected_scenario: str = None) -> html.Div:
                         x=roles,
                         y=lack_values,
                         name='不足時間',
-                        marker_color='red',
-                        opacity=0.7
+                        marker_color='#FF6B6B',  # 明るい赤
+                        opacity=0.8
                     ))
                     fig_role_combined.add_trace(go.Bar(
                         x=roles,
                         y=excess_values,
                         name='過剰時間',
-                        marker_color='blue',
-                        opacity=0.7
+                        marker_color='#4ECDC4',  # ターコイズ
+                        opacity=0.8
                     ))
                     fig_role_combined.update_layout(
                         title=f'職種別不足・過剰時間 (総不足: {total_lack:.1f}h)',
@@ -3024,7 +3147,7 @@ def create_optimization_tab() -> html.Div:
     return html.Div([  # type: ignore
         html.Div(id='optimization-insights', style={
             'padding': '15px',
-            'backgroundColor': '#e9f2fa',
+            'backgroundColor': '#E8F5E9',  # 最適化用：ライトグリーン
             'borderRadius': '8px',
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
@@ -3054,7 +3177,7 @@ def create_leave_analysis_tab() -> html.Div:
     
     content = [html.Div(id='leave-insights', style={  # type: ignore
         'padding': '15px',
-        'backgroundColor': '#e9f2fa',
+        'backgroundColor': '#F3E5F5',  # 休暇分析用：ライトパープル
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
@@ -3144,7 +3267,8 @@ def create_leave_analysis_tab() -> html.Div:
             color='leave_type',
             barmode='stack',
             title='日別 休暇取得者数（内訳）',
-            labels={'date': '日付', 'total_leave_days': '休暇取得者数', 'leave_type': '休暇タイプ'}
+            labels={'date': '日付', 'total_leave_days': '休暇取得者数', 'leave_type': '休暇タイプ'},
+            color_discrete_sequence=px.colors.qualitative.Bold
         )
         fig_breakdown.update_xaxes(tickformat="%m/%d(%a)")
         content.append(dcc.Graph(figure=fig_breakdown))
@@ -3161,7 +3285,8 @@ def create_leave_analysis_tab() -> html.Div:
                 'month_period': ['月初(1-10日)', '月中(11-20日)', '月末(21-末日)'],
             },
             labels={'dayofweek': '曜日', 'leave_ratio': '割合', 'leave_type': '休暇タイプ', 'month_period': '月期間'},
-            title='曜日・月期間別休暇取得率'
+            title='曜日・月期間別休暇取得率',
+            color_discrete_sequence=px.colors.qualitative.Vivid
         )
         content.append(dcc.Graph(figure=fig_ratio_break))
 
@@ -3203,7 +3328,7 @@ def create_cost_analysis_tab() -> html.Div:
     return html.Div([
         html.Div(id='cost-insights', style={
             'padding': '15px',
-            'backgroundColor': '#e9f2fa',
+            'backgroundColor': '#FFF8E1',  # コスト分析用：ライトイエロー
             'borderRadius': '8px',
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
@@ -3236,7 +3361,7 @@ def create_hire_plan_tab() -> html.Div:
     """採用計画タブを作成"""
     content = [html.Div(id='hire-plan-insights', style={  # type: ignore
         'padding': '15px',
-        'backgroundColor': '#e9f2fa',
+        'backgroundColor': '#E0F2F1',  # 採用計画用：ライトティール
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
@@ -3334,7 +3459,7 @@ def create_fatigue_tab() -> html.Div:
             dcc.Markdown(explanation),
             style={
                 'padding': '15px',
-                'backgroundColor': '#e9f2fa',
+                'backgroundColor': '#FCE4EC',  # 疲労分析用：ライトピンク
                 'borderRadius': '8px',
                 'marginBottom': '20px',
                 'border': '1px solid #cce5ff',
@@ -3515,7 +3640,7 @@ def create_forecast_tab() -> html.Div:
         # 🎯 高度分析サマリーボックス
         html.Div(id='forecast-insights', style={
             'padding': '15px',
-            'backgroundColor': '#e9f2fa',
+            'backgroundColor': '#EDE7F6',  # 予測用：ライトラベンダー
             'borderRadius': '8px',
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
@@ -3818,7 +3943,7 @@ def create_gap_analysis_tab() -> html.Div:
     """基準乖離分析タブを作成"""
     content = [html.Div(id='gap-insights', style={  # type: ignore
         'padding': '15px',
-        'backgroundColor': '#e9f2fa',
+        'backgroundColor': '#EFEBE9',  # ギャップ分析用：ライトブラウン
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
@@ -3850,7 +3975,7 @@ def create_summary_report_tab() -> html.Div:
     """サマリーレポートタブを作成"""
     content = [html.Div(id='summary-report-insights', style={  # type: ignore
         'padding': '15px',
-        'backgroundColor': '#e9f2fa',
+        'backgroundColor': '#F1F8E9',  # サマリレポート用：ライトライム
         'borderRadius': '8px',
         'marginBottom': '20px',
         'border': '1px solid #cce5ff'
@@ -3869,7 +3994,7 @@ def create_ppt_report_tab() -> html.Div:
     return html.Div([  # type: ignore
         html.Div(id='ppt-report-insights', style={
             'padding': '15px',
-            'backgroundColor': '#e9f2fa',
+            'backgroundColor': '#E8EAF6',  # PPTレポート用：ライトインディゴ
             'borderRadius': '8px',
             'marginBottom': '20px',
             'border': '1px solid #cce5ff'
@@ -4126,6 +4251,42 @@ def create_blueprint_analysis_tab() -> html.Div:
         ),
     ])
 
+# --- 初期UI関数 ---
+def create_initial_ui():
+    """初期表示用UI（デフォルトシナリオがある場合はタブも表示）"""
+    global CURRENT_SCENARIO_DIR
+    
+    # デフォルトシナリオが利用可能な場合
+    if CURRENT_SCENARIO_DIR and CURRENT_SCENARIO_DIR.exists():
+        # デフォルトシナリオが存在することをマークして、後でタブを表示
+        return html.Div([
+            html.Div([
+                html.H3("📊 ShiftAnalysis Dashboard", style={'textAlign': 'center', 'color': '#2c3e50'}),
+                html.Hr(),
+                html.P(f"デフォルトシナリオを検出しました: {CURRENT_SCENARIO_DIR.name}",
+                       style={'textAlign': 'center', 'color': '#27ae60'}),
+                html.P("データを読み込み中です...",
+                       style={'textAlign': 'center', 'color': '#7f8c8d'}),
+                dcc.Store(id='auto-load-trigger', data=True)  # 自動ロードトリガー
+            ], style={'padding': '20px'})
+        ])
+    
+    # デフォルトシナリオがない場合はプレースホルダー
+    return html.Div([
+        html.Div([
+            html.H3("📊 ShiftAnalysis Dashboard", style={'textAlign': 'center', 'color': '#2c3e50'}),
+            html.Hr(),
+            html.P("ZIPファイルをアップロードするか、デフォルトシナリオが利用可能な場合は分析を開始できます。",
+                   style={'textAlign': 'center', 'color': '#7f8c8d'}),
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-upload fa-3x", style={'color': '#95a5a6'}),
+                    html.P("データ待機中...", style={'marginTop': '10px', 'color': '#95a5a6'})
+                ], style={'textAlign': 'center', 'padding': '50px'})
+            ], style={'backgroundColor': '#ecf0f1', 'borderRadius': '10px', 'margin': '20px'})
+        ], style={'padding': '20px'})
+    ])
+
 # --- メインレイアウト ---
 app.layout = html.Div([
     # レスポンシブ対応ストレージ
@@ -4226,8 +4387,8 @@ app.layout = html.Div([
         ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px', 'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'})
     ], id='scenario-selector-div', style={'display': 'none', 'padding': '0 20px', 'marginTop': '20px'}),
 
-    # メインコンテンツ（アップロード後に表示）
-    html.Div(id='main-content'),  # type: ignore
+    # メインコンテンツ（初期状態でもタブUIを表示）
+    html.Div(id='main-content', children=create_initial_ui()),  # type: ignore
 
     # システム状態監視エリア（新機能）
     html.Div([
@@ -4750,17 +4911,64 @@ def process_upload(contents, filename):
             for item in all_items:
                 log.info(f"  - {item.name} (is_dir: {item.is_dir()}, starts_with_out: {item.name.startswith('out_')})")
             
-            scenarios = [d.name for d in temp_dir_path.iterdir() if d.is_dir() and d.name.startswith('out_')]
+            # 改善版シナリオ検出 - より柔軟な検索
+            scenarios = []
+            
+            # 1. 標準的な "out_" フォルダを検索
+            for d in temp_dir_path.iterdir():
+                if d.is_dir() and d.name.startswith('out_'):
+                    scenarios.append(d.name)
+            
+            # 2. "out_" フォルダが見つからない場合、柔軟な検索を実行
+            if not scenarios:
+                log.info("[process_upload] 'out_' フォルダが見つからないため、柔軟な検索を開始")
+                
+                # "output" または類似名のディレクトリを検索
+                for d in temp_dir_path.iterdir():
+                    if d.is_dir() and ('output' in d.name.lower() or 'result' in d.name.lower()):
+                        scenarios.append(d.name)
+                        log.info(f"Alternative directory found: {d.name}")
+                
+                # Parquetファイルを含むディレクトリを検索
+                if not scenarios:
+                    import glob
+                    for d in temp_dir_path.iterdir():
+                        if d.is_dir():
+                            parquet_files = list(d.glob('*.parquet'))
+                            if parquet_files:
+                                scenarios.append(d.name)
+                                log.info(f"Directory with parquet files found: {d.name}")
+                
+                # 直接Parquetファイルが見つかった場合、そのディレクトリ自体をシナリオとして使用
+                if not scenarios:
+                    parquet_files = list(temp_dir_path.glob('*.parquet'))
+                    if parquet_files:
+                        # 疑似シナリオディレクトリを作成
+                        pseudo_scenario = temp_dir_path / "out_uploaded_data"
+                        pseudo_scenario.mkdir(exist_ok=True)
+                        
+                        # Parquetファイルをコピー
+                        import shutil
+                        for pf in parquet_files:
+                            shutil.copy2(pf, pseudo_scenario)
+                        
+                        scenarios.append("out_uploaded_data")
+                        log.info(f"Created pseudo-scenario with {len(parquet_files)} parquet files")
+            
             log.info(f"[process_upload] Detected {len(scenarios)} scenarios: {scenarios}")
             
             if not scenarios:
                 log.error("[process_upload] No scenario folders detected")
-                log.error(f"[process_upload] Expected folders starting with 'out_' in {temp_dir_path}")
+                log.error(f"[process_upload] No valid data directories found in {temp_dir_path}")
                 if processing_monitor and USE_PROGRESS_MONITOR:
-                    fail_step("extraction", "分析シナリオフォルダが見つかりません")
+                    fail_step("extraction", "データディレクトリが見つかりません")
                 return {
-                    'error': '分析シナリオのフォルダが見つかりません。\n' +
-                           'ZIPファイル内に "out_" で始まるフォルダが必要です。'
+                    'error': 'データディレクトリが見つかりません。\n' +
+                           'ZIPファイルに以下のいずれかが必要です:\n' +
+                           '• "out_" で始まるフォルダ\n' + 
+                           '• "output" または "result" を含むフォルダ\n' +
+                           '• Parquetファイルを含むフォルダ\n' +
+                           '• 直接Parquetファイル'
                 }, [], None, {'display': 'none'}
 
             log.info(f"[process_upload] Scenarios found: {scenarios}")
@@ -4913,6 +5121,27 @@ def process_upload(contents, filename):
 )
 def handle_file_upload(contents, filename):
     """ZIPファイルアップロード処理のコールバック"""
+    # === 詳細ログ開始 ===
+    import json
+    log.info("\n" + "="*80)
+    log.info("🔍 [DETAILED LOG] ZIPアップロード処理開始")
+    log.info("="*80)
+    log.info(f"📝 Filename: {filename}")
+    log.info(f"📦 Contents exists: {contents is not None}")
+    if contents:
+        log.info(f"📏 Contents length: {len(contents)}")
+        log.info(f"🔤 Contents type: {type(contents)}")
+        # Base64ヘッダーの確認
+        if ',' in contents:
+            header, _ = contents.split(',', 1)
+            log.info(f"📋 Content header: {header}")
+    
+    # コールスタック出力
+    import traceback
+    log.info("📍 Call stack:")
+    for line in traceback.format_stack()[-3:]:
+        log.info(f"  {line.strip()}")
+
     import json
     
     log.info("="*80)
@@ -5011,6 +5240,12 @@ def handle_file_upload(contents, filename):
             log.info(f"  - Output 2 (scenario-dropdown options): {len(options) if options else 0} items")
             log.info(f"  - Output 3 (scenario-dropdown value): {value}")
             log.info(f"  - Output 4 (scenario-selector-div style): {style}")
+            
+            # グローバル変数を更新してタブを再読み込み可能にする
+            global OUTPUT_DIR
+            OUTPUT_DIR = Path(CURRENT_SCENARIO_DIR)
+            log.info(f"[handle_file_upload] OUTPUT_DIR updated to: {OUTPUT_DIR}")
+            
             return data, options, value, style
         else:
             # エラーの場合
@@ -5039,12 +5274,69 @@ def handle_file_upload(contents, filename):
     Output('main-content', 'children'),
     Output('data-loaded', 'data'),  # Add data-loaded output
     Input('scenario-dropdown', 'value'),
+    Input('app-loading-trigger', 'children'),  # 初期ロード時にも実行
+    Input('data-ingestion-output', 'data'),  # ZIPアップロード後のデータを受け取る
     State('data-loaded', 'data')
 )
 @safe_callback
-def update_main_content(selected_scenario, data_status):
+def update_main_content(selected_scenario, loading_trigger, upload_data, data_status):
     """シナリオ選択に応じてデータを読み込み、メインUIを更新（按分方式対応）"""
     global CURRENT_SCENARIO_DIR
+    
+
+    # === update_main_contentの詳細ログ ===
+    log.info("\n" + "="*60)
+    log.info("🔄 [update_main_content] 呼び出し")
+    log.info(f"  - selected_scenario: {selected_scenario}")
+    log.info(f"  - loading_trigger: {loading_trigger}")
+    log.info(f"  - upload_data exists: {upload_data is not None}")
+    log.info(f"  - upload_data type: {type(upload_data)}")
+    if upload_data and isinstance(upload_data, dict):
+        log.info(f"  - upload_data.success: {upload_data.get('success')}")
+        log.info(f"  - upload_data.scenarios: {upload_data.get('scenarios', {}).keys() if upload_data.get('scenarios') else 'None'}")
+    log.info(f"  - data_status type: {type(data_status)}")
+    log.info(f"  - CURRENT_SCENARIO_DIR: {CURRENT_SCENARIO_DIR}")
+    log.info(f"  - OUTPUT_DIR: {OUTPUT_DIR}")
+    # ZIPアップロードされた場合、そのデータを優先的に使用
+    if upload_data and isinstance(upload_data, dict) and upload_data.get('success'):
+        log.info("[update_main_content] ✅ ZIP UPLOAD DETECTED - Processing uploaded data")
+        
+        # シナリオリストを取得
+        scenarios = upload_data.get('scenarios', {})
+        if scenarios:
+            # selected_scenarioがない場合、最初のシナリオを自動選択
+            if not selected_scenario:
+                selected_scenario = list(scenarios.keys())[0]
+                log.info(f"[update_main_content] Auto-selected scenario: {selected_scenario}")
+            
+            # シナリオパスを取得して設定
+            scenario_path = scenarios.get(selected_scenario)
+            if scenario_path and Path(scenario_path).exists():
+                data_dir = Path(scenario_path)
+                log.info(f"[update_main_content] Setting CURRENT_SCENARIO_DIR to: {data_dir}")
+                
+                # グローバル変数を更新
+                CURRENT_SCENARIO_DIR = data_dir
+                clear_data_cache()
+                
+                # KPIデータを生成
+                kpi_data = {}
+                
+                # UIを生成して返す
+                log.info("[update_main_content] ✅ RETURNING UI FOR UPLOADED DATA")
+                return kpi_data, create_main_ui_tabs(), True
+        
+        # upload_dataを data_status に設定して通常フローで処理
+        data_status = upload_data
+    
+    # 初期ロード時、デフォルトシナリオが存在する場合は自動的にタブを表示
+    if loading_trigger == 'loaded' and not selected_scenario and not data_status:
+        if CURRENT_SCENARIO_DIR and CURRENT_SCENARIO_DIR.exists():
+            log.info(f"[初期ロード] デフォルトシナリオを自動読み込み: {CURRENT_SCENARIO_DIR}")
+            # デフォルトのKPIデータを作成
+            kpi_data = {}
+            # UIを表示（デフォルトシナリオ使用）
+            return kpi_data, create_main_ui_tabs(), True
     
     # data_statusがbool型の場合（data-loadedがTrueの場合）はdictに変換
     if isinstance(data_status, bool):
@@ -5058,7 +5350,11 @@ def update_main_content(selected_scenario, data_status):
             data_status = None
     
     # データステータスがない場合でも、デフォルトのシナリオが利用可能ならそれを使用
-    if (
+    # upload_dataがある場合は必ず処理を進める
+    if upload_data and isinstance(upload_data, dict) and upload_data.get('success'):
+        # upload_dataがある場合はそのまま処理を続ける
+        pass
+    elif (
         not selected_scenario
         or not data_status
         or (isinstance(data_status, dict) and 'success' not in data_status)
@@ -5375,8 +5671,13 @@ def update_legacy_tabs(selected_tab):
     State('data-loaded', 'data'),
 )
 @safe_callback
-def update_tab_visibility(active_tab, sub_tab, selected_scenario, data_status):
+def update_tab_visibility(active_tab, sub_tab, data_status):
     """タブの表示制御（CSS visibility方式）"""
+    log.info(f"\n📑 [TAB CLICK] Active tab: {active_tab}, Sub tab: {sub_tab}")
+    log.info(f"  - Data loaded: {data_loaded}")
+    log.info(f"  - OUTPUT_DIR: {OUTPUT_DIR}")
+    log.info(f"  - Cache size: {len(_data_cache)} items")
+
     log.info(f"[update_tab_visibility] active_tab: {active_tab}, sub_tab: {sub_tab}")
     
     # sub_tabsの値を優先的に使用（新しいタブシステム）
@@ -5455,12 +5756,17 @@ def initialize_heatmap_content(selected_tab, selected_scenario, data_status):
     State('data-loaded', 'data'),
 )
 @safe_callback
-def initialize_shortage_content(selected_tab, selected_scenario, data_status):
+def initialize_shortage_content(style_dict, selected_scenario, data_status):
     """不足分析タブの内容を初期化"""
-    log.info(f"[shortage_tab] 初期化開始 - scenario: {selected_scenario}, data_status: {data_status}")
+    log.info(f"[shortage_tab] 初期化開始 - style: {style_dict}, scenario: {selected_scenario}, data_status: {data_status}")
     
-    if not selected_scenario or not data_status or selected_tab != 'shortage':
-        log.info("[shortage_tab] PreventUpdate - 条件不満足")
+    # styleがdisplay: blockの場合のみ処理
+    if not style_dict or style_dict.get('display') != 'block':
+        log.info("[shortage_tab] PreventUpdate - タブが非表示")
+        raise PreventUpdate
+    
+    if not selected_scenario or not data_status:
+        log.info("[shortage_tab] PreventUpdate - シナリオまたはデータなし")
         raise PreventUpdate
     try:
         log.info("[shortage_tab] create_shortage_tab呼び出し開始")
@@ -5510,6 +5816,22 @@ def initialize_leave_content(selected_tab, selected_scenario, data_status):
         log.info("[leave_tab] create_leave_analysis_tab呼び出し開始")
         result = create_leave_analysis_tab()
         log.info("[leave_tab] create_leave_analysis_tab完了")
+        # === 戻り値の詳細ログ ===
+        log.info("\n🔍 [RETURN VALUE CHECK]")
+        if isinstance(result, tuple) and len(result) == 4:
+            data, options, value, style = result
+            log.info(f"✅ Returning tuple with 4 elements:")
+            log.info(f"  1. data type: {type(data)}, success: {data.get('success') if isinstance(data, dict) else 'N/A'}")
+            log.info(f"  2. options count: {len(options) if options else 0}")
+            log.info(f"  3. selected value: {value}")
+            log.info(f"  4. style: {style}")
+            if isinstance(data, dict) and data.get('scenarios'):
+                log.info(f"  📁 Scenarios found: {list(data['scenarios'].keys())}")
+                for scenario, path in data['scenarios'].items():
+                    log.info(f"    - {scenario}: {path}")
+        else:
+            log.info(f"❌ Unexpected return format: {type(result)}")
+        
         return result
     except Exception as e:
         log.error(f"休暇分析タブの初期化エラー: {str(e)}")
@@ -6607,7 +6929,8 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
     fig_cumulative.update_xaxes(tickformat="%m/%d(%a)")
     content.append(dcc.Graph(figure=fig_cumulative))
 
-    fig_daily = px.bar(df_cost, x='date', y='cost', title='日別発生人件費（総額）')
+    fig_daily = px.bar(df_cost, x='date', y='cost', title='日別発生人件費（総額）',
+                       color_discrete_sequence=['#2E86AB'])
     fig_daily.update_xaxes(tickformat="%m/%d(%a)")
     content.append(dcc.Graph(figure=fig_daily))
 
@@ -6626,17 +6949,33 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
         if role_data:
             role_df = pd.DataFrame(role_data)
 
-            fig_stacked = px.bar(role_df, x='date', y='cost', color='role', title='日別人件費（職種別内訳）')
+            # アクセシブルカラーパレットを使用
+            n_roles = role_df['role'].nunique()
+            accessible_colors = get_accessible_color_palette('role', n_roles)
+            
+            fig_stacked = px.bar(role_df, x='date', y='cost', color='role', title='日別人件費（職種別内訳）',
+                                color_discrete_sequence=accessible_colors)
+            fig_stacked = enhance_figure_accessibility(fig_stacked, '日別人件費（職種別内訳）', 'categorical')
             fig_stacked.update_xaxes(tickformat="%m/%d(%a)")
             content.append(dcc.Graph(figure=fig_stacked))
 
             role_df['month'] = pd.to_datetime(role_df['date']).dt.to_period('M').astype(str)
             monthly_role = role_df.groupby(['month', 'role'])['cost'].sum().reset_index()
-            fig_monthly = px.bar(monthly_role, x='month', y='cost', color='role', title='月次人件費（職種別内訳）')
+            
+            # 月次グラフには異なるカラーパレットを使用
+            monthly_colors = get_accessible_color_palette('categorical', n_roles)
+            fig_monthly = px.bar(monthly_role, x='month', y='cost', color='role', title='月次人件費（職種別内訳）',
+                                color_discrete_sequence=monthly_colors)
+            fig_monthly = enhance_figure_accessibility(fig_monthly, '月次人件費（職種別内訳）', 'categorical')
             content.append(dcc.Graph(figure=fig_monthly))
 
             total_by_role = role_df.groupby('role')['cost'].sum().reset_index()
-            fig_pie = px.pie(total_by_role, values='cost', names='role', title='職種別コスト構成比（全期間）')
+            
+            # パイチャートには時間帯用パレットを使用（より区別しやすい）
+            pie_colors = get_accessible_color_palette('time', n_roles)
+            fig_pie = px.pie(total_by_role, values='cost', names='role', title='職種別コスト構成比（全期間）',
+                            color_discrete_sequence=pie_colors)
+            fig_pie = enhance_figure_accessibility(fig_pie, '職種別コスト構成比（全期間）', 'categorical')
             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
             content.append(dcc.Graph(figure=fig_pie))
 
@@ -6694,7 +7033,8 @@ def update_individual_analysis_content(selected_staff, synergy_type):
             code_counts = work_records['code'].value_counts()
             work_dist_fig = px.pie(
                 values=code_counts.values, names=code_counts.index,
-                title=f'{selected_staff}さんの勤務割合', hole=.3
+                title=f'{selected_staff}さんの勤務割合', hole=.3,
+                color_discrete_sequence=px.colors.qualitative.Set3
             )
             work_dist_fig.update_traces(textposition='inside', textinfo='percent+label')
 
@@ -8103,7 +8443,7 @@ if __name__ == '__main__':
     import os
     # セキュリティ: 環境変数でデバッグモードを制御（デフォルトは無効）
     debug_mode = os.environ.get('DASH_DEBUG', 'False').lower() == 'true'
-    port = int(os.environ.get('DASH_PORT', '8080'))
+    port = int(os.environ.get('DASH_PORT', '8050'))
     host = os.environ.get('DASH_HOST', '127.0.0.1')
     
     if debug_mode:
