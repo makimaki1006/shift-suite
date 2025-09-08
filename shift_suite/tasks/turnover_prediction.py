@@ -398,7 +398,7 @@ class TurnoverPredictionEngine:
     """離職リスク予測エンジン"""
     
     def __init__(self, 
-                 model_type: str = 'ensemble',
+                 model_type: str = 'lightgbm',  # Changed default from 'ensemble' to 'lightgbm'
                  lookback_months: int = 6,
                  enable_early_warning: bool = True,
                  slot_minutes: int = 30):
