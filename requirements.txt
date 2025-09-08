@@ -1,15 +1,45 @@
-# Render.com deployment - Ultra minimal version
-# Streamlit app only
+# ShiftAnalysis - Complete Requirements for app.py and dash_app.py
+# Python 3.11.0 compatible versions
 
-streamlit==1.32.2
+# ===== CORE DATA PROCESSING =====
 pandas==2.2.2
 numpy==1.26.4
-plotly==5.18.0
+scipy==1.11.4
 openpyxl==3.1.2
 XlsxWriter==3.2.0
 pyarrow==15.0.2
-scikit-learn==1.4.2
+
+# ===== WEB FRAMEWORKS =====
+streamlit==1.32.2
+Flask==3.0.3
+dash==2.17.1
+dash-bootstrap-components==1.6.0
+dash-cytoscape==1.0.2
+
+# ===== VISUALIZATION =====
+plotly==5.18.0
 matplotlib==3.8.4
 seaborn==0.13.2
+
+# ===== MACHINE LEARNING =====
+scikit-learn==1.4.2
+lightgbm==4.3.0
+statsmodels==0.14.2
+
+# ===== OPTIMIZATION (Required by assignment.py) =====
+ortools==9.9.3963
+
+# ===== UTILITIES =====
+networkx==3.2.1
 psutil==5.9.8
+pyyaml==6.0.1
+Pillow==10.3.0
+requests==2.31.0
+python-dateutil==2.9.0
+
+# ===== STREAMLIT SPECIFIC =====
 altair<5
+
+# ===== OTHER REQUIREMENTS =====
+tenacity==8.2.3
+packaging==24.0
