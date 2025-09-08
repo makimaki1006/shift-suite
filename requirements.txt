@@ -20,7 +20,7 @@ dash-extensions==1.0.18
 dash-core-components==2.0.0
 dash-html-components==2.0.0
 dash-table==5.0.0
-dash-daq==0.5.1
+dash-daq==0.5.0
 
 # ===== VISUALIZATION =====
 plotly==5.18.0
