@@ -22,7 +22,8 @@ lightgbm==4.3.0
 ortools==9.9.3963
 
 # PyTorch for advanced fatigue prediction with LSTM
-torch==2.1.2+cpu --index-url https://download.pytorch.org/whl/cpu
+# Using standard PyTorch version compatible with Python 3.11
+torch==2.1.2
 
 # Dash components (for dash_app.py)
 dash==2.17.1
