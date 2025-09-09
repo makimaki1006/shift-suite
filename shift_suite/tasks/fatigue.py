@@ -7,6 +7,15 @@ from .utils import save_df_xlsx, save_df_parquet, log
 from .constants import FATIGUE_PARAMETERS
 from .analyzers.rest_time import RestTimeAnalyzer
 
+# PyTorch LSTM疲労予測モデルのインポート（利用可能な場合）
+try:
+    from .pytorch_fatigue_predictor import PyTorchFatiguePredictor
+    _HAS_PYTORCH = True
+    log.info("[fatigue] PyTorch LSTM model available for advanced fatigue prediction")
+except ImportError:
+    _HAS_PYTORCH = False
+    log.info("[fatigue] Using statistical fatigue model (PyTorch not available)")
+
 
 def _get_time_category(code_str: str) -> str:
     """勤務コードから時間帯カテゴリを判定"""
@@ -175,8 +184,84 @@ def _features(long_df: pd.DataFrame, slot_minutes: int = 30) -> pd.DataFrame:
     return feats
 
 
-def train_fatigue(long_df: pd.DataFrame, out_dir: Path, weights: dict = None, slot_minutes: int = 30):
-    """疲労分析を実行し、結果を保存"""
+def train_fatigue(long_df: pd.DataFrame, out_dir: Path, weights: dict = None, slot_minutes: int = 30, use_pytorch: bool = None):
+    """疲労分析を実行し、結果を保存
+    
+    Parameters
+    ----------
+    long_df : pd.DataFrame
+        分析対象データ
+    out_dir : Path
+        出力ディレクトリ
+    weights : dict, optional
+        重み設定（統計モデル用）
+    slot_minutes : int
+        時間スロット（分）
+    use_pytorch : bool, optional
+        PyTorchモデルを使用するか（None = 自動判定）
+    """
+    
+    # PyTorchモデルの使用判定
+    if use_pytorch is None:
+        use_pytorch = _HAS_PYTORCH and len(long_df) >= 100  # 100件以上のデータがあればPyTorch使用
+    
+    if use_pytorch and _HAS_PYTORCH:
+        log.info("[fatigue] Using PyTorch LSTM model for advanced fatigue prediction")
+        return _train_fatigue_pytorch(long_df, out_dir)
+    else:
+        log.info("[fatigue] Using statistical model for fatigue analysis")
+        return _train_fatigue_statistical(long_df, out_dir, weights, slot_minutes)
+
+
+def _train_fatigue_pytorch(long_df: pd.DataFrame, out_dir: Path):
+    """PyTorch LSTMモデルによる疲労分析"""
+    
+    # データ準備
+    df = long_df.copy()
+    df['date'] = pd.to_datetime(df['ds'])
+    df['work_hours'] = df.get('work_hours', 8)  # デフォルト8時間
+    df['is_night_shift'] = df['code'].apply(lambda x: 1 if _get_time_category(x) == 'night' else 0)
+    df['is_weekend'] = df['date'].dt.dayofweek.isin([5, 6]).astype(int)
+    
+    # PyTorchモデル初期化と訓練
+    predictor = PyTorchFatiguePredictor(sequence_length=7)  # 7日間の履歴使用
+    
+    # モデル訓練
+    training_results = predictor.train_model(df, epochs=50, batch_size=16)
+    
+    # 予測実行
+    predicted_df = predictor.predict_fatigue(df)
+    
+    # スタッフごとの最新疲労度を集計
+    staff_fatigue = predicted_df.groupby('staff').agg({
+        'fatigue_score': 'last',
+        'risk_level': 'last',
+        'consecutive_days': 'max',
+        'weekly_total_hours': 'last'
+    }).reset_index()
+    
+    # 出力形式の整形
+    output_df = pd.DataFrame(index=staff_fatigue['staff'])
+    output_df['fatigue_score'] = (staff_fatigue.set_index('staff')['fatigue_score'] * 100).round(2)
+    output_df['risk_level'] = staff_fatigue.set_index('staff')['risk_level']
+    output_df['consecutive_work_days'] = staff_fatigue.set_index('staff')['consecutive_days']
+    output_df['weekly_hours'] = staff_fatigue.set_index('staff')['weekly_total_hours']
+    
+    # モデル性能メトリクスも保存
+    output_df['model_mse'] = training_results.get('final_mse', 0)
+    output_df['model_correlation'] = training_results.get('correlation', 0)
+    
+    # 保存
+    save_df_xlsx(output_df, out_dir / "fatigue_score.xlsx", "fatigue", index=True)
+    result_path = out_dir / "fatigue_score.parquet"
+    save_df_parquet(output_df, result_path, index=True)
+    
+    log.info(f"[fatigue] PyTorch LSTM analysis completed - MSE: {training_results.get('final_mse', 0):.4f}, Correlation: {training_results.get('correlation', 0):.4f}")
+    return result_path
+
+
+def _train_fatigue_statistical(long_df: pd.DataFrame, out_dir: Path, weights: dict = None, slot_minutes: int = 30):
+    """従来の統計的疲労分析（後方互換性）"""
     
     X = _features(long_df, slot_minutes)
     
