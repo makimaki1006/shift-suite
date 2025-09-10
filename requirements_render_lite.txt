@@ -1,0 +1,18 @@
+# ShiftAnalysis - Render.com用軽量版（512MB RAM対応）
+# PyTorch除外版 - 統計的疲労予測のみ使用
+
+# Core dependencies
+streamlit==1.32.2
+pandas==2.2.2
+numpy==1.26.4
+plotly==5.18.0
+openpyxl==3.1.2
+XlsxWriter==3.2.0
+scikit-learn==1.4.2
+scipy==1.11.4
+statsmodels==0.14.2
+lightgbm==4.3.0
+
+# 最小限のDashコンポーネント
+dash==2.17.1
+dash-bootstrap-components==1.6.0
