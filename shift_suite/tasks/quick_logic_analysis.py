@@ -194,7 +194,7 @@ def run_ultra_light_analysis(df: pd.DataFrame) -> dict:
         # --- ▲▲▲ 新しいロジックここまで ▲▲▲ ---
 
         # これ以降のモデル学習部分は変更なし
-        model = DecisionTreeClassifier(max_depth=2, min_samples_split=10, min_samples_leaf=5, random_state=42)
+        model = SimpleDecisionTreeClassifier(max_depth=2, random_state=42)
         model.fit(features, y)
 
         importance = (
@@ -239,7 +239,7 @@ def run_standard_analysis(df: pd.DataFrame) -> dict:
         features = pd.concat(X_daily, ignore_index=True).fillna(0)
         y = np.array(y_daily)
 
-        model = DecisionTreeClassifier(max_depth=3, min_samples_split=20, min_samples_leaf=10, random_state=42)
+        model = SimpleDecisionTreeClassifier(max_depth=3, random_state=42)
         model.fit(features, y)
 
         importance = (
@@ -334,7 +334,7 @@ def create_pattern_list(patterns: List[Dict[str, Any]]) -> html.Div:
     return html.Div(items, style={"backgroundColor": "#f5f5f5", "padding": "15px", "borderRadius": "5px"})
 
 
-def generate_simple_tree_explanation(tree_model: DecisionTreeClassifier) -> str:
+def generate_simple_tree_explanation(tree_model: SimpleDecisionTreeClassifier) -> str:
     """Generate a simple text explanation for the decision tree."""
     if not hasattr(tree_model, "tree_"):
         return "分析結果の説明を生成できません"

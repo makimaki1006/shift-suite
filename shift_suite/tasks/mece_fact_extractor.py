@@ -22,7 +22,7 @@ from datetime import datetime, time, timedelta
 import pandas as pd
 import numpy as np
 
-from .constants import STATISTICAL_THRESHOLDS
+from .constants import STATISTICAL_THRESHOLDS, DEFAULT_SLOT_MINUTES
 from .utils import validate_and_convert_slot_minutes, safe_slot_calculation
 
 log = logging.getLogger(__name__)
@@ -323,7 +323,7 @@ class MECEFactExtractor:
             
             for (code, day_num), data in worktype_weekday_patterns.iterrows():
                 shift_count = data[('parsed_slots_count', 'count')]
-                total_hours = data[('parsed_slots_count', 'sum')] * SLOT_HOURS
+                total_hours = data[('parsed_slots_count', 'sum')] * (DEFAULT_SLOT_MINUTES / 60.0)
                 staff_count = data[('staff', 'nunique')]
                 
                 if shift_count >= self.sample_size_minimum:
@@ -426,7 +426,7 @@ class MECEFactExtractor:
             for day_num, data in weekday_detailed.iterrows():
                 staff_count = data[('staff', 'nunique')]
                 shift_count = data[('parsed_slots_count', 'count')]
-                total_hours = data[('parsed_slots_count', 'sum')] * SLOT_HOURS
+                total_hours = data[('parsed_slots_count', 'sum')] * (DEFAULT_SLOT_MINUTES / 60.0)
                 
                 if staff_count >= self.sample_size_minimum:
                     total_hours = safe_slot_calculation(

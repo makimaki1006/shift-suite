@@ -664,7 +664,7 @@ def create_shortage_from_heat_all(heat_all_df: pd.DataFrame) -> pd.DataFrame:
     # ログ出力（デバッグ用）
     import logging
     log = logging.getLogger(__name__)
-    log.debug(f"按分方式不足計算完了: {shortage_df.shape}, 総不足時間: {shortage_df.sum().sum() * SLOT_HOURS:.2f}時間")
+    log.debug(f"按分方式不足計算完了: {shortage_df.shape}, 総不足時間: {shortage_df.sum().sum() * (DEFAULT_SLOT_MINUTES / 60.0):.2f}時間")
     
     return shortage_df
 
@@ -1105,6 +1105,8 @@ LOADING_STATUS = {}  # 読み込み中のキーを追跡
 LOADING_LOCK = threading.Lock()
 # Path to the currently selected scenario directory.
 CURRENT_SCENARIO_DIR: Path | None = None
+# Path to the output directory for uploaded files
+OUTPUT_DIR: Path | None = None
 
 # デフォルトのシナリオディレクトリを自動検出
 def initialize_default_scenario_dir():
@@ -1208,6 +1210,7 @@ def calculate_role_dynamic_need(df_heat: pd.DataFrame, date_cols: List[str], hea
         計算された動的need値のDataFrame
     """
     # 最適化エンジンが利用可能な場合は使用
+    USE_PROGRESS_MONITOR = False  # ローカルで定義
     if analysis_engine:
         log.info(f"[最適化エンジン] {heat_key}の高速計算を開始")
         if processing_monitor and USE_PROGRESS_MONITOR:
@@ -1665,7 +1668,11 @@ def data_get(key: str, default=None, for_display: bool = False):
                                 
                             except Exception as e3:
                                 log.error(f"All methods failed: {e1}, {e2}, {e3}")
-                                raise e3
+                                # エラーを発生させずに空DataFrameを返す（安定化）
+                                log.warning(f"Returning empty DataFrame for {key} due to load failures")
+                                df = pd.DataFrame()
+                                DATA_CACHE.set(key, df)
+                                return df
                     
                     if df is not None:
                         DATA_CACHE.set(key, df)
@@ -2529,8 +2536,8 @@ def create_overview_tab(selected_scenario: str = None) -> html.Div:
             numeric_cols = shortage_time_df.select_dtypes(include=[np.number])
             if not numeric_cols.empty:
                 total_shortage_slots = float(np.nansum(numeric_cols.values))
-                # スロットを時間に変換
-                lack_h = total_shortage_slots * SLOT_HOURS
+                # スロットを時間に変換（分単位から時間へ）
+                lack_h = total_shortage_slots * (DETECTED_SLOT_INFO['slot_minutes'] / 60.0)
                 log.info(f"正確な不足時間（shortage_timeより）: {lack_h:.2f}h ({total_shortage_slots:.0f}スロット)")
             else:
                 lack_h = 0
@@ -2824,7 +2831,7 @@ def create_heatmap_tab() -> html.Div:
 
                 **Need計算:**
                 - 統計手法: 中央値ベース（安定性重視）
-                - 時間スロット: {DEFAULT_SLOT_MINUTES}分 = {SLOT_HOURS}時間単位
+                - 時間スロット: {DEFAULT_SLOT_MINUTES}分 = {DEFAULT_SLOT_MINUTES / 60.0:.2f}時間単位
                 - 異常値除去: IQR × 1.5による外れ値処理
                 - 時間軸ベース分析: 30分スロット単位での実勤務パターンに基づく真の分析
 
@@ -2900,7 +2907,7 @@ def create_shortage_tab(selected_scenario: str = None) -> html.Div:
                 **統計的手法:**
                 - Need算出: 中央値ベース（外れ値に強い）
                 - Upper算出: 平均+1標準偏差（安全マージン確保）
-                - スロット単位: {DEFAULT_SLOT_MINUTES}分 = {SLOT_HOURS}時間
+                - スロット単位: {DEFAULT_SLOT_MINUTES}分 = {DEFAULT_SLOT_MINUTES / 60.0:.2f}時間
 
                 **時間軸分析方式:**
                 - 30分スロット単位での実際の勤務パターン分析
@@ -2938,7 +2945,7 @@ def create_shortage_tab(selected_scenario: str = None) -> html.Div:
                     numeric_cols = shortage_time_df.select_dtypes(include=[np.number])
                     if not numeric_cols.empty:
                         total_shortage_slots = float(np.nansum(numeric_cols.values))
-                        total_lack = total_shortage_slots * SLOT_HOURS
+                        total_lack = total_shortage_slots * (DETECTED_SLOT_INFO['slot_minutes'] / 60.0)
                         log.info(f"不足分析タブ: 正確な不足時間 {total_lack:.2f}h ({total_shortage_slots:.0f}スロット)")
                 except Exception as e:
                     log.error(f"不足分析タブ: shortage_time読み取りエラー: {e}")
@@ -3167,7 +3174,7 @@ def create_optimization_tab() -> html.Div:
             ),
         ], style={'width': '30%', 'marginBottom': '20px'}),
         html.Div(id='opt-detail-container'),  # type: ignore
-        html.Div(id='optimization-content')  # type: ignore
+        html.Div(id='optimization-analysis-content')  # type: ignore
     ])
 
 
@@ -5674,9 +5681,9 @@ def update_legacy_tabs(selected_tab):
 def update_tab_visibility(active_tab, sub_tab, data_status):
     """タブの表示制御（CSS visibility方式）"""
     log.info(f"\n📑 [TAB CLICK] Active tab: {active_tab}, Sub tab: {sub_tab}")
-    log.info(f"  - Data loaded: {data_loaded}")
+    log.info(f"  - Data loaded: {data_status}")
     log.info(f"  - OUTPUT_DIR: {OUTPUT_DIR}")
-    log.info(f"  - Cache size: {len(_data_cache)} items")
+    log.info(f"  - Cache size: {len(DATA_CACHE.cache) if hasattr(DATA_CACHE, 'cache') else 0} items")
 
     log.info(f"[update_tab_visibility] active_tab: {active_tab}, sub_tab: {sub_tab}")
     
@@ -6600,10 +6607,9 @@ def update_opt_detail(scope):
     return None
 
 @app.callback(
-    Output('optimization-content', 'children', allow_duplicate=True),
+    Output('optimization-analysis-content', 'children'),
     Input('opt-scope', 'value'),
-    Input({'type': 'opt-detail', 'index': ALL}, 'value'),
-    prevent_initial_call=True
+    Input({'type': 'opt-detail', 'index': ALL}, 'value')
 )
 @safe_callback
 def update_optimization_content(scope, detail_values):
@@ -6890,7 +6896,7 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
         wage_id['index']: (wage_val or 0) for wage_id, wage_val in zip(all_wage_ids, all_wages)
     }
 
-    df_cost = calculate_daily_cost(long_df, wages, by=by_key)
+    df_cost = calculate_daily_cost(long_df, wages, by=by_key, slot_minutes=DETECTED_SLOT_INFO['slot_minutes'])
     if df_cost.empty:
         return html.P("コスト計算結果がありません。")
 
@@ -7066,7 +7072,7 @@ def update_individual_analysis_content(selected_staff, synergy_type):
         coworker_ranking_df = coworker_counts.head(5)
 
     # --- 4. 人員不足/過剰への貢献度分析 ---
-    slot_hours = SLOT_HOURS
+    slot_hours = DETECTED_SLOT_INFO['slot_minutes'] / 60.0
     shortage_contribution_h, excess_contribution_h = 0, 0
     staff_work_slots = staff_df[staff_df.get('parsed_slots_count', 0) > 0][['ds']].copy()
     staff_work_slots['date_str'] = staff_work_slots['ds'].dt.strftime('%Y-%m-%d')
@@ -7932,7 +7938,7 @@ def update_hire_simulation(selected_pattern, added_fte, kpi_data):
     if pattern_info.empty:
         raise PreventUpdate
     slots_per_day = pattern_info['parsed_slots_count'].iloc[0]
-    hours_per_day = slots_per_day * SLOT_HOURS
+    hours_per_day = slots_per_day * (DETECTED_SLOT_INFO['slot_minutes'] / 60.0)
     reduction_hours = added_fte * hours_per_day * 20
 
     if not df_shortage_role.empty:
@@ -7971,7 +7977,7 @@ def update_hire_simulation(selected_pattern, added_fte, kpi_data):
                         else:
                             # フォールバック: shortage_timeから計算（按分係数適用）
                             shortage_values = shortage_time_df.select_dtypes(include=[np.number]).values
-                            raw_shortage_hours = float(np.nansum(shortage_values)) * SLOT_HOURS
+                            raw_shortage_hours = float(np.nansum(shortage_values)) * (DETECTED_SLOT_INFO['slot_minutes'] / 60.0)
                             new_total_lack_h = raw_shortage_hours  # 正しい不足時間を使用
                             log.info(f"シミュレーション: shortage_timeから正常計算: {new_total_lack_h:.2f}h")
                     else:
