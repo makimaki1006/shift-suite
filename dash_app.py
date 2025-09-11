@@ -1615,6 +1615,9 @@ def data_get(key: str, default=None, for_display: bool = False):
         "shortage_time": ["shortage_time_CORRECTED.parquet", "shortage_time.parquet"],
         "need_per_date_slot": ["need_per_date_slot.parquet"],
         "leave_analysis": ["leave_analysis.parquet", "leave_analysis.csv"],
+        # heat_ALL/heat_all対応（大文字小文字両方に対応）
+        "heat_ALL": ["heat_ALL.parquet", "heat_ALL.csv", "heat_ALL.xlsx", "heat_all.parquet", "heat_all.csv", "heat_all.xlsx"],
+        "heat_all": ["heat_all.parquet", "heat_all.csv", "heat_all.xlsx", "heat_ALL.parquet", "heat_ALL.csv", "heat_ALL.xlsx"],
     }
     
     # ★★★ 職種別・雇用形態別詳細Need値ファイルの検索対応 ★★★
@@ -6314,7 +6317,12 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         # 雇用形態別: emp_プレフィックス付きで使用
         key_suffix = f"emp_{safe_filename(detail_values[0])}"
 
-    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_all"
+    # scopeがoverall、None、または空の場合は全体データを使用
+    if scope == 'overall' or scope is None or not scope:
+        heat_key = "heat_ALL"  # 大文字のheat_ALLを優先的に使用
+    else:
+        heat_key = f"heat_{key_suffix}" if key_suffix else "heat_ALL"
+    
     df_heat = data_get(heat_key, pd.DataFrame())
     
     # キーが見つからない場合、元の職種名（safe_filename変換前）で再試行
@@ -6671,7 +6679,12 @@ def update_optimization_content(scope, detail_values):
         # 雇用形態別: emp_プレフィックス付きで使用
         key_suffix = f"emp_{safe_filename(detail_values[0])}"
 
-    heat_key = f"heat_{key_suffix}" if key_suffix else "heat_all"
+    # scopeがoverall、None、または空の場合は全体データを使用
+    if scope == 'overall' or scope is None or not scope:
+        heat_key = "heat_ALL"  # 大文字のheat_ALLを優先的に使用
+    else:
+        heat_key = f"heat_{key_suffix}" if key_suffix else "heat_ALL"
+    
     df_heat = data_get(heat_key, pd.DataFrame())
     
     # キーが見つからない場合、元の職種名（safe_filename変換前）で再試行
