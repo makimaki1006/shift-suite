@@ -1591,9 +1591,18 @@ def data_get(key: str, default=None, for_display: bool = False):
     log.debug(f"data_get('{key}'): キャッシュミス。ファイル検索を開始...")
 
     if CURRENT_SCENARIO_DIR is None:
-        log.warning(f"CURRENT_SCENARIO_DIRが未設定のため、データ取得をスキップします。key={key}")
+        # Render環境対策: ディレクトリが無くてもキャッシュからデータを返す
+        log.warning(f"CURRENT_SCENARIO_DIR is None for key={key}")
+        # アップロードデータストアから直接取得を試みる
+        if hasattr(app, '_upload_data_store'):
+            stored_data = getattr(app, '_upload_data_store', {}).get(key)
+            if stored_data is not None:
+                log.info(f"data_get('{key}'): Found in upload data store")
+                DATA_CACHE.set(key, stored_data)
+                return stored_data
+        
+        # デフォルト値を返す
         default_value = default if default is not None else pd.DataFrame()
-        DATA_CACHE.set(key, default_value)
         return default_value
 
     search_dirs = [CURRENT_SCENARIO_DIR, CURRENT_SCENARIO_DIR.parent]
@@ -5050,6 +5059,37 @@ def process_upload(contents, filename):
         
         log.info(f"[データ入稿] 処理完了 - シナリオ数: {len(scenarios)}")
         
+        # Render環境対策: アップロードデータを永続的に保存
+        if not hasattr(app, '_upload_data_store'):
+            app._upload_data_store = {}
+        
+        # 各シナリオのデータをメモリに保存（一時ディレクトリが消えても保持）
+        for scenario_name, scenario_path in scenario_paths.items():
+            scenario_dir = Path(scenario_path)
+            if scenario_dir.exists():
+                log.info(f"[process_upload] Storing data for scenario: {scenario_name}")
+                # 重要なファイルをメモリに読み込んで保存
+                for file_pattern in ['*.parquet', '*.csv', '*.xlsx']:
+                    for file_path in scenario_dir.glob(file_pattern):
+                        key = file_path.stem
+                        try:
+                            if file_path.suffix == '.parquet':
+                                data = pd.read_parquet(file_path)
+                            elif file_path.suffix == '.csv':
+                                data = pd.read_csv(file_path)
+                            elif file_path.suffix == '.xlsx':
+                                data = pd.read_excel(file_path)
+                            else:
+                                continue
+                            
+                            # データをキャッシュに保存
+                            DATA_CACHE.set(key, data)
+                            # バックアップストアにも保存
+                            app._upload_data_store[key] = data
+                            log.info(f"  - Stored {key} in cache and backup store")
+                        except Exception as e:
+                            log.warning(f"  - Failed to store {key}: {e}")
+        
         # 処理完了を記録（USE_PROGRESS_MONITORフラグをチェック）
         if processing_monitor and USE_PROGRESS_MONITOR:
             log.info("[process_upload] Completing progress monitor steps")
@@ -5318,12 +5358,20 @@ def update_main_content(selected_scenario, loading_trigger, upload_data, data_st
             
             # シナリオパスを取得して設定
             scenario_path = scenarios.get(selected_scenario)
-            if scenario_path and Path(scenario_path).exists():
+            if scenario_path:
                 data_dir = Path(scenario_path)
-                log.info(f"[update_main_content] Setting CURRENT_SCENARIO_DIR to: {data_dir}")
                 
-                # グローバル変数を更新
-                CURRENT_SCENARIO_DIR = data_dir
+                # パスが存在しない場合の対処（Render環境でのセッション間での問題対策）
+                if not data_dir.exists():
+                    log.warning(f"[update_main_content] Scenario path does not exist: {data_dir}")
+                    log.info("[update_main_content] Attempting to use cached data if available")
+                    # キャッシュからデータを使用する
+                    CURRENT_SCENARIO_DIR = data_dir  # パスは設定しておく（キャッシュキーのため）
+                else:
+                    log.info(f"[update_main_content] Setting CURRENT_SCENARIO_DIR to: {data_dir}")
+                    CURRENT_SCENARIO_DIR = data_dir
+                
+                # キャッシュをクリア（新しいシナリオのため）
                 clear_data_cache()
                 
                 # KPIデータを生成
