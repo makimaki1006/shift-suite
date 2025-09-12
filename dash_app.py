@@ -1612,12 +1612,44 @@ def data_get(key: str, default=None, for_display: bool = False):
     special = {
         "long_df": ["intermediate_data.parquet"],
         "daily_cost": ["daily_cost.parquet", "daily_cost.xlsx", "daily_cost.csv"],
-        "shortage_time": ["shortage_time_CORRECTED.parquet", "shortage_time.parquet"],
+        "shortage_time": ["shortage_time_CORRECTED.parquet", "shortage_time.parquet", "shortage_time.csv"],
         "need_per_date_slot": ["need_per_date_slot.parquet"],
         "leave_analysis": ["leave_analysis.parquet", "leave_analysis.csv"],
         # heat_ALL/heat_all対応（大文字小文字両方に対応）
         "heat_ALL": ["heat_ALL.parquet", "heat_ALL.csv", "heat_ALL.xlsx", "heat_all.parquet", "heat_all.csv", "heat_all.xlsx"],
         "heat_all": ["heat_all.parquet", "heat_all.csv", "heat_all.xlsx", "heat_ALL.parquet", "heat_ALL.csv", "heat_ALL.xlsx"],
+        # 頻繁に使用されるファイルパターンを追加
+        "shortage_role_summary": ["shortage_role_summary.parquet", "shortage_role_summary.csv", "shortage_role_summary.xlsx"],
+        "shortage_employment_summary": ["shortage_employment_summary.parquet", "shortage_employment_summary.csv", "shortage_employment_summary.xlsx"],
+        "fairness_before": ["fairness_before.parquet", "fairness_before.csv", "fairness_before.xlsx"],
+        "fairness_after": ["fairness_after.parquet", "fairness_after.csv", "fairness_after.xlsx"],
+        "staff_stats": ["staff_stats.parquet", "staff_stats.csv", "staff_stats.xlsx"],
+        "stats_alerts": ["stats_alerts.parquet", "stats_alerts.csv", "stats_alerts.xlsx"],
+        "pre_aggregated_data": ["pre_aggregated_data.parquet", "pre_aggregated_data.csv"],
+        "roles": ["roles.parquet", "roles.csv", "roles.pkl", "roles.json"],
+        "employments": ["employments.parquet", "employments.csv", "employments.pkl", "employments.json"],
+        "excess_time": ["excess_time.parquet", "excess_time.csv", "excess_time.xlsx"],
+        "fatigue_score": ["fatigue_score.parquet", "fatigue_score.csv", "fatigue_score.xlsx"],
+        "work_patterns": ["work_patterns.parquet", "work_patterns.csv", "work_patterns.xlsx"],
+        "gap_summary": ["gap_summary.parquet", "gap_summary.csv", "gap_summary.xlsx"],
+        "gap_heatmap": ["gap_heatmap.parquet", "gap_heatmap.csv", "gap_heatmap.xlsx"],
+        "hire_plan": ["hire_plan.parquet", "hire_plan.csv", "hire_plan.xlsx"],
+        "optimal_hire_plan": ["optimal_hire_plan.parquet", "optimal_hire_plan.csv", "optimal_hire_plan.xlsx"],
+        "forecast_data": ["forecast_data.parquet", "forecast_data.csv"],
+        "demand_series": ["demand_series.parquet", "demand_series.csv"],
+        # メタデータファイル
+        "heatmap_meta": ["heatmap.meta.json", "heatmap_meta.json"],
+        "shortage_meta": ["shortage.meta.json", "shortage_meta.json"],
+        "blueprint_analysis": ["blueprint_analysis.json"],
+        "forecast": ["forecast.json"],
+        # その他の重要ファイル
+        "mind_reader_analysis": ["mind_reader_analysis.json", "mind_reader_analysis.pkl"],
+        "advanced_analysis": ["advanced_analysis.json", "advanced_analysis.pkl"],
+        "shortage_events": ["shortage_events.parquet", "shortage_events.csv"],
+        "staff_balance_daily": ["staff_balance_daily.parquet", "staff_balance_daily.csv"],
+        "daily_summary": ["daily_summary.parquet", "daily_summary.csv"],
+        "concentration_requested": ["concentration_requested.parquet", "concentration_requested.csv"],
+        "leave_ratio_breakdown": ["leave_ratio_breakdown.parquet", "leave_ratio_breakdown.csv"],
     }
     
     # ★★★ 職種別・雇用形態別詳細Need値ファイルの検索対応 ★★★
@@ -1748,6 +1780,30 @@ def data_get(key: str, default=None, for_display: bool = False):
                     DATA_CACHE.set(key, df)
                     log.debug(f"Loaded {fp} into cache for {key}")
                     return df
+                break
+            elif fp.suffix == ".json" and fp.exists():
+                # JSONファイルの読み込み
+                try:
+                    import json
+                    with open(fp, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    DATA_CACHE.set(key, data)
+                    log.debug(f"Loaded JSON {fp} into cache for {key}")
+                    return data
+                except Exception as e:
+                    log.warning(f"Failed to load JSON {fp}: {e}")
+                break
+            elif fp.suffix == ".pkl" and fp.exists():
+                # Pickleファイルの読み込み
+                try:
+                    import pickle
+                    with open(fp, 'rb') as f:
+                        data = pickle.load(f)
+                    DATA_CACHE.set(key, data)
+                    log.debug(f"Loaded pickle {fp} into cache for {key}")
+                    return data
+                except Exception as e:
+                    log.warning(f"Failed to load pickle {fp}: {e}")
                 break
 
     if key == "summary_report":
