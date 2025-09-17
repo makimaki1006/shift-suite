@@ -8144,30 +8144,41 @@ def update_shortage_ratio_heatmap(scope, detail_values):
                         fill_value=0
                     )
                     
-                    # 比例配分でneed値を計算
-                    with np.errstate(divide='ignore', invalid='ignore'):
-                        ratio = np.divide(filtered_staff_pivot.values, total_staff_pivot.values,
-                                        out=np.zeros_like(filtered_staff_pivot.values, dtype=np.float64),
-                                        where=(total_staff_pivot.values != 0))
-                    
-                    # 比例配分を適用（次元の安全な調整）
-                    need_values = need_per_date_slot_df[common_dates].values
-                    
-                    # 次元の安全な調整
-                    min_rows = min(need_values.shape[0], ratio.shape[0])
-                    min_cols = min(need_values.shape[1], ratio.shape[1])
-                    
-                    # 配列を安全なサイズに切り取り
-                    need_values_safe = need_values[:min_rows, :min_cols]
-                    ratio_safe = ratio[:min_rows, :min_cols]
-                    
-                    proportional_need = need_values_safe * ratio_safe
-                    
-                    log.info(f"Dimension adjustment: need_shape={need_values.shape}, ratio_shape={ratio.shape}, final_shape={proportional_need.shape}")
-                    
-                    # インデックスも安全なサイズに調整
-                    safe_index = need_per_date_slot_df.index[:min_rows]
-                    safe_columns = [c for c in date_cols if str(c) in common_dates][:min_cols]
+                    # 職種別need値が存在する場合は直接使用、存在しない場合のみ比例配分
+                    if scope == 'role' and not need_per_date_slot_df.empty:
+                        # 職種別need値を直接使用
+                        proportional_need = need_per_date_slot_df[common_dates].values
+                        safe_index = need_per_date_slot_df.index
+                        log.info(f"職種別need値を直接使用: shape={proportional_need.shape}")
+                    else:
+                        # 比例配分でneed値を計算（職種別need値が存在しない場合のみ）
+                        with np.errstate(divide='ignore', invalid='ignore'):
+                            ratio = np.divide(filtered_staff_pivot.values, total_staff_pivot.values,
+                                            out=np.zeros_like(filtered_staff_pivot.values, dtype=np.float64),
+                                            where=(total_staff_pivot.values != 0))
+                        
+                        # 比例配分を適用（次元の安全な調整）
+                        need_values = need_per_date_slot_df[common_dates].values
+                        
+                        # 次元の安全な調整
+                        min_rows = min(need_values.shape[0], ratio.shape[0])
+                        min_cols = min(need_values.shape[1], ratio.shape[1])
+                        
+                        # 配列を安全なサイズに切り取り
+                        need_values_safe = need_values[:min_rows, :min_cols]
+                        ratio_safe = ratio[:min_rows, :min_cols]
+                        
+                        proportional_need = need_values_safe * ratio_safe
+                        
+                        log.info(f"比例配分need値を計算: need_shape={need_values.shape}, ratio_shape={ratio.shape}, final_shape={proportional_need.shape}")
+                        
+                        # インデックスも安全なサイズに調整
+                        safe_index = need_per_date_slot_df.index[:min_rows]
+                    # 職種別need値の場合はサイズ調整不要、比例配分の場合のみサイズ調整
+                    if scope == 'role' and not need_per_date_slot_df.empty:
+                        safe_columns = common_dates
+                    else:
+                        safe_columns = [c for c in date_cols if str(c) in common_dates][:min_cols]
                     
                     log.info(f"[INDEX_DEBUG] Original need_per_date_slot index length: {len(need_per_date_slot_df.index)}")
                     log.info(f"[INDEX_DEBUG] Original need_per_date_slot index: {need_per_date_slot_df.index.tolist()}")
