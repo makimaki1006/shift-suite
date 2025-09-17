@@ -688,7 +688,7 @@ def generate_recommendations(kpi_stats: dict, role_performance: list) -> list:
         
         # 疲労スコアに基づく推奨
         avg_fatigue = kpi_stats.get('avg_fatigue_score', 0)
-        if avg_fatigue > 0.7:
+        if avg_fatigue > 55:
             recommendations.append("平均疲労スコアが高い水準です。勤務間隔と連勤回数の見直しをお勧めします。")
         
         # 公平性スコアに基づく推奨
@@ -2201,6 +2201,11 @@ if run_button_clicked:
 
             base_out_dir = Path(st.session_state.work_root_path_str) / "out"
             base_out_dir.mkdir(parents=True, exist_ok=True)
+            
+            # long_df (intermediate_data.parquet) をoutディレクトリにコピー
+            if intermediate_parquet_path.exists():
+                shutil.copy(intermediate_parquet_path, base_out_dir / "intermediate_data.parquet")
+                log.info("intermediate_data.parquet を out ディレクトリにコピーしました")
 
             # --- 共通分析をシナリオループの前に実行 ---
             try:
@@ -3865,7 +3870,7 @@ if run_button_clicked:
                                     'total_staff': len(fatigue_df),
                                     'average_fatigue_score': float(fatigue_df['fatigue_score'].mean()) if 'fatigue_score' in fatigue_df.columns else None,
                                     'max_fatigue_score': float(fatigue_df['fatigue_score'].max()) if 'fatigue_score' in fatigue_df.columns else None,
-                                    'high_risk_staff': int((fatigue_df['fatigue_score'] > 0.7).sum()) if 'fatigue_score' in fatigue_df.columns else 0,
+                                    'high_risk_staff': int((fatigue_df['fatigue_score'] > 55).sum()) if 'fatigue_score' in fatigue_df.columns else 0,
                                     'timestamp': datetime.now().isoformat()
                                 }
                                 
@@ -3876,7 +3881,7 @@ if run_button_clicked:
                                         staff_details.append({
                                             'staff': row.get('staff', 'Unknown'),
                                             'fatigue_score': float(row.get('fatigue_score', 0)),
-                                            'risk_level': 'High' if row.get('fatigue_score', 0) > 0.7 else 'Medium' if row.get('fatigue_score', 0) > 0.4 else 'Low'
+                                            'risk_level': 'High' if row.get('fatigue_score', 0) > 55 else 'Medium' if row.get('fatigue_score', 0) > 35 else 'Low'
                                         })
                                     fatigue_summary['staff_details'] = staff_details
                                 
@@ -4296,7 +4301,7 @@ if run_button_clicked:
                         fatigue_df = pd.read_parquet(fatigue_files[0])
                         analysis_results_comprehensive["fatigue_analysis"] = {
                             "avg_fatigue_score": float(fatigue_df.get("fatigue_score", pd.Series([0.5])).mean()),
-                            "high_fatigue_staff_count": int((fatigue_df.get("fatigue_score", pd.Series([0])) > 0.7).sum()),
+                            "high_fatigue_staff_count": int((fatigue_df.get("fatigue_score", pd.Series([0])) > 55).sum()),
                             "staff_fatigue": fatigue_df.to_dict('index') if not fatigue_df.empty else {}
                         }
                 
