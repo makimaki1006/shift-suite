@@ -586,6 +586,18 @@ from shift_suite.tasks.quick_logic_analysis import (
     create_pattern_list,
     create_deep_analysis_display,
 )
+# 離職予測関連のインポート
+try:
+    from shift_suite.tasks.improved_turnover_predictor import (
+        analyze_turnover_risk,
+        generate_turnover_report
+    )
+    from shift_suite.tasks.turnover_prediction import TurnoverPredictionEngine
+    TURNOVER_AVAILABLE = True
+except ImportError as e:
+    log.warning(f"Turnover prediction modules not available: {e}")
+    TURNOVER_AVAILABLE = False
+
 from sklearn.tree import plot_tree
 import matplotlib.pyplot as plt
 
@@ -2139,7 +2151,20 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str, device_type: str 
     if not date_cols:
         return go.Figure().update_layout(title_text=f"{title}: 表示可能な日付データなし", height=300)
 
+    # 全日付範囲を確保（実績0の日も含む）
+    # 最初と最後の日付を取得
+    all_dates = pd.to_datetime(date_cols)
+    date_range = pd.date_range(start=all_dates.min(), end=all_dates.max(), freq='D')
+    date_range_str = [d.strftime('%Y-%m-%d') for d in date_range]
+    
+    # 存在しない日付列を0で埋める
     display_df = df_heat[date_cols].copy()
+    for date_str in date_range_str:
+        if date_str not in display_df.columns:
+            display_df[date_str] = 0
+    
+    # 日付順にソート
+    display_df = display_df.reindex(columns=sorted(display_df.columns))
     
     # 休日除外フィルタ: 事前生成されたヒートマップデータに0時間のスロットが残っている場合を考慮
     # 全て0の行（時間スロット）を除外（これは通常、夜間の無人時間帯を表す）
@@ -2213,7 +2238,7 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str, device_type: str 
             max_val = display_df_renamed.max().max()
             # 職種別やデータが大きい場合はテキスト表示を無効化
             is_role_specific = any(keyword in title.lower() for keyword in ['職種', 'role', '看護師', 'ドクター', '薬剤師'])
-            show_text_auto = max_val <= 3 and not is_role_specific  # さらに厳しい条件
+            show_text_auto = False  # 人数表示を完全に無効化
             
             fig = px.imshow(
                 display_df_renamed,
@@ -2246,7 +2271,7 @@ def generate_heatmap_figure(df_heat: pd.DataFrame, title: str, device_type: str 
         max_val = display_df_renamed.max().max()
         # 職種別やデータが大きい場合はテキスト表示を無効化
         is_role_specific = any(keyword in title.lower() for keyword in ['職種', 'role', '看護師', 'ドクター', '薬剤師'])
-        show_text_auto = max_val <= 3 and not is_role_specific  # さらに厳しい条件
+        show_text_auto = False  # 人数表示を完全に無効化
         
         fig = px.imshow(
             display_df_renamed,
@@ -3614,7 +3639,7 @@ def create_fatigue_tab() -> html.Div:
             corr_matrix = df_fatigue_display[available_factors].corr()
             fig_corr = px.imshow(
                 corr_matrix,
-                text_auto=True,
+                text_auto=False,  # 相関係数表示を無効化
                 aspect="auto",
                 title="疲労要因間の相関マトリックス",
                 color_continuous_scale='RdBu_r'
@@ -4011,6 +4036,160 @@ def create_fairness_tab() -> html.Div:
     else:
         content.append(html.P("公平性データが見つかりません。"))
 
+    return html.Div(content)
+
+
+def create_turnover_prediction_tab() -> html.Div:
+    """離職予測タブを作成"""
+    if not TURNOVER_AVAILABLE:
+        return html.Div([
+            html.H3("🔮 離職予測分析", style={'marginBottom': '20px'}),
+            html.Div(
+                "離職予測モジュールが利用できません。必要なライブラリがインストールされているか確認してください。",
+                style={
+                    'padding': '20px',
+                    'backgroundColor': '#FFF3E0',
+                    'borderRadius': '8px',
+                    'color': '#E65100'
+                }
+            )
+        ])
+    
+    content = [
+        html.H3("🔮 離職予測分析", style={'marginBottom': '20px'}),
+        
+        # モデル状態カード
+        html.Div(id='turnover-model-status', style={'marginBottom': '20px'}),
+        
+        # リスクメトリクス表示（4列）
+        html.Div(id='turnover-risk-metrics', style={'marginBottom': '20px'}),
+        
+        # リフレッシュボタン
+        html.Button(
+            '🔄 予測を更新',
+            id='turnover-refresh-button',
+            n_clicks=0,
+            style={
+                'marginBottom': '20px',
+                'padding': '10px 20px',
+                'backgroundColor': '#4CAF50',
+                'color': 'white',
+                'border': 'none',
+                'borderRadius': '5px',
+                'cursor': 'pointer'
+            }
+        ),
+        
+        # 高リスクスタッフテーブル
+        html.Div([
+            html.H4("⚠️ 高リスクスタッフ", style={'marginBottom': '10px'}),
+            html.Div(id='turnover-high-risk-table')
+        ], style={'marginBottom': '30px'}),
+        
+        # リスク分布可視化
+        html.Div([
+            html.H4("📊 リスク分布", style={'marginBottom': '10px'}),
+            html.Div(id='turnover-risk-distribution')
+        ], style={'marginBottom': '30px'}),
+        
+        # リスク要因分析
+        html.Div([
+            html.H4("🎯 主要リスク要因", style={'marginBottom': '10px'}),
+            html.Div(id='turnover-risk-factors')
+        ]),
+        
+        # 予測履歴表示
+        html.Div([
+            html.H4("📈 予測履歴", style={'marginBottom': '10px'}),
+            html.Div([
+                html.Button('📊 履歴表示', id='turnover-history-button', n_clicks=0, style={
+                    'marginRight': '10px', 'padding': '8px 16px', 'backgroundColor': '#2196F3',
+                    'color': 'white', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'
+                }),
+                html.Button('🗑️ 履歴クリア', id='turnover-clear-history-button', n_clicks=0, style={
+                    'padding': '8px 16px', 'backgroundColor': '#F44336',
+                    'color': 'white', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'
+                })
+            ], style={'marginBottom': '15px'}),
+            html.Div(id='turnover-prediction-history')
+        ], style={'marginBottom': '30px'}),
+        
+        # アラート・通知システム
+        html.Div([
+            html.H4("🚨 リスクアラート", style={'marginBottom': '10px'}),
+            html.Div(id='turnover-risk-alerts', children=[
+                html.Div("予測を実行してアラートを確認してください。", 
+                        style={'padding': '15px', 'color': '#666', 'textAlign': 'center'})
+            ])
+        ], style={'marginBottom': '30px'}),
+        
+        # エクスポート機能
+        html.Div([
+            html.H4("📥 レポートエクスポート", style={'marginBottom': '10px'}),
+            html.Div([
+                html.Button('📊 CSV出力', id='turnover-export-csv-button', n_clicks=0, style={
+                    'marginRight': '10px', 'padding': '8px 16px', 'backgroundColor': '#4CAF50',
+                    'color': 'white', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'
+                }),
+                html.Button('📈 Excel出力', id='turnover-export-excel-button', n_clicks=0, style={
+                    'marginRight': '10px', 'padding': '8px 16px', 'backgroundColor': '#00BCD4',
+                    'color': 'white', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'
+                }),
+                html.Button('📄 JSON出力', id='turnover-export-json-button', n_clicks=0, style={
+                    'padding': '8px 16px', 'backgroundColor': '#9C27B0',
+                    'color': 'white', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'
+                })
+            ], style={'marginBottom': '10px'}),
+            dcc.Download(id='turnover-export-download'),
+            html.Div(id='turnover-export-status')
+        ], style={'marginBottom': '30px'}),
+        
+        # モデル管理機能
+        html.Div([
+            html.H4("🔧 モデル管理", style={'marginBottom': '10px'}),
+            html.Div([
+                html.Button('🔄 モデル再学習', id='turnover-retrain-button', n_clicks=0, style={
+                    'marginRight': '10px', 'padding': '8px 16px', 'backgroundColor': '#FF5722',
+                    'color': 'white', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'
+                }),
+                html.Button('📋 前回との比較', id='turnover-compare-button', n_clicks=0, style={
+                    'padding': '8px 16px', 'backgroundColor': '#607D8B',
+                    'color': 'white', 'border': 'none', 'borderRadius': '5px', 'cursor': 'pointer'
+                })
+            ], style={'marginBottom': '10px'}),
+            html.Div(id='turnover-retrain-status'),
+            html.Div(id='turnover-comparison-results')
+        ], style={'marginBottom': '30px'}),
+        
+        # スタッフ詳細モーダル
+        html.Div([
+            html.Div([
+                html.Div([
+                    # モーダルヘッダー
+                    html.Div([
+                        html.H4(id='staff-detail-title', children="スタッフ詳細", style={'margin': '0'}),
+                        html.Button('×', id='staff-detail-close', n_clicks=0, style={
+                            'background': 'none', 'border': 'none', 'fontSize': '24px',
+                            'cursor': 'pointer', 'position': 'absolute', 'right': '15px', 'top': '15px'
+                        })
+                    ], style={'position': 'relative', 'borderBottom': '1px solid #ddd', 'paddingBottom': '15px'}),
+                    
+                    # モーダル内容
+                    html.Div(id='staff-detail-content', style={'padding': '20px 0'})
+                    
+                ], style={
+                    'backgroundColor': 'white', 'margin': '5% auto', 'padding': '20px',
+                    'border': 'none', 'borderRadius': '10px', 'width': '80%', 'maxWidth': '800px',
+                    'maxHeight': '80vh', 'overflowY': 'auto', 'boxShadow': '0 4px 20px rgba(0,0,0,0.3)'
+                })
+            ], id='staff-detail-modal', style={
+                'display': 'none', 'position': 'fixed', 'zIndex': '1000',
+                'left': '0', 'top': '0', 'width': '100%', 'height': '100%',
+                'backgroundColor': 'rgba(0,0,0,0.5)'
+            })
+        ])
+    ]
+    
     return html.Div(content)
 
 
@@ -5674,6 +5853,7 @@ def create_main_ui_tabs():
             html.Div(id='fatigue-tab-container', style={'display': 'none'}, children=html.Div(id='fatigue-content')),
             html.Div(id='forecast-tab-container', style={'display': 'none'}, children=html.Div(id='forecast-content')),
             html.Div(id='fairness-tab-container', style={'display': 'none'}, children=html.Div(id='fairness-content')),
+            html.Div(id='turnover-prediction-tab-container', style={'display': 'none'}, children=html.Div(id='turnover-prediction-content')),
             html.Div(id='gap-tab-container', style={'display': 'none'}, children=html.Div(id='gap-content')),
             html.Div(id='individual-analysis-tab-container', style={'display': 'none'}, children=html.Div(id='individual-analysis-content')),
             html.Div(id='team-analysis-tab-container', style={'display': 'none'}, children=html.Div(id='team-analysis-content')),
@@ -5714,7 +5894,8 @@ def update_sub_tabs(selected_group):
             {'label': '👥 チーム分析', 'value': 'team_analysis'},
             {'label': '😴 疲労分析', 'value': 'fatigue'},
             {'label': '🏖️ 休暇分析', 'value': 'leave'},
-            {'label': '⚖️ 公平性', 'value': 'fairness'}
+            {'label': '⚖️ 公平性', 'value': 'fairness'},
+            {'label': '🔮 離職予測', 'value': 'turnover_prediction'}
         ],
         'planning': [
             {'label': '⚡ 最適化', 'value': 'optimization'},
@@ -5774,6 +5955,7 @@ def update_legacy_tabs(selected_tab):
      Output('fatigue-tab-container', 'style'),
      Output('forecast-tab-container', 'style'),
      Output('fairness-tab-container', 'style'),
+     Output('turnover-prediction-tab-container', 'style'),
      Output('gap-tab-container', 'style'),
      Output('individual-analysis-tab-container', 'style'),
      Output('team-analysis-tab-container', 'style'),
@@ -5807,7 +5989,8 @@ def update_tab_visibility(active_tab, sub_tab, data_status):
     all_tabs = [
         'overview', 'heatmap', 'shortage', 'optimization', 'leave',
         'cost', 'hire_plan', 'fatigue', 'forecast', 'fairness',
-        'gap', 'individual_analysis', 'team_analysis', 'blueprint_analysis', 'logic_analysis', 'ai_analysis'
+        'turnover_prediction', 'gap', 'individual_analysis', 'team_analysis', 
+        'blueprint_analysis', 'logic_analysis', 'ai_analysis'
     ]
     
     # 各タブのスタイルを設定（アクティブなタブのみ表示）
@@ -6047,6 +6230,1431 @@ def initialize_fairness_content(selected_tab, selected_scenario, data_status):
     except Exception as e:
         log.error(f"公平性タブの初期化エラー: {str(e)}")
         return html.Div(f"エラーが発生しました: {str(e)}", style={'color': 'red'})
+
+
+@app.callback(
+    Output('turnover-prediction-content', 'children'),
+    [Input('selected-tab-store', 'data'),
+     Input('scenario-dropdown', 'value')],
+    [State('data-loaded', 'data')],
+)
+@safe_callback
+def initialize_turnover_prediction_content(selected_tab, selected_scenario, data_status):
+    """離職予測タブの内容を初期化"""
+    if not selected_scenario or selected_tab != 'turnover_prediction':
+        raise PreventUpdate
+    if data_status is False:
+        raise PreventUpdate
+    try:
+        return create_turnover_prediction_tab()
+    except Exception as e:
+        log.error(f"離職予測タブの初期化エラー: {str(e)}")
+        return html.Div(f"エラーが発生しました: {str(e)}", style={'color': 'red'})
+
+
+# 離職予測モデル状態表示コールバック
+@app.callback(
+    [Output('turnover-model-status', 'children'),
+     Output('turnover-risk-metrics', 'children'),
+     Output('turnover-high-risk-table', 'children'),
+     Output('turnover-risk-distribution', 'children'),
+     Output('turnover-risk-factors', 'children'),
+     Output('turnover-risk-alerts', 'children')],
+    [Input('turnover-refresh-button', 'n_clicks')],
+    [State('scenario-dropdown', 'value')]
+)
+@safe_callback  
+def update_turnover_predictions(n_clicks, scenario):
+    """離職予測データを更新"""
+    from pathlib import Path
+    import time
+    
+    # モデル状態カード（拡張版）
+    model_path = Path('models/turnover_model.pkl')
+    
+    def get_model_metadata(model_path: Path) -> Dict[str, Any]:
+        """モデルのメタデータを取得"""
+        if not model_path.exists():
+            return {}
+        
+        try:
+            import pickle
+            with open(model_path, 'rb') as f:
+                model_data = pickle.load(f)
+            
+            metadata = model_data.get('metadata', {})
+            return {
+                'created_at': model_data.get('created_at', 'N/A'),
+                'model_type': model_data.get('model_type', 'LogisticRegression'),
+                'feature_count': len(model_data.get('feature_columns', [])),
+                'training_samples': metadata.get('training_samples', 'N/A'),
+                'accuracy_score': metadata.get('accuracy_score', 'N/A'),
+                'validation_score': metadata.get('validation_score', 'N/A'),
+                'feature_importance': metadata.get('feature_importance', {}),
+                'config_hash': metadata.get('config_hash', 'N/A')
+            }
+        except Exception as e:
+            log.error(f"モデルメタデータ読み込みエラー: {e}")
+            return {}
+    
+    if model_path.exists():
+        model_age = (time.time() - model_path.stat().st_mtime) / 86400  # 日数
+        metadata = get_model_metadata(model_path)
+        
+        # メタデータ表示用の行を作成
+        metadata_rows = [
+            html.P(f"📅 最終学習: {model_age:.0f}日前"),
+            html.P(f"💾 サイズ: {model_path.stat().st_size / 1024:.1f}KB")
+        ]
+        
+        if metadata.get('model_type'):
+            metadata_rows.append(html.P(f"🔧 モデル: {metadata['model_type']}"))
+        if metadata.get('training_samples') != 'N/A':
+            metadata_rows.append(html.P(f"📊 訓練データ: {metadata['training_samples']}件"))
+        if metadata.get('feature_count'):
+            metadata_rows.append(html.P(f"📈 特徴量: {metadata['feature_count']}個"))
+        if metadata.get('accuracy_score') != 'N/A':
+            metadata_rows.append(html.P(f"🎯 精度: {metadata['accuracy_score']:.1%}"))
+        if metadata.get('validation_score') != 'N/A':
+            metadata_rows.append(html.P(f"✅ 検証: {metadata['validation_score']:.1%}"))
+        
+        # モデルの状態判定
+        status_text = "✅ 利用可能" if model_age < 30 else "⚠️ 再学習推奨"
+        status_color = '#4CAF50' if model_age < 30 else '#FF9800'
+        
+        metadata_rows.append(html.P(status_text, style={'color': status_color, 'fontWeight': 'bold'}))
+        
+        model_status = html.Div([
+            html.Div([
+                html.H5("🤖 モデル状態", style={'marginBottom': '10px'}),
+                *metadata_rows
+            ], style={
+                'padding': '15px',
+                'backgroundColor': 'white',
+                'borderRadius': '8px',
+                'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'
+            })
+        ])
+    else:
+        model_status = html.Div([
+            html.Div([
+                html.H5("🤖 モデル状態", style={'marginBottom': '10px'}),
+                html.P("❌ モデル未作成", style={'color': '#F44336', 'fontWeight': 'bold'}),
+                html.P("初回実行時にモデルが自動作成されます"),
+                html.P("📝 推奨: 十分なデータ量（30件以上）があることを確認してください")
+            ], style={
+                'padding': '15px',
+                'backgroundColor': '#FFF3E0',
+                'borderRadius': '8px',
+                'border': '1px solid #FFB74D'
+            })
+        ])
+    
+    # データ取得
+    long_df = data_get('long_df', pd.DataFrame())
+    if long_df.empty:
+        empty_msg = html.Div("データが見つかりません。シナリオを選択してください。", 
+                           style={'padding': '20px', 'color': '#666'})
+        no_alerts = html.Div("データがないため、アラートを生成できません。", 
+                           style={'padding': '15px', 'color': '#666', 'textAlign': 'center'})
+        return model_status, empty_msg, empty_msg, empty_msg, empty_msg, no_alerts
+    
+    try:
+        # 実際の離職予測モデルを使用
+        if TURNOVER_AVAILABLE:
+            # モデルファイルのパス設定
+            model_path = Path('models/turnover_model.pkl')
+            model_path.parent.mkdir(exist_ok=True)
+            
+            # 離職リスク分析を実行
+            predictions_df = analyze_turnover_risk(
+                long_df,
+                train_model=not model_path.exists(),
+                model_path=model_path
+            )
+            
+            if not predictions_df.empty:
+                # 分析レポート生成
+                report = generate_turnover_report(predictions_df)
+                
+                # 予測履歴を保存
+                save_prediction_history(report, scenario)
+                
+                # リスクメトリクス（実データ）
+                summary = report['summary']
+                risk_metrics = html.Div([
+                    html.Div([
+                        html.Div([
+                            html.H6("🔴 高リスク", style={'color': '#F44336'}),
+                            html.H3(str(summary['high_risk_count']))
+                        ], style={'textAlign': 'center', 'flex': '1'}),
+                        html.Div([
+                            html.H6("🟡 中リスク", style={'color': '#FF9800'}),
+                            html.H3(str(summary['medium_risk_count']))
+                        ], style={'textAlign': 'center', 'flex': '1'}),
+                        html.Div([
+                            html.H6("🟢 低リスク", style={'color': '#4CAF50'}),
+                            html.H3(str(summary['low_risk_count']))
+                        ], style={'textAlign': 'center', 'flex': '1'}),
+                        html.Div([
+                            html.H6("📊 平均リスク", style={'color': '#2196F3'}),
+                            html.H3(f"{summary['average_risk']:.1%}")
+                        ], style={'textAlign': 'center', 'flex': '1'})
+                    ], style={
+                        'display': 'flex',
+                        'padding': '20px',
+                        'backgroundColor': 'white',
+                        'borderRadius': '8px',
+                        'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'
+                    })
+                ])
+                
+                # 高リスクスタッフテーブル（実データ）
+                high_risk_data = []
+                high_risk_predictions = predictions_df[predictions_df['risk_level'] == '高リスク'].head(10)
+                
+                for _, row in high_risk_predictions.iterrows():
+                    # 主要因を特定
+                    main_factors = []
+                    if row.get('night_ratio', 0) > 0.6:
+                        main_factors.append('夜勤過多')
+                    if row.get('consecutive_days', 0) > 5:
+                        main_factors.append('連続勤務')
+                    if row.get('rest_ratio', 0) < 0.2:
+                        main_factors.append('休日不足')
+                    
+                    high_risk_data.append({
+                        '職員名': str(row['staff_id']),
+                        'リスクスコア': f"{row['risk_probability']:.1%}",
+                        'リスクレベル': row['risk_level'],
+                        '主要因': ', '.join(main_factors) if main_factors else '分析中'
+                    })
+                
+                high_risk_table = dash_table.DataTable(
+                    id='turnover-high-risk-datatable',
+                    data=high_risk_data,
+                    columns=[
+                        {'name': '職員名', 'id': '職員名'},
+                        {'name': 'リスクスコア', 'id': 'リスクスコア'},
+                        {'name': 'リスクレベル', 'id': 'リスクレベル'},
+                        {'name': '主要因', 'id': '主要因'}
+                    ],
+                    style_cell={'textAlign': 'left', 'cursor': 'pointer'},
+                    style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                    style_data_conditional=[
+                        {
+                            'if': {'filter_query': '{リスクレベル} = 高リスク'},
+                            'backgroundColor': '#FFEBEE',
+                            'color': 'black',
+                        }
+                    ],
+                    row_selectable='single',
+                    selected_rows=[],
+                    css=[{
+                        'selector': '.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table',
+                        'rule': 'border-collapse: collapse'
+                    }]
+                )
+                
+                # リスク分布グラフ（実データ）
+                risk_dist_fig = px.pie(
+                    values=[summary['high_risk_count'], summary['medium_risk_count'], summary['low_risk_count']],
+                    names=['高リスク', '中リスク', '低リスク'],
+                    color_discrete_map={'高リスク': '#F44336', '中リスク': '#FF9800', '低リスク': '#4CAF50'},
+                    title=f'リスクレベル分布（総計: {summary["total_staff"]}名）'
+                )
+                risk_distribution = dcc.Graph(figure=risk_dist_fig)
+                
+                # リスク要因分析（実データベース）
+                factor_analysis = {}
+                for _, row in predictions_df.iterrows():
+                    if row.get('night_ratio', 0) > 0.6:
+                        factor_analysis['夜勤過多'] = factor_analysis.get('夜勤過多', 0) + 1
+                    if row.get('consecutive_days', 0) > 5:
+                        factor_analysis['連続勤務'] = factor_analysis.get('連続勤務', 0) + 1
+                    if row.get('rest_ratio', 0) < 0.2:
+                        factor_analysis['休日不足'] = factor_analysis.get('休日不足', 0) + 1
+                
+                # パーセンテージに変換
+                total_staff = len(predictions_df)
+                factor_percentages = {k: (v / total_staff) * 100 for k, v in factor_analysis.items()}
+                
+                if factor_percentages:
+                    factors_fig = px.bar(
+                        x=list(factor_percentages.values()),
+                        y=list(factor_percentages.keys()),
+                        orientation='h',
+                        title='主要リスク要因の発生率（%）',
+                        labels={'x': '発生率(%)', 'y': '要因'}
+                    )
+                    factors_fig.update_traces(marker_color='#FF5722')
+                    risk_factors = dcc.Graph(figure=factors_fig)
+                else:
+                    risk_factors = html.Div("リスク要因データが不足しています。", 
+                                           style={'padding': '20px', 'color': '#666'})
+                
+                # アラート生成
+                alerts = generate_risk_alerts(report, scenario)
+                
+                return model_status, risk_metrics, high_risk_table, risk_distribution, risk_factors, alerts
+                
+            else:
+                # 予測結果が空の場合
+                empty_msg = html.Div("予測データを生成できませんでした。データを確認してください。", 
+                                   style={'padding': '20px', 'color': '#666'})
+                no_alerts = html.Div("予測データがないため、アラートを生成できません。", 
+                                   style={'padding': '15px', 'color': '#666', 'textAlign': 'center'})
+                return model_status, empty_msg, empty_msg, empty_msg, empty_msg, no_alerts
+                
+        else:
+            # turnover機能が利用できない場合のフォールバック
+            staff_list = long_df['staff'].unique()
+            n_staff = len(staff_list)
+            
+            # 簡易リスクメトリクス
+            high_risk = max(1, int(n_staff * 0.1))
+            medium_risk = max(1, int(n_staff * 0.2))
+            low_risk = n_staff - high_risk - medium_risk
+            
+            risk_metrics = html.Div([
+                html.Div([
+                    html.Div([
+                        html.H6("🔴 高リスク", style={'color': '#F44336'}),
+                        html.H3(str(high_risk))
+                    ], style={'textAlign': 'center', 'flex': '1'}),
+                    html.Div([
+                        html.H6("🟡 中リスク", style={'color': '#FF9800'}),
+                        html.H3(str(medium_risk))
+                    ], style={'textAlign': 'center', 'flex': '1'}),
+                    html.Div([
+                        html.H6("🟢 低リスク", style={'color': '#4CAF50'}),
+                        html.H3(str(low_risk))
+                    ], style={'textAlign': 'center', 'flex': '1'}),
+                    html.Div([
+                        html.H6("📊 平均リスク", style={'color': '#2196F3'}),
+                        html.H3("推定中")
+                    ], style={'textAlign': 'center', 'flex': '1'})
+                ], style={
+                    'display': 'flex',
+                    'padding': '20px',
+                    'backgroundColor': 'white',
+                    'borderRadius': '8px',
+                    'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'
+                })
+            ])
+            
+            # 簡易テーブル
+            high_risk_table = dash_table.DataTable(
+                data=[
+                    {'職員名': staff_list[i], 'リスクスコア': '分析中', 
+                     'リスクレベル': '分析中', '主要因': 'モデル未利用'}
+                    for i in range(min(5, len(staff_list)))
+                ],
+                columns=[
+                    {'name': '職員名', 'id': '職員名'},
+                    {'name': 'リスクスコア', 'id': 'リスクスコア'},
+                    {'name': 'リスクレベル', 'id': 'リスクレベル'},
+                    {'name': '主要因', 'id': '主要因'}
+                ],
+                style_cell={'textAlign': 'left'},
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
+            )
+            
+            # 簡易グラフ
+            risk_dist_fig = px.pie(
+                values=[high_risk, medium_risk, low_risk],
+                names=['推定高リスク', '推定中リスク', '推定低リスク'],
+                color_discrete_map={'推定高リスク': '#F44336', '推定中リスク': '#FF9800', '推定低リスク': '#4CAF50'},
+                title='リスクレベル推定分布（モデル未利用）'
+            )
+            risk_distribution = dcc.Graph(figure=risk_dist_fig)
+            
+            risk_factors = html.Div("離職予測機能が利用できません。モジュールを確認してください。", 
+                                   style={'padding': '20px', 'color': '#666'})
+            
+            # フォールバック時のアラート
+            alerts = html.Div([
+                html.Div([
+                    html.Span("⚠️", style={'fontSize': '20px', 'marginRight': '10px'}),
+                    html.Strong("離職予測機能無効")
+                ], style={'marginBottom': '8px'}),
+                html.P("離職予測機能が利用できないため、アラートを生成できません。", 
+                      style={'margin': '5px 0', 'fontSize': '14px'}),
+                html.P("📝 推奨アクション: 必要なライブラリをインストールしてください。", 
+                      style={'margin': '5px 0', 'fontSize': '13px', 'fontStyle': 'italic', 'color': '#555'})
+            ], style={
+                'backgroundColor': '#FFF3E0',
+                'border': '1px solid #FF9800',
+                'borderRadius': '8px',
+                'padding': '15px'
+            })
+        
+        return model_status, risk_metrics, high_risk_table, risk_distribution, risk_factors, alerts
+        
+    except Exception as e:
+        log.error(f"離職予測更新エラー: {e}")
+        error_msg = html.Div(f"エラー: {str(e)}", style={'color': 'red'})
+        error_alert = html.Div([
+            html.Div([
+                html.Span("🚨", style={'fontSize': '20px', 'marginRight': '10px'}),
+                html.Strong("システムエラー", style={'color': '#F44336'})
+            ], style={'marginBottom': '8px'}),
+            html.P(f"予測処理中にエラーが発生しました: {str(e)}", 
+                  style={'margin': '5px 0', 'fontSize': '14px'}),
+            html.P("📝 推奨アクション: システム管理者に連絡してください。", 
+                  style={'margin': '5px 0', 'fontSize': '13px', 'fontStyle': 'italic', 'color': '#555'})
+        ], style={
+            'backgroundColor': '#FFEBEE',
+            'border': '1px solid #F44336',
+            'borderRadius': '8px',
+            'padding': '15px'
+        })
+        return model_status, error_msg, error_msg, error_msg, error_msg, error_alert
+
+
+# スタッフ詳細モーダルのコールバック
+@app.callback(
+    [Output('staff-detail-modal', 'style'),
+     Output('staff-detail-title', 'children'),
+     Output('staff-detail-content', 'children')],
+    [Input('turnover-high-risk-datatable', 'selected_rows'),
+     Input('staff-detail-close', 'n_clicks')],
+    [State('turnover-high-risk-datatable', 'data'),
+     State('scenario-dropdown', 'value')]
+)
+@safe_callback
+def handle_staff_detail_modal(selected_rows, close_clicks, table_data, scenario):
+    """スタッフ詳細モーダルの表示/非表示制御"""
+    ctx = dash.callback_context
+    
+    # モーダルを閉じる場合
+    if ctx.triggered and ctx.triggered[0]['prop_id'] == 'staff-detail-close.n_clicks':
+        return {'display': 'none'}, "スタッフ詳細", ""
+    
+    # 行が選択された場合
+    if selected_rows and len(selected_rows) > 0 and table_data:
+        selected_row_idx = selected_rows[0]
+        if selected_row_idx < len(table_data):
+            staff_data = table_data[selected_row_idx]
+            staff_name = staff_data['職員名']
+            
+            # 詳細データを生成（実際のデータから取得）
+            long_df = data_get('long_df', pd.DataFrame())
+            if not long_df.empty and TURNOVER_AVAILABLE:
+                try:
+                    # 該当スタッフのデータを抽出
+                    staff_df = long_df[long_df['staff'] == staff_name]
+                    
+                    if not staff_df.empty:
+                        # 詳細分析内容を作成
+                        detail_content = create_staff_detail_analysis(staff_name, staff_df, staff_data)
+                        
+                        modal_style = {
+                            'display': 'block', 'position': 'fixed', 'zIndex': '1000',
+                            'left': '0', 'top': '0', 'width': '100%', 'height': '100%',
+                            'backgroundColor': 'rgba(0,0,0,0.5)'
+                        }
+                        
+                        return modal_style, f"👤 {staff_name} さんの詳細分析", detail_content
+                
+                except Exception as e:
+                    log.error(f"スタッフ詳細分析エラー: {e}")
+                    error_content = html.Div(f"分析エラー: {str(e)}", style={'color': 'red'})
+                    modal_style = {'display': 'block', 'position': 'fixed', 'zIndex': '1000',
+                                 'left': '0', 'top': '0', 'width': '100%', 'height': '100%',
+                                 'backgroundColor': 'rgba(0,0,0,0.5)'}
+                    return modal_style, f"👤 {staff_name} さんの詳細分析", error_content
+    
+    # デフォルト（モーダル非表示）
+    return {'display': 'none'}, "スタッフ詳細", ""
+
+
+def create_staff_detail_analysis(staff_name: str, staff_df: pd.DataFrame, risk_data: Dict[str, str]) -> html.Div:
+    """スタッフの詳細分析コンテンツを作成"""
+    try:
+        # 基本統計
+        total_shifts = len(staff_df)
+        date_range = f"{staff_df['date'].min().strftime('%Y-%m-%d')} ～ {staff_df['date'].max().strftime('%Y-%m-%d')}"
+        
+        # シフト種別分析
+        shift_counts = staff_df['shift_type'].value_counts() if 'shift_type' in staff_df.columns else pd.Series()
+        
+        # 労働時間分析
+        if 'duration' in staff_df.columns:
+            avg_hours = staff_df['duration'].mean()
+            total_hours = staff_df['duration'].sum()
+        else:
+            avg_hours = total_hours = 0
+        
+        # 連続勤務分析（簡易版）
+        consecutive_days = 0
+        if 'date' in staff_df.columns:
+            staff_df_sorted = staff_df.sort_values('date')
+            consecutive_count = 1
+            max_consecutive = 1
+            for i in range(1, len(staff_df_sorted)):
+                current_date = staff_df_sorted.iloc[i]['date']
+                prev_date = staff_df_sorted.iloc[i-1]['date']
+                if (current_date - prev_date).days == 1:
+                    consecutive_count += 1
+                    max_consecutive = max(max_consecutive, consecutive_count)
+                else:
+                    consecutive_count = 1
+            consecutive_days = max_consecutive
+        
+        content = html.Div([
+            # リスク概要
+            html.Div([
+                html.H5("🚨 リスク概要", style={'color': '#F44336'}),
+                html.Div([
+                    html.P(f"リスクスコア: {risk_data.get('リスクスコア', 'N/A')}", style={'fontSize': '18px', 'fontWeight': 'bold'}),
+                    html.P(f"リスクレベル: {risk_data.get('リスクレベル', 'N/A')}"),
+                    html.P(f"主要リスク要因: {risk_data.get('主要因', 'N/A')}")
+                ])
+            ], style={'marginBottom': '20px', 'padding': '15px', 'backgroundColor': '#FFEBEE', 'borderRadius': '8px'}),
+            
+            # 勤務統計
+            html.Div([
+                html.H5("📊 勤務統計"),
+                html.Div([
+                    html.Div([
+                        html.H6("総勤務日数", style={'margin': '0', 'color': '#666'}),
+                        html.H4(f"{total_shifts}日", style={'margin': '5px 0'})
+                    ], style={'textAlign': 'center', 'flex': '1'}),
+                    html.Div([
+                        html.H6("対象期間", style={'margin': '0', 'color': '#666'}),
+                        html.P(date_range, style={'margin': '5px 0', 'fontSize': '14px'})
+                    ], style={'textAlign': 'center', 'flex': '2'}),
+                    html.Div([
+                        html.H6("平均勤務時間", style={'margin': '0', 'color': '#666'}),
+                        html.H4(f"{avg_hours:.1f}h", style={'margin': '5px 0'})
+                    ], style={'textAlign': 'center', 'flex': '1'}),
+                    html.Div([
+                        html.H6("最大連続勤務", style={'margin': '0', 'color': '#666'}),
+                        html.H4(f"{consecutive_days}日", style={'margin': '5px 0', 'color': '#F44336' if consecutive_days > 5 else 'inherit'})
+                    ], style={'textAlign': 'center', 'flex': '1'})
+                ], style={'display': 'flex', 'gap': '15px'})
+            ], style={'marginBottom': '20px', 'padding': '15px', 'backgroundColor': 'white', 'border': '1px solid #ddd', 'borderRadius': '8px'}),
+            
+            # シフト分布
+            html.Div([
+                html.H5("📈 シフト種別分布"),
+                html.Div([
+                    html.P(f"{shift_type}: {count}日 ({count/total_shifts*100:.1f}%)")
+                    for shift_type, count in shift_counts.items()
+                ] if len(shift_counts) > 0 else [html.P("シフト種別データなし")])
+            ], style={'marginBottom': '20px', 'padding': '15px', 'backgroundColor': 'white', 'border': '1px solid #ddd', 'borderRadius': '8px'}),
+            
+            # 推奨アクション
+            html.Div([
+                html.H5("💡 推奨アクション", style={'color': '#4CAF50'}),
+                html.Ul([
+                    html.Li("個別面談を実施し、職場環境への満足度を確認"),
+                    html.Li("連続勤務日数を減らし、適切な休息を確保") if consecutive_days > 5 else None,
+                    html.Li("夜勤の頻度を見直し、生活リズムの改善を支援") if '夜勤' in risk_data.get('主要因', '') else None,
+                    html.Li("業務負荷の調整と、スキルアップ支援を検討"),
+                    html.Li("定期的なフォローアップを実施")
+                ])
+            ], style={'padding': '15px', 'backgroundColor': '#E8F5E8', 'borderRadius': '8px'})
+        ])
+        
+        return content
+        
+    except Exception as e:
+        log.error(f"スタッフ詳細分析作成エラー: {e}")
+        return html.Div(f"詳細分析の作成中にエラーが発生しました: {str(e)}", style={'color': 'red'})
+
+
+def save_prediction_history(report: Dict[str, Any], scenario: str) -> None:
+    """予測履歴を保存"""
+    try:
+        history_dir = Path('history/turnover')
+        history_dir.mkdir(parents=True, exist_ok=True)
+        history_file = history_dir / 'prediction_history.json'
+        
+        # 新しい履歴エントリ
+        new_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'scenario': scenario,
+            'total_staff': report['summary']['total_staff'],
+            'high_risk_count': report['summary']['high_risk_count'],
+            'medium_risk_count': report['summary']['medium_risk_count'],
+            'low_risk_count': report['summary']['low_risk_count'],
+            'average_risk': report['summary']['average_risk'],
+            'max_risk': report['summary']['max_risk'],
+            'min_risk': report['summary']['min_risk'],
+            'high_risk_staff_count': len(report.get('high_risk_staff', []))
+        }
+        
+        # 既存履歴を読み込み
+        history_data = []
+        if history_file.exists():
+            try:
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history_data = json.load(f)
+            except Exception:
+                history_data = []
+        
+        # 新しいエントリを追加（最新を先頭に）
+        history_data.insert(0, new_entry)
+        
+        # 履歴を最新100件に制限
+        history_data = history_data[:100]
+        
+        # 履歴を保存
+        with open(history_file, 'w', encoding='utf-8') as f:
+            json.dump(history_data, f, ensure_ascii=False, indent=2)
+            
+    except Exception as e:
+        log.error(f"予測履歴保存エラー: {e}")
+
+
+def load_prediction_history() -> List[Dict[str, Any]]:
+    """予測履歴を読み込み"""
+    try:
+        history_file = Path('history/turnover/prediction_history.json')
+        if history_file.exists():
+            with open(history_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        log.error(f"予測履歴読み込みエラー: {e}")
+        return []
+
+
+def clear_prediction_history() -> bool:
+    """予測履歴をクリア"""
+    try:
+        history_file = Path('history/turnover/prediction_history.json')
+        if history_file.exists():
+            history_file.unlink()
+        return True
+    except Exception as e:
+        log.error(f"予測履歴クリアエラー: {e}")
+        return False
+
+
+def create_prediction_history_display(history_data: List[Dict[str, Any]]) -> html.Div:
+    """予測履歴表示コンテンツを作成"""
+    if not history_data:
+        return html.Div("履歴データがありません。予測を実行してください。", 
+                       style={'padding': '20px', 'color': '#666', 'textAlign': 'center'})
+    
+    # 時系列グラフ用のデータ準備
+    dates = [datetime.fromisoformat(entry['timestamp']).strftime('%m-%d %H:%M') for entry in history_data]
+    high_risk_counts = [entry['high_risk_count'] for entry in history_data]
+    avg_risks = [entry['average_risk'] * 100 for entry in history_data]  # パーセントに変換
+    
+    # 時系列グラフを作成（最新10件）
+    recent_data = history_data[:10][::-1]  # 最新10件を時系列順に
+    recent_dates = [datetime.fromisoformat(entry['timestamp']).strftime('%m-%d %H:%M') for entry in recent_data]
+    recent_high_counts = [entry['high_risk_count'] for entry in recent_data]
+    recent_avg_risks = [entry['average_risk'] * 100 for entry in recent_data]
+    
+    # 時系列グラフ
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=recent_dates, 
+        y=recent_high_counts,
+        mode='lines+markers',
+        name='高リスク人数',
+        line=dict(color='#F44336'),
+        yaxis='y1'
+    ))
+    fig.add_trace(go.Scatter(
+        x=recent_dates,
+        y=recent_avg_risks,
+        mode='lines+markers',
+        name='平均リスク(%)',
+        line=dict(color='#2196F3'),
+        yaxis='y2'
+    ))
+    
+    fig.update_layout(
+        title='離職リスク推移（最新10回）',
+        xaxis_title='予測実行日時',
+        yaxis=dict(title='高リスク人数', side='left'),
+        yaxis2=dict(title='平均リスク(%)', side='right', overlaying='y'),
+        height=400,
+        showlegend=True
+    )
+    
+    # 履歴テーブル用データ準備
+    table_data = []
+    for entry in history_data[:20]:  # 最新20件
+        table_data.append({
+            '実行日時': datetime.fromisoformat(entry['timestamp']).strftime('%Y-%m-%d %H:%M'),
+            'シナリオ': entry.get('scenario', 'N/A'),
+            '総スタッフ': entry['total_staff'],
+            '高リスク': entry['high_risk_count'],
+            '中リスク': entry['medium_risk_count'],
+            '低リスク': entry['low_risk_count'],
+            '平均リスク': f"{entry['average_risk']:.1%}"
+        })
+    
+    content = html.Div([
+        # 統計サマリー
+        html.Div([
+            html.H5("📊 履歴統計", style={'marginBottom': '15px'}),
+            html.Div([
+                html.Div([
+                    html.H6("総実行回数", style={'margin': '0', 'color': '#666'}),
+                    html.H4(f"{len(history_data)}回", style={'margin': '5px 0'})
+                ], style={'textAlign': 'center', 'flex': '1'}),
+                html.Div([
+                    html.H6("最新実行", style={'margin': '0', 'color': '#666'}),
+                    html.P(datetime.fromisoformat(history_data[0]['timestamp']).strftime('%m-%d %H:%M'), 
+                          style={'margin': '5px 0', 'fontSize': '14px'})
+                ], style={'textAlign': 'center', 'flex': '1'}),
+                html.Div([
+                    html.H6("平均高リスク人数", style={'margin': '0', 'color': '#666'}),
+                    html.H4(f"{sum(entry['high_risk_count'] for entry in history_data) / len(history_data):.1f}人", 
+                           style={'margin': '5px 0'})
+                ], style={'textAlign': 'center', 'flex': '1'})
+            ], style={'display': 'flex', 'gap': '20px'})
+        ], style={'marginBottom': '20px', 'padding': '15px', 'backgroundColor': 'white', 
+                 'border': '1px solid #ddd', 'borderRadius': '8px'}),
+        
+        # 時系列グラフ
+        dcc.Graph(figure=fig, style={'marginBottom': '20px'}),
+        
+        # 履歴テーブル
+        html.H5("📋 詳細履歴（最新20件）", style={'marginBottom': '10px'}),
+        dash_table.DataTable(
+            data=table_data,
+            columns=[
+                {'name': '実行日時', 'id': '実行日時'},
+                {'name': 'シナリオ', 'id': 'シナリオ'},
+                {'name': '総スタッフ', 'id': '総スタッフ'},
+                {'name': '高リスク', 'id': '高リスク'},
+                {'name': '中リスク', 'id': '中リスク'},
+                {'name': '低リスク', 'id': '低リスク'},
+                {'name': '平均リスク', 'id': '平均リスク'}
+            ],
+            style_cell={'textAlign': 'center', 'fontSize': '12px'},
+            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+            style_data_conditional=[
+                {
+                    'if': {'column_id': '高リスク', 'filter_query': '{高リスク} > 3'},
+                    'backgroundColor': '#FFEBEE'
+                },
+                {
+                    'if': {'column_id': '平均リスク', 'filter_query': '{平均リスク} contains 8'},  # 80%以上
+                    'backgroundColor': '#FFEBEE'
+                }
+            ],
+            page_size=10
+        )
+    ])
+    
+    return content
+
+
+# 履歴表示・クリアのコールバック
+@app.callback(
+    Output('turnover-prediction-history', 'children'),
+    [Input('turnover-history-button', 'n_clicks'),
+     Input('turnover-clear-history-button', 'n_clicks')],
+    prevent_initial_call=True
+)
+@safe_callback
+def handle_prediction_history(history_clicks, clear_clicks):
+    """予測履歴の表示・クリア処理"""
+    ctx = dash.callback_context
+    
+    if ctx.triggered:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        
+        if button_id == 'turnover-clear-history-button':
+            # 履歴クリア
+            if clear_prediction_history():
+                return html.Div("履歴をクリアしました。", style={'color': 'green', 'padding': '10px'})
+            else:
+                return html.Div("履歴のクリアに失敗しました。", style={'color': 'red', 'padding': '10px'})
+        
+        elif button_id == 'turnover-history-button':
+            # 履歴表示
+            history_data = load_prediction_history()
+            return create_prediction_history_display(history_data)
+    
+    return ""
+
+
+def generate_risk_alerts(current_report: Dict[str, Any], scenario: str) -> html.Div:
+    """リスクアラートを生成"""
+    alerts = []
+    
+    try:
+        current_summary = current_report['summary']
+        history_data = load_prediction_history()
+        
+        # 現在のリスク状況をチェック
+        high_risk_count = current_summary['high_risk_count']
+        avg_risk = current_summary['average_risk']
+        total_staff = current_summary['total_staff']
+        
+        # 閾値アラート
+        if high_risk_count > 5:
+            alerts.append({
+                'type': 'critical',
+                'icon': '🚨',
+                'title': '高リスクスタッフが多数検出',
+                'message': f'{high_risk_count}名の高リスクスタッフが検出されました。即座に対応が必要です。',
+                'action': '個別面談の実施を推奨します。'
+            })
+        elif high_risk_count > 3:
+            alerts.append({
+                'type': 'warning',
+                'icon': '⚠️',
+                'title': '高リスクスタッフ増加',
+                'message': f'{high_risk_count}名の高リスクスタッフが検出されました。注意が必要です。',
+                'action': 'シフト調整と職場環境の見直しを検討してください。'
+            })
+        
+        if avg_risk > 0.7:
+            alerts.append({
+                'type': 'warning',
+                'icon': '📈',
+                'title': '全体的なリスク上昇',
+                'message': f'平均リスクが{avg_risk:.1%}と高水準です。',
+                'action': '組織全体の働き方を見直し、ストレス要因を特定してください。'
+            })
+        
+        # 高リスク率のアラート
+        high_risk_ratio = high_risk_count / total_staff if total_staff > 0 else 0
+        if high_risk_ratio > 0.2:  # 20%以上が高リスク
+            alerts.append({
+                'type': 'critical',
+                'icon': '💥',
+                'title': '高リスク率が危険水準',
+                'message': f'スタッフの{high_risk_ratio:.1%}が高リスク状態です。',
+                'action': '緊急対策会議の開催をお勧めします。'
+            })
+        
+        # 履歴比較アラート（前回との比較）
+        if len(history_data) > 1:
+            previous_entry = history_data[1]  # 1つ前のエントリ
+            prev_high_count = previous_entry['high_risk_count']
+            prev_avg_risk = previous_entry['average_risk']
+            
+            # 高リスク人数の変化
+            high_count_change = high_risk_count - prev_high_count
+            if high_count_change > 2:
+                alerts.append({
+                    'type': 'warning',
+                    'icon': '📊',
+                    'title': '高リスクスタッフ急増',
+                    'message': f'前回から高リスクスタッフが{high_count_change}名増加しました。',
+                    'action': '急増の原因を調査し、対策を講じてください。'
+                })
+            elif high_count_change < -2:
+                alerts.append({
+                    'type': 'success',
+                    'icon': '✅',
+                    'title': '高リスクスタッフ改善',
+                    'message': f'前回から高リスクスタッフが{abs(high_count_change)}名減少しました。',
+                    'action': '良い傾向です。現在の取り組みを継続してください。'
+                })
+            
+            # 平均リスクの変化
+            avg_risk_change = avg_risk - prev_avg_risk
+            if avg_risk_change > 0.1:  # 10%以上の上昇
+                alerts.append({
+                    'type': 'warning',
+                    'icon': '🔺',
+                    'title': '平均リスク上昇',
+                    'message': f'平均リスクが前回から{avg_risk_change:.1%}上昇しました。',
+                    'action': '職場環境の変化を確認し、必要に応じて調整してください。'
+                })
+        
+        # 特定スタッフのアラート
+        high_risk_staff = current_report.get('high_risk_staff', [])
+        if high_risk_staff:
+            for staff in high_risk_staff[:3]:  # 上位3名
+                confidence = staff.get('confidence', 'N/A')
+                if 'high' in confidence.lower() or '90%' in confidence or '8' in confidence:
+                    alerts.append({
+                        'type': 'warning',
+                        'icon': '👤',
+                        'title': f'個別注意: {staff.get("staff_id", "Unknown")}',
+                        'message': f'高い確率で離職リスクが予測されています (信頼度: {confidence})。',
+                        'action': '優先的に個別面談を実施してください。'
+                    })
+        
+        # アラートがない場合
+        if not alerts:
+            alerts.append({
+                'type': 'success',
+                'icon': '🟢',
+                'title': 'リスク状況は安定',
+                'message': '現在、重大なリスクアラートはありません。',
+                'action': '定期的な監視を継続してください。'
+            })
+        
+        # アラートUIの作成
+        alert_components = []
+        for alert in alerts:
+            if alert['type'] == 'critical':
+                bg_color = '#FFEBEE'
+                border_color = '#F44336'
+                text_color = '#C62828'
+            elif alert['type'] == 'warning':
+                bg_color = '#FFF3E0'
+                border_color = '#FF9800'
+                text_color = '#E65100'
+            else:  # success
+                bg_color = '#E8F5E8'
+                border_color = '#4CAF50'
+                text_color = '#2E7D32'
+            
+            alert_components.append(
+                html.Div([
+                    html.Div([
+                        html.Span(alert['icon'], style={'fontSize': '20px', 'marginRight': '10px'}),
+                        html.Strong(alert['title'], style={'color': text_color})
+                    ], style={'marginBottom': '8px'}),
+                    html.P(alert['message'], style={'margin': '5px 0', 'fontSize': '14px'}),
+                    html.P(f"📝 推奨アクション: {alert['action']}", 
+                          style={'margin': '5px 0', 'fontSize': '13px', 'fontStyle': 'italic', 'color': '#555'})
+                ], style={
+                    'backgroundColor': bg_color,
+                    'border': f'1px solid {border_color}',
+                    'borderRadius': '8px',
+                    'padding': '15px',
+                    'marginBottom': '10px'
+                })
+            )
+        
+        return html.Div(alert_components)
+        
+    except Exception as e:
+        log.error(f"アラート生成エラー: {e}")
+        return html.Div([
+            html.Div([
+                html.Span("⚠️", style={'fontSize': '20px', 'marginRight': '10px'}),
+                html.Strong("アラート生成エラー")
+            ], style={'marginBottom': '8px'}),
+            html.P(f"アラートの生成中にエラーが発生しました: {str(e)}", 
+                  style={'margin': '5px 0', 'fontSize': '14px'})
+        ], style={
+            'backgroundColor': '#FFF3E0',
+            'border': '1px solid #FF9800',
+            'borderRadius': '8px',
+            'padding': '15px'
+        })
+
+
+# レポートエクスポート機能のコールバック
+@app.callback(
+    [Output('turnover-export-download', 'data'),
+     Output('turnover-export-status', 'children')],
+    [Input('turnover-export-csv-button', 'n_clicks'),
+     Input('turnover-export-excel-button', 'n_clicks'),
+     Input('turnover-export-json-button', 'n_clicks')],
+    [State('scenario-dropdown', 'value')],
+    prevent_initial_call=True
+)
+@safe_callback
+def export_turnover_report(csv_clicks, excel_clicks, json_clicks, scenario):
+    """離職予測レポートをエクスポート"""
+    ctx = dash.callback_context
+    
+    if not ctx.triggered:
+        return None, ""
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    try:
+        # データ取得
+        long_df = data_get('long_df', pd.DataFrame())
+        if long_df.empty:
+            return None, html.Div("エクスポートするデータがありません。", style={'color': 'red'})
+        
+        # 予測実行（モデルが存在する場合）
+        if TURNOVER_AVAILABLE:
+            model_path = Path('models/turnover_model.pkl')
+            model_path.parent.mkdir(exist_ok=True)
+            
+            predictions_df = analyze_turnover_risk(
+                long_df,
+                train_model=not model_path.exists(),
+                model_path=model_path
+            )
+            
+            if predictions_df.empty:
+                return None, html.Div("予測データの生成に失敗しました。", style={'color': 'red'})
+            
+            report = generate_turnover_report(predictions_df)
+            
+            # エクスポート形式に応じて処理
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            
+            if button_id == 'turnover-export-csv-button':
+                # CSV形式でエクスポート
+                export_df = prepare_export_dataframe(predictions_df, report)
+                csv_string = export_df.to_csv(index=False, encoding='utf-8-sig')
+                
+                return {
+                    'content': csv_string,
+                    'filename': f'turnover_report_{scenario}_{timestamp}.csv'
+                }, html.Div("✅ CSVファイルをダウンロードしました。", style={'color': 'green'})
+            
+            elif button_id == 'turnover-export-excel-button':
+                # Excel形式でエクスポート
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    # サマリーシート
+                    summary_df = pd.DataFrame([report['summary']])
+                    summary_df.to_excel(writer, sheet_name='サマリー', index=False)
+                    
+                    # スタッフ詳細シート
+                    export_df = prepare_export_dataframe(predictions_df, report)
+                    export_df.to_excel(writer, sheet_name='スタッフ詳細', index=False)
+                    
+                    # 高リスクスタッフシート
+                    high_risk_df = export_df[export_df['リスクレベル'] == '高リスク']
+                    if not high_risk_df.empty:
+                        high_risk_df.to_excel(writer, sheet_name='高リスクスタッフ', index=False)
+                    
+                    # 履歴データシート（存在する場合）
+                    history_data = load_prediction_history()
+                    if history_data:
+                        history_df = pd.DataFrame(history_data)
+                        history_df.to_excel(writer, sheet_name='予測履歴', index=False)
+                
+                excel_data = output.getvalue()
+                
+                return {
+                    'content': base64.b64encode(excel_data).decode(),
+                    'filename': f'turnover_report_{scenario}_{timestamp}.xlsx',
+                    'base64': True
+                }, html.Div("✅ Excelファイルをダウンロードしました。", style={'color': 'green'})
+            
+            elif button_id == 'turnover-export-json-button':
+                # JSON形式でエクスポート
+                export_data = {
+                    'timestamp': timestamp,
+                    'scenario': scenario,
+                    'summary': report['summary'],
+                    'high_risk_staff': report.get('high_risk_staff', []),
+                    'recommendations': report.get('recommendations', []),
+                    'predictions': predictions_df.to_dict(orient='records'),
+                    'model_info': {
+                        'path': str(model_path),
+                        'exists': model_path.exists(),
+                        'last_modified': datetime.fromtimestamp(model_path.stat().st_mtime).isoformat() if model_path.exists() else None
+                    }
+                }
+                
+                json_string = json.dumps(export_data, ensure_ascii=False, indent=2, default=str)
+                
+                return {
+                    'content': json_string,
+                    'filename': f'turnover_report_{scenario}_{timestamp}.json'
+                }, html.Div("✅ JSONファイルをダウンロードしました。", style={'color': 'green'})
+        
+        else:
+            return None, html.Div("離職予測機能が利用できません。", style={'color': 'red'})
+            
+    except Exception as e:
+        log.error(f"レポートエクスポートエラー: {e}")
+        return None, html.Div(f"エクスポート中にエラーが発生しました: {str(e)}", style={'color': 'red'})
+
+
+def prepare_export_dataframe(predictions_df: pd.DataFrame, report: Dict[str, Any]) -> pd.DataFrame:
+    """エクスポート用のDataFrameを準備"""
+    try:
+        export_df = predictions_df.copy()
+        
+        # カラム名を日本語に変換
+        column_mapping = {
+            'staff_id': 'スタッフID',
+            'risk_probability': 'リスクスコア',
+            'risk_level': 'リスクレベル',
+            'prediction_accuracy': '予測精度',
+            'night_ratio': '夜勤比率',
+            'consecutive_days': '連続勤務日数',
+            'rest_ratio': '休息比率'
+        }
+        
+        export_df = export_df.rename(columns=column_mapping)
+        
+        # リスクスコアと予測精度をパーセンテージ形式に変換
+        if 'リスクスコア' in export_df.columns:
+            export_df['リスクスコア'] = export_df['リスクスコア'].apply(lambda x: f"{x:.1%}")
+        if '予測精度' in export_df.columns:
+            export_df['予測精度'] = export_df['予測精度'].apply(lambda x: f"{x:.1%}")
+        if '夜勤比率' in export_df.columns:
+            export_df['夜勤比率'] = export_df['夜勤比率'].apply(lambda x: f"{x:.1%}" if pd.notna(x) else "N/A")
+        if '休息比率' in export_df.columns:
+            export_df['休息比率'] = export_df['休息比率'].apply(lambda x: f"{x:.1%}" if pd.notna(x) else "N/A")
+        
+        # 主要リスク要因を追加
+        export_df['主要リスク要因'] = export_df.apply(lambda row: identify_main_risk_factors(row), axis=1)
+        
+        # 推奨アクションを追加
+        export_df['推奨アクション'] = export_df['リスクレベル'].apply(get_recommended_action)
+        
+        return export_df
+        
+    except Exception as e:
+        log.error(f"エクスポートDataFrame準備エラー: {e}")
+        return predictions_df
+
+
+def identify_main_risk_factors(row: pd.Series) -> str:
+    """主要リスク要因を特定"""
+    factors = []
+    
+    if pd.notna(row.get('夜勤比率', 0)):
+        if '6' in str(row.get('夜勤比率', '')) or '7' in str(row.get('夜勤比率', '')) or '8' in str(row.get('夜勤比率', '')):
+            factors.append('夜勤過多')
+    
+    if pd.notna(row.get('連続勤務日数', 0)) and row.get('連続勤務日数', 0) > 5:
+        factors.append('連続勤務')
+    
+    if pd.notna(row.get('休息比率', 0)):
+        if '1' in str(row.get('休息比率', ''))[:3] or '0' in str(row.get('休息比率', ''))[:2]:
+            factors.append('休日不足')
+    
+    return ', '.join(factors) if factors else '要因分析中'
+
+
+def get_recommended_action(risk_level: str) -> str:
+    """リスクレベルに応じた推奨アクションを取得"""
+    actions = {
+        '高リスク': '緊急面談実施・シフト見直し',
+        '中リスク': '定期面談・業務負荷確認',
+        '低リスク': '現状維持・定期観察'
+    }
+    return actions.get(risk_level, '個別評価が必要')
+
+
+# モデル再学習のコールバック
+@app.callback(
+    Output('turnover-retrain-status', 'children'),
+    [Input('turnover-retrain-button', 'n_clicks')],
+    [State('scenario-dropdown', 'value')],
+    prevent_initial_call=True
+)
+@safe_callback
+def retrain_turnover_model(n_clicks, scenario):
+    """モデルを再学習"""
+    if not n_clicks or not TURNOVER_AVAILABLE:
+        return ""
+    
+    try:
+        # データ取得
+        long_df = data_get('long_df', pd.DataFrame())
+        if long_df.empty:
+            return html.Div("再学習に必要なデータがありません。", style={'color': 'red'})
+        
+        # モデルファイルのパス
+        model_path = Path('models/turnover_model.pkl')
+        model_path.parent.mkdir(exist_ok=True)
+        
+        # 既存モデルをバックアップ（存在する場合）
+        backup_path = None
+        if model_path.exists():
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_path = model_path.parent / f'turnover_model_backup_{timestamp}.pkl'
+            import shutil
+            shutil.copy(model_path, backup_path)
+        
+        # プログレス表示
+        progress_message = html.Div([
+            html.Div([
+                html.Span("⏳", style={'fontSize': '20px', 'marginRight': '10px'}),
+                html.Strong("モデル再学習中...")
+            ], style={'marginBottom': '8px'}),
+            html.P("新しいデータでモデルを学習しています。しばらくお待ちください...", 
+                  style={'margin': '5px 0', 'fontSize': '14px'})
+        ], style={
+            'backgroundColor': '#E3F2FD',
+            'border': '1px solid #2196F3',
+            'borderRadius': '8px',
+            'padding': '15px'
+        })
+        
+        # 実際の再学習実行
+        start_time = datetime.now()
+        
+        predictions_df = analyze_turnover_risk(
+            long_df,
+            train_model=True,  # 強制的に再学習
+            model_path=model_path
+        )
+        
+        end_time = datetime.now()
+        training_time = (end_time - start_time).total_seconds()
+        
+        if not predictions_df.empty:
+            # 新しい予測結果を履歴に保存
+            report = generate_turnover_report(predictions_df)
+            save_prediction_history(report, f"{scenario}_retrained")
+            
+            success_message = html.Div([
+                html.Div([
+                    html.Span("✅", style={'fontSize': '20px', 'marginRight': '10px'}),
+                    html.Strong("モデル再学習完了", style={'color': '#4CAF50'})
+                ], style={'marginBottom': '8px'}),
+                html.P(f"学習時間: {training_time:.1f}秒", 
+                      style={'margin': '5px 0', 'fontSize': '14px'}),
+                html.P(f"新しいモデルでの予測結果: 高リスク {report['summary']['high_risk_count']}名", 
+                      style={'margin': '5px 0', 'fontSize': '14px'}),
+                html.P(f"バックアップ: {backup_path.name if backup_path else 'なし'}", 
+                      style={'margin': '5px 0', 'fontSize': '12px', 'color': '#666'}),
+                html.P("📝 推奨アクション: 予測を更新ボタンを押して最新の結果を確認してください。", 
+                      style={'margin': '5px 0', 'fontSize': '13px', 'fontStyle': 'italic', 'color': '#555'})
+            ], style={
+                'backgroundColor': '#E8F5E8',
+                'border': '1px solid #4CAF50',
+                'borderRadius': '8px',
+                'padding': '15px'
+            })
+            
+            return success_message
+        else:
+            return html.Div("モデルの再学習に失敗しました。データを確認してください。", 
+                           style={'color': 'red'})
+    
+    except Exception as e:
+        log.error(f"モデル再学習エラー: {e}")
+        return html.Div([
+            html.Div([
+                html.Span("🚨", style={'fontSize': '20px', 'marginRight': '10px'}),
+                html.Strong("再学習エラー", style={'color': '#F44336'})
+            ], style={'marginBottom': '8px'}),
+            html.P(f"エラー: {str(e)}", 
+                  style={'margin': '5px 0', 'fontSize': '14px'}),
+            html.P("📝 推奨アクション: システム管理者に連絡してください。", 
+                  style={'margin': '5px 0', 'fontSize': '13px', 'fontStyle': 'italic', 'color': '#555'})
+        ], style={
+            'backgroundColor': '#FFEBEE',
+            'border': '1px solid #F44336',
+            'borderRadius': '8px',
+            'padding': '15px'
+        })
+
+
+# 前回との比較機能のコールバック
+@app.callback(
+    Output('turnover-comparison-results', 'children'),
+    [Input('turnover-compare-button', 'n_clicks')],
+    [State('scenario-dropdown', 'value')],
+    prevent_initial_call=True
+)
+@safe_callback
+def compare_with_previous_predictions(n_clicks, scenario):
+    """前回の予測と比較"""
+    if not n_clicks:
+        return ""
+    
+    try:
+        # 現在の予測を実行
+        long_df = data_get('long_df', pd.DataFrame())
+        if long_df.empty:
+            return html.Div("比較に必要なデータがありません。", style={'color': 'red'})
+        
+        if not TURNOVER_AVAILABLE:
+            return html.Div("離職予測機能が利用できません。", style={'color': 'red'})
+        
+        # 現在の予測
+        model_path = Path('models/turnover_model.pkl')
+        current_predictions = analyze_turnover_risk(
+            long_df,
+            train_model=not model_path.exists(),
+            model_path=model_path
+        )
+        
+        if current_predictions.empty:
+            return html.Div("現在の予測データが生成できません。", style={'color': 'red'})
+        
+        current_report = generate_turnover_report(current_predictions)
+        
+        # 履歴から前回の結果を取得
+        history_data = load_prediction_history()
+        if len(history_data) < 2:
+            return html.Div([
+                html.Div([
+                    html.Span("📊", style={'fontSize': '20px', 'marginRight': '10px'}),
+                    html.Strong("比較データ不足")
+                ], style={'marginBottom': '8px'}),
+                html.P("比較するための前回のデータがありません。", 
+                      style={'margin': '5px 0', 'fontSize': '14px'}),
+                html.P("📝 推奨アクション: 予測を数回実行してから比較機能をお試しください。", 
+                      style={'margin': '5px 0', 'fontSize': '13px', 'fontStyle': 'italic', 'color': '#555'})
+            ], style={
+                'backgroundColor': '#FFF3E0',
+                'border': '1px solid #FF9800',
+                'borderRadius': '8px',
+                'padding': '15px'
+            })
+        
+        # 前回のデータ（履歴の2番目）
+        previous_data = history_data[1]
+        
+        # 比較結果の生成
+        comparison_result = create_prediction_comparison(current_report, previous_data)
+        
+        return comparison_result
+    
+    except Exception as e:
+        log.error(f"予測比較エラー: {e}")
+        return html.Div(f"比較処理中にエラーが発生しました: {str(e)}", style={'color': 'red'})
+
+
+def create_prediction_comparison(current_report: Dict[str, Any], previous_data: Dict[str, Any]) -> html.Div:
+    """予測比較結果を作成"""
+    try:
+        current_summary = current_report['summary']
+        
+        # 変化の計算
+        changes = {
+            'total_staff': current_summary['total_staff'] - previous_data['total_staff'],
+            'high_risk': current_summary['high_risk_count'] - previous_data['high_risk_count'],
+            'medium_risk': current_summary['medium_risk_count'] - previous_data['medium_risk_count'],
+            'low_risk': current_summary['low_risk_count'] - previous_data['low_risk_count'],
+            'avg_risk': current_summary['average_risk'] - previous_data['average_risk']
+        }
+        
+        # 変化の表示を作成
+        def format_change(change, is_percentage=False):
+            if change > 0:
+                symbol = "🔺"
+                color = "#F44336"
+                prefix = "+"
+            elif change < 0:
+                symbol = "🔻" 
+                color = "#4CAF50"
+                prefix = ""
+            else:
+                symbol = "➡️"
+                color = "#666"
+                prefix = ""
+            
+            if is_percentage:
+                text = f"{prefix}{change:.1%}"
+            else:
+                text = f"{prefix}{int(change)}"
+            
+            return html.Span([
+                symbol,
+                f" {text}"
+            ], style={'color': color, 'fontWeight': 'bold'})
+        
+        # 前回の実行時間
+        previous_time = datetime.fromisoformat(previous_data['timestamp']).strftime('%m-%d %H:%M')
+        
+        comparison_content = html.Div([
+            # ヘッダー
+            html.Div([
+                html.Span("📋", style={'fontSize': '20px', 'marginRight': '10px'}),
+                html.Strong("前回予測との比較結果")
+            ], style={'marginBottom': '15px'}),
+            
+            html.P(f"前回実行: {previous_time}", 
+                  style={'margin': '0 0 15px 0', 'fontSize': '14px', 'color': '#666'}),
+            
+            # 比較テーブル
+            html.Div([
+                html.H6("📊 予測結果比較", style={'marginBottom': '10px'}),
+                html.Table([
+                    html.Thead([
+                        html.Tr([
+                            html.Th("項目", style={'padding': '8px', 'backgroundColor': '#f5f5f5'}),
+                            html.Th("現在", style={'padding': '8px', 'backgroundColor': '#f5f5f5'}),
+                            html.Th("前回", style={'padding': '8px', 'backgroundColor': '#f5f5f5'}),
+                            html.Th("変化", style={'padding': '8px', 'backgroundColor': '#f5f5f5'})
+                        ])
+                    ]),
+                    html.Tbody([
+                        html.Tr([
+                            html.Td("総スタッフ数", style={'padding': '8px'}),
+                            html.Td(str(current_summary['total_staff']), style={'padding': '8px'}),
+                            html.Td(str(previous_data['total_staff']), style={'padding': '8px'}),
+                            html.Td(format_change(changes['total_staff']), style={'padding': '8px'})
+                        ]),
+                        html.Tr([
+                            html.Td("高リスク", style={'padding': '8px'}),
+                            html.Td(str(current_summary['high_risk_count']), style={'padding': '8px'}),
+                            html.Td(str(previous_data['high_risk_count']), style={'padding': '8px'}),
+                            html.Td(format_change(changes['high_risk']), style={'padding': '8px'})
+                        ]),
+                        html.Tr([
+                            html.Td("中リスク", style={'padding': '8px'}),
+                            html.Td(str(current_summary['medium_risk_count']), style={'padding': '8px'}),
+                            html.Td(str(previous_data['medium_risk_count']), style={'padding': '8px'}),
+                            html.Td(format_change(changes['medium_risk']), style={'padding': '8px'})
+                        ]),
+                        html.Tr([
+                            html.Td("低リスク", style={'padding': '8px'}),
+                            html.Td(str(current_summary['low_risk_count']), style={'padding': '8px'}),
+                            html.Td(str(previous_data['low_risk_count']), style={'padding': '8px'}),
+                            html.Td(format_change(changes['low_risk']), style={'padding': '8px'})
+                        ]),
+                        html.Tr([
+                            html.Td("平均リスク", style={'padding': '8px'}),
+                            html.Td(f"{current_summary['average_risk']:.1%}", style={'padding': '8px'}),
+                            html.Td(f"{previous_data['average_risk']:.1%}", style={'padding': '8px'}),
+                            html.Td(format_change(changes['avg_risk'], True), style={'padding': '8px'})
+                        ])
+                    ])
+                ], style={'width': '100%', 'borderCollapse': 'collapse', 'border': '1px solid #ddd'})
+            ], style={'marginBottom': '20px'}),
+            
+            # 変化の分析
+            html.Div([
+                html.H6("📈 変化の分析", style={'marginBottom': '10px'}),
+                generate_change_analysis(changes, current_summary, previous_data)
+            ])
+        ], style={
+            'backgroundColor': 'white',
+            'border': '1px solid #ddd',
+            'borderRadius': '8px',
+            'padding': '20px'
+        })
+        
+        return comparison_content
+        
+    except Exception as e:
+        log.error(f"比較結果作成エラー: {e}")
+        return html.Div(f"比較結果の作成中にエラーが発生しました: {str(e)}", style={'color': 'red'})
+
+
+def generate_change_analysis(changes: Dict[str, float], current: Dict[str, Any], previous: Dict[str, Any]) -> html.Div:
+    """変化の分析コメントを生成"""
+    analyses = []
+    
+    # 高リスクスタッフの変化分析
+    if changes['high_risk'] > 2:
+        analyses.append("🚨 高リスクスタッフが大幅に増加しています。緊急な対策が必要です。")
+    elif changes['high_risk'] > 0:
+        analyses.append("⚠️ 高リスクスタッフが増加しています。原因を調査してください。")
+    elif changes['high_risk'] < -2:
+        analyses.append("✅ 高リスクスタッフが大幅に減少しました。良い改善が見られます。")
+    elif changes['high_risk'] < 0:
+        analyses.append("📉 高リスクスタッフが減少しています。現在の取り組みを継続してください。")
+    
+    # 平均リスクの変化分析
+    if changes['avg_risk'] > 0.1:
+        analyses.append("📈 全体的なリスクレベルが上昇しています。職場環境を見直してください。")
+    elif changes['avg_risk'] < -0.1:
+        analyses.append("📉 全体的なリスクレベルが改善しています。")
+    
+    # 総スタッフ数の変化
+    if changes['total_staff'] != 0:
+        direction = "増加" if changes['total_staff'] > 0 else "減少"
+        analyses.append(f"👥 スタッフ数が{abs(int(changes['total_staff']))}名{direction}しています。")
+    
+    if not analyses:
+        analyses.append("📊 大きな変化は見られません。継続的な監視を行ってください。")
+    
+    return html.Ul([
+        html.Li(analysis, style={'marginBottom': '5px'}) 
+        for analysis in analyses
+    ])
+
 
 @app.callback(
     Output('gap-content', 'children'),
@@ -6414,7 +8022,26 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         ])
 
     date_cols = [c for c in df_heat.columns if pd.to_datetime(c, errors='coerce') is not pd.NaT]
-    staff_df = df_heat[date_cols]
+    
+    # 全日付範囲を確保（実績0の日も含む）
+    if date_cols:
+        all_dates = pd.to_datetime(date_cols)
+        date_range = pd.date_range(start=all_dates.min(), end=all_dates.max(), freq='D')
+        date_range_str = [d.strftime('%Y-%m-%d') for d in date_range]
+        
+        # staff_dfに存在しない日付を追加
+        staff_df = df_heat[date_cols].copy()
+        for date_str in date_range_str:
+            if date_str not in staff_df.columns:
+                staff_df[date_str] = 0
+        
+        # 日付順にソート
+        staff_df = staff_df.reindex(columns=sorted(staff_df.columns))
+        
+        # date_colsを更新
+        date_cols = sorted(staff_df.columns.tolist())
+    else:
+        staff_df = df_heat[date_cols]
     
     log.info(f"Initial staff_df shape: {staff_df.shape}, index: {staff_df.index.name}, columns: {len(staff_df.columns)}")
     log.info(f"df_heat columns: {list(df_heat.columns)}")
@@ -6424,7 +8051,21 @@ def update_shortage_ratio_heatmap(scope, detail_values):
     # ★★★ 統一されたneed値計算: 全てpre_aggregated_dataベースで一貫性を保つ ★★★
     
     # 1. まず統一された基本need値を取得
-    need_per_date_slot_df = data_get('need_per_date_slot', pd.DataFrame())
+    # 職種別の場合は専用のneed_per_date_slotファイルを優先的に使用
+    if scope == 'role' and detail_values and detail_values[0] != 'ALL':
+        role_need_key = f"need_per_date_slot_role_{safe_filename(detail_values[0])}"
+        need_per_date_slot_df = data_get(role_need_key, pd.DataFrame())
+        if need_per_date_slot_df.empty:
+            # safe_filename変換前の名前でも試す
+            role_need_key_alt = f"need_per_date_slot_role_{detail_values[0]}"
+            need_per_date_slot_df = data_get(role_need_key_alt, pd.DataFrame())
+        log.info(f"職種別need値取得試行: {role_need_key}, empty={need_per_date_slot_df.empty}")
+    elif scope == 'employment' and detail_values and detail_values[0] != 'ALL':
+        emp_need_key = f"need_per_date_slot_emp_{safe_filename(detail_values[0])}"
+        need_per_date_slot_df = data_get(emp_need_key, pd.DataFrame())
+        log.info(f"雇用形態別need値取得試行: {emp_need_key}, empty={need_per_date_slot_df.empty}")
+    else:
+        need_per_date_slot_df = data_get('need_per_date_slot', pd.DataFrame())
     
     if not need_per_date_slot_df.empty:
         log.info(f"統一need値計算開始: {scope}, ベースデータ shape={need_per_date_slot_df.shape}")
@@ -6437,13 +8078,13 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         common_dates = [col for col in date_cols_str if col in need_per_date_slot_df.columns]
         
         if common_dates:
-            # 2. 全体の場合: need_per_date_slotをそのまま使用
-            if scope == 'overall':
+            # 2. 全体の場合、または職種別/雇用形態別のneed値が取得できた場合: そのまま使用
+            if scope == 'overall' or (scope in ['role', 'employment'] and not need_per_date_slot_df.empty):
                 need_df = need_per_date_slot_df[common_dates].copy()
                 need_df.columns = [c for c in date_cols if str(c) in common_dates]
-                log.info(f"全体need値使用: shape={need_df.shape}")
+                log.info(f"{scope} need値直接使用: shape={need_df.shape}")
             
-            # 3. 職種別・雇用形態別の場合: pre_aggregated_dataから比例配分
+            # 3. 職種別・雇用形態別でneed値が取得できなかった場合: pre_aggregated_dataから比例配分
             else:
                 aggregated_df = data_get('pre_aggregated_data', pd.DataFrame())
                 if not aggregated_df.empty:
@@ -6470,6 +8111,30 @@ def update_shortage_ratio_heatmap(scope, detail_values):
                         aggfunc='sum',
                         fill_value=0
                     )
+                    
+                    # ★★★ 職種別・雇用形態別のstaff_dfも更新（より確実に） ★★★
+                    # filtered_staff_pivotをstaff_dfとして使用
+                    if scope != 'overall':
+                        # 日付列を合わせる（date_colsは全日付範囲を含む）
+                        staff_dates_in_pivot = [c for c in date_cols if c in filtered_staff_pivot.columns]
+                        
+                        # filtered_staff_pivotから職種別のスタッフ数を取得
+                        if staff_dates_in_pivot:
+                            staff_df_from_pivot = filtered_staff_pivot[staff_dates_in_pivot].copy()
+                        else:
+                            staff_df_from_pivot = pd.DataFrame()
+                        
+                        # 全日付範囲でDataFrameを作成し、存在しない日付は0で埋める
+                        staff_df = pd.DataFrame(index=df_heat.index, columns=date_cols).fillna(0)
+                        
+                        # 実際のデータで上書き
+                        for col in staff_dates_in_pivot:
+                            if col in staff_df.columns and col in staff_df_from_pivot.columns:
+                                staff_df[col] = staff_df_from_pivot[col]
+                        
+                        # 時間軸を確実に合わせる
+                        staff_df = staff_df.reindex(index=df_heat.index, fill_value=0)
+                        log.info(f"職種別staff_df更新: {scope}, shape={staff_df.shape}, non_zero_cols={len([c for c in staff_df.columns if staff_df[c].sum() > 0])}")
                     
                     # 両方のピボットテーブルが同じインデックスを持つようにreindex
                     # total_staff_pivotと同じインデックスに揃える
@@ -6558,10 +8223,10 @@ def update_shortage_ratio_heatmap(scope, detail_values):
     # 正しい時間軸を使用してデータを整形
     time_labels = gen_labels(DETECTED_SLOT_INFO['slot_minutes'])
     
-    # 時間軸をreindexして24時間分確保
-    need_df = need_df.reindex(index=time_labels, fill_value=0)
-    staff_df = staff_df.reindex(index=time_labels, fill_value=0)
-    upper_df = upper_df.reindex(index=time_labels, fill_value=0)
+    # 時間軸をreindexして24時間分確保（日付列も統一）
+    need_df = need_df.reindex(index=time_labels, columns=date_cols, fill_value=0)
+    staff_df = staff_df.reindex(index=time_labels, columns=date_cols, fill_value=0)
+    upper_df = upper_df.reindex(index=time_labels, columns=date_cols, fill_value=0)
     
     lack_count_df = (need_df - staff_df).clip(lower=0).fillna(0)
     
@@ -6592,12 +8257,11 @@ def update_shortage_ratio_heatmap(scope, detail_values):
         color_continuous_scale='Oranges',
         title='不足人数ヒートマップ',
         labels={'x': '日付', 'y': '時間', 'color': '人数'},
-        text_auto=True  # 0値も表示
+        text_auto=False  # 人数表示を無効化
     )
     
-    # 不足数の表示スタイルを調整
+    # ヒートマップのスタイルを調整（テキスト表示なし）
     fig_lack.update_traces(
-        texttemplate='%{text}',
         textfont={"size": 10}
     )
     fig_lack.update_xaxes(tickvals=list(range(len(lack_count_df.columns))))
@@ -6977,9 +8641,47 @@ def update_cost_insights(kpi_data):
 @safe_callback
 def update_wage_inputs(by_key):
     """単価入力欄を生成"""
-    long_df = data_get('long_df')
-    if long_df is None or long_df.empty or by_key not in long_df.columns:
-        return html.P("単価設定のためのデータがありません。")
+    # まずintermediate_data.parquet (本来のlong_df) を探す
+    original_long_df = data_get('long_df')
+    
+    # intermediate_data.parquetの形式が日単位の場合、または存在しない場合は
+    # pre_aggregated_dataから時間スロットごとのデータを作成
+    if original_long_df is not None and not original_long_df.empty and 'parsed_slots_count' in original_long_df.columns:
+        # parsed_slots_countが0または18のようなデータの場合、時間スロットごとではない
+        unique_counts = original_long_df['parsed_slots_count'].unique()
+        if len(unique_counts) <= 2 or max(unique_counts) > 1:
+            # 日単位のデータなので、pre_aggregated_dataから作成し直す
+            original_long_df = None
+    
+    if original_long_df is None or original_long_df.empty:
+        pre_agg = data_get('pre_aggregated_data', pd.DataFrame())
+        if pre_agg.empty:
+            return html.P("単価設定のためのデータがありません。")
+        
+        # pre_aggregated_dataから時間スロットごとのlong_df形式を作成
+        long_df = pre_agg.copy()
+        
+        # 日時の変換（エラーハンドリング付き）
+        try:
+            long_df['ds'] = pd.to_datetime(long_df['date_lbl'] + ' ' + long_df['time'])
+        except:
+            # date_lblがすでにdatetime型の場合の対処
+            long_df['ds'] = pd.to_datetime(long_df['date_lbl'].astype(str) + ' ' + long_df['time'])
+        
+        # staffカラムがない場合はダミーで作成
+        if 'staff' not in long_df.columns:
+            # 各職種と雇用形態の組み合わせでユニークなスタッフIDを生成
+            long_df['staff'] = long_df['role'] + '_' + long_df['employment'] + '_' + long_df.groupby(['role', 'employment']).cumcount().astype(str)
+        
+        long_df['parsed_slots_count'] = 1  # 各行が1スロット
+    else:
+        long_df = original_long_df
+    
+    # キャッシュに保存（他の関数でも使用するため）
+    data_set('long_df', long_df)
+    
+    if by_key not in long_df.columns:
+        return html.P(f"'{by_key}'列が見つかりません。")
 
     unique_keys: list[str] = sorted(long_df[by_key].dropna().unique())
     inputs = []
@@ -7005,9 +8707,35 @@ def update_wage_inputs(by_key):
 @safe_callback
 def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
     """単価変更に応じてコスト分析タブの全コンテンツを動的に更新する"""
+    # long_dfを取得（update_wage_inputsで作成されている）
     long_df = data_get('long_df')
-    if long_df is None or long_df.empty or not all_wages:
-        raise PreventUpdate
+    
+    # long_dfが存在しない場合、または形式が不適切な場合は作成
+    if long_df is None or long_df.empty:
+        pre_agg = data_get('pre_aggregated_data', pd.DataFrame())
+        if pre_agg.empty:
+            return html.P("コスト分析のためのデータがありません。")
+        
+        # pre_aggregated_dataから時間スロットごとのlong_df形式を作成
+        long_df = pre_agg.copy()
+        
+        # 日時の変換（エラーハンドリング付き）
+        try:
+            long_df['ds'] = pd.to_datetime(long_df['date_lbl'] + ' ' + long_df['time'])
+        except:
+            # date_lblがすでにdatetime型の場合の対処
+            long_df['ds'] = pd.to_datetime(long_df['date_lbl'].astype(str) + ' ' + long_df['time'])
+        
+        # staffカラムがない場合はダミーで作成
+        if 'staff' not in long_df.columns:
+            long_df['staff'] = long_df['role'] + '_' + long_df['employment'] + '_' + long_df.groupby(['role', 'employment']).cumcount().astype(str)
+        
+        # 各行は1スロット分（実際の勤務）として扱う
+        long_df['parsed_slots_count'] = 1
+        data_set('long_df', long_df)
+    
+    if not all_wages:
+        return html.P("時給を設定してください。")
 
     wages = {
         wage_id['index']: (wage_val or 0) for wage_id, wage_val in zip(all_wage_ids, all_wages)
