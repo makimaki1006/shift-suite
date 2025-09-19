@@ -40,11 +40,47 @@ import gc
 from error_boundary import error_boundary, safe_callback, safe_component, apply_error_boundaries
 # グローバルエラーハンドリングインポート
 from global_error_handler import GlobalErrorHandler, global_error_handler, safe_data_operation, error_handler
-# アクセシブルカラーインポート
-from accessible_colors import (
-    get_accessible_color_palette, apply_accessible_colors_to_figure, 
-    enhance_figure_accessibility, safe_colors_for_plotly, ACCESSIBLE_COLORS
-)
+# アクセシブルカラーインポート（エラーハンドリング付き）
+try:
+    from accessible_colors import (
+        get_accessible_color_palette, apply_accessible_colors_to_figure, 
+        enhance_figure_accessibility, safe_colors_for_plotly, ACCESSIBLE_COLORS
+    )
+except ImportError:
+    # accessible_colorsモジュールが存在しない場合のフォールバック
+    def get_accessible_color_palette(palette_type, n_colors):
+        """アクセシブルカラーパレットのフォールバック実装"""
+        # 色覚多様性に配慮したカラーパレット
+        base_colors = [
+            '#2E86AB',  # 青
+            '#F24236',  # 赤
+            '#F6AE2D',  # 黄
+            '#2F4858',  # 濃紺
+            '#86BBD8',  # 薄青
+            '#F26419',  # オレンジ
+            '#33658A',  # 藍色
+            '#758E4F',  # 緑
+            '#8B5A3C',  # 茶
+            '#6B2737',  # ワインレッド
+            '#C1666B',  # ピンク
+            '#48A9A6',  # ターコイズ
+        ]
+        # 必要な色数に合わせて拡張
+        colors = base_colors * ((n_colors // len(base_colors)) + 1)
+        return colors[:n_colors]
+    
+    def enhance_figure_accessibility(fig, title, chart_type):
+        """グラフのアクセシビリティ強化のフォールバック実装"""
+        return fig
+    
+    # デフォルトカラー定義
+    ACCESSIBLE_COLORS = {
+        'primary': '#2E86AB',
+        'secondary': '#F24236',
+        'success': '#4CAF50',
+        'warning': '#F6AE2D',
+        'danger': '#F44336'
+    }
 # メモリガードインポート（改善版）
 from improved_memory_guard import ImprovedMemoryGuard, ManagedCache, memory_guard, check_memory_usage, get_memory_report, with_memory_limit
 
@@ -8695,13 +8731,49 @@ def update_wage_inputs(by_key):
         return html.P(f"'{by_key}'列が見つかりません。")
 
     unique_keys: list[str] = sorted(long_df[by_key].dropna().unique())
+    
+    # スタッフ別の場合、一括設定のみ提供
+    if by_key == 'staff':
+        return html.Div([
+            html.P(f"スタッフ数: {len(unique_keys)}名"),
+            html.Label('全スタッフ共通時給:'),
+            dcc.Input(
+                id={'type': 'wage-input', 'index': 'ALL_STAFF'},
+                value=WAGE_RATES.get("regular_staff", 1500),
+                type='number',
+                debounce=True,
+            ),
+            html.P("（個別設定が必要な場合は職種別または雇用形態別をお使いください）", 
+                   style={'fontSize': '0.9em', 'color': '#666'})
+        ])
+    
+    # 職種別・雇用形態別の場合は個別設定
     inputs = []
+    default_wages = {
+        'role': {
+            '介護': 1500,
+            '介護・相談員': 1600,
+            '運転士': 1400,
+            '看護師': 2000,
+            '施設長・相談員': 2500,
+            '事務・介護': 1400,
+            '機能訓練士': 1800,
+            '管理者・相談員': 2300,
+        },
+        'employment': {
+            '正社員': 1500,
+            'パート': 1200,
+            'スポット': 2000,
+        }
+    }
+    
     for key in unique_keys:
+        default_value = default_wages.get(by_key, {}).get(key, WAGE_RATES.get("regular_staff", 1500))
         inputs.append(html.Div([
             html.Label(f'時給: {key}'),
             dcc.Input(
                 id={'type': 'wage-input', 'index': key},
-                value=WAGE_RATES["regular_staff"],
+                value=default_value,
                 type='number',
                 debounce=True,
             )
@@ -8748,9 +8820,16 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
     if not all_wages:
         return html.P("時給を設定してください。")
 
-    wages = {
-        wage_id['index']: (wage_val or 0) for wage_id, wage_val in zip(all_wage_ids, all_wages)
-    }
+    # スタッフ別の一括設定処理
+    if by_key == 'staff' and all_wage_ids and all_wage_ids[0]['index'] == 'ALL_STAFF':
+        # 全スタッフに同じ時給を適用
+        all_staff = long_df['staff'].dropna().unique()
+        wages = {staff: (all_wages[0] or 1500) for staff in all_staff}
+    else:
+        # 個別設定の場合
+        wages = {
+            wage_id['index']: (wage_val or 0) for wage_id, wage_val in zip(all_wage_ids, all_wages)
+        }
 
     df_cost = calculate_daily_cost(long_df, wages, by=by_key, slot_minutes=DETECTED_SLOT_INFO['slot_minutes'])
     if df_cost.empty:
@@ -8796,48 +8875,85 @@ def update_cost_analysis_content(by_key, all_wages, all_wage_ids):
     fig_daily.update_xaxes(tickformat="%m/%d(%a)")
     content.append(dcc.Graph(figure=fig_daily))
 
-    if 'role_breakdown' in df_cost.columns and by_key == 'role':
-        role_data = []
-        for _, row in df_cost.iterrows():
-            if pd.notna(row.get('role_breakdown')):
-                date_total_cost = row['cost']
-                role_counts = {r.split(':')[0]: int(r.split(':')[1]) for r in row['role_breakdown'].split(', ') if ':' in r}
-                total_count = sum(role_counts.values())
-
-                for role, count in role_counts.items():
-                    role_cost = (count / total_count) * date_total_cost if total_count > 0 else 0
-                    role_data.append({'date': row['date'], 'role': role, 'count': count, 'cost': role_cost})
-
-        if role_data:
-            role_df = pd.DataFrame(role_data)
-
-            # アクセシブルカラーパレットを使用
-            n_roles = role_df['role'].nunique()
-            accessible_colors = get_accessible_color_palette('role', n_roles)
+    # カテゴリ別の詳細分析を追加（職種別、雇用形態別、スタッフ別すべてに対応）
+    if by_key in ['role', 'employment', 'staff']:
+        # カテゴリ別のデータを集計
+        category_data = []
+        
+        # long_dfから日別・カテゴリ別のコストを計算
+        for date in df_cost['date'].unique():
+            date_str = pd.to_datetime(date).strftime('%Y-%m-%d')
+            daily_long = long_df[pd.to_datetime(long_df['ds']).dt.date == date]
             
-            fig_stacked = px.bar(role_df, x='date', y='cost', color='role', title='日別人件費（職種別内訳）',
+            if not daily_long.empty:
+                # カテゴリ別にグループ化
+                for category_value in daily_long[by_key].unique():
+                    category_df = daily_long[daily_long[by_key] == category_value]
+                    if not category_df.empty:
+                        # 各カテゴリのコストを計算
+                        wage_value = wages.get(category_value, 0)
+                        category_cost = wage_value * (DETECTED_SLOT_INFO['slot_minutes'] / 60.0) * len(category_df[category_df['parsed_slots_count'] > 0])
+                        category_data.append({
+                            'date': date,
+                            by_key: category_value,
+                            'cost': category_cost
+                        })
+        
+        if category_data:
+            category_df = pd.DataFrame(category_data)
+            
+            # カテゴリ数に応じた色パレット
+            n_categories = category_df[by_key].nunique()
+            
+            # 職種別、雇用形態別、スタッフ別でタイトルとカラーパレットを変更
+            if by_key == 'role':
+                title_prefix = '職種別'
+                palette_type = 'role'
+            elif by_key == 'employment':
+                title_prefix = '雇用形態別'
+                palette_type = 'categorical'
+            else:  # staff
+                title_prefix = 'スタッフ別'
+                palette_type = 'time'
+            
+            # スタッフ別の場合は上位20名のみ表示
+            if by_key == 'staff' and n_categories > 20:
+                top_staff = category_df.groupby('staff')['cost'].sum().nlargest(20).index
+                category_df = category_df[category_df['staff'].isin(top_staff)]
+                n_categories = 20
+            
+            # アクセシブルカラーパレットを使用
+            accessible_colors = get_accessible_color_palette(palette_type, n_categories)
+            
+            # 日別積み上げ棒グラフ
+            fig_stacked = px.bar(category_df, x='date', y='cost', color=by_key, 
+                                title=f'日別人件費（{title_prefix}内訳）',
                                 color_discrete_sequence=accessible_colors)
-            fig_stacked = enhance_figure_accessibility(fig_stacked, '日別人件費（職種別内訳）', 'categorical')
+            fig_stacked = enhance_figure_accessibility(fig_stacked, f'日別人件費（{title_prefix}内訳）', 'categorical')
             fig_stacked.update_xaxes(tickformat="%m/%d(%a)")
             content.append(dcc.Graph(figure=fig_stacked))
-
-            role_df['month'] = pd.to_datetime(role_df['date']).dt.to_period('M').astype(str)
-            monthly_role = role_df.groupby(['month', 'role'])['cost'].sum().reset_index()
+            
+            # 月次集計グラフ
+            category_df['month'] = pd.to_datetime(category_df['date']).dt.to_period('M').astype(str)
+            monthly_category = category_df.groupby(['month', by_key])['cost'].sum().reset_index()
             
             # 月次グラフには異なるカラーパレットを使用
-            monthly_colors = get_accessible_color_palette('categorical', n_roles)
-            fig_monthly = px.bar(monthly_role, x='month', y='cost', color='role', title='月次人件費（職種別内訳）',
+            monthly_colors = get_accessible_color_palette('categorical', n_categories)
+            fig_monthly = px.bar(monthly_category, x='month', y='cost', color=by_key, 
+                                title=f'月次人件費（{title_prefix}内訳）',
                                 color_discrete_sequence=monthly_colors)
-            fig_monthly = enhance_figure_accessibility(fig_monthly, '月次人件費（職種別内訳）', 'categorical')
+            fig_monthly = enhance_figure_accessibility(fig_monthly, f'月次人件費（{title_prefix}内訳）', 'categorical')
             content.append(dcc.Graph(figure=fig_monthly))
-
-            total_by_role = role_df.groupby('role')['cost'].sum().reset_index()
+            
+            # 円グラフ（コスト構成比）
+            total_by_category = category_df.groupby(by_key)['cost'].sum().reset_index()
             
             # パイチャートには時間帯用パレットを使用（より区別しやすい）
-            pie_colors = get_accessible_color_palette('time', n_roles)
-            fig_pie = px.pie(total_by_role, values='cost', names='role', title='職種別コスト構成比（全期間）',
+            pie_colors = get_accessible_color_palette('time', n_categories)
+            fig_pie = px.pie(total_by_category, values='cost', names=by_key, 
+                            title=f'{title_prefix}コスト構成比（全期間）',
                             color_discrete_sequence=pie_colors)
-            fig_pie = enhance_figure_accessibility(fig_pie, '職種別コスト構成比（全期間）', 'categorical')
+            fig_pie = enhance_figure_accessibility(fig_pie, f'{title_prefix}コスト構成比（全期間）', 'categorical')
             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
             content.append(dcc.Graph(figure=fig_pie))
 
