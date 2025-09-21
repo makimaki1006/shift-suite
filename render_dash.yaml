@@ -2,8 +2,22 @@ services:
   - type: web
     name: shiftanalysis-dash
     runtime: python
-    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    startCommand: "gunicorn dash_app:server --bind 0.0.0.0:$PORT"
+    buildCommand: "pip install --upgrade pip && pip install -r requirements_render.txt"
+    startCommand: "gunicorn dash_app:server --bind 0.0.0.0:$PORT --workers 4 --timeout 120"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: FLASK_ENV
+        value: "production"
+      - key: DASH_DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_TIMEOUT
+        value: "3600"
+      - key: MAX_SESSIONS
+        value: "1000"
+      - key: CLEANUP_INTERVAL
+        value: "300"
+    healthCheckPath: /
+    autoDeploy: false
