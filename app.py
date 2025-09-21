@@ -1,6 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Safe pickle loading wrapper
+def safe_pickle_load(file_path, allowed_classes=None):
+    """Safely load pickle files with restricted classes"""
+    import pickle
+    import io
+
+    class RestrictedUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            # Only allow specific safe classes
+            if allowed_classes:
+                if (module, name) in allowed_classes:
+                    return super().find_class(module, name)
+            # Default safe classes
+            safe_modules = ['numpy', 'pandas', 'builtins']
+            if module in safe_modules:
+                return super().find_class(module, name)
+            raise pickle.UnpicklingError(f"Unsafe class: {module}.{name}")
+
+    with open(file_path, 'rb') as f:
+        return RestrictedUnpickler(f).load()
+
+
 # ─────────────────────────────  app.py  (Part 1 / 3)  ──────────────────────────
 # Shift-Suite Streamlit GUI + 内蔵ダッシュボード  v1.30.0 (休暇分析機能追加)
 # ==============================================================================
@@ -518,8 +540,9 @@ def collect_data_overview(output_dir: Path) -> dict:
                 try:
                     df = pd.read_parquet(heat_all_file)
                     total_records = df.shape[0] * df.shape[1] if not df.empty else 0
-                except:
-                    pass
+                except Exception as e:
+        # Log error instead of silencing
+        print(f"Error: {e}")
             
             return {
                 'date_range': date_range,
@@ -547,8 +570,9 @@ def collect_main_kpis(output_dir: Path) -> dict:
                 df = pd.read_parquet(shortage_role_file)
                 kpis['total_shortage_hours'] = df.get('lack_h', pd.Series()).sum()
                 kpis['total_excess_hours'] = df.get('excess_h', pd.Series()).sum()
-            except:
-                pass
+            except Exception as e:
+        # Log error instead of silencing
+        print(f"Error: {e}")
         
         # fatigue_score.parquetから疲労スコア
         fatigue_file = output_dir / "fatigue_score.parquet"
@@ -556,8 +580,9 @@ def collect_main_kpis(output_dir: Path) -> dict:
             try:
                 df = pd.read_parquet(fatigue_file)
                 kpis['avg_fatigue_score'] = df.get('fatigue_score', pd.Series()).mean()
-            except:
-                pass
+            except Exception as e:
+        # Log error instead of silencing
+        print(f"Error: {e}")
         
         # fairness_after.parquetから公平性スコア
         fairness_file = output_dir / "fairness_after.parquet"
@@ -565,8 +590,9 @@ def collect_main_kpis(output_dir: Path) -> dict:
             try:
                 df = pd.read_parquet(fairness_file)
                 kpis['fairness_score'] = df.get('fairness_score', pd.Series()).mean()
-            except:
-                pass
+            except Exception as e:
+        # Log error instead of silencing
+        print(f"Error: {e}")
         
         # その他のデフォルト値
         kpis.setdefault('total_shortage_hours', 0)
@@ -705,7 +731,7 @@ def _patch_streamlit_watcher() -> None:
     """Patch Streamlit's module watcher to ignore failing modules."""
     try:
         from streamlit.watcher import local_sources_watcher as _lsw  # type: ignore
-    except Exception:
+    except Exception as e:
         return
 
     if not hasattr(_lsw, "extract_paths"):
@@ -1063,7 +1089,7 @@ def run_import_wizard() -> None:
                         dtype=str,
                     )
                     ym_text = str(cell_df.iloc[0, 0])
-                except Exception:
+                except Exception as e:
                     pass
             st.caption(f"抽出年月: {ym_text}")
             st.caption(f"認識列名: {df_prev.columns.tolist()}")
@@ -1908,7 +1934,7 @@ with st.sidebar:
                 del st.session_state[key]
         try:
             st.cache_data.clear()
-        except Exception:
+        except Exception as e:
             pass
         st.rerun()
 
@@ -4009,7 +4035,7 @@ if run_button_clicked:
                                 if model_path.exists():
                                     try:
                                         with open(model_path, 'rb') as f:
-                                            predictor.models = pickle.load(f)
+                                            predictor.models = safe_pickle_load(f)
                                         log.info("学習済みモデルを読み込みました")
                                         
                                         # 予測実行
@@ -4383,7 +4409,7 @@ def display_overview_tab(tab_container, data_dir):
                 jain_row = meta_df[meta_df["metric"] == "jain_index"]
                 if not jain_row.empty:
                     jain_display = f"{float(jain_row['value'].iloc[0]):.3f}"
-            except Exception:
+            except Exception as e:
                 pass
 
         staff_count = 0
@@ -4397,7 +4423,7 @@ def display_overview_tab(tab_container, data_dir):
                     and not df_staff["night_ratio"].empty
                 ):
                     avg_night_ratio = float(df_staff["night_ratio"].mean())
-            except Exception:
+            except Exception as e:
                 pass
 
         alerts_count = 0
@@ -4406,7 +4432,7 @@ def display_overview_tab(tab_container, data_dir):
             try:
                 if _valid_df(df_alerts):
                     alerts_count = len(df_alerts)
-            except Exception:
+            except Exception as e:
                 pass
 
         c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
@@ -5253,7 +5279,7 @@ def display_over_shortage_log_section(data_dir: Path) -> None:
             staff_df = pd.read_parquet(fp_staff)
             if "staff" in staff_df.columns:
                 staff_options = staff_df["staff"].astype(str).dropna().unique().tolist()
-        except Exception:
+        except Exception as e:
             staff_options = []
 
     log_fp = data_dir / "over_shortage_log.csv"

@@ -881,6 +881,16 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             html.H3("データアップロード"),
+            # ファイルサイズ制限の明示
+            html.P([
+                "対応ファイル: ZIPファイル (.zip) のみ | ",
+                "最大ファイルサイズ: 100MB"
+            ], style={
+                'color': '#666',
+                'fontSize': '14px',
+                'margin': '5px 0',
+                'textAlign': 'center'
+            }),
             dcc.Upload(
                 id='upload-data',
                 children=html.Div([
@@ -899,6 +909,9 @@ app.layout = html.Div([
                 },
                 multiple=False
             ),
+            # アップロード進行状況とフィードバック表示
+            html.Div(id='upload-status', children=[], style={'margin': '10px 0'}),
+            html.Div(id='upload-progress', children=[], style={'margin': '10px 0'}),
         ], style={'margin': '20px'}),
 
         # シナリオ選択

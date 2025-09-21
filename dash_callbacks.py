@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import logging
 from pathlib import Path
+from user_friendly_messages import UserFriendlyMessages, safe_error_display
 
 # ロガー設定
 log = logging.getLogger(__name__)
@@ -24,9 +25,38 @@ def process_upload(contents, filename):
         return (None, [], None, {'display': 'none'})
 
     try:
+        # ファイルサイズチェック (100MB制限)
+        if len(contents) > 100 * 1024 * 1024:  # 100MB
+            error_msg = safe_error_display("upload", "file_too_large")
+            return (
+                {'success': False, 'error': 'ファイルサイズが大きすぎます (最大100MB)', 'user_message': error_msg},
+                [],
+                None,
+                {'display': 'none'}
+            )
+
+        # ファイル形式チェック
+        if not filename or not filename.lower().endswith('.zip'):
+            error_msg = safe_error_display("upload", "invalid_format")
+            return (
+                {'success': False, 'error': 'ZIPファイルのみ対応しています', 'user_message': error_msg},
+                [],
+                None,
+                {'display': 'none'}
+            )
+
         # Base64デコード
-        content_type, content_string = contents.split(',')
-        decoded = base64.b64decode(content_string)
+        try:
+            content_type, content_string = contents.split(',')
+            decoded = base64.b64decode(content_string)
+        except Exception as decode_error:
+            error_msg = safe_error_display("upload", "corrupted_file", str(decode_error))
+            return (
+                {'success': False, 'error': 'ファイルの読み込みに失敗しました', 'user_message': error_msg},
+                [],
+                None,
+                {'display': 'none'}
+            )
 
         # ZIPファイル処理
         if filename.endswith('.zip'):
@@ -73,25 +103,35 @@ def process_upload(contents, filename):
                     )
                 else:
                     # 分析結果が見つからない
+                    error_msg = safe_error_display("upload", "no_analysis_data")
                     return (
-                        {'success': False, 'error': 'No analysis data found in ZIP'},
+                        {'success': False, 'error': 'ZIPファイルに分析データが含まれていません', 'user_message': error_msg},
                         [],
                         None,
                         {'display': 'none'}
                     )
-        else:
-            # ZIP以外のファイル
-            return (
-                {'success': False, 'error': 'Only ZIP files are supported'},
-                [],
-                None,
-                {'display': 'none'}
-            )
 
+    except zipfile.BadZipFile:
+        error_msg = safe_error_display("upload", "corrupted_file")
+        return (
+            {'success': False, 'error': 'ZIPファイルが破損しています', 'user_message': error_msg},
+            [],
+            None,
+            {'display': 'none'}
+        )
+    except MemoryError:
+        error_msg = safe_error_display("analysis", "memory_error")
+        return (
+            {'success': False, 'error': 'ファイルが大きすぎて処理できません', 'user_message': error_msg},
+            [],
+            None,
+            {'display': 'none'}
+        )
     except Exception as e:
         log.error(f"Upload processing error: {str(e)}")
+        error_msg = safe_error_display("upload", "network_error", str(e))
         return (
-            {'success': False, 'error': str(e)},
+            {'success': False, 'error': '予期しないエラーが発生しました', 'user_message': error_msg},
             [],
             None,
             {'display': 'none'}
@@ -104,7 +144,9 @@ def register_callbacks(app):
         [Output('data-ingestion-output', 'data'),
          Output('scenario-dropdown', 'options'),
          Output('scenario-dropdown', 'value'),
-         Output('scenario-selector-div', 'style')],
+         Output('scenario-selector-div', 'style'),
+         Output('upload-status', 'children'),
+         Output('upload-progress', 'children')],
         [Input('upload-data', 'contents')],
         [State('upload-data', 'filename'),
          State('session-id-store', 'data')]
@@ -170,19 +212,23 @@ def register_callbacks(app):
             if workspace:
                 scenarios = [workspace.name]
                 log.info(f"[handle_file_upload] Using default scenario: {scenarios}")
-            
+
                 result = (
                     None,
                     [{'label': s, 'value': s} for s in scenarios],
                     scenarios[0] if scenarios else None,
-                    {'display': 'block'}
+                    {'display': 'block'},
+                    html.Div("データがアップロードされていません", style={'color': '#666'}),
+                    html.Div()
                 )
             
                 log.info(f"[handle_file_upload] RETURN (default): tuple with {len(result)} elements")
                 return result
             
             log.info("[handle_file_upload] No contents and no default scenario")
-            result = (None, [], None, {'display': 'none'})
+            result = (None, [], None, {'display': 'none'},
+                     UserFriendlyMessages.create_info_message("no_data"),
+                     html.Div())
             log.info(f"[handle_file_upload] RETURN (empty): {result}")
             return result
     
@@ -193,10 +239,18 @@ def register_callbacks(app):
             # ファイルタイプをチェック
             if not filename.lower().endswith('.zip'):
                 log.warning(f"[handle_file_upload] Not a ZIP file: {filename}")
-                result = (None, [], None, {'display': 'none'})
+                error_msg = safe_error_display("upload", "invalid_format")
+                result = (None, [], None, {'display': 'none'}, error_msg, html.Div())
                 log.info(f"[handle_file_upload] RETURN (not zip): {result}")
                 return result
         
+            # アップロード開始メッセージを表示
+            upload_status = UserFriendlyMessages.create_info_message("processing")
+            upload_progress = html.Div([
+                html.P("ファイルを処理中..."),
+                html.Progress(value=0, max=100, style={'width': '100%'})
+            ], style={'text-align': 'center'})
+
             # process_upload関数を呼び出し
             log.info("="*80)
             log.info("[SYSTEM FLOW] 2. CALLBACK -> PROCESSING LAYER")
@@ -204,22 +258,22 @@ def register_callbacks(app):
             log.info(f"[handle_file_upload] Calling process_upload...")
             log.info(f"  - Input filename: {filename}")
             log.info(f"  - Input contents length: {len(contents)}")
-        
-            result = process_upload(contents, filename)
+
+            upload_result = process_upload(contents, filename)
         
             log.info("="*80)
             log.info("[SYSTEM FLOW] 3. PROCESSING -> CALLBACK LAYER")
             log.info("="*80)
             log.info(f"[handle_file_upload] process_upload returned")
-            log.info(f"  - Return type: {type(result)}")
-            log.info(f"  - Is tuple: {isinstance(result, tuple)}")
-            if isinstance(result, tuple):
-                log.info(f"  - Tuple length: {len(result)}")
-                log.info(f"  - Element types: {[type(x).__name__ for x in result]}")
-            log.info(f"  - Return value preview: {str(result)[:500]}")
-        
-            if isinstance(result, tuple) and len(result) == 4:
-                data, options, value, style = result
+            log.info(f"  - Return type: {type(upload_result)}")
+            log.info(f"  - Is tuple: {isinstance(upload_result, tuple)}")
+            if isinstance(upload_result, tuple):
+                log.info(f"  - Tuple length: {len(upload_result)}")
+                log.info(f"  - Element types: {[type(x).__name__ for x in upload_result]}")
+            log.info(f"  - Return value preview: {str(upload_result)[:500]}")
+
+            if isinstance(upload_result, tuple) and len(upload_result) == 4:
+                data, options, value, style = upload_result
                 log.info(f"[handle_file_upload] SUCCESS - Unpacked 4 values")
                 log.info(f"  - data type: {type(data)}")
                 log.info(f"  - data content: {str(data)[:200] if data else 'None'}")
@@ -237,19 +291,33 @@ def register_callbacks(app):
                 log.info(f"  - Output 3 (scenario-dropdown value): {value}")
                 log.info(f"  - Output 4 (scenario-selector-div style): {style}")
             
+                # 成功時のUIフィードバック
+                if data and data.get('success'):
+                    success_msg = UserFriendlyMessages.create_success_message("upload_complete")
+                    progress_complete = html.Div([
+                        html.P("✅ アップロード完了", style={'color': 'green', 'fontWeight': 'bold'}),
+                        html.Progress(value=100, max=100, style={'width': '100%'})
+                    ], style={'text-align': 'center'})
+                else:
+                    # 失敗時のUIフィードバック
+                    error_detail = data.get('error', '不明なエラー') if data else '処理に失敗しました'
+                    success_msg = safe_error_display("upload", "corrupted_file", error_detail)
+                    progress_complete = html.Div()
+
                 # グローバル変数を更新してタブを再読み込み可能にする
                 global OUTPUT_DIR
                 OUTPUT_DIR = workspace
                 log.info(f"[handle_file_upload] OUTPUT_DIR updated to: {OUTPUT_DIR}")
-            
-                return data, options, value, style
+
+                return data, options, value, style, success_msg, progress_complete
             else:
                 # エラーの場合
                 log.error(f"[handle_file_upload] UNEXPECTED result format")
                 log.error(f"  - Expected: tuple of 4 elements")
-                log.error(f"  - Got: {type(result)}")
-                log.error(f"  - Result content: {str(result)[:500]}")
-                result = (None, [], None, {'display': 'none'})
+                log.error(f"  - Got: {type(upload_result)}")
+                log.error(f"  - Result content: {str(upload_result)[:500]}")
+                error_msg = safe_error_display("upload", "corrupted_file")
+                result = (None, [], None, {'display': 'none'}, error_msg, html.Div())
                 log.info(f"[handle_file_upload] RETURN (error): {result}")
                 return result
             
@@ -257,7 +325,8 @@ def register_callbacks(app):
             log.error(f"[handle_file_upload] EXCEPTION occurred: {e}", exc_info=True)
             import traceback
             log.error(f"[handle_file_upload] Full traceback:\n{traceback.format_exc()}")
-            result = (None, [], None, {'display': 'none'})
+            error_msg = safe_error_display("upload", "network_error", str(e))
+            result = (None, [], None, {'display': 'none'}, error_msg, html.Div())
             log.info(f"[handle_file_upload] RETURN (exception): {result}")
             return result
         finally:

@@ -22,6 +22,8 @@ import atexit
 from io import BytesIO
 from datetime import datetime, timedelta
 from plotly.subplots import make_subplots
+from dash import State
+from session_integration import session_integration, session_aware_data_get, session_aware_save_data
 
 # Global variable to store current scenario directory (dash_app依存を除去)
 CURRENT_SCENARIO_DIR = None
@@ -1203,7 +1205,7 @@ def simple_synergy_analysis(long_df: pd.DataFrame, target_staff: str) -> pd.Data
     return result_df
 
 
-def data_get(scenario_dir: Path, key: str, default=None):
+def session_aware_data_get(scenario_dir: Path, key: str, default=None, session_id=None):
     """Load data from scenario directory"""
     try:
         # Common file patterns for different data types
@@ -1247,8 +1249,8 @@ def calculate_overview_kpis(scenario_dir: Path):
         kpis = {}
         
         # Load shortage data
-        shortage_role_data = data_get(scenario_dir, 'shortage_role_summary', pd.DataFrame())
-        shortage_emp_data = data_get(scenario_dir, 'shortage_employment_summary', pd.DataFrame())
+        shortage_role_data = session_aware_data_get(scenario_dir, 'shortage_role_summary', pd.DataFrame(), session_id=session_id)
+        shortage_emp_data = session_aware_data_get(scenario_dir, 'shortage_employment_summary', pd.DataFrame(), session_id=session_id)
         
         # Calculate total shortage hours
         total_shortage = 0
@@ -1272,7 +1274,7 @@ def calculate_overview_kpis(scenario_dir: Path):
         kpis['avg_daily_shortage'] = total_shortage / 30 if total_shortage > 0 else 0
         
         # Load fatigue data
-        fatigue_data = data_get(scenario_dir, 'fatigue_score', pd.DataFrame())
+        fatigue_data = session_aware_data_get(scenario_dir, 'fatigue_score', pd.DataFrame(), session_id=session_id)
         avg_fatigue = 0
         if not fatigue_data.empty:
             if isinstance(fatigue_data, dict):
@@ -1289,7 +1291,7 @@ def calculate_overview_kpis(scenario_dir: Path):
         kpis['fairness_score'] = fairness_score
         
         # Calculate staff utilization
-        intermediate_data = data_get(scenario_dir, 'intermediate_data', pd.DataFrame())
+        intermediate_data = session_aware_data_get(scenario_dir, 'intermediate_data', pd.DataFrame(), session_id=session_id)
         total_staff = len(intermediate_data) if not intermediate_data.empty else 0
         kpis['total_staff'] = total_staff
         
@@ -1702,7 +1704,7 @@ def collect_all_tabs_summary(scenario_dir):
             df = pd.read_parquet(fatigue_file)
             if not df.empty and 'fatigue_score' in df.columns:
                 avg_fatigue = df['fatigue_score'].mean()
-                high_risk = len(df[df['fatigue_score'] > 80])
+                high_risk = len(df[df['fatigue_score'] > 55])
                 summary['fatigue'] = {
                     'status': '✅ 分析完了',
                     'key_metric': f"平均疲労度: {avg_fatigue:.1f}",
@@ -2541,7 +2543,7 @@ def generate_pdf_report(scenario_dir):
 
 def create_fatigue_tab(scenario_dir) -> html.Div:
     """完全機能版疲労分析タブ（3D可視化含む）"""
-    df_fatigue = data_get(scenario_dir, 'fatigue_stats', pd.DataFrame())
+    df_fatigue = session_aware_data_get(scenario_dir, 'fatigue_stats', pd.DataFrame(), session_id=session_id)
     
     # Noneチェック
     if df_fatigue is None:
@@ -2553,9 +2555,9 @@ def create_fatigue_tab(scenario_dir) -> html.Div:
     low_risk = 0
     
     if df_fatigue is not None and not df_fatigue.empty and 'fatigue_score' in df_fatigue.columns:
-        high_risk = len(df_fatigue[df_fatigue['fatigue_score'] > 80])
-        medium_risk = len(df_fatigue[(df_fatigue['fatigue_score'] > 50) & (df_fatigue['fatigue_score'] <= 80)])
-        low_risk = len(df_fatigue[df_fatigue['fatigue_score'] <= 50])
+        high_risk = len(df_fatigue[df_fatigue['fatigue_score'] > 55])
+        medium_risk = len(df_fatigue[(df_fatigue['fatigue_score'] > 35) & (df_fatigue['fatigue_score'] <= 55)])
+        low_risk = len(df_fatigue[df_fatigue['fatigue_score'] <= 35])
     
     # 基本グラフ
     fig = go.Figure()
@@ -2627,7 +2629,7 @@ def create_fatigue_risk_card(title, count, color):
 
 def create_fairness_tab(scenario_dir) -> html.Div:
     """完全機能版公平性分析タブ（6種類の可視化）"""
-    df_fairness = data_get(scenario_dir, 'fairness_before', pd.DataFrame())
+    df_fairness = session_aware_data_get(scenario_dir, 'fairness_before', pd.DataFrame(), session_id=session_id)
     
     # Jain指数の計算（サンプル）
     jain_index = 0.85
@@ -5178,7 +5180,7 @@ def run_ai_analysis(n_clicks, scenario_dir):
             html.P(str(e))
         ])
         try:
-            output_dir = Path(CURRENT_SCENARIO_DIR)
+            output_dir = workspace
             # ダッシュボード統合コンテンツを構築
             comprehensive_dashboard_content = [
                 html.Hr(style={'margin': '40px 0', 'border': '2px solid #3498db'}),
@@ -5206,7 +5208,7 @@ def run_ai_analysis(n_clicks, scenario_dir):
 
     # 正しい不足時間計算
     lack_h = 0
-    shortage_time_df = data_get(scenario_dir, 'shortage_time', pd.DataFrame())
+    shortage_time_df = session_aware_data_get(scenario_dir, 'shortage_time', pd.DataFrame(), session_id=session_id)
     if not shortage_time_df.empty:
         try:
             numeric_cols = shortage_time_df.select_dtypes(include=[np.number])
@@ -5407,7 +5409,7 @@ def create_turnover_prediction_tab(scenario_dir):
                     html.Li("🔴 過度の残業（月60時間超）: 5名"),
                     html.Li("🟠 シフト不規則性（変動係数 > 0.3）: 8名"),
                     html.Li("🟡 休暇取得率低下（< 50%）: 6名"),
-                    html.Li("⚠️ 疲労スコア高（> 80）: 4名")
+                    html.Li("⚠️ 疲労スコア高（> 55）: 4名")
                 ])
             ], style={'backgroundColor': '#f8f9fa', 'padding': '15px', 'borderRadius': '8px', 'marginTop': '15px'}),
             
@@ -5770,4 +5772,3 @@ def create_timeaxis_shortage_tab(scenario_dir):
     except Exception as e:
         log.error(f"create_timeaxis_shortage_tab error: {e}")
         return html.Div(f"エラー: {str(e)}", style={'color': 'red'})
-

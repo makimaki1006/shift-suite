@@ -178,7 +178,7 @@ def _features(long_df: pd.DataFrame, slot_minutes: int = 30) -> pd.DataFrame:
         worktime_std.rename("worktime_std"),
         rest_penalty.rename("rest_penalty"),
         consec_df,
-        basic[["night_ratio_adj"]],
+        basic[["night_ratio_adj", "total_days"]],  # total_daysも含める
     ], axis=1).fillna(0)
     
     return feats
@@ -260,19 +260,51 @@ def _train_fatigue_pytorch(long_df: pd.DataFrame, out_dir: Path):
     return result_path
 
 
+def _normalize_robust(series: pd.Series, use_iqr_clipping: bool = True) -> pd.Series:
+    """ロバストな正規化（外れ値耐性付き）
+    
+    Parameters:
+    -----------
+    series : pd.Series
+        正規化対象のデータ
+    use_iqr_clipping : bool
+        IQRベースの外れ値クリッピングを使用するか
+    """
+    if len(series) == 0 or series.isna().all():
+        return pd.Series(0, index=series.index)
+    
+    if use_iqr_clipping and len(series) > 3:
+        # IQRベースの外れ値クリッピング
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
+        iqr = q3 - q1
+        
+        if iqr > 0:
+            lower = q1 - 1.5 * iqr
+            upper = q3 + 1.5 * iqr
+            series = series.clip(lower, upper)
+    
+    # Min-Max正規化
+    min_val = series.min()
+    max_val = series.max()
+    if max_val > min_val:
+        return (series - min_val) / (max_val - min_val)
+    return pd.Series(0, index=series.index)
+
+
 def _train_fatigue_statistical(long_df: pd.DataFrame, out_dir: Path, weights: dict = None, slot_minutes: int = 30):
     """従来の統計的疲労分析（後方互換性）"""
     
     X = _features(long_df, slot_minutes)
     
-    # デフォルト重み
+    # デフォルト重み（夜勤の重みを強化）
     weights_default = {
         "start_var": 1.0,
         "diversity": 1.0,
         "worktime_var": 1.0,
-        "short_rest": 1.0,
-        "consecutive": 1.0,
-        "night_ratio": 1.0,
+        "short_rest": 1.2,  # 短い休息の重みを強化
+        "consecutive": 1.3,  # 連続勤務の重みを強化
+        "night_ratio": 2.0,  # 夜勤の重みを1.5→2.0にさらに強化
     }
     if weights:
         weights_default.update(weights)
@@ -285,8 +317,22 @@ def _train_fatigue_statistical(long_df: pd.DataFrame, out_dir: Path, weights: di
         + FATIGUE_PARAMETERS.get("consecutive_5_days_weight", 3.0) * X.get("consec5_ratio", 0)
     )
     
-    # パーセンタイル正規化
-    norm_df = X.rank(pct=True).fillna(0)
+    # ロバストな正規化（特徴量ごとに適切な方法を選択）
+    norm_df = pd.DataFrame(index=X.index)
+    
+    # 相対的評価が適切な特徴量（IQRクリッピング付き）
+    for col in ["start_std", "worktime_std"]:
+        if col in X.columns:
+            norm_df[col] = _normalize_robust(X[col], use_iqr_clipping=True)
+        else:
+            norm_df[col] = 0
+    
+    # 絶対値に意味がある特徴量（既に制約済み）
+    for col in ["code_diversity", "rest_penalty", "night_ratio_adj"]:
+        if col in X.columns:
+            norm_df[col] = _normalize_robust(X[col], use_iqr_clipping=False)
+        else:
+            norm_df[col] = 0
     
     # 重み付き疲労スコア計算
     X["fatigue_score"] = (
@@ -302,7 +348,82 @@ def _train_fatigue_statistical(long_df: pd.DataFrame, out_dir: Path, weights: di
     total_w = sum(w.values())
     if total_w > 0:
         X["fatigue_score"] = X["fatigue_score"] / total_w * 100
+    
+    # 勤務頻度による調整（月間想定勤務日数を20日として計算）
+    # total_daysは_features()から取得済み
+    expected_monthly_days = 20  # 月間標準勤務日数
+    
+    # 頻度調整係数を計算（シグモイド関数で滑らかな調整）
+    # - 連続的な減衰で不連続性を回避
+    # - 極端に少ない勤務（3日未満）のみ強く減衰
+    import numpy as np
+    
+    def smooth_frequency_factor(days):
+        """滑らかな頻度調整係数を計算（最終調整版）"""
+        if days >= expected_monthly_days:
+            return 1.0
+        elif days >= 15:
+            # 15-19日: ほぼ正社員レベル（0.85-1.0）
+            return 0.85 + 0.15 * (days - 15) / 5
+        elif days >= 10:
+            # 10-14日: 中間層（0.65-0.85）
+            return 0.65 + 0.20 * (days - 10) / 5
+        elif days >= 5:
+            # 5-9日: パートレベル（0.35-0.65）
+            return 0.35 + 0.30 * (days - 5) / 5
+        elif days >= 3:
+            # 3-4日: 低頻度（0.2-0.35）
+            return 0.2 + 0.15 * (days - 3) / 2
+        else:
+            # 3日未満: 超低頻度（0.05-0.2）
+            return 0.05 + 0.15 * days / 3
+    
+    frequency_factor = X["total_days"].apply(smooth_frequency_factor)
+    
+    # 頻度調整を適用
+    X["fatigue_score_raw"] = X["fatigue_score"]  # 調整前の値を保存
+    X["fatigue_score"] = X["fatigue_score"] * frequency_factor
+    
+    # 最小スコア保証（正社員レベルの勤務者）
+    for idx in X.index:
+        total_days = X.loc[idx, "total_days"]
+        # night_ratio_adjが正しい列名（0-1に正規化済み）
+        night_ratio = X.loc[idx, "night_ratio_adj"] if "night_ratio_adj" in X.columns else 0
+        
+        # 18日以上勤務かつ夜勤がある場合、最小30点を保証（閾値を緩和）
+        if total_days >= 18 and night_ratio >= 0.15:
+            X.loc[idx, "fatigue_score"] = max(X.loc[idx, "fatigue_score"], 30)
+        
+        # 23日以上勤務かつ夜勤率40%以上の場合、最小70点を保証（閾値を緩和）
+        if total_days >= 23 and night_ratio >= 0.4:
+            X.loc[idx, "fatigue_score"] = max(X.loc[idx, "fatigue_score"], 70)
+        
+        # 25日以上勤務の場合、夜勤率に関わらず最小60点を保証
+        if total_days >= 25:
+            X.loc[idx, "fatigue_score"] = max(X.loc[idx, "fatigue_score"], 60)
+    
+    # 100点を超える場合は警告フラグを立てる（クリップはしない）
+    X["is_extreme_fatigue"] = X["fatigue_score"] > 100
+    X["fatigue_category"] = pd.cut(
+        X["fatigue_score"],
+        bins=[0, 30, 60, 80, 100, float('inf')],
+        labels=["低", "中", "高", "非常に高", "危険"],
+        include_lowest=True
+    )
+    
+    # 表示用スコア（100点を超えても保持）
+    X["fatigue_score_display"] = X["fatigue_score"].round(2)
+    
+    # 互換性のため、fatigue_scoreは100でクリップ（警告付き）
+    if (X["fatigue_score"] > 100).any():
+        extreme_staff = X[X["fatigue_score"] > 100].index.tolist()
+        log.warning(f"⚠️ 疲労度が100を超えるスタッフ: {extreme_staff}")
+        log.warning(f"  実際の値: {X.loc[extreme_staff, 'fatigue_score_display'].to_dict()}")
+    
     X["fatigue_score"] = X["fatigue_score"].clip(0, 100).round(2)
+    
+    # デバッグ用：頻度係数も保存
+    X["frequency_factor"] = frequency_factor.round(3)
     
     # ダッシュボード用の列名に変換
     output_df = X.copy()

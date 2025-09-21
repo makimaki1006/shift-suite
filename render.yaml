@@ -2,8 +2,14 @@ services:
   - type: web
     name: shiftanalysis-streamlit
     runtime: python
-    buildCommand: "pip install --upgrade pip && pip install -r requirements_render_lite.txt"
-    startCommand: "streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true"
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
+    startCommand: "streamlit run app.py --server.port $PORT --server.address 0.0.0.0"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: "true"
+      - key: STREAMLIT_SERVER_ENABLE_CORS
+        value: "false"
+    healthCheckPath: /
+    autoDeploy: false
