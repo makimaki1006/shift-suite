@@ -122,4 +122,5 @@ final_*.json
 
 # IDE
 *.pyc
-.pytest_cache/
+.pytest_cache/analysis_log.log
+.serena/cache/
